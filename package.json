@@ -1,0 +1,14 @@
+{
+  "name": "clinicalumia-es",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:dashboard": "pnpm --filter dashboard dev",
+    "build:web": "pnpm --filter web build",
+    "build:dashboard": "pnpm --filter dashboard build"
+  },
+  "workspaces": [
+    "apps/*"
+  ]
+}
