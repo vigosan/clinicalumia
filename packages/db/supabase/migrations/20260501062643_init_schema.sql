@@ -1,0 +1,3 @@
+-- Initial schema placeholder.
+-- Real domain tables (specialties, staff, patients, services, appointments)
+-- will land in their own migrations.
