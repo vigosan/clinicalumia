@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
-body {
-  background: #ffffff;
-  color: #0f172a;
+@theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-serif, Georgia, serif;
+
+  --color-cream-50: #faf7f2;
+  --color-cream-100: #f3ede2;
+  --color-sage-600: #4a766f;
+  --color-sage-700: #3a6e6a;
+  --color-sage-800: #2c5752;
 }
