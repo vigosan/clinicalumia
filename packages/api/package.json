@@ -1,0 +1,34 @@
+{
+  "name": "@clinicalumia/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./browser": "./browser.ts",
+    "./server": "./server.ts",
+    "./admin": "./admin.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo"
+  },
+  "files": [
+    "browser.ts",
+    "server.ts",
+    "admin.ts"
+  ],
+  "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.46.1"
+  },
+  "devDependencies": {
+    "@clinicalumia/config": "workspace:*",
+    "@types/node": "^20",
+    "next": "16.2.4",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "next": "^16",
+    "react": "^19"
+  }
+}
