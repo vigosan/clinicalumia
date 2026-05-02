@@ -6,7 +6,8 @@
   "exports": {
     "./browser": "./browser.ts",
     "./server": "./server.ts",
-    "./admin": "./admin.ts"
+    "./admin": "./admin.ts",
+    "./proxy": "./proxy.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -15,7 +16,8 @@
   "files": [
     "browser.ts",
     "server.ts",
-    "admin.ts"
+    "admin.ts",
+    "proxy.ts"
   ],
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
