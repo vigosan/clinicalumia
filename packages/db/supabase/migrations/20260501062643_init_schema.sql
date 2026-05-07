@@ -12,6 +12,7 @@ create table public.specialties (
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
   full_name text not null,
   role public.user_role not null default 'doctor',
   specialty_id uuid references public.specialties(id) on delete set null,
