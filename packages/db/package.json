@@ -8,6 +8,13 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > types.ts"
+    "db:types": "supabase gen types typescript --local > types.ts",
+    "bootstrap:owner": "tsx scripts/bootstrap-owner.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.46.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
   }
 }

@@ -2,7 +2,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 .PHONY: help install dev stop build lint typecheck test clean \
-        db.start db.stop db.reset db.migrate db.types db.studio
+        db.start db.stop db.reset db.migrate db.types db.studio db.bootstrap
 
 help: ## Show available commands
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -50,3 +50,16 @@ db.types: ## Generate TypeScript types from local DB schema
 
 db.studio: ## Open Supabase Studio in browser
 	open http://localhost:54323
+
+db.bootstrap: ## Create the owner user. Usage: make db.bootstrap email=... password=... name="..."
+	@if [ -z "$(email)" ] || [ -z "$(password)" ] || [ -z "$(name)" ]; then \
+		echo 'Usage: make db.bootstrap email=user@example.com password=secret name="Dra. Patricia"'; \
+		exit 1; \
+	fi
+	cd packages/db && \
+		SUPABASE_URL=http://127.0.0.1:54321 \
+		SUPABASE_SERVICE_ROLE_KEY=$$(supabase status -o env | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"') \
+		OWNER_EMAIL="$(email)" \
+		OWNER_PASSWORD="$(password)" \
+		OWNER_FULL_NAME="$(name)" \
+		pnpm bootstrap:owner
