@@ -24,10 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="es"
-      className={`${inter.variable} ${fraunces.variable} h-full`}
-    >
+    <html lang="es" className={`${inter.variable} ${fraunces.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-sage-500 text-stone-800 font-sans antialiased">
         {children}
       </body>

@@ -1,7 +1,7 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createClient } from "@clinicalumia/api/server";
+import { redirect } from "next/navigation";
 
 export type LoginState = { error: string } | undefined;
 

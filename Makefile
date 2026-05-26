@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev stop build lint typecheck test clean \
+.PHONY: help install dev stop build lint format typecheck test clean \
         db.start db.stop db.reset db.migrate db.types db.studio db.bootstrap
 
 help: ## Show available commands
@@ -19,8 +19,11 @@ stop: db.stop ## Stop everything
 build: ## Build all apps and packages
 	pnpm turbo run build
 
-lint: ## Lint all workspaces
-	pnpm turbo run lint
+lint: ## Lint and format-check the repo with Biome
+	pnpm lint
+
+format: ## Auto-format the repo with Biome
+	pnpm format
 
 typecheck: ## Typecheck all workspaces
 	pnpm turbo run typecheck

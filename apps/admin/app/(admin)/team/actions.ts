@@ -1,8 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createClient } from "@clinicalumia/api/server";
 import { createAdminClient } from "@clinicalumia/api/admin";
+import { createClient } from "@clinicalumia/api/server";
+import { revalidatePath } from "next/cache";
 
 export type CreateMemberState = { error: string } | { ok: true } | undefined;
 
@@ -10,7 +10,9 @@ export async function createMember(
   _prev: CreateMemberState,
   formData: FormData,
 ): Promise<CreateMemberState> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const fullName = String(formData.get("full_name") ?? "").trim();
   const rawSpecialty = String(formData.get("specialty_id") ?? "");
   const specialtyId = rawSpecialty || null;
@@ -20,7 +22,8 @@ export async function createMember(
   }
 
   const admin = createAdminClient();
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email);
+  const { data: invited, error: inviteError } =
+    await admin.auth.admin.inviteUserByEmail(email);
 
   if (inviteError || !invited?.user) {
     if (inviteError?.message?.toLowerCase().includes("already")) {

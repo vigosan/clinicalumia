@@ -4,17 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./eslint/next": "./eslint/next.mjs",
     "./typescript/base.json": "./typescript/base.json",
     "./typescript/nextjs.json": "./typescript/nextjs.json"
   },
   "files": [
-    "eslint",
     "typescript"
   ],
   "peerDependencies": {
-    "eslint": "^9",
-    "eslint-config-next": "^16",
     "typescript": "^5"
   }
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { Drawer } from "vaul";
 import {
   useActionState,
   useEffect,
@@ -8,10 +7,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import {
-  sendCollaboratorRequest,
-  type CollaboratorFormState,
-} from "./actions";
+import { Drawer } from "vaul";
+import { type CollaboratorFormState, sendCollaboratorRequest } from "./actions";
 
 const initialState: CollaboratorFormState = undefined;
 const DESKTOP_QUERY = "(min-width: 768px)";

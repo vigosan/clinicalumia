@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  resendInvite,
-  setMemberActive,
-  updateMember,
-} from "./actions";
+import { resendInvite, setMemberActive, updateMember } from "./actions";
 
 type Specialty = { id: string; name: string };
 
@@ -27,7 +23,9 @@ export function MemberRow({
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const specialtyName = specialties.find((s) => s.id === member.specialty_id)?.name;
+  const specialtyName = specialties.find(
+    (s) => s.id === member.specialty_id,
+  )?.name;
 
   if (editing) {
     return (

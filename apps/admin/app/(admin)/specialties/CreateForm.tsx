@@ -1,10 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import {
-  createSpecialty,
-  type SpecialtyFormState,
-} from "./actions";
+import { createSpecialty, type SpecialtyFormState } from "./actions";
 
 const initialState: SpecialtyFormState = undefined;
 
@@ -47,7 +44,10 @@ export function CreateForm() {
       </button>
 
       {state && "error" in state && (
-        <p className="text-sm text-red-600 sm:order-last sm:w-full" role="alert">
+        <p
+          className="text-sm text-red-600 sm:order-last sm:w-full"
+          role="alert"
+        >
           {state.error}
         </p>
       )}

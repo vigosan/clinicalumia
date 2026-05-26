@@ -27,15 +27,18 @@ async function main() {
     .maybeSingle();
 
   if (existing) {
-    console.log(`Profile already exists for ${email} (role=${existing.role}). Nothing to do.`);
+    console.log(
+      `Profile already exists for ${email} (role=${existing.role}). Nothing to do.`,
+    );
     return;
   }
 
-  const { data: created, error: createError } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
+  const { data: created, error: createError } =
+    await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
 
   if (createError || !created.user) {
     console.error("Failed to create auth user:", createError?.message);

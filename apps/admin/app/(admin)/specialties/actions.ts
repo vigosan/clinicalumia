@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@clinicalumia/api/server";
+import { revalidatePath } from "next/cache";
 
 function slugify(value: string): string {
   return value
@@ -26,12 +26,11 @@ export async function createSpecialty(
   if (!slug) return { error: "El nombre no es válido." };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("specialties")
-    .insert({ name, slug });
+  const { error } = await supabase.from("specialties").insert({ name, slug });
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe una especialidad con ese nombre." };
+    if (error.code === "23505")
+      return { error: "Ya existe una especialidad con ese nombre." };
     return { error: "No se ha podido crear la especialidad." };
   }
 

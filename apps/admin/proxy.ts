@@ -1,5 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@clinicalumia/api/proxy";
+import { type NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/auth"];
 

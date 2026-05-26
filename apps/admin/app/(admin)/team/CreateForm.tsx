@@ -1,14 +1,21 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { createMember, type CreateMemberState } from "./actions";
+import { type CreateMemberState, createMember } from "./actions";
 
 type SpecialtyOption = { id: string; name: string };
 
 const initialState: CreateMemberState = undefined;
 
-export function CreateForm({ specialties }: { specialties: SpecialtyOption[] }) {
-  const [state, formAction, pending] = useActionState(createMember, initialState);
+export function CreateForm({
+  specialties,
+}: {
+  specialties: SpecialtyOption[];
+}) {
+  const [state, formAction, pending] = useActionState(
+    createMember,
+    initialState,
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {

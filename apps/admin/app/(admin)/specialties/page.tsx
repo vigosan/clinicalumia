@@ -14,9 +14,12 @@ export default async function SpecialtiesPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Especialidades</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Especialidades
+        </h1>
         <p className="text-sm text-slate-500">
-          Catálogo de especialidades clínicas. Se asignan a los médicos al darlos de alta.
+          Catálogo de especialidades clínicas. Se asignan a los médicos al
+          darlos de alta.
         </p>
       </header>
 

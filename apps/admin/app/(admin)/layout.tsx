@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@clinicalumia/api/server";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { logout } from "./actions";
 
 export default async function AdminLayout({
@@ -47,7 +47,9 @@ export default async function AdminLayout({
           </div>
 
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-600">{profile?.full_name ?? user.email}</span>
+            <span className="text-slate-600">
+              {profile?.full_name ?? user.email}
+            </span>
             <form action={logout}>
               <button
                 type="submit"

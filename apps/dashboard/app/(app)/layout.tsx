@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@clinicalumia/api/server";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { logout } from "./actions";
 
 export default async function DashboardLayout({
