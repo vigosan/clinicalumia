@@ -39,25 +39,25 @@ export default function Home() {
         />
 
         <div className="relative z-10 flex h-full min-h-[600px] flex-col items-center px-6 pt-12 md:block md:min-h-[640px] md:p-0">
-          <div className="md:absolute md:left-10 md:top-10">
+          <div className="md:absolute md:left-12 md:top-14">
             <Image
               src="/logo-white.png"
               alt="Lumia · Clínica Logopedia miofuncional"
               width={1080}
               height={400}
               priority
-              className="h-auto w-56 md:w-40"
+              className="h-auto w-72 md:w-72 lg:w-80"
             />
           </div>
 
-          <div className="mt-10 flex flex-col items-center gap-5 text-cream-50 md:absolute md:right-10 md:top-12 md:mt-0 md:items-end">
-            <p className="text-xl md:text-2xl">
+          <div className="mt-10 flex flex-col items-center gap-5 text-cream-50 md:absolute md:right-12 md:top-20 md:mt-0 md:items-start md:gap-6">
+            <p className="text-2xl md:text-3xl lg:text-4xl">
               Página web <span className="font-semibold">en construcción</span>
             </p>
             <CollaboratorDrawer />
           </div>
 
-          <Sparkle className="mt-10 size-5 md:absolute md:bottom-8 md:left-10 md:mt-0 md:size-6" />
+          <Sparkle className="mt-10 size-7 md:absolute md:bottom-10 md:left-12 md:mt-0 md:size-6" />
         </div>
       </section>
 
@@ -76,7 +76,7 @@ export default function Home() {
           alt="Lumia · Clínica Logopedia miofuncional"
           width={1080}
           height={400}
-          className="h-auto w-32 md:w-36"
+          className="h-auto w-40 md:w-48"
         />
       </footer>
     </>

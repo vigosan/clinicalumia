@@ -61,7 +61,7 @@ export function CollaboratorDrawer() {
     >
       <Drawer.Trigger
         data-testid="collaborator-trigger"
-        className="inline-flex items-center justify-center rounded-full border border-cream-50/80 bg-transparent px-7 py-2.5 text-sm text-cream-50 transition hover:bg-cream-50/10 md:text-base"
+        className="inline-flex cursor-pointer items-center justify-center rounded-full border border-cream-50/80 bg-transparent px-8 py-3 text-base text-cream-50 transition hover:bg-cream-50/10 md:px-10 md:text-lg"
       >
         Quiero ser colaborador/a
       </Drawer.Trigger>
@@ -103,7 +103,7 @@ export function CollaboratorDrawer() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-full bg-sage-700 px-6 py-2.5 text-sm font-medium text-cream-50 transition hover:bg-sage-800"
+                className="cursor-pointer rounded-full bg-sage-700 px-6 py-2.5 text-sm font-medium text-cream-50 transition hover:bg-sage-800"
               >
                 Cerrar
               </button>
@@ -171,14 +171,14 @@ export function CollaboratorDrawer() {
                   type="submit"
                   disabled={pending}
                   data-testid="collaborator-submit"
-                  className="rounded-full bg-sage-700 px-6 py-3 text-sm font-medium text-cream-50 transition hover:bg-sage-800 disabled:opacity-60"
+                  className="cursor-pointer rounded-full bg-sage-700 px-6 py-3 text-sm font-medium text-cream-50 transition hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {pending ? "Enviando…" : "Enviar"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="rounded-full px-6 py-2 text-sm text-stone-600 transition hover:bg-stone-100"
+                  className="cursor-pointer rounded-full px-6 py-2 text-sm text-stone-600 transition hover:bg-stone-100"
                 >
                   Cancelar
                 </button>
