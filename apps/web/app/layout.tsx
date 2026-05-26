@@ -13,8 +13,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Clínica Lumia · Xàtiva",
-  description: "Atención médica personalizada y de calidad en Xàtiva. Próximamente.",
+  title: "Lumia · Clínica Logopedia miofuncional",
+  description:
+    "Página web en construcción. Pronto disponible. Llámanos e infórmate: 614 552 808.",
 };
 
 export default function RootLayout({
@@ -27,7 +28,7 @@ export default function RootLayout({
       lang="es"
       className={`${inter.variable} ${fraunces.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-cream-50 text-stone-800 font-sans antialiased">
+      <body className="min-h-full flex flex-col bg-sage-500 text-stone-800 font-sans antialiased">
         {children}
       </body>
     </html>
