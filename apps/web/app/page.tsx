@@ -51,9 +51,9 @@ export default function Home() {
           </div>
 
           <div className="mt-10 flex flex-col items-center gap-5 text-cream-50 md:absolute md:right-12 md:top-20 md:mt-0 md:items-start md:gap-6">
-            <p className="text-2xl md:text-3xl lg:text-4xl">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl">
               Página web <span className="font-semibold">en construcción</span>
-            </p>
+            </h1>
             <CollaboratorDrawer />
           </div>
 
@@ -73,7 +73,7 @@ export default function Home() {
         </p>
         <Image
           src="/logo-dark.png"
-          alt="Lumia · Clínica Logopedia miofuncional"
+          alt=""
           width={1080}
           height={400}
           className="h-auto w-40 md:w-48"
