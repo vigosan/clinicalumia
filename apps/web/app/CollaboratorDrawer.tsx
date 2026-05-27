@@ -119,7 +119,7 @@ export function CollaboratorDrawer() {
                   name="specialty"
                   required
                   autoComplete="off"
-                  className="rounded-md border border-stone-300 bg-white px-3 py-2 outline-none focus:border-sage-700"
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-base outline-none focus:border-sage-700"
                 />
               </label>
 
@@ -129,7 +129,7 @@ export function CollaboratorDrawer() {
                   type="tel"
                   name="phone"
                   autoComplete="tel"
-                  className="rounded-md border border-stone-300 bg-white px-3 py-2 outline-none focus:border-sage-700"
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-base outline-none focus:border-sage-700"
                 />
               </label>
 
@@ -140,7 +140,7 @@ export function CollaboratorDrawer() {
                   name="email"
                   required
                   autoComplete="email"
-                  className="rounded-md border border-stone-300 bg-white px-3 py-2 outline-none focus:border-sage-700"
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-base outline-none focus:border-sage-700"
                 />
               </label>
 
@@ -149,7 +149,7 @@ export function CollaboratorDrawer() {
                 <textarea
                   name="message"
                   rows={4}
-                  className="resize-none rounded-md border border-stone-300 bg-white px-3 py-2 outline-none focus:border-sage-700"
+                  className="resize-none rounded-md border border-stone-300 bg-white px-3 py-2 text-base outline-none focus:border-sage-700"
                 />
               </label>
 
