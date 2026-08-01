@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import { FloatingContact } from "@/components/FloatingContact";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { servicePages } from "@/lib/service-pages";
+import { isPending, nearbyTowns, site } from "@/lib/site";
 import "./globals.css";
 
 const neueHaas = localFont({
@@ -15,13 +17,14 @@ const neueHaas = localFont({
   variable: "--font-neue-haas",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://clinicalumia.es";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: "Lumia · Logopedia miofuncional en Xàtiva",
+  metadataBase: new URL(site.url),
+  title: {
+    default: "Logopeda y terapia miofuncional en Xàtiva · LUMIA",
+    template: "%s",
+  },
   description:
-    "Clínica de logopedia miofuncional en Xàtiva. Terapia para niños y adultos: deglución atípica, respiración, habla y voz. Pide cita: 614 552 808.",
+    "Clínica especializada en logopedia infantil, adultos y terapia miofuncional en Xàtiva. Tratamientos personalizados y enfoque funcional.",
   keywords: [
     "logopedia",
     "logopeda",
@@ -33,9 +36,6 @@ export const metadata: Metadata = {
     "terapia del habla",
     "clínica logopedia",
   ],
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "es_ES",
@@ -69,28 +69,39 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#6b7d6a",
+  themeColor: "#a1a692",
 };
 
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "MedicalClinic",
-  name: "Lumia · Clínica Logopedia miofuncional",
-  url: SITE_URL,
-  telephone: "+34614552808",
-  image: `${SITE_URL}/logo-dark.png`,
-  logo: `${SITE_URL}/logo-dark.png`,
+  name: `${site.name} · Clínica Logopedia miofuncional`,
+  url: site.url,
+  telephone: site.phone.e164,
+  image: `${site.url}/logo-dark.png`,
+  logo: `${site.url}/logo-dark.png`,
   medicalSpecialty: "SpeechPathology",
   address: {
     "@type": "PostalAddress",
-    addressLocality: "Xàtiva",
-    addressRegion: "Valencia",
-    addressCountry: "ES",
+    ...(isPending(site.address.street)
+      ? {}
+      : {
+          streetAddress: site.address.street,
+          postalCode: site.address.postalCode,
+        }),
+    addressLocality: site.address.locality,
+    addressRegion: site.address.region,
+    addressCountry: site.address.country,
   },
-  areaServed: {
+  areaServed: [site.city, ...nearbyTowns].map((name) => ({
     "@type": "City",
-    name: "Xàtiva",
-  },
+    name,
+  })),
+  availableService: servicePages.map((page) => ({
+    "@type": "MedicalTherapy",
+    name: page.h1.split(" · ")[0],
+    url: `${site.url}/${page.slug}`,
+  })),
 };
 
 export default function RootLayout({

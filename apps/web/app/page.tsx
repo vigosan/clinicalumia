@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { GoogleIcon, Sparkle } from "@/components/icons";
@@ -6,6 +7,10 @@ import { ServiceList } from "@/components/ServiceList";
 import { faqs } from "@/lib/faqs";
 import { services } from "@/lib/services";
 import { isPending, site } from "@/lib/site";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const clinicPhotos = [
   { src: "/clinica-01.jpg", alt: "Recepción de la clínica LUMIA en Xàtiva" },
