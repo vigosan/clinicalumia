@@ -36,7 +36,7 @@ export function SiteFooter() {
     : `${site.address.street}, ${site.address.postalCode} ${site.address.locality}`;
 
   return (
-    <footer className="bg-sage-500 px-6 py-14 md:px-12 md:py-20">
+    <footer className="bg-sage-500 px-6 pt-14 pb-28 md:px-12 md:pt-20 md:pb-28">
       <div className="mx-auto max-w-6xl">
         <Image
           src="/logo-white.png"
