@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display",
+const neueHaas = localFont({
+  src: [
+    { path: "./fonts/NeueHaasDisplayLight.ttf", weight: "300" },
+    { path: "./fonts/NeueHaasDisplayRoman.ttf", weight: "400" },
+    { path: "./fonts/NeueHaasDisplayMedium.ttf", weight: "500" },
+    { path: "./fonts/NeueHaasDisplayBold.ttf", weight: "700" },
+  ],
+  variable: "--font-neue-haas",
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://clinicalumia.es";
@@ -98,7 +98,7 @@ export default function RootLayout({
   return (
     <html
       lang="es-ES"
-      className={`${inter.variable} ${fraunces.variable} h-full`}
+      className={`${neueHaas.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-sage-500 text-stone-800 font-sans antialiased">
         {children}
