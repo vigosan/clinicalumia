@@ -39,3 +39,7 @@ coverage
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# material de origen y documentación clínica
+docs/
+sources/
