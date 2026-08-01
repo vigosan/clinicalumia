@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { FloatingContact } from "@/components/FloatingContact";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
 const neueHaas = localFont({
@@ -98,7 +101,10 @@ export default function RootLayout({
   return (
     <html lang="es-ES" className={`${neueHaas.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-cream-100 text-ink-600 font-sans antialiased">
-        {children}
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+        <FloatingContact />
         <script
           type="application/ld+json"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD payload is a static, server-controlled object
