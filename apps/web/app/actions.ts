@@ -7,6 +7,8 @@ export type CollaboratorFormState =
   | { ok: true }
   | undefined;
 
+export type ContactFormState = { error: string } | { ok: true } | undefined;
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -55,6 +57,68 @@ export async function sendCollaboratorRequest(
       <p><strong>Especialidad:</strong> ${escapeHtml(specialty)}</p>
       <p><strong>Teléfono:</strong> ${escapeHtml(phone) || "—"}</p>
       <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+      <p><strong>Mensaje:</strong></p>
+      <p style="white-space: pre-wrap">${escapeHtml(message) || "—"}</p>
+    `,
+  });
+
+  if (error) {
+    return { error: "No se ha podido enviar el mensaje. Inténtalo de nuevo." };
+  }
+
+  return { ok: true };
+}
+
+export async function sendContactRequest(
+  _prev: ContactFormState,
+  formData: FormData,
+): Promise<ContactFormState> {
+  const name = String(formData.get("name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const patientAge = String(formData.get("patientAge") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+  const privacy = formData.get("privacy");
+
+  if (!name) return { error: "El nombre es obligatorio." };
+  if (!phone) return { error: "El teléfono es obligatorio." };
+  if (!email) return { error: "El email es obligatorio." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "El email no es válido." };
+  }
+  if (!privacy) {
+    return { error: "Debes aceptar la política de privacidad." };
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const to = process.env.CONTACT_TO_EMAIL ?? "info@clinicalumia.es";
+  const from =
+    process.env.CONTACT_FROM_EMAIL ?? "Lumia <onboarding@resend.dev>";
+
+  if (!apiKey) {
+    return { error: "Servicio no configurado. Inténtalo más tarde." };
+  }
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from,
+    to,
+    replyTo: email,
+    subject: `Nueva solicitud de valoración — ${name}`,
+    text:
+      `Nombre: ${name}\n` +
+      `Teléfono: ${phone}\n` +
+      `Email: ${email}\n` +
+      `Motivo de consulta: ${reason || "—"}\n` +
+      `Edad del paciente: ${patientAge || "—"}\n\n` +
+      `Mensaje:\n${message || "—"}`,
+    html: `
+      <p><strong>Nombre:</strong> ${escapeHtml(name)}</p>
+      <p><strong>Teléfono:</strong> ${escapeHtml(phone)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+      <p><strong>Motivo de consulta:</strong> ${escapeHtml(reason) || "—"}</p>
+      <p><strong>Edad del paciente:</strong> ${escapeHtml(patientAge) || "—"}</p>
       <p><strong>Mensaje:</strong></p>
       <p style="white-space: pre-wrap">${escapeHtml(message) || "—"}</p>
     `,
