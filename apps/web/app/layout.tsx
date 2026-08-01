@@ -96,11 +96,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="es-ES"
-      className={`${neueHaas.variable} h-full`}
-    >
-      <body className="min-h-full flex flex-col bg-sage-500 text-stone-800 font-sans antialiased">
+    <html lang="es-ES" className={`${neueHaas.variable} h-full`}>
+      <body className="min-h-full flex flex-col bg-cream-100 text-ink-600 font-sans antialiased">
         {children}
         <script
           type="application/ld+json"
