@@ -20,7 +20,7 @@ const clinicPhotos = [
 export default function Home() {
   return (
     <>
-      <section className="px-3 pt-3 md:px-[3.33vw] md:pt-[3.33vw]">
+      <section className="px-3 md:px-[3.33vw]">
         <div className="relative overflow-hidden rounded-panel bg-sage-500">
           <Image
             src="/hero-mobile.webp"
