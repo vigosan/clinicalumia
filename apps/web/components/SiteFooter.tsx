@@ -15,91 +15,87 @@ const serviceLinks = [
   { href: "/rehabilitacion-vocal-xativa", label: "Voz y rehabilitación vocal" },
 ];
 
-function FooterRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-cream-50/40 border-b py-4">
-      <p className="text-cream-50 text-lg">{label}</p>
-      <div className="mt-1 text-cream-50/80 text-sm">{children}</div>
-    </div>
-  );
-}
+const rowClass = "border-cream-50/50 border-b py-5";
+const labelClass = "text-body text-cream-50";
+const valueClass = "mt-2 text-cream-50/85 text-action";
 
 export function SiteFooter() {
-  const address = isPending(site.address.street)
-    ? "Dirección pendiente de confirmar"
-    : `${site.address.street}, ${site.address.postalCode} ${site.address.locality}`;
-
   return (
-    <footer className="bg-sage-500 px-6 pt-14 pb-28 md:px-12 md:pt-20 md:pb-28">
-      <div className="mx-auto max-w-6xl">
-        <Image
-          src="/logo-white.png"
-          alt="LUMIA · Clínica Logopedia miofuncional"
-          width={1080}
-          height={400}
-          className="h-auto w-44 md:w-56"
-        />
+    <footer className="bg-sage-500 px-6 pt-14 pb-28 md:px-[9.3vw] md:pt-[6vw]">
+      <Image
+        src="/logo-white.png"
+        alt="LUMIA · Clínica Logopedia miofuncional"
+        width={1080}
+        height={400}
+        className="h-auto w-44 md:w-[16vw]"
+      />
 
-        <div className="mt-12 grid gap-x-16 gap-y-10 md:grid-cols-2">
-          <div>
-            <FooterRow label="Dirección">{address}</FooterRow>
-            <FooterRow label="Teléfono">
-              <a
-                href={site.phone.href}
-                className="underline-offset-2 hover:underline"
-              >
-                {site.phone.display}
-              </a>
-            </FooterRow>
-            <FooterRow label="Horario">
-              {isPending(site.schedule[0].days)
-                ? "Horario pendiente de confirmar"
-                : `${site.schedule[0].days}: ${site.schedule[0].hours}`}
-            </FooterRow>
-          </div>
-
-          <div>
-            <FooterRow label="Servicios profesionales">
-              <ul className="flex flex-col gap-1">
-                {serviceLinks.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="underline-offset-2 hover:underline"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </FooterRow>
-            <FooterRow label="Bases legales">
-              <ul className="flex flex-col gap-1">
-                {legalLinks.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="underline-offset-2 hover:underline"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </FooterRow>
-          </div>
+      <div className="mt-12 max-w-xl md:mt-[4vw]">
+        <div className={rowClass}>
+          <p className={labelClass}>Dirección</p>
+          <p className={valueClass}>
+            {isPending(site.address.street)
+              ? "Pendiente de confirmar"
+              : `${site.address.street}, ${site.address.postalCode} ${site.address.locality}`}
+          </p>
         </div>
 
-        <p className="mt-12 text-cream-50/70 text-sm">
-          © {new Date().getFullYear()} {site.name} · {site.tagline} en{" "}
-          {site.city}
-        </p>
+        <div className={rowClass}>
+          <p className={labelClass}>
+            {isPending(site.whatsapp.href) ? "Teléfono" : "WhatsApp"}
+          </p>
+          <a
+            href={
+              isPending(site.whatsapp.href)
+                ? site.phone.href
+                : site.whatsapp.href
+            }
+            className={`${valueClass} block underline-offset-2 hover:underline`}
+          >
+            {site.phone.display}
+          </a>
+        </div>
+
+        <div className={rowClass}>
+          <p className={labelClass}>Horario</p>
+          <p className={valueClass}>
+            {isPending(site.schedule[0].days)
+              ? "Pendiente de confirmar"
+              : `${site.schedule[0].days}: ${site.schedule[0].hours}`}
+          </p>
+        </div>
+
+        <div className={rowClass}>
+          <p className={labelClass}>Servicios profesionales</p>
+          <ul className={`${valueClass} flex flex-col gap-1`}>
+            {serviceLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="underline-offset-2 hover:underline"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className={rowClass}>
+          <p className={labelClass}>Bases legales</p>
+          <ul className={`${valueClass} flex flex-col gap-1`}>
+            {legalLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="underline-offset-2 hover:underline"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </footer>
   );

@@ -18,7 +18,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="absolute inset-x-0 top-0 z-30 px-6 pt-6 md:px-12 md:pt-10">
+    <header className="absolute inset-x-0 top-0 z-30 px-6 pt-6 md:px-[7.5vw] md:pt-[2.6vw]">
       <div className="flex items-start justify-between gap-6">
         <Link href="/" aria-label="LUMIA, inicio" className="shrink-0">
           <Image
@@ -27,16 +27,16 @@ export function SiteHeader() {
             width={1080}
             height={400}
             priority
-            className="h-auto w-40 md:w-56"
+            className="h-auto w-40 md:w-[17.2vw]"
           />
         </Link>
 
-        <nav className="hidden items-center gap-8 pt-2 lg:flex">
+        <nav className="hidden items-center gap-[2.6vw] pt-2 lg:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-cream-50 transition-opacity hover:opacity-70"
+              className="text-action text-cream-50 transition-opacity hover:opacity-70"
             >
               {link.label}
             </Link>

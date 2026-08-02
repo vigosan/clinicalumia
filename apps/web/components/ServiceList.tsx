@@ -7,23 +7,23 @@ export function ServiceList({ items }: { items: Service[] }) {
       {items.map((service) => (
         <li
           key={service.number}
-          className="grid gap-6 border-sage-400/50 border-t py-10 md:grid-cols-[1fr_2fr] md:gap-12 md:py-14"
+          className="grid gap-6 border-sage-400/50 border-t py-8 md:grid-cols-[48fr_52fr] md:gap-0 md:py-[2.3vw]"
         >
-          <div className="flex flex-col items-start gap-6">
-            <span className="font-bold text-4xl text-ink-600 md:text-5xl">
+          <div className="flex flex-col items-start gap-[4.7vw]">
+            <span className="font-bold text-section text-ink-600 leading-none">
               {service.number}
             </span>
             <PillLink href={`/${service.slug}`}>Saber más</PillLink>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <h3 className="font-bold text-card text-ink-600 md:text-section">
+          <div className="flex flex-col">
+            <h3 className="font-bold text-section text-ink-600 leading-none">
               {service.title}
             </h3>
-            <p className="max-w-2xl text-ink-500 text-lg leading-relaxed">
+            <p className="mt-[1.6vw] text-body text-ink-500">
               {service.summary}
             </p>
-            <p className="font-medium text-ink-600">
+            <p className="mt-[1.3vw] font-medium text-body text-ink-600 md:text-[1.25vw]">
               {service.tags.join(" · ")}
             </p>
           </div>
