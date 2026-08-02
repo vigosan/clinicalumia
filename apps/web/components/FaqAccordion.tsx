@@ -9,13 +9,11 @@ export function FaqAccordion({ items }: { items: Faq[] }) {
           key={item.question}
           className="group border-cream-50/40 border-b py-5"
         >
-          <summary className="flex cursor-pointer list-none items-center gap-3 text-cream-50">
-            <ArrowDownCircle className="size-6 shrink-0 transition-transform group-open:rotate-180" />
-            <span className="font-medium text-lg md:text-xl">
-              {item.question}
-            </span>
+          <summary className="flex cursor-pointer list-none items-center gap-4 text-cream-50">
+            <ArrowDownCircle className="size-7 shrink-0 transition-transform group-open:rotate-180" />
+            <span className="font-bold text-question">{item.question}</span>
           </summary>
-          <p className="mt-4 max-w-4xl pr-4 pl-9 text-cream-50/90 leading-relaxed">
+          <p className="mt-5 pr-4 pl-11 text-body text-cream-50/90">
             {item.answer}
           </p>
         </details>

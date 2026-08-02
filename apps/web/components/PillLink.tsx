@@ -9,7 +9,7 @@ const toneStyles: Record<Tone, string> = {
 };
 
 const base =
-  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border px-6 py-2.5 text-sm transition-colors md:text-base";
+  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border px-7 py-3 text-action transition-colors";
 
 export function pillClassName(tone: Tone = "sage", className = "") {
   return `${base} ${toneStyles[tone]} ${className}`;
