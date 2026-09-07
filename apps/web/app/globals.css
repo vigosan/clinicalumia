@@ -9,7 +9,7 @@
   --color-cream-200: #e5e1da;
   --color-sage-300: #c3c7b8;
   --color-sage-400: #b5b9a7;
-  --color-sage-500: #a1a692;
+  --color-sage-500: #a1a791;
   --color-sage-600: #8d927e;
   --color-sage-700: #767b68;
   --color-sage-800: #5c6151;
@@ -34,6 +34,6 @@
   --text-action: clamp(0.9375rem, 1.25vw, 1.5rem);
   --text-action--line-height: 1.2;
 
-  --radius-panel: 2.5rem;
+  --radius-panel: 3.5625rem;
   --spacing-content: 88.75rem;
 }
