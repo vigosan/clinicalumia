@@ -20,7 +20,7 @@ const clinicPhotos = [
 export default function Home() {
   return (
     <>
-      <section className="px-3 md:px-[3.33vw]">
+      <section className="px-3 md:px-[1.667vw]">
         <div className="relative overflow-hidden rounded-panel bg-sage-500">
           <Image
             src="/hero-mobile.webp"
@@ -97,7 +97,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-6 md:px-[3.33vw]">
+      <section className="px-6 md:px-[1.667vw]">
         <Image
           src="/clinica-01.jpg"
           alt="Recepción de la clínica LUMIA en Xàtiva"
