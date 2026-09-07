@@ -56,7 +56,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-6 pt-10 md:px-[13.02vw] md:pt-[2.2vw]">
+      <section className="px-6 pt-10 md:px-[12.448vw] md:pt-[2.2vw]">
         <p className="rounded-panel bg-sage-500 px-8 py-10 text-center font-bold text-cream-50 text-section md:py-[5vw]">
           Clínica de logopedia y terapia miofuncional
         </p>
@@ -163,7 +163,7 @@ export default function Home() {
       </section>
 
       <section
-        className="px-6 py-10 md:px-[13.02vw] md:py-[4vw]"
+        className="px-6 py-10 md:px-[12.448vw] md:py-[4vw]"
         id="preguntas"
       >
         <div className="rounded-panel bg-sage-500 px-6 py-14 md:px-[5.8vw] md:py-[5vw]">
