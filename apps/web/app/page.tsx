@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { GoogleIcon, Sparkle } from "@/components/icons";
+import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { PillLink } from "@/components/PillLink";
 import { ServiceList } from "@/components/ServiceList";
 import { faqs } from "@/lib/faqs";
@@ -13,8 +14,8 @@ export const metadata: Metadata = {
 };
 
 const clinicPhotos = [
+  { src: "/clinica-01.jpg", alt: "Recepción de la clínica LUMIA en Xàtiva" },
   { src: "/clinica-02.jpg", alt: "Sala de tratamiento de la clínica LUMIA" },
-  { src: "/patricia.jpg", alt: "Patricia Hernán en la consulta de LUMIA" },
 ];
 
 export default function Home() {
@@ -181,24 +182,14 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-6 py-10 md:px-[13.02vw] md:py-[4vw]" id="clinica">
+      <section className="py-10 md:py-[4vw]" id="clinica">
         <div>
-          <h2 className="text-center font-bold text-ink-600 text-section">
+          <h2 className="px-6 text-center font-bold text-ink-600 text-section md:px-[12.448vw]">
             Nuestra clínica
           </h2>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            {clinicPhotos.map((photo) => (
-              <Image
-                key={photo.src}
-                src={photo.src}
-                alt={photo.alt}
-                width={1400}
-                height={1050}
-                sizes="(min-width: 768px) 50vw, 100vw"
-                className="aspect-4/3 w-full rounded-panel object-cover"
-              />
-            ))}
+          <div className="mt-10 pl-6 md:mt-[2.4vw] md:pl-[1.667vw]">
+            <PhotoCarousel items={clinicPhotos} />
           </div>
 
           {!isPending(site.maps) && (
