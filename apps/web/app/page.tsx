@@ -39,7 +39,7 @@ export default function Home() {
             className="hidden object-cover object-center md:block"
           />
 
-          <div className="relative z-10 flex min-h-[620px] flex-col px-6 pt-32 pb-14 md:min-h-[51.4vw] md:px-[4.167vw] md:pt-[19.8vw] md:pb-[14vw]">
+          <div className="relative z-10 flex min-h-[620px] flex-col px-6 pt-32 pb-14 md:min-h-[54.427vw] md:px-[5.8333vw] md:pt-[19.8vw] md:pb-[14vw]">
             <p className="text-cream-50 text-kicker">
               Clínica de logopedia y terapia miofuncional en {site.city}
             </p>
