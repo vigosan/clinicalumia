@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 
 export default function ContactoPage() {
   const hasAddress = !isPending(site.address.street);
+  const hasEmail = !isPending(site.email);
   const hasSchedule = !isPending(site.schedule[0].days);
   const hasMaps = !isPending(site.maps);
 
@@ -49,6 +50,18 @@ export default function ContactoPage() {
                 {site.phone.display}
               </a>
             </div>
+
+            {hasEmail && (
+              <div>
+                <h3 className="font-bold text-ink-600 text-lg">Email</h3>
+                <a
+                  href={`mailto:${site.email}`}
+                  className="mt-2 inline-block text-ink-500 underline-offset-2 hover:underline"
+                >
+                  {site.email}
+                </a>
+              </div>
+            )}
 
             <div>
               <h3 className="font-bold text-ink-600 text-lg">Dirección</h3>
