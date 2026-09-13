@@ -101,16 +101,20 @@ export default function Home() {
           <p className="mt-6 text-body text-ink-700 md:mt-[2.135vw]">
             Especialistas en logopedia infantil, logopedia para adultos y
             terapia miofuncional orofacial en {site.city}.{" "}
+            <br className="hidden md:inline" />
             <span className="font-medium">
               En {site.name} trabajamos funciones esenciales como respirar,
-              masticar, deglutir, hablar y utilizar correctamente la musculatura
-              orofacial, desde un enfoque clínico, personalizado y basado en
-              evidencia científica.
+              masticar, deglutir, hablar y utilizar{" "}
+              <br className="hidden md:inline" />
+              correctamente la musculatura orofacial, desde un enfoque clínico,
+              personalizado y basado en evidencia científica.
             </span>{" "}
+            <br className="hidden md:inline" />
             Cada paciente es diferente.{" "}
             <span className="font-medium">
               Realizamos una valoración personalizada para identificar el origen
-              del problema y diseñar el tratamiento más adecuado.
+              del problema <br className="hidden md:inline" />y diseñar el
+              tratamiento más adecuado.
             </span>
           </p>
           <div className="mt-8 md:mt-[2.31vw]">
