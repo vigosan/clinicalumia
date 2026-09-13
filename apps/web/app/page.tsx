@@ -5,6 +5,7 @@ import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { PillLink } from "@/components/PillLink";
 import { ServiceList } from "@/components/ServiceList";
 import { faqs } from "@/lib/faqs";
+import { getLatestInstagramPosts } from "@/lib/instagram";
 import { services } from "@/lib/services";
 import { isPending, site } from "@/lib/site";
 
@@ -14,6 +15,7 @@ const clinicPhotos = [
 ];
 
 const instagramSlots = ["uno", "dos", "tres", "cuatro"];
+const instagramSlotClassName = "aspect-[418/381] rounded-panel bg-[#d8d8d8]";
 
 const helpHref = isPending(site.whatsapp.href)
   ? site.phone.href
@@ -29,7 +31,9 @@ const mapsLabel = (
   </>
 );
 
-export default function Home() {
+export default async function Home() {
+  const instagramPosts = await getLatestInstagramPosts(instagramSlots.length);
+
   return (
     <>
       <section className="md:px-[1.667vw]">
@@ -235,12 +239,29 @@ export default function Home() {
         </h2>
 
         <ul className="mt-10 grid grid-cols-2 gap-4 md:mt-[3.5vw] md:grid-cols-4 md:gap-[1.979vw]">
-          {instagramSlots.map((slot) => (
-            <li
-              key={slot}
-              className="aspect-[418/381] rounded-panel bg-[#d8d8d8]"
-            />
-          ))}
+          {instagramSlots.map((slot, index) => {
+            const post = instagramPosts[index];
+            return (
+              <li key={slot} className={instagramSlotClassName}>
+                {post && (
+                  <a
+                    href={post.permalink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="relative block size-full overflow-hidden rounded-panel"
+                  >
+                    <Image
+                      src={post.imageUrl}
+                      alt={post.alt}
+                      fill
+                      sizes="(min-width: 768px) 22vw, 50vw"
+                      className="object-cover"
+                    />
+                  </a>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
     </>
