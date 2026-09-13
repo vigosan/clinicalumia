@@ -25,7 +25,7 @@ const helpHref = isPending(site.whatsapp.href)
   : site.whatsapp.href;
 
 const mapsClassName =
-  "inline-flex items-center gap-5 text-center font-medium text-body text-sage-500";
+  "inline-flex items-center gap-3 text-center font-medium text-body text-sage-500 md:gap-5";
 
 const mapsLabel = (
   <>

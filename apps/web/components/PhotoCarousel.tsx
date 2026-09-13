@@ -52,7 +52,7 @@ export function PhotoCarousel({
 
       <div
         data-testid="carousel-nav"
-        className="mx-6 mt-8 flex items-center border-sage-500 border-b-2 pb-4 md:mx-[12.448vw] md:mt-[4.453vw] md:px-[2.55vw] md:pb-[1.72vw]"
+        className="mx-6 mt-8 flex items-center gap-4 border-sage-500 border-b-2 pb-4 md:mx-[12.448vw] md:mt-[4.453vw] md:gap-0 md:px-[2.55vw] md:pb-[1.72vw]"
       >
         <button
           type="button"
