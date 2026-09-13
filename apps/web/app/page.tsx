@@ -125,49 +125,50 @@ export default function Home() {
       </section>
 
       <section
-        className="px-6 py-10 md:px-[13.02vw] md:py-[4vw]"
+        className="px-6 pt-10 md:px-[12.448vw] md:pt-[10.1vw]"
         id="somos-lumia"
       >
-        <div className="grid items-start gap-10 md:grid-cols-[45fr_55fr] md:gap-[5.2vw]">
+        <div className="grid items-start gap-10 md:grid-cols-[36.042vw_1fr] md:gap-[5.208vw]">
           <Image
             src="/patricia.jpg"
             alt="Patricia Hernán, logopeda especializada en terapia miofuncional"
             width={1086}
             height={1448}
-            className="h-auto w-full rounded-panel object-cover"
+            sizes="(min-width: 768px) 36vw, 100vw"
+            className="aspect-[692/906] w-full rounded-panel object-cover"
           />
 
           <div className="flex flex-col">
             <h2 className="font-bold text-ink-600 text-section">
               El faro detrás de LUMIA
             </h2>
-            <p className="mt-6 font-medium text-body text-ink-600">
+            <p className="mt-6 font-medium text-body text-ink-600 md:mt-[0.885vw]">
               Cuando el cuerpo aprende, todo cambia.
             </p>
-            <p className="mt-6 text-body text-ink-500">
+            <p className="mt-6 text-body text-ink-500 md:mt-[2.031vw]">
               LUMIA nace de una forma diferente de entender la logopedia. No se
               trata únicamente de corregir un sonido o trabajar una dificultad
               concreta, sino de comprender cómo funciona el cuerpo para
               devolverle el equilibrio.
             </p>
-            <p className="mt-8 text-body text-ink-500">
+            <p className="mt-8 text-body text-ink-500 md:mt-[1.823vw]">
               Al frente del proyecto está Patricia Hernán, logopeda
               especializada en trastornos orofaciales y terapia miofuncional,
               con más de diez años de experiencia clínica dedicados a mejorar
               funciones tan esenciales como la respiración, la deglución, la
               masticación, el habla y el desarrollo del lenguaje.
             </p>
-            <p className="mt-8 font-medium text-body text-ink-600">
+            <p className="mt-8 font-medium text-body text-ink-600 md:mt-[2.031vw]">
               ¿Qué está provocando realmente el problema?
             </p>
-            <p className="mt-8 text-body text-ink-500">
+            <p className="mt-8 text-body text-ink-500 md:mt-[2.031vw]">
               Porque muchas veces el síntoma no es el origen. Una respiración
               oral, una deglución atípica, una alteración en la movilidad
               lingual o un frenillo restrictivo pueden pasar desapercibidos
               durante años y afectar al desarrollo, la salud y la calidad de
               vida sin que nadie relacione unas dificultades con otras.
             </p>
-            <div className="mt-9">
+            <div className="mt-9 md:mt-[2.31vw]">
               <PillLink href="/sobre-lumia">Somos LUMIA</PillLink>
             </div>
           </div>
