@@ -14,9 +14,9 @@ export function ServiceList({ items }: { items: Service[] }) {
           </span>
 
           <div className="flex flex-col md:row-span-2 md:mt-1">
-            <h3 className="font-bold text-section text-ink-600 leading-none">
+            <h2 className="font-bold text-section text-ink-600 leading-none">
               {service.title}
-            </h3>
+            </h2>
             <p className="mt-2 text-body text-ink-500 md:mt-[0.365vw]">
               {service.summary}
             </p>

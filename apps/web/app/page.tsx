@@ -52,12 +52,12 @@ export default function Home() {
           />
 
           <div className="relative z-10 flex min-h-[620px] flex-col px-6 pt-32 pb-14 md:min-h-[54.427vw] md:px-[5.8333vw] md:pt-[19.64vw] md:pb-[14vw]">
-            <p className="text-cream-50 text-kicker">
+            <h1 className="text-cream-50 text-kicker">
               Clínica de logopedia y terapia miofuncional en {site.city}
-            </p>
-            <h1 className="mt-2 max-w-[13ch] font-bold text-cream-50 text-hero">
-              Cuando el cuerpo aprende, todo cambia.
             </h1>
+            <p className="mt-2 max-w-[13ch] font-bold text-cream-50 text-hero">
+              Cuando el cuerpo aprende, todo cambia.
+            </p>
             <div className="mt-9 md:mt-[1.979vw]">
               <PillLink href="/contacto" tone="cream">
                 Solicita tu primera valoración
