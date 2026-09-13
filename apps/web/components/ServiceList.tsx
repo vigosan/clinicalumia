@@ -7,9 +7,9 @@ export function ServiceList({ items }: { items: Service[] }) {
       {items.map((service) => (
         <li
           key={service.number}
-          className="grid gap-6 border-sage-500 border-b-2 py-8 md:grid-cols-[48fr_52fr] md:grid-rows-[auto_1fr] md:gap-0 md:px-[0.573vw] md:pt-[2.604vw] md:pb-[2.27vw]"
+          className="grid gap-6 border-sage-500 border-b-2 py-8 md:grid-cols-[48fr_52fr] md:grid-rows-[auto_1fr] md:gap-0 md:pt-[2.604vw] md:pb-[2.19vw]"
         >
-          <span className="font-black text-section text-ink-600 leading-none">
+          <span className="font-black text-section text-ink-600 leading-none md:ml-[0.573vw]">
             {service.number}
           </span>
 
@@ -27,7 +27,7 @@ export function ServiceList({ items }: { items: Service[] }) {
 
           <PillLink
             href={`/${service.slug}`}
-            className="justify-self-start self-start md:mt-[4.505vw]"
+            className="justify-self-start self-start md:mt-[4.505vw] md:ml-[0.573vw]"
           >
             Saber más
           </PillLink>
