@@ -52,7 +52,7 @@ export function PhotoCarousel({
 
       <div
         data-testid="carousel-nav"
-        className="mx-6 mt-8 flex items-center gap-4 border-sage-500 border-b-2 pb-4 md:mx-[12.448vw] md:mt-[4.453vw] md:gap-0 md:px-[2.55vw] md:pb-[1.72vw]"
+        className="mx-6 mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-5 border-sage-500 border-b-2 pb-5 md:mx-[12.448vw] md:mt-[4.453vw] md:justify-between md:gap-0 md:px-[2.55vw] md:pb-[1.72vw]"
       >
         <button
           type="button"
@@ -63,7 +63,9 @@ export function PhotoCarousel({
         >
           <ArrowCircle direction="left" className="size-10 md:size-[3.49vw]" />
         </button>
-        <div className="mx-auto">{children}</div>
+        <div className="order-first w-full text-center md:order-none md:mx-auto md:w-auto">
+          {children}
+        </div>
         <button
           type="button"
           data-testid="carousel-next"
