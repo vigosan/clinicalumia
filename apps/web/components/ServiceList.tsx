@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PillLink } from "@/components/PillLink";
 import type { Service } from "@/lib/services";
 
@@ -15,7 +16,7 @@ export function ServiceList({ items }: { items: Service[] }) {
 
           <div className="flex flex-col md:row-span-2 md:mt-1">
             <h2 className="font-bold text-section text-ink-600 leading-none">
-              {service.title}
+              <Link href={`/${service.slug}`}>{service.title}</Link>
             </h2>
             <p className="mt-2 text-body text-ink-500 md:mt-[0.365vw]">
               {service.summary}
