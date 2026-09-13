@@ -18,7 +18,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="absolute inset-x-0 top-0 z-30 px-6 pt-6 md:px-[7.5vw] md:pt-[3.2vw]">
+    <header className="absolute inset-x-0 top-0 z-30 px-6 pt-6 md:pt-[4.427vw] md:pr-[7.344vw] md:pl-[3.021vw]">
       <div className="flex items-start justify-between gap-6">
         <Link href="/" aria-label="LUMIA, inicio" className="shrink-0">
           <Image
@@ -27,30 +27,38 @@ export function SiteHeader() {
             width={1080}
             height={400}
             priority
-            className="h-auto w-40 md:w-[17.2vw]"
+            className="h-auto w-40 md:w-[24.583vw]"
           />
         </Link>
 
-        <nav className="hidden items-center gap-[2.6vw] pt-2 lg:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-action text-cream-50 transition-opacity hover:opacity-70"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="hidden items-center pt-10 lg:flex">
+          <nav className="flex items-center gap-[2.813vw]">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-action text-cream-50 transition-opacity hover:opacity-70"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-        <div className="hidden items-center gap-3 pt-1 lg:flex">
-          <Link href="/contacto" className={pillClassName("cream")}>
-            Coger cita
-          </Link>
-          <a href={site.phone.href} className={pillClassName("cream")}>
-            Llamar
-            <WhatsAppIcon className="size-4" />
-          </a>
+          <div className="ml-[7.344vw] flex items-center gap-[1.354vw]">
+            <Link
+              href="/contacto"
+              className={pillClassName("cream", "w-[7.917vw] px-0")}
+            >
+              Coger cita
+            </Link>
+            <a
+              href={site.phone.href}
+              className={pillClassName("cream", "w-[7.917vw] gap-3 px-0")}
+            >
+              Llamar
+              <WhatsAppIcon className="size-6" />
+            </a>
+          </div>
         </div>
 
         <button
