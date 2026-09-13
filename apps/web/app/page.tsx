@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { GoogleIcon, Sparkle, WhatsAppIcon } from "@/components/icons";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
@@ -16,6 +16,24 @@ const clinicPhotos = [
 
 const instagramSlots = ["uno", "dos", "tres", "cuatro"];
 const instagramSlotClassName = "aspect-[418/381] rounded-panel bg-[#d8d8d8]";
+
+const heroBreakpoint = "(min-width: 768px)";
+
+const heroDesktop = getImageProps({
+  src: "/hero-desktop.webp",
+  alt: "",
+  fill: true,
+  priority: true,
+  sizes: "100vw",
+});
+
+const heroMobile = getImageProps({
+  src: "/hero-mobile.webp",
+  alt: "",
+  fill: true,
+  priority: true,
+  sizes: "100vw",
+});
 
 const helpHref = isPending(site.whatsapp.href)
   ? site.phone.href
@@ -38,22 +56,35 @@ export default async function Home() {
     <>
       <section className="md:px-[1.667vw]">
         <div className="relative overflow-hidden rounded-b-panel bg-sage-500">
-          <Image
-            src="/hero-mobile.webp"
-            alt=""
-            fill
-            priority
-            sizes="(min-width: 768px) 0px, 100vw"
-            className="object-cover object-center md:hidden"
+          <link
+            rel="preload"
+            as="image"
+            imageSrcSet={heroDesktop.props.srcSet}
+            imageSizes="100vw"
+            media={heroBreakpoint}
+            fetchPriority="high"
           />
-          <Image
-            src="/hero-desktop.webp"
-            alt=""
-            fill
-            priority
-            sizes="(min-width: 768px) 100vw, 0px"
-            className="hidden object-cover object-center md:block"
+          <link
+            rel="preload"
+            as="image"
+            imageSrcSet={heroMobile.props.srcSet}
+            imageSizes="100vw"
+            media="(max-width: 767px)"
+            fetchPriority="high"
           />
+          <picture>
+            <source
+              media={heroBreakpoint}
+              srcSet={heroDesktop.props.srcSet}
+              sizes="100vw"
+            />
+            <img
+              {...heroMobile.props}
+              alt=""
+              fetchPriority="high"
+              className="object-cover object-center"
+            />
+          </picture>
 
           <div className="relative z-10 flex min-h-[620px] flex-col px-6 pt-32 pb-14 md:min-h-[54.427vw] md:px-[5.8333vw] md:pt-[19.64vw] md:pb-[14vw]">
             <h1 className="text-cream-50 text-kicker">
