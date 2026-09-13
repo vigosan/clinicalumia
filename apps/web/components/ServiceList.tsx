@@ -10,7 +10,7 @@ export function ServiceList({ items }: { items: Service[] }) {
           className="grid gap-6 border-sage-400/50 border-t py-8 md:grid-cols-[48fr_52fr] md:gap-0 md:py-[2.3vw]"
         >
           <div className="flex flex-col items-start gap-[4.7vw]">
-            <span className="font-bold text-section text-ink-600 leading-none">
+            <span className="font-black text-section text-ink-600 leading-none">
               {service.number}
             </span>
             <PillLink href={`/${service.slug}`}>Saber más</PillLink>

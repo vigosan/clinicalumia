@@ -13,6 +13,7 @@ const neueHaas = localFont({
     { path: "./fonts/NeueHaasDisplayRoman.ttf", weight: "400" },
     { path: "./fonts/NeueHaasDisplayMedium.ttf", weight: "500" },
     { path: "./fonts/NeueHaasDisplayBold.ttf", weight: "700" },
+    { path: "./fonts/NeueHaasDisplayBlack.ttf", weight: "900" },
   ],
   variable: "--font-neue-haas",
 });
