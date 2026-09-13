@@ -31,13 +31,13 @@ export function SiteHeader() {
           />
         </Link>
 
-        <div className="hidden items-center pt-10 lg:flex">
+        <div className="hidden items-center pt-10 xl:flex">
           <nav className="flex items-center gap-[2.604vw]">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-action text-cream-50 transition-opacity hover:opacity-70"
+                className="whitespace-nowrap text-action text-cream-50 transition-opacity hover:opacity-70"
               >
                 {link.label}
               </Link>
@@ -47,13 +47,13 @@ export function SiteHeader() {
           <div className="ml-[7.344vw] flex items-center gap-[1.354vw]">
             <Link
               href="/contacto"
-              className={pillClassName("cream", "min-w-[7.917vw]")}
+              className={pillClassName("cream", "min-w-[7.917vw] whitespace-nowrap")}
             >
               Coger cita
             </Link>
             <a
               href={site.phone.href}
-              className={pillClassName("cream", "min-w-[7.917vw] gap-3")}
+              className={pillClassName("cream", "min-w-[7.917vw] gap-3 whitespace-nowrap")}
             >
               Llamar
               <WhatsAppIcon className="size-6" />
@@ -67,7 +67,7 @@ export function SiteHeader() {
           aria-expanded={open}
           aria-label={open ? "Cerrar menú" : "Abrir menú"}
           onClick={() => setOpen(!open)}
-          className="cursor-pointer p-2 text-cream-50 lg:hidden"
+          className="cursor-pointer p-2 text-cream-50 xl:hidden"
         >
           <svg
             aria-hidden
@@ -89,7 +89,7 @@ export function SiteHeader() {
       {open && (
         <nav
           data-testid="mobile-menu"
-          className="mt-6 flex flex-col gap-1 rounded-3xl bg-cream-50/95 p-4 lg:hidden"
+          className="mt-6 flex flex-col gap-1 rounded-3xl bg-cream-50/95 p-4 xl:hidden"
         >
           {navLinks.map((link) => (
             <Link
