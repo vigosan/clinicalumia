@@ -77,7 +77,7 @@ export default function Home() {
       </section>
 
       <section
-        className="px-6 pt-10 md:px-[13.02vw] md:pt-[2.3vw]"
+        className="px-6 pt-10 md:px-[12.448vw] md:pt-[4.609vw]"
         id="servicios"
       >
         <ServiceList items={services.slice(0, 3)} />
@@ -122,7 +122,7 @@ export default function Home() {
         />
       </section>
 
-      <section className="px-6 pt-10 md:px-[13.02vw] md:pt-[6vw]">
+      <section className="px-6 pt-10 md:px-[12.448vw] md:pt-[4.01vw]">
         <ServiceList items={services.slice(3)} />
       </section>
 

@@ -7,26 +7,30 @@ export function ServiceList({ items }: { items: Service[] }) {
       {items.map((service) => (
         <li
           key={service.number}
-          className="grid gap-6 border-sage-400/50 border-t py-8 md:grid-cols-[48fr_52fr] md:gap-0 md:py-[2.3vw]"
+          className="grid gap-6 border-sage-500 border-b-2 py-8 md:grid-cols-[48fr_52fr] md:grid-rows-[auto_1fr] md:gap-0 md:px-[0.573vw] md:pt-[2.604vw] md:pb-[2.27vw]"
         >
-          <div className="flex flex-col items-start gap-[4.7vw]">
-            <span className="font-black text-section text-ink-600 leading-none">
-              {service.number}
-            </span>
-            <PillLink href={`/${service.slug}`}>Saber más</PillLink>
-          </div>
+          <span className="font-black text-section text-ink-600 leading-none">
+            {service.number}
+          </span>
 
-          <div className="flex flex-col">
+          <div className="flex flex-col md:row-span-2 md:mt-1">
             <h3 className="font-bold text-section text-ink-600 leading-none">
               {service.title}
             </h3>
-            <p className="mt-[1.6vw] text-body text-ink-500">
+            <p className="mt-2 text-body text-ink-500 md:mt-[0.365vw]">
               {service.summary}
             </p>
-            <p className="mt-[1.3vw] font-medium text-body text-ink-600 md:text-[1.25vw]">
+            <p className="mt-3 font-medium text-body text-ink-600 md:mt-[0.781vw]">
               {service.tags.join(" · ")}
             </p>
           </div>
+
+          <PillLink
+            href={`/${service.slug}`}
+            className="justify-self-start self-start md:mt-[4.505vw]"
+          >
+            Saber más
+          </PillLink>
         </li>
       ))}
     </ul>
