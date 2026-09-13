@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
 import { PillLink } from "@/components/PillLink";
+import { pageMetadata } from "@/lib/metadata";
 import { getServicePage, servicePages } from "@/lib/service-pages";
 import { nearbyTowns, site } from "@/lib/site";
 
@@ -19,19 +20,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     return {};
   }
 
-  return {
+  return pageMetadata({
     title: page.metaTitle,
     description: page.metaDescription,
-    alternates: { canonical: `/${page.slug}` },
-    openGraph: {
-      type: "article",
-      locale: "es_ES",
-      url: `/${page.slug}`,
-      siteName: site.name,
-      title: page.metaTitle,
-      description: page.metaDescription,
-    },
-  };
+    path: `/${page.slug}`,
+  });
 }
 
 export default async function ServicePage({ params }: Params) {

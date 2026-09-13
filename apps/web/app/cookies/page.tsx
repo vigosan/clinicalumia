@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { LegalNotice } from "@/components/LegalNotice";
 import { PageHero } from "@/components/PageHero";
+import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "Política de cookies · LUMIA",
-  description:
-    "Política de cookies de LUMIA, clínica de logopedia y terapia miofuncional en Xàtiva.",
-  alternates: { canonical: "/cookies" },
+  ...pageMetadata({
+    title: "Política de cookies · LUMIA",
+    description:
+      "Política de cookies de LUMIA, clínica de logopedia y terapia miofuncional en Xàtiva.",
+    path: "/cookies",
+  }),
   robots: { index: false, follow: true },
 };
 

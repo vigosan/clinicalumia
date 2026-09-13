@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { PageHero } from "@/components/PageHero";
 import { PillLink } from "@/components/PillLink";
+import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Somos LUMIA · Clínica de logopedia y terapia miofuncional en Xàtiva",
-  description:
-    "Conoce a Patricia Hernán y la forma de trabajar de LUMIA: valoración funcional completa, tratamiento personalizado y coordinación interdisciplinar en Xàtiva.",
-  alternates: { canonical: "/sobre-lumia" },
+  ...pageMetadata({
+    title:
+      "Somos LUMIA · Clínica de logopedia y terapia miofuncional en Xàtiva",
+    description:
+      "Conoce a Patricia Hernán y la forma de trabajar de LUMIA: valoración funcional completa, tratamiento personalizado y coordinación interdisciplinar en Xàtiva.",
+    path: "/sobre-lumia",
+  }),
 };
 
 const specialties = [

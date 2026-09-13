@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import { PageHero } from "@/components/PageHero";
 import { PillLink } from "@/components/PillLink";
 import { ServiceList } from "@/components/ServiceList";
+import { pageMetadata } from "@/lib/metadata";
 import { services } from "@/lib/services";
 import { nearbyTowns, site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Servicios de logopedia y terapia miofuncional en Xàtiva · LUMIA",
-  description:
-    "Terapia miofuncional orofacial, logopedia infantil, logopedia para adultos y rehabilitación vocal en Xàtiva. Tratamientos personalizados y enfoque funcional.",
-  alternates: { canonical: "/servicios" },
+  ...pageMetadata({
+    title: "Servicios de logopedia y terapia miofuncional en Xàtiva · LUMIA",
+    description:
+      "Terapia miofuncional orofacial, logopedia infantil, logopedia para adultos y rehabilitación vocal en Xàtiva. Tratamientos personalizados y enfoque funcional.",
+    path: "/servicios",
+  }),
 };
 
 export default function ServiciosPage() {

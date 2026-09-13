@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import { GoogleIcon } from "@/components/icons";
 import { PageHero } from "@/components/PageHero";
+import { pageMetadata } from "@/lib/metadata";
 import { isPending, nearbyTowns, site } from "@/lib/site";
 import { ContactForm } from "./ContactForm";
 
 export const metadata: Metadata = {
-  title: "Contacto · Clínica LUMIA en Xàtiva",
-  description:
-    "Pide tu primera valoración en LUMIA. Contacta por teléfono, WhatsApp o formulario con nuestra clínica de logopedia y terapia miofuncional en Xàtiva.",
-  alternates: { canonical: "/contacto" },
+  ...pageMetadata({
+    title: "Contacto · Clínica LUMIA en Xàtiva",
+    description:
+      "Pide tu primera valoración en LUMIA. Contacta por teléfono, WhatsApp o formulario con nuestra clínica de logopedia y terapia miofuncional en Xàtiva.",
+    path: "/contacto",
+  }),
 };
 
 export default function ContactoPage() {

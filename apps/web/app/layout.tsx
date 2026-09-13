@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { pageMetadata } from "@/lib/metadata";
 import { servicePages } from "@/lib/service-pages";
 import { isPending, nearbyTowns, site } from "@/lib/site";
 import "./globals.css";
@@ -19,51 +20,16 @@ const neueHaas = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: {
-    default: "Logopeda y terapia miofuncional en Xàtiva · LUMIA",
-    template: "%s",
-  },
-  description:
-    "Clínica especializada en logopedia infantil, adultos y terapia miofuncional en Xàtiva. Tratamientos personalizados y enfoque funcional.",
-  keywords: [
-    "logopedia",
-    "logopeda",
-    "terapia miofuncional",
-    "logopedia miofuncional",
-    "Xàtiva",
-    "Valencia",
-    "deglución atípica",
-    "terapia del habla",
-    "clínica logopedia",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "es_ES",
-    url: "/",
-    siteName: "Lumia",
-    title: "Lumia · Logopedia miofuncional en Xàtiva",
-    description:
-      "Clínica de logopedia miofuncional en Xàtiva. Terapia para niños y adultos. Pide cita: 614 552 808.",
-    images: [
-      {
-        url: "/hero-desktop.webp",
-        width: 1200,
-        height: 630,
-        alt: "Lumia · Clínica de logopedia miofuncional",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Lumia · Logopedia miofuncional en Xàtiva",
-    description:
-      "Clínica de logopedia miofuncional en Xàtiva. Pide cita: 614 552 808.",
-    images: ["/hero-desktop.webp"],
-  },
   robots: {
     index: true,
     follow: true,
   },
+  ...pageMetadata({
+    title: "Logopeda y terapia miofuncional en Xàtiva · LUMIA",
+    description:
+      "Clínica especializada en logopedia infantil, adultos y terapia miofuncional en Xàtiva. Tratamientos personalizados y enfoque funcional.",
+    path: "/",
+  }),
 };
 
 export const viewport: Viewport = {

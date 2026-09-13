@@ -3,12 +3,16 @@ import { FaqAccordion } from "@/components/FaqAccordion";
 import { PageHero } from "@/components/PageHero";
 import { PillLink } from "@/components/PillLink";
 import { faqs } from "@/lib/faqs";
+import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "Preguntas frecuentes sobre logopedia y terapia miofuncional · LUMIA",
-  description:
-    "Resolvemos las dudas más habituales sobre logopedia, terapia miofuncional, respiración oral, deglución atípica y cuándo acudir a un logopeda en Xàtiva.",
-  alternates: { canonical: "/preguntas-frecuentes" },
+  ...pageMetadata({
+    title:
+      "Preguntas frecuentes sobre logopedia y terapia miofuncional · LUMIA",
+    description:
+      "Resolvemos las dudas más habituales sobre logopedia, terapia miofuncional, respiración oral, deglución atípica y cuándo acudir a un logopeda en Xàtiva.",
+    path: "/preguntas-frecuentes",
+  }),
 };
 
 const faqJsonLd = {
