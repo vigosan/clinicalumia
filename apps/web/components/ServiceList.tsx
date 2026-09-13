@@ -20,7 +20,7 @@ export function ServiceList({ items }: { items: Service[] }) {
             <p className="mt-2 text-body text-ink-500 md:mt-[0.365vw]">
               {service.summary}
             </p>
-            <p className="mt-3 font-medium text-body text-ink-600 md:mt-[0.781vw]">
+            <p className="mt-3 font-medium text-body text-ink-600 md:mt-[0.781vw] md:-mr-[1vw]">
               {service.tags.join(" · ")}
             </p>
           </div>
