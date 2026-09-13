@@ -227,16 +227,19 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-6 py-10 md:px-[3.49vw] md:py-[4vw]" id="instagram">
+      <section
+        className="px-6 pt-10 pb-16 md:px-[3.49vw] md:pt-[4.33vw] md:pb-[18.02vw]"
+        id="instagram"
+      >
         <h2 className="text-center font-bold text-ink-600 text-section">
           Síguenos en instagram
         </h2>
 
-        <ul className="mt-10 grid grid-cols-2 gap-4 md:mt-[4.115vw] md:grid-cols-4 md:gap-[1.979vw]">
+        <ul className="mt-10 grid grid-cols-2 gap-4 md:mt-[3.5vw] md:grid-cols-4 md:gap-[1.979vw]">
           {instagramSlots.map((slot) => (
             <li
               key={slot}
-              className="aspect-[418/381] rounded-panel bg-cream-200"
+              className="aspect-[418/381] rounded-panel bg-[#d8d8d8]"
             />
           ))}
         </ul>
