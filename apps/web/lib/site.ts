@@ -3,7 +3,7 @@ export const PENDING = "PENDIENTE" as const;
 export const site = {
   name: "LUMIA",
   tagline: "Clínica Logopedia miofuncional",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://clinicalumia.es",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.clinicalumia.es",
   city: "Xàtiva",
   region: "Valencia",
   phone: {
@@ -24,7 +24,7 @@ export const site = {
     country: "ES",
   },
   maps: PENDING,
-  instagram: PENDING,
+  instagram: "https://www.instagram.com/clinicalumiaxativa/",
   schedule: [{ days: PENDING, hours: PENDING }],
 } as const;
 
