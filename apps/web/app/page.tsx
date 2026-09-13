@@ -37,7 +37,7 @@ const mapsLabel = (
 export default function Home() {
   return (
     <>
-      <section className="px-3 md:px-[1.667vw]">
+      <section className="md:px-[1.667vw]">
         <div className="relative overflow-hidden rounded-b-panel bg-sage-500">
           <Image
             src="/hero-mobile.webp"
@@ -70,12 +70,12 @@ export default function Home() {
             </div>
             <a
               href={helpHref}
-              className="mt-8 inline-flex h-10 w-fit items-center gap-3 rounded-full border-2 border-cream-50 bg-sage-500 px-4 text-cream-50 text-sm md:absolute md:right-[9.635vw] md:bottom-[4.583vw] md:mt-0 md:text-[1.094vw]"
+              className="mt-4 inline-flex h-10 w-fit items-center gap-3 rounded-full border-2 border-cream-50 bg-sage-500 px-4 text-cream-50 text-sm md:absolute md:right-[9.635vw] md:bottom-[4.583vw] md:mt-0 md:text-[1.094vw]"
             >
               ¿Podemos ayudarte?
               <WhatsAppIcon className="size-6" />
             </a>
-            <Sparkle className="mt-10 h-8 w-8 text-cream-50 md:absolute md:right-[3.802vw] md:bottom-[4.005vw] md:mt-0 md:h-[4.365vw] md:w-[4.661vw]" />
+            <Sparkle className="absolute right-6 bottom-6 h-8 w-8 text-cream-50 md:right-[3.802vw] md:bottom-[4.005vw] md:h-[4.365vw] md:w-[4.661vw]" />
           </div>
         </div>
       </section>
