@@ -47,13 +47,19 @@ export function SiteHeader() {
           <div className="ml-[7.344vw] flex items-center gap-[1.354vw]">
             <Link
               href="/contacto"
-              className={pillClassName("cream", "min-w-[7.917vw] whitespace-nowrap")}
+              className={pillClassName(
+                "cream",
+                "min-w-[7.917vw] whitespace-nowrap",
+              )}
             >
               Coger cita
             </Link>
             <a
               href={site.phone.href}
-              className={pillClassName("cream", "min-w-[7.917vw] gap-3 whitespace-nowrap")}
+              className={pillClassName(
+                "cream",
+                "min-w-[7.917vw] gap-3 whitespace-nowrap",
+              )}
             >
               Llamar
               <WhatsAppIcon className="size-6" />

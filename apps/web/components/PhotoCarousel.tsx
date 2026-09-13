@@ -31,7 +31,7 @@ export function PhotoCarousel({
       <ul
         ref={track}
         data-testid="photo-carousel"
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 [scrollbar-width:none] md:gap-[2.656vw] md:pr-[1.667vw] md:pl-[19.427vw] scroll-pl-6 md:scroll-pl-[19.427vw]"
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 [scrollbar-width:none] md:gap-[2.656vw] md:pr-[1.667vw] md:pl-[calc(var(--spacing-gutter)+6.979vw)] scroll-pl-6 md:scroll-pl-[calc(var(--spacing-gutter)+6.979vw)]"
       >
         {items.map((photo) => (
           <li
@@ -52,7 +52,7 @@ export function PhotoCarousel({
 
       <div
         data-testid="carousel-nav"
-        className="mx-6 mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-5 border-sage-500 border-b-2 pb-5 md:mx-[12.448vw] md:mt-[4.453vw] md:justify-between md:gap-0 md:px-[2.55vw] md:pb-[1.72vw]"
+        className="mx-6 mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-5 border-sage-500 border-b-2 pb-5 md:mx-gutter md:mt-[4.453vw] md:justify-between md:gap-0 md:px-[2.55vw] md:pb-[1.72vw]"
       >
         <button
           type="button"

@@ -36,6 +36,7 @@
 
   --radius-panel: 3.5625rem;
   --spacing-content: 88.75rem;
+  --spacing-gutter: clamp(1.5rem, 19.87vw - 8.9rem, 12.448vw);
 }
 
 @media (width < 48rem) {

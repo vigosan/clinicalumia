@@ -80,20 +80,20 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-6 pt-10 md:px-[12.448vw] md:pt-[5.156vw]">
+      <section className="px-6 pt-10 md:px-gutter md:pt-[5.156vw]">
         <p className="rounded-panel bg-sage-500 px-8 py-10 text-center font-bold text-cream-50 text-section md:py-[2.37vw]">
           Clínica de logopedia y terapia miofuncional
         </p>
       </section>
 
       <section
-        className="px-6 pt-10 md:px-[12.448vw] md:pt-[4.609vw]"
+        className="px-6 pt-10 md:px-gutter md:pt-[4.609vw]"
         id="servicios"
       >
         <ServiceList items={services.slice(0, 3)} />
       </section>
 
-      <section className="px-6 py-16 md:px-[12.448vw] md:pt-[6.76vw] md:pb-[5.99vw]">
+      <section className="px-6 py-16 md:px-gutter md:pt-[6.76vw] md:pb-[5.99vw]">
         <div className="mx-auto flex flex-col items-center text-center md:max-w-[64vw]">
           <h2 className="font-bold text-sage-500 text-section">
             ¿No sabes qué tratamiento necesitas?
@@ -134,12 +134,12 @@ export default function Home() {
         />
       </section>
 
-      <section className="px-6 pt-10 md:px-[12.448vw] md:pt-[4.01vw]">
+      <section className="px-6 pt-10 md:px-gutter md:pt-[4.01vw]">
         <ServiceList items={services.slice(3)} />
       </section>
 
       <section
-        className="px-6 pt-10 md:pt-[10.156vw] md:pr-[10.573vw] md:pl-[12.448vw]"
+        className="px-6 pt-10 md:pt-[10.156vw] md:px-gutter"
         id="somos-lumia"
       >
         <div className="grid items-start gap-10 md:grid-cols-[36.042vw_1fr] md:gap-[5.208vw]">
@@ -152,7 +152,7 @@ export default function Home() {
             className="aspect-[692/906] w-full rounded-panel object-cover"
           />
 
-          <div className="flex flex-col">
+          <div className="flex flex-col md:-mr-[1.875vw]">
             <h2 className="font-bold text-ink-600 text-section">
               El faro detrás de LUMIA
             </h2>
@@ -190,7 +190,7 @@ export default function Home() {
       </section>
 
       <section
-        className="px-6 pt-10 md:px-[12.448vw] md:pt-[7.656vw]"
+        className="px-6 pt-10 md:px-gutter md:pt-[7.656vw]"
         id="preguntas"
       >
         <div className="rounded-panel bg-sage-500 py-14 md:pt-[4.1vw] md:pb-[5.26vw]">
@@ -209,7 +209,7 @@ export default function Home() {
       </section>
 
       <section className="pt-10 md:pt-[7.43vw]" id="clinica">
-        <h2 className="px-6 text-center font-bold text-ink-600 text-section md:px-[12.448vw]">
+        <h2 className="px-6 text-center font-bold text-ink-600 text-section md:px-gutter">
           Nuestra clínica
         </h2>
 
