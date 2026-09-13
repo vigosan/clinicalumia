@@ -32,7 +32,7 @@ export function SiteHeader() {
         </Link>
 
         <div className="hidden items-center pt-10 lg:flex">
-          <nav className="flex items-center gap-[2.813vw]">
+          <nav className="flex items-center gap-[2.604vw]">
             {navLinks.map((link) => (
               <Link
                 key={link.href}

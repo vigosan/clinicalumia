@@ -135,7 +135,7 @@ export default function Home() {
       </section>
 
       <section
-        className="px-6 pt-10 md:pt-[10.1vw] md:pr-[11.927vw] md:pl-[12.448vw]"
+        className="px-6 pt-10 md:pt-[10.156vw] md:pr-[10.573vw] md:pl-[12.448vw]"
         id="somos-lumia"
       >
         <div className="grid items-start gap-10 md:grid-cols-[36.042vw_1fr] md:gap-[5.208vw]">
