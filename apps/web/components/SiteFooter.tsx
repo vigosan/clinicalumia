@@ -21,7 +21,7 @@ const valueClass = "mt-2 text-cream-50/85 text-action";
 
 export function SiteFooter() {
   return (
-    <footer className="bg-sage-500 px-6 pt-14 pb-28 md:px-[9.3vw] md:pt-[6vw]">
+    <footer className="bg-sage-500 px-6 py-14 md:px-[9.3vw] md:pt-[6vw]">
       <Image
         src="/logo-white.png"
         alt="LUMIA · Clínica Logopedia miofuncional"

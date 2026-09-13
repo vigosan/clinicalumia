@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { FaqAccordion } from "@/components/FaqAccordion";
-import { GoogleIcon, Sparkle } from "@/components/icons";
+import { GoogleIcon, Sparkle, WhatsAppIcon } from "@/components/icons";
 import { PhotoCarousel } from "@/components/PhotoCarousel";
 import { PillLink } from "@/components/PillLink";
 import { ServiceList } from "@/components/ServiceList";
@@ -20,10 +20,14 @@ const clinicPhotos = [
 
 const instagramSlots = ["uno", "dos", "tres", "cuatro"];
 
+const helpHref = isPending(site.whatsapp.href)
+  ? site.phone.href
+  : site.whatsapp.href;
+
 export default function Home() {
   return (
     <>
-      <section className="px-3 md:px-[1.667vw]">
+      <section className="px-3 pt-3 md:px-[1.667vw] md:pt-[1.667vw]">
         <div className="relative overflow-hidden rounded-panel bg-sage-500">
           <Image
             src="/hero-mobile.webp"
@@ -42,19 +46,26 @@ export default function Home() {
             className="hidden object-cover object-center md:block"
           />
 
-          <div className="relative z-10 flex min-h-[620px] flex-col px-6 pt-32 pb-14 md:min-h-[54.427vw] md:px-[5.8333vw] md:pt-[19.8vw] md:pb-[14vw]">
+          <div className="relative z-10 flex min-h-[620px] flex-col px-6 pt-32 pb-14 md:min-h-[54.427vw] md:px-[5.8333vw] md:pt-[19.64vw] md:pb-[14vw]">
             <p className="text-cream-50 text-kicker">
               Clínica de logopedia y terapia miofuncional en {site.city}
             </p>
             <h1 className="mt-2 max-w-[13ch] font-bold text-cream-50 text-hero">
               Cuando el cuerpo aprende, todo cambia.
             </h1>
-            <div className="mt-9">
+            <div className="mt-9 md:mt-[1.979vw]">
               <PillLink href="/contacto" tone="cream">
                 Solicita tu primera valoración
               </PillLink>
             </div>
-            <Sparkle className="mt-10 size-8 text-cream-50 md:absolute md:right-[4.5vw] md:bottom-[5vw] md:mt-0 md:size-[3.4vw]" />
+            <a
+              href={helpHref}
+              className="mt-8 inline-flex h-10 w-fit items-center gap-3 rounded-full border-2 border-cream-50 bg-sage-500 px-4 text-cream-50 text-sm md:absolute md:right-[9.635vw] md:bottom-[4.583vw] md:mt-0 md:text-[1.094vw]"
+            >
+              ¿Podemos ayudarte?
+              <WhatsAppIcon className="size-6" />
+            </a>
+            <Sparkle className="mt-10 h-8 w-8 text-cream-50 md:absolute md:right-[3.802vw] md:bottom-[4.005vw] md:mt-0 md:h-[4.365vw] md:w-[4.661vw]" />
           </div>
         </div>
       </section>
