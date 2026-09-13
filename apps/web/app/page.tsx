@@ -24,6 +24,16 @@ const helpHref = isPending(site.whatsapp.href)
   ? site.phone.href
   : site.whatsapp.href;
 
+const mapsClassName =
+  "inline-flex items-center gap-5 text-center font-medium text-body text-sage-500";
+
+const mapsLabel = (
+  <>
+    Ver en el mapa cómo llegar con Google Maps
+    <GoogleIcon className="size-7 shrink-0 md:size-[1.911vw]" />
+  </>
+);
+
 export default function Home() {
   return (
     <>
@@ -194,29 +204,26 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-10 md:py-[4vw]" id="clinica">
-        <div>
-          <h2 className="px-6 text-center font-bold text-ink-600 text-section md:px-[12.448vw]">
-            Nuestra clínica
-          </h2>
+      <section className="pt-10 md:pt-[7.43vw]" id="clinica">
+        <h2 className="px-6 text-center font-bold text-ink-600 text-section md:px-[12.448vw]">
+          Nuestra clínica
+        </h2>
 
-          <div className="mt-10 pl-6 md:mt-[2.4vw] md:pl-[1.667vw]">
-            <PhotoCarousel items={clinicPhotos} />
-          </div>
-
-          {!isPending(site.maps) && (
-            <div className="mt-8 flex justify-center">
+        <div className="mt-10 md:mt-[4.18vw]">
+          <PhotoCarousel items={clinicPhotos}>
+            {isPending(site.maps) ? (
+              <p className={mapsClassName}>{mapsLabel}</p>
+            ) : (
               <a
                 href={site.maps}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 font-medium text-sage-600 transition-opacity hover:opacity-70"
+                className={`${mapsClassName} transition-opacity hover:opacity-70`}
               >
-                Ver en el mapa cómo llegar con Google Maps
-                <GoogleIcon className="size-5" />
+                {mapsLabel}
               </a>
-            </div>
-          )}
+            )}
+          </PhotoCarousel>
         </div>
       </section>
 
