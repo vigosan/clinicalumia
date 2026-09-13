@@ -25,12 +25,12 @@ const helpHref = isPending(site.whatsapp.href)
   : site.whatsapp.href;
 
 const mapsClassName =
-  "inline-flex items-center gap-3 text-center font-medium text-body text-sage-500 md:gap-5";
+  "font-medium text-body text-sage-500 md:inline-flex md:items-center md:gap-5";
 
 const mapsLabel = (
   <>
     Ver en el mapa cómo llegar con Google Maps
-    <GoogleIcon className="size-7 shrink-0 md:size-[1.911vw]" />
+    <GoogleIcon className="ml-2 inline-block size-6 shrink-0 align-middle md:ml-0 md:size-[1.911vw]" />
   </>
 );
 
