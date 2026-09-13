@@ -176,17 +176,17 @@ export default function Home() {
       </section>
 
       <section
-        className="px-6 py-10 md:px-[12.448vw] md:py-[4vw]"
+        className="px-6 pt-10 md:px-[12.448vw] md:pt-[7.656vw]"
         id="preguntas"
       >
-        <div className="rounded-panel bg-sage-500 px-6 py-14 md:px-[5.8vw] md:py-[5vw]">
-          <h2 className="text-center font-bold text-cream-50 text-section">
+        <div className="rounded-panel bg-sage-500 py-14 md:pt-[4.1vw] md:pb-[5.26vw]">
+          <h2 className="px-6 text-center font-bold text-cream-50 text-section">
             Preguntas frecuentes | FyQ
           </h2>
-          <div className="mt-12">
-            <FaqAccordion items={faqs} />
+          <div className="mt-12 px-6 md:mt-[5.54vw] md:pr-[7.813vw] md:pl-[6.344vw]">
+            <FaqAccordion items={faqs.slice(0, 5)} />
           </div>
-          <div className="mt-14 flex justify-center">
+          <div className="mt-14 flex justify-center md:mt-[3.87vw]">
             <PillLink href="/contacto" tone="cream">
               Cuéntanos tu caso
             </PillLink>
