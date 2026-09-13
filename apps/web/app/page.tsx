@@ -7,7 +7,7 @@ import { ServiceList } from "@/components/ServiceList";
 import { faqs } from "@/lib/faqs";
 import { getLatestInstagramPosts } from "@/lib/instagram";
 import { services } from "@/lib/services";
-import { isPending, site } from "@/lib/site";
+import { isPending, nearbyTowns, site } from "@/lib/site";
 
 const clinicPhotos = [
   { src: "/clinica-01.jpg", alt: "Recepción de la clínica LUMIA en Xàtiva" },
@@ -259,6 +259,11 @@ export default async function Home() {
             )}
           </PhotoCarousel>
         </div>
+
+        <p className="mt-6 px-6 text-center text-ink-400 text-sm md:mt-[1.72vw] md:px-gutter">
+          Atendemos pacientes de {site.city} y localidades cercanas como{" "}
+          {nearbyTowns.join(", ")} y otros municipios de La Costera.
+        </p>
       </section>
 
       <section
