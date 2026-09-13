@@ -2,23 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { isPending, site } from "@/lib/site";
 
-const legalLinks = [
-  { href: "/aviso-legal", label: "Aviso legal" },
-  { href: "/privacidad", label: "Política de privacidad" },
-  { href: "/cookies", label: "Política de cookies" },
+const rows = [
+  { href: isPending(site.maps) ? "/contacto" : site.maps, label: "Dirección" },
+  {
+    href: isPending(site.whatsapp.href) ? site.phone.href : site.whatsapp.href,
+    label: "WhatsApp",
+  },
+  { href: "/contacto", label: "Horario" },
+  { href: "/servicios", label: "Servicios profesionales" },
+  { href: "/aviso-legal", label: "Bases legales" },
 ];
-
-const serviceLinks = [
-  { href: "/terapia-miofuncional-xativa", label: "Terapia miofuncional" },
-  { href: "/logopedia-infantil-xativa", label: "Logopedia infantil" },
-  { href: "/logopedia-adultos-xativa", label: "Logopedia en adultos" },
-  { href: "/rehabilitacion-vocal-xativa", label: "Voz y rehabilitación vocal" },
-];
-
-const rowClass =
-  "border-cream-50 border-b pt-5 pb-3 md:pt-[1.44vw] md:pb-[0.72vw]";
-const labelClass = "text-body text-cream-50";
-const valueClass = "mt-2 text-cream-50/85 text-action";
 
 export function SiteFooter() {
   return (
@@ -31,73 +24,18 @@ export function SiteFooter() {
         className="h-auto w-44 md:w-[22.292vw]"
       />
 
-      <div className="mt-12 max-w-xl md:mt-[1.927vw] md:ml-[3.698vw] md:max-w-[28.698vw]">
-        <div className={rowClass}>
-          <p className={labelClass}>Dirección</p>
-          <p className={valueClass}>
-            {isPending(site.address.street)
-              ? "Pendiente de confirmar"
-              : `${site.address.street}, ${site.address.postalCode} ${site.address.locality}`}
-          </p>
-        </div>
-
-        <div className={rowClass}>
-          <p className={labelClass}>
-            {isPending(site.whatsapp.href) ? "Teléfono" : "WhatsApp"}
-          </p>
-          <a
-            href={
-              isPending(site.whatsapp.href)
-                ? site.phone.href
-                : site.whatsapp.href
-            }
-            className={`${valueClass} block underline-offset-2 hover:underline`}
-          >
-            {site.phone.display}
-          </a>
-        </div>
-
-        <div className={rowClass}>
-          <p className={labelClass}>Horario</p>
-          <p className={valueClass}>
-            {isPending(site.schedule[0].days)
-              ? "Pendiente de confirmar"
-              : `${site.schedule[0].days}: ${site.schedule[0].hours}`}
-          </p>
-        </div>
-
-        <div className={rowClass}>
-          <p className={labelClass}>Servicios profesionales</p>
-          <ul className={`${valueClass} flex flex-col gap-1`}>
-            {serviceLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="underline-offset-2 hover:underline"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className={rowClass}>
-          <p className={labelClass}>Bases legales</p>
-          <ul className={`${valueClass} flex flex-col gap-1`}>
-            {legalLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="underline-offset-2 hover:underline"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      <ul className="mt-12 max-w-xl md:mt-[1.927vw] md:ml-[3.698vw] md:max-w-[28.698vw]">
+        {rows.map((row) => (
+          <li key={row.label} className="border-cream-50 border-b">
+            <Link
+              href={row.href}
+              className="block pt-5 pb-3 text-body text-cream-50 transition-opacity hover:opacity-70 md:pt-[1.44vw] md:pb-[0.72vw]"
+            >
+              {row.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </footer>
   );
 }
