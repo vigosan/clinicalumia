@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { PageHero } from "@/components/PageHero";
 import { PillLink } from "@/components/PillLink";
 import { pageMetadata } from "@/lib/metadata";
@@ -37,7 +38,19 @@ export default async function ServicePage({ params }: Params) {
 
   return (
     <>
-      <PageHero title={page.h1} intro={page.intro}>
+      <PageHero
+        eyebrow={
+          <Breadcrumbs
+            items={[
+              { label: "Inicio", href: "/" },
+              { label: "Servicios", href: "/servicios" },
+              { label: page.title, href: `/${page.slug}` },
+            ]}
+          />
+        }
+        title={page.h1}
+        intro={page.intro}
+      >
         <PillLink href="/contacto" tone="cream">
           Solicita tu primera valoración
         </PillLink>

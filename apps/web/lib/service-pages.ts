@@ -11,6 +11,7 @@ export type Step = {
 
 export type ServicePage = {
   slug: string;
+  title: string;
   metaTitle: string;
   metaDescription: string;
   h1: string;
@@ -27,6 +28,7 @@ export type ServicePage = {
 export const servicePages: ServicePage[] = [
   {
     slug: "terapia-miofuncional-xativa",
+    title: "Terapia miofuncional en Xàtiva",
     metaTitle: "Terapia miofuncional en Xàtiva · LUMIA",
     metaDescription:
       "Especialistas en terapia miofuncional orofacial, respiración oral, deglución atípica, frenillo lingual y ortodoncia en Xàtiva.",
@@ -139,6 +141,7 @@ export const servicePages: ServicePage[] = [
   },
   {
     slug: "logopedia-infantil-xativa",
+    title: "Logopeda infantil en Xàtiva",
     metaTitle: "Logopeda infantil en Xàtiva · LUMIA",
     metaDescription:
       "Tratamiento de lenguaje, habla, dislalias, tartamudez, TDL, dislexia y comunicación infantil en Xàtiva.",
@@ -263,6 +266,7 @@ export const servicePages: ServicePage[] = [
   },
   {
     slug: "logopedia-adultos-xativa",
+    title: "Logopedia para adultos en Xàtiva",
     metaTitle: "Logopedia para adultos en Xàtiva · LUMIA",
     metaDescription:
       "Rehabilitación logopédica en adultos: afasia, ictus, Parkinson, disfagia, disartria y daño cerebral adquirido.",
@@ -386,6 +390,7 @@ export const servicePages: ServicePage[] = [
   },
   {
     slug: "rehabilitacion-vocal-xativa",
+    title: "Rehabilitación vocal en Xàtiva",
     metaTitle: "Rehabilitación vocal en Xàtiva · LUMIA",
     metaDescription:
       "Tratamiento de disfonía, sobrecarga vocal, técnica vocal y voz profesional en Xàtiva.",

@@ -81,7 +81,7 @@ const jsonLd = {
       })),
       availableService: servicePages.map((page) => ({
         "@type": "MedicalTherapy",
-        name: page.h1.split(" · ")[0],
+        name: page.title,
         url: `${site.url}/${page.slug}`,
       })),
       founder: {
