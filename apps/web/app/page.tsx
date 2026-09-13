@@ -94,7 +94,7 @@ export default function Home() {
       </section>
 
       <section className="px-6 py-16 md:px-[12.448vw] md:pt-[6.76vw] md:pb-[5.99vw]">
-        <div className="mx-auto flex flex-col items-center text-center md:max-w-[62vw]">
+        <div className="mx-auto flex flex-col items-center text-center md:max-w-[64vw]">
           <h2 className="font-bold text-sage-500 text-section">
             ¿No sabes qué tratamiento necesitas?
           </h2>
