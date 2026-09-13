@@ -194,7 +194,7 @@ export default async function Home() {
       >
         <div className="rounded-panel bg-sage-500 py-14 md:pt-[4.1vw] md:pb-[5.26vw]">
           <h2 className="px-6 text-center font-bold text-cream-50 text-section">
-            Preguntas frecuentes | FyQ
+            Preguntas frecuentes | FAQ
           </h2>
           <div className="mt-12 px-6 md:mt-[5.54vw] md:pr-[7.813vw] md:pl-[6.344vw]">
             <FaqAccordion items={faqs.slice(0, 5)} />
