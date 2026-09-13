@@ -4,8 +4,8 @@
   --font-sans: var(--font-neue-haas), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-neue-haas), ui-sans-serif, system-ui, sans-serif;
 
-  --color-cream-50: #f7f5f1;
-  --color-cream-100: #f0ede8;
+  --color-cream-50: #f1ede8;
+  --color-cream-100: #f1ede8;
   --color-cream-200: #e5e1da;
   --color-sage-300: #c3c7b8;
   --color-sage-400: #b5b9a7;
@@ -14,9 +14,9 @@
   --color-sage-700: #767b68;
   --color-sage-800: #5c6151;
   --color-ink-400: #9a9a9a;
-  --color-ink-500: #878787;
-  --color-ink-600: #787878;
-  --color-ink-700: #5f5f5f;
+  --color-ink-500: #797979;
+  --color-ink-600: #797979;
+  --color-ink-700: #707070;
   --color-bark-700: #5b483a;
 
   --text-hero: clamp(2.5rem, 4.167vw, 5rem);
