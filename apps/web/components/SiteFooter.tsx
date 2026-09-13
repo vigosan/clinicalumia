@@ -15,22 +15,23 @@ const serviceLinks = [
   { href: "/rehabilitacion-vocal-xativa", label: "Voz y rehabilitación vocal" },
 ];
 
-const rowClass = "border-cream-50/50 border-b py-5";
+const rowClass =
+  "border-cream-50 border-b pt-5 pb-3 md:pt-[1.44vw] md:pb-[0.72vw]";
 const labelClass = "text-body text-cream-50";
 const valueClass = "mt-2 text-cream-50/85 text-action";
 
 export function SiteFooter() {
   return (
-    <footer className="bg-sage-500 px-6 py-14 md:px-[9.3vw] md:pt-[6vw]">
+    <footer className="bg-sage-500 px-6 py-14 md:px-[5.625vw] md:pt-[4.635vw] md:pb-[12.08vw]">
       <Image
         src="/logo-white.png"
         alt="LUMIA · Clínica Logopedia miofuncional"
         width={1080}
         height={400}
-        className="h-auto w-44 md:w-[16vw]"
+        className="h-auto w-44 md:w-[22.292vw]"
       />
 
-      <div className="mt-12 max-w-xl md:mt-[4vw]">
+      <div className="mt-12 max-w-xl md:mt-[1.927vw] md:ml-[3.698vw] md:max-w-[28.698vw]">
         <div className={rowClass}>
           <p className={labelClass}>Dirección</p>
           <p className={valueClass}>
