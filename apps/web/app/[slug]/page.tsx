@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { PageHero } from "@/components/PageHero";
@@ -161,12 +162,47 @@ export default async function ServicePage({ params }: Params) {
         </div>
       </section>
 
+      <section className="px-6 pb-14 md:px-12 md:pb-20">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="font-bold text-card text-ink-600 tracking-tight md:text-section">
+            Otros tratamientos en {site.name}
+          </h2>
+          <ul className="mt-6 grid gap-x-10 gap-y-3 md:grid-cols-2">
+            {servicePages
+              .filter((other) => other.slug !== page.slug)
+              .map((other) => (
+                <li
+                  key={other.slug}
+                  className="border-sage-400/50 border-b pb-3"
+                >
+                  <Link
+                    href={`/${other.slug}`}
+                    className="text-ink-600 transition-opacity hover:opacity-70"
+                  >
+                    {other.title}
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        </div>
+      </section>
+
       <section className="px-6 pb-20 md:px-12 md:pb-28">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
           <p className="font-bold text-card text-ink-600 tracking-tight md:text-section">
             {page.cta}
           </p>
           <PillLink href="/contacto">Pedir cita</PillLink>
+          <p className="text-ink-500">
+            ¿Tienes dudas? Consulta las{" "}
+            <Link
+              href="/preguntas-frecuentes"
+              className="underline underline-offset-2"
+            >
+              preguntas frecuentes sobre logopedia y terapia miofuncional
+            </Link>
+            .
+          </p>
           <p className="text-ink-400 text-sm">
             Atendemos pacientes de {site.city} y localidades cercanas como{" "}
             {nearbyTowns.join(", ")} y otros municipios de La Costera.
