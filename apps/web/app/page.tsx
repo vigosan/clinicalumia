@@ -37,8 +37,8 @@ const mapsLabel = (
 export default function Home() {
   return (
     <>
-      <section className="px-3 pt-3 md:px-[1.667vw] md:pt-[1.667vw]">
-        <div className="relative overflow-hidden rounded-panel bg-sage-500">
+      <section className="px-3 md:px-[1.667vw]">
+        <div className="relative overflow-hidden rounded-b-panel bg-sage-500">
           <Image
             src="/hero-mobile.webp"
             alt=""

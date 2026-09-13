@@ -18,7 +18,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="absolute inset-x-0 top-0 z-30 px-6 pt-6 md:pt-[4.427vw] md:pr-[7.344vw] md:pl-[3.021vw]">
+    <header className="absolute inset-x-0 top-0 z-30 px-6 pt-6 md:pt-[2.76vw] md:pr-[7.344vw] md:pl-[3.021vw]">
       <div className="flex items-start justify-between gap-6">
         <Link href="/" aria-label="LUMIA, inicio" className="shrink-0">
           <Image
