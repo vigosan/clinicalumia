@@ -83,29 +83,27 @@ export default function Home() {
         <ServiceList items={services.slice(0, 3)} />
       </section>
 
-      <section className="px-6 py-16 md:px-[13.02vw] md:py-[7vw]">
-        <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-5 text-center">
+      <section className="px-6 py-16 md:px-[12.448vw] md:pt-[6.76vw] md:pb-[5.99vw]">
+        <div className="mx-auto flex flex-col items-center text-center md:max-w-[62vw]">
           <h2 className="font-bold text-sage-500 text-section">
             ¿No sabes qué tratamiento necesitas?
           </h2>
-          <p className="text-body text-ink-500">
+          <p className="mt-6 text-body text-ink-700 md:mt-[2.135vw]">
             Especialistas en logopedia infantil, logopedia para adultos y
             terapia miofuncional orofacial en {site.city}.{" "}
-            <span className="font-medium text-ink-600">
+            <span className="font-medium">
               En {site.name} trabajamos funciones esenciales como respirar,
               masticar, deglutir, hablar y utilizar correctamente la musculatura
               orofacial, desde un enfoque clínico, personalizado y basado en
               evidencia científica.
-            </span>
-          </p>
-          <p className="text-body text-ink-500">
+            </span>{" "}
             Cada paciente es diferente.{" "}
-            <span className="font-medium text-ink-600">
+            <span className="font-medium">
               Realizamos una valoración personalizada para identificar el origen
               del problema y diseñar el tratamiento más adecuado.
             </span>
           </p>
-          <div className="mt-4">
+          <div className="mt-8 md:mt-[2.31vw]">
             <PillLink href="/contacto">Solicita tu primera valoración</PillLink>
           </div>
         </div>
@@ -113,12 +111,12 @@ export default function Home() {
 
       <section className="px-6 md:px-[1.667vw]">
         <Image
-          src="/clinica-01.jpg"
-          alt="Recepción de la clínica LUMIA en Xàtiva"
-          width={1448}
-          height={1086}
+          src="/consulta.jpg"
+          alt="Paciente sonriendo durante una sesión en la clínica LUMIA"
+          width={1672}
+          height={941}
           sizes="100vw"
-          className="aspect-[1792/620] w-full rounded-panel object-cover object-top"
+          className="aspect-4/3 w-full rounded-panel object-cover object-[50%_42%] md:aspect-[1856/428]"
         />
       </section>
 
