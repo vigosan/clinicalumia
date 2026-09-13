@@ -70,8 +70,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-6 pt-10 md:px-[12.448vw] md:pt-[2.2vw]">
-        <p className="rounded-panel bg-sage-500 px-8 py-10 text-center font-bold text-cream-50 text-section md:py-[5vw]">
+      <section className="px-6 pt-10 md:px-[12.448vw] md:pt-[5.156vw]">
+        <p className="rounded-panel bg-sage-500 px-8 py-10 text-center font-bold text-cream-50 text-section md:py-[2.37vw]">
           Clínica de logopedia y terapia miofuncional
         </p>
       </section>
