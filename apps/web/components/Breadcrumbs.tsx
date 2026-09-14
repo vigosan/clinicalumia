@@ -17,7 +17,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
 
   return (
     <nav aria-label="Ruta de navegación" data-testid="breadcrumbs">
-      <ol className="flex flex-wrap items-center gap-2 text-cream-50/80 text-sm">
+      <ol className="flex flex-wrap items-center gap-2 text-ink-500 text-sm">
         {items.map((item, index) => {
           const isCurrent = index === items.length - 1;
           return (

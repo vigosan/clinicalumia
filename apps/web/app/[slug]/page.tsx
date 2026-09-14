@@ -39,8 +39,10 @@ export default async function ServicePage({ params }: Params) {
 
   return (
     <>
-      <PageHero
-        eyebrow={
+      <PageHero />
+
+      <section className="px-6 pt-12 md:px-12 md:pt-16">
+        <div className="mx-auto max-w-6xl">
           <Breadcrumbs
             items={[
               { label: "Inicio", href: "/" },
@@ -48,14 +50,17 @@ export default async function ServicePage({ params }: Params) {
               { label: page.title, href: `/${page.slug}` },
             ]}
           />
-        }
-        title={page.h1}
-        intro={page.intro}
-      >
-        <PillLink href="/contacto" tone="cream">
-          Solicita tu primera valoración
-        </PillLink>
-      </PageHero>
+          <h1 className="mt-6 font-bold text-ink-600 text-section">
+            {page.h1}
+          </h1>
+          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+            {page.intro}
+          </p>
+          <div className="mt-8">
+            <PillLink href="/contacto">Solicita tu primera valoración</PillLink>
+          </div>
+        </div>
+      </section>
 
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto max-w-4xl">

@@ -29,10 +29,21 @@ const specialties = [
 export default function SobreLumiaPage() {
   return (
     <>
-      <PageHero
-        title="El faro detrás de LUMIA"
-        intro="Cuando el cuerpo aprende, todo cambia. LUMIA nace de una forma diferente de entender la logopedia. No se trata únicamente de corregir un sonido o trabajar una dificultad concreta, sino de comprender cómo funciona el cuerpo para devolverle el equilibrio."
-      />
+      <PageHero />
+
+      <section className="px-6 pt-12 md:px-12 md:pt-16">
+        <div className="mx-auto max-w-6xl">
+          <h1 className="font-bold text-ink-600 text-section">
+            El faro detrás de LUMIA
+          </h1>
+          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+            Cuando el cuerpo aprende, todo cambia. LUMIA nace de una forma
+            diferente de entender la logopedia. No se trata únicamente de
+            corregir un sonido o trabajar una dificultad concreta, sino de
+            comprender cómo funciona el cuerpo para devolverle el equilibrio.
+          </p>
+        </div>
+      </section>
 
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto grid max-w-6xl items-start gap-10 md:grid-cols-2 md:gap-16">
