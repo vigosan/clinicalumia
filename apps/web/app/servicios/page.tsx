@@ -18,10 +18,21 @@ export const metadata: Metadata = {
 export default function ServiciosPage() {
   return (
     <>
-      <PageHero
-        title="Tratamientos de logopedia y terapia miofuncional"
-        intro="En LUMIA abordamos la logopedia y la terapia miofuncional desde una visión global. No tratamos solo síntomas: evaluamos funciones, detectamos patrones alterados y diseñamos tratamientos adaptados a cada paciente."
-      />
+      <PageHero />
+
+      <section className="px-6 pt-12 md:px-12 md:pt-16">
+        <div className="mx-auto max-w-6xl">
+          <h1 className="font-bold text-ink-600 text-section">
+            Tratamientos de logopedia y terapia miofuncional
+          </h1>
+          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+            En LUMIA abordamos la logopedia y la terapia miofuncional desde una
+            visión global. No tratamos solo síntomas: evaluamos funciones,
+            detectamos patrones alterados y diseñamos tratamientos adaptados a
+            cada paciente.
+          </p>
+        </div>
+      </section>
 
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto max-w-6xl">

@@ -22,10 +22,20 @@ export default function ContactoPage() {
 
   return (
     <>
-      <PageHero
-        title="Estamos aquí para ayudarte"
-        intro="Si tienes dudas o quieres realizar una primera valoración, puedes contactar con LUMIA por teléfono o formulario. Te orientaremos sobre el primer paso más adecuado según tu caso."
-      />
+      <PageHero />
+
+      <section className="px-6 pt-12 md:px-12 md:pt-16">
+        <div className="mx-auto max-w-6xl">
+          <h1 className="font-bold text-ink-600 text-section">
+            Estamos aquí para ayudarte
+          </h1>
+          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+            Si tienes dudas o quieres realizar una primera valoración, puedes
+            contactar con LUMIA por teléfono o formulario. Te orientaremos sobre
+            el primer paso más adecuado según tu caso.
+          </p>
+        </div>
+      </section>
 
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[3fr_2fr] md:gap-20">

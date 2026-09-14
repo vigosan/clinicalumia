@@ -16,7 +16,15 @@ export const metadata: Metadata = {
 export default function CookiesPage() {
   return (
     <>
-      <PageHero title="Política de cookies" />
+      <PageHero />
+
+      <section className="px-6 pt-12 md:px-12 md:pt-16">
+        <div className="mx-auto max-w-6xl">
+          <h1 className="font-bold text-ink-600 text-section">
+            Política de cookies
+          </h1>
+        </div>
+      </section>
       <LegalNotice document="la política de cookies" />
     </>
   );
