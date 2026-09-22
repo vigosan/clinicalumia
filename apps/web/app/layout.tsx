@@ -57,12 +57,12 @@ const jsonLd = {
       name: site.name,
       alternateName: `${site.name} · ${site.tagline}`,
       description:
-        "Clínica especializada en logopedia infantil, logopedia para adultos y terapia miofuncional orofacial en Xàtiva.",
+        "Clínica especializada en logopedia infantil, logopedia para adultos y terapia miofuncional orofacial en Xàtiva, con servicios de psicología y fisioterapia.",
       url: site.url,
       telephone: site.phone.e164,
       image: `${site.url}/og.jpg`,
       logo: `${site.url}/logo-dark.png`,
-      medicalSpecialty: "SpeechPathology",
+      medicalSpecialty: ["SpeechPathology", "Physiotherapy"],
       address: {
         "@type": "PostalAddress",
         ...(isPending(site.address.street)
