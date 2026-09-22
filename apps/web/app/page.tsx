@@ -82,7 +82,7 @@ export default async function Home() {
               {...heroMobile.props}
               alt=""
               fetchPriority="high"
-              className="object-cover object-center"
+              className="object-cover object-center md:scale-110"
             />
           </picture>
 
