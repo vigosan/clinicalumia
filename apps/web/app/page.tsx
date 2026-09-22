@@ -223,15 +223,15 @@ export default async function Home() {
         className="px-6 pt-10 md:px-gutter md:pt-[7.656vw]"
         id="preguntas"
       >
-        <div className="rounded-panel bg-sage-500 py-14 md:pt-[4.1vw] md:pb-[5.26vw]">
+        <div className="rounded-panel bg-sage-500 py-14 md:-mr-[1.615vw] md:pt-[4.1vw] md:pb-[5.26vw]">
           <h2 className="px-6 text-center font-bold text-cream-50 text-section">
             Preguntas frecuentes | FAQ
           </h2>
-          <div className="mt-12 px-6 md:mt-[5.54vw] md:pr-[7.813vw] md:pl-[6.344vw]">
+          <div className="mt-12 px-6 md:mt-[5.54vw] md:pr-[9.427vw] md:pl-[6.344vw]">
             <FaqAccordion items={faqs.slice(0, 5)} />
           </div>
           <div className="mt-14 flex justify-center md:mt-[3.87vw]">
-            <PillLink href="/contacto" tone="cream">
+            <PillLink href="/contacto" tone="cream" className="md:w-[13.594vw]">
               Cuéntanos tu caso
             </PillLink>
           </div>
