@@ -1,6 +1,10 @@
 "use server";
 
 import { Resend } from "resend";
+import { parseConsent } from "@/lib/consent";
+import { consentTitle } from "@/lib/consent-legal";
+import { buildConsentPdf } from "@/lib/consent-pdf";
+import { site } from "@/lib/site";
 
 export type CollaboratorFormState =
   | { error: string }
@@ -8,6 +12,8 @@ export type CollaboratorFormState =
   | undefined;
 
 export type ContactFormState = { error: string } | { ok: true } | undefined;
+
+export type ConsentFormState = { error: string } | { ok: true } | undefined;
 
 function escapeHtml(value: string): string {
   return value
@@ -126,6 +132,54 @@ export async function sendContactRequest(
 
   if (error) {
     return { error: "No se ha podido enviar el mensaje. Inténtalo de nuevo." };
+  }
+
+  return { ok: true };
+}
+
+export async function sendConsent(
+  _prev: ConsentFormState,
+  formData: FormData,
+): Promise<ConsentFormState> {
+  if (String(formData.get("website") ?? "")) return { ok: true };
+
+  const signedAt = new Date();
+  const result = parseConsent(formData, signedAt);
+  if ("error" in result) return result;
+  const { consent } = result;
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const to = process.env.CONSENT_TO_EMAIL ?? site.email;
+  const from =
+    process.env.CONSENT_FROM_EMAIL ?? "Lumia <onboarding@resend.dev>";
+
+  if (!apiKey) {
+    return { error: "Servicio no configurado. Inténtalo más tarde." };
+  }
+
+  let pdf: Uint8Array;
+  try {
+    pdf = await buildConsentPdf(consent, signedAt);
+  } catch {
+    return { error: "No se ha podido leer la firma. Vuelve a firmar." };
+  }
+
+  const fullName = `${consent.firstName} ${consent.lastName}`;
+  const fileName = `consentimiento-${consent.dni}-${signedAt.toISOString().slice(0, 10)}.pdf`;
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from,
+    to,
+    subject: `${consentTitle} — ${fullName}`,
+    text: `${fullName} (DNI ${consent.dni}) ha firmado el consentimiento de protección de datos. Se adjunta el documento firmado.`,
+    html: `<p>${escapeHtml(fullName)} (DNI ${escapeHtml(consent.dni)}) ha firmado el consentimiento de protección de datos. Se adjunta el documento firmado.</p>`,
+    attachments: [{ filename: fileName, content: Buffer.from(pdf) }],
+  });
+
+  if (error) {
+    return {
+      error: "No se ha podido enviar el consentimiento. Inténtalo de nuevo.",
+    };
   }
 
   return { ok: true };
