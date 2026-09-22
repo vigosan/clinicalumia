@@ -11,7 +11,7 @@ import { isPending, nearbyTowns, site } from "@/lib/site";
 
 const clinicPhotos = [
   { src: "/clinica-01.jpg", alt: "Recepción de la clínica LUMIA en Xàtiva" },
-  { src: "/clinica-02.jpg", alt: "Sala de tratamiento de la clínica LUMIA" },
+  { src: "/clinica-02.jpg", alt: "Patricia Hernán en la clínica LUMIA" },
 ];
 
 const instagramSlots = ["uno", "dos", "tres", "cuatro"];
