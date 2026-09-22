@@ -21,12 +21,10 @@
 
   --text-hero: clamp(2.5rem, 4.167vw, 5rem);
   --text-hero--line-height: 1;
-  --text-hero--letter-spacing: -0.02em;
   --text-kicker: clamp(1rem, 1.354vw, 1.625rem);
   --text-kicker--line-height: 1.35;
   --text-section: clamp(1.75rem, 2.604vw, 3.125rem);
   --text-section--line-height: 1.1;
-  --text-section--letter-spacing: -0.02em;
   --text-question: clamp(1.125rem, 1.563vw, 1.875rem);
   --text-question--line-height: 1.3;
   --text-body: clamp(1rem, 1.302vw, 1.5625rem);
