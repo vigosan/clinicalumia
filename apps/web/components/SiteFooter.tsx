@@ -11,7 +11,6 @@ const rows = [
   { href: "/contacto", label: "Horario" },
   { href: "/servicios", label: "Servicios profesionales" },
   { href: "/mi-cuenta", label: "Mi cuenta" },
-  { href: "/aviso-legal", label: "Bases legales" },
 ];
 
 export function SiteFooter() {
