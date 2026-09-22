@@ -100,7 +100,7 @@ export default async function Home() {
             </div>
             <a
               href={helpHref}
-              className="mt-4 inline-flex h-10 w-fit items-center gap-3 rounded-full border-2 border-cream-50 bg-sage-500 px-4 text-cream-50 text-sm md:absolute md:right-[9.635vw] md:bottom-[4.583vw] md:mt-0 md:text-[1.094vw]"
+              className="mt-4 inline-flex h-10 w-fit items-center gap-3 rounded-full border-2 border-cream-50 bg-sage-500 px-4 text-cream-50 text-sm md:absolute md:h-[clamp(1.75rem,2.083vw,2.5rem)] md:border-[clamp(2px,0.157vw,3px)] md:px-[0.677vw] md:right-[9.635vw] md:bottom-[4.583vw] md:mt-0 md:text-[1.094vw]"
             >
               ¿Podemos ayudarte?
               <WhatsAppIcon className="size-6" />
