@@ -78,4 +78,18 @@ export const services: Service[] = [
       "Terapia de pareja",
     ],
   },
+  {
+    number: "07",
+    slug: "fisioterapia-xativa",
+    title: "Fisioterapia",
+    summary:
+      "Tratamiento individualizado del dolor y las lesiones musculoesqueléticas con terapia manual y ejercicio terapéutico.",
+    tags: [
+      "Cervicalgia",
+      "Lumbalgia",
+      "Bruxismo",
+      "Tendinopatías",
+      "Esguinces",
+    ],
+  },
 ];

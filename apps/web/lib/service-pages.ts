@@ -631,6 +631,157 @@ export const servicePages: ServicePage[] = [
     ],
     cta: "Da el primer paso hacia tu bienestar con atención psicológica en Xàtiva.",
   },
+  {
+    slug: "fisioterapia-xativa",
+    title: "Fisioterapia en Xàtiva",
+    metaTitle: "Fisioterapia en Xàtiva · LUMIA",
+    metaDescription:
+      "Fisioterapia en Xàtiva: cervicalgia, lumbalgia, bruxismo, tendinopatías, esguinces y más, con terapia manual, punción seca y ejercicio terapéutico.",
+    h1: "Fisioterapia en Xàtiva · Tratamiento individualizado del dolor y las lesiones",
+    intro:
+      "En LUMIA ofrecemos fisioterapia con sesiones individuales y tratamiento personalizado. Abordamos patologías de cabeza y cuello, hombro, mano, columna, cadera, rodilla y pie, adaptando cada sesión a la persona, su lesión y sus necesidades.",
+    whatIsTitle: "Qué es y por qué importa",
+    whatIs:
+      "Cada patología se trata de manera individualizada, combinando técnicas como la terapia manual, la masoterapia, la electroterapia, la punción seca, la electropunción o el ejercicio terapéutico según el caso y las necesidades de la persona. El objetivo es aliviar el dolor, recuperar la función y dar pautas para mantener los resultados.",
+    treatments: [
+      {
+        name: "Cabeza y cuello",
+        description:
+          "Tratamos el dolor y las alteraciones de la cabeza, el cuello y la mandíbula, incluidas las cefaleas, las neuralgias y los problemas de la articulación temporomandibular.",
+        signs: [
+          "Bruxismo",
+          "Cefaleas",
+          "Cervicalgia",
+          "Cervicobraquialgia",
+          "Latigazo cervical",
+          "Chasquido mandibular",
+          "Neuralgia de Arnold",
+          "Neuralgia del trigémino",
+          "Parálisis facial",
+          "Tortícolis",
+          "Vértigo",
+        ],
+      },
+      {
+        name: "Hombro y codo",
+        description:
+          "Abordamos las lesiones y el dolor de hombro y codo para recuperar la movilidad y la función del brazo.",
+        signs: [
+          "Epicondilalgia",
+          "Epitroclealgia",
+          "Hombro congelado",
+          "Linfedema",
+          "Tendinopatía del manguito rotador",
+          "Tendinosis",
+        ],
+      },
+      {
+        name: "Mano",
+        description:
+          "Tratamos las alteraciones de la mano y la muñeca que limitan la fuerza, la movilidad y las actividades del día a día.",
+        signs: [
+          "Artrosis de manos",
+          "Dedo en resorte",
+          "Dupuytren",
+          "Esguince de muñeca",
+          "Tendinopatía de Quervain",
+          "Tendinosis",
+        ],
+      },
+      {
+        name: "Columna y espalda",
+        description:
+          "Tratamos el dolor de espalda y las alteraciones de la columna en sus distintos niveles, del cuello a la zona lumbar.",
+        signs: [
+          "Cervicalgia",
+          "Cervicobraquialgia",
+          "Escoliosis",
+          "Hernias de disco",
+          "Latigazo cervical",
+          "Lumbalgia",
+          "Lumbociática",
+          "Dorsalgia",
+        ],
+      },
+      {
+        name: "Pelvis y cadera",
+        description:
+          "Abordamos el dolor y las lesiones de pelvis y cadera para mejorar la movilidad y la calidad de vida.",
+        signs: [
+          "Artrosis de cadera",
+          "Bursitis trocantérea",
+          "Neuralgia del pudendo",
+          "Pubalgia",
+        ],
+      },
+      {
+        name: "Pierna y rodilla",
+        description:
+          "Tratamos las lesiones de rodilla y pierna, tanto en la fase de dolor como en la recuperación funcional.",
+        signs: [
+          "Artrosis de rodilla",
+          "Condromalacia",
+          "Esguince de rodilla",
+          "Meniscopatía",
+          "Rotura del ligamento cruzado anterior",
+          "Síndrome de Osgood-Schlatter",
+          "Tendinopatía rotuliana",
+          "Tendinosis",
+        ],
+      },
+      {
+        name: "Pie",
+        description:
+          "Tratamos el dolor y las alteraciones del pie y el tobillo que afectan a la marcha y al apoyo.",
+        signs: [
+          "Esguince de tobillo",
+          "Espolón calcáneo",
+          "Fascitis plantar",
+          "Hallux valgus o juanete",
+          "Metatarsalgia",
+          "Neuroma de Morton",
+          "Pie plano – Pie cavo",
+          "Tendinopatía aquílea",
+          "Tendinosis",
+        ],
+      },
+    ],
+    warningSigns: [
+      "Dolor de cuello o espalda que se repite",
+      "Dolores de cabeza frecuentes",
+      "Rigidez o pérdida de movilidad",
+      "Dolor al apretar los dientes o chasquidos en la mandíbula",
+      "Molestias en una articulación al hacer esfuerzos",
+      "Una lesión o un esguince que no termina de recuperarse",
+      "Dolor en el pie al caminar",
+    ],
+    steps: [
+      {
+        title: "Valoración inicial",
+        description:
+          "Estudiamos la lesión, su historia y cómo afecta a tu día a día para decidir el tratamiento más adecuado.",
+      },
+      {
+        title: "Sesión individual de fisioterapia",
+        description:
+          "Tratamiento personalizado de 60 minutos, combinando las técnicas que necesita cada caso.",
+      },
+      {
+        title: "Sesión de control y seguimiento",
+        description:
+          "Sesiones de 30 minutos para revisar la evolución y ajustar los ejercicios.",
+      },
+    ],
+    benefits: [
+      "Alivio del dolor",
+      "Recuperación de la movilidad",
+      "Vuelta a la actividad diaria",
+      "Ejercicios adaptados a cada persona",
+      "Prevención de recaídas",
+      "Tratamiento individualizado",
+    ],
+    cta: "Recupera tu movilidad con fisioterapia personalizada en Xàtiva.",
+  },
 ];
 
 export function getServicePage(slug: string) {
