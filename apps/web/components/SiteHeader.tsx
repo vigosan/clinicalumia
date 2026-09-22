@@ -32,7 +32,7 @@ export function SiteHeader() {
         </Link>
 
         <div className="hidden items-center pt-10 xl:flex">
-          <nav className="flex items-center gap-[2.604vw]">
+          <nav className="flex items-center gap-[2.708vw]">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -44,12 +44,12 @@ export function SiteHeader() {
             ))}
           </nav>
 
-          <div className="ml-[7.344vw] flex items-center gap-[1.354vw]">
+          <div className="ml-[7.083vw] flex items-center gap-[1.354vw]">
             <Link
               href="/contacto"
               className={pillClassName(
                 "cream",
-                "min-w-[7.917vw] whitespace-nowrap",
+                "w-[7.917vw] whitespace-nowrap",
               )}
             >
               Coger cita
@@ -58,11 +58,11 @@ export function SiteHeader() {
               href={site.phone.href}
               className={pillClassName(
                 "cream",
-                "min-w-[7.917vw] gap-3 whitespace-nowrap",
+                "w-[7.917vw] gap-3 whitespace-nowrap md:gap-[0.625vw]",
               )}
             >
               Llamar
-              <WhatsAppIcon className="size-6" />
+              <WhatsAppIcon className="size-6 shrink-0 md:size-[1.25vw]" />
             </a>
           </div>
         </div>
