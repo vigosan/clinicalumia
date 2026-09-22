@@ -160,7 +160,7 @@ export default async function Home() {
           width={1672}
           height={711}
           sizes="100vw"
-          className="aspect-4/3 w-full rounded-panel object-cover object-[60%_35%] md:aspect-[1856/428]"
+          className="aspect-4/3 w-full rounded-panel object-cover object-[60%_26%] md:aspect-[1856/428]"
         />
       </section>
 
