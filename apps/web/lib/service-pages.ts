@@ -483,6 +483,154 @@ export const servicePages: ServicePage[] = [
     ],
     cta: "Cuida tu voz con tratamiento especializado en rehabilitación vocal en Xàtiva.",
   },
+  {
+    slug: "psicologia-xativa",
+    title: "Psicología en Xàtiva",
+    metaTitle: "Psicología en Xàtiva · LUMIA",
+    metaDescription:
+      "Atención psicológica individualizada en Xàtiva: ansiedad, depresión, autoestima, trauma, terapia de pareja, duelo y evaluación psicológica.",
+    h1: "Psicología en Xàtiva · Atención psicológica individualizada",
+    intro:
+      "En LUMIA ofrecemos atención psicológica individualizada, adaptada a las necesidades y objetivos de cada persona. La intervención se basa principalmente en el enfoque cognitivo-conductual y busca proporcionar herramientas prácticas para comprender y afrontar las dificultades emocionales, personales y relacionales.",
+    whatIsTitle: "Qué es y por qué importa",
+    whatIs:
+      "La terapia psicológica es un espacio profesional y confidencial para comprender qué está ocurriendo, identificar los pensamientos, emociones y conductas que mantienen el malestar y aprender estrategias para afrontarlo. El enfoque cognitivo-conductual trabaja con objetivos concretos y herramientas prácticas que la persona puede aplicar en su día a día.",
+    treatments: [
+      {
+        name: "Psicoterapia individual",
+        description:
+          "Intervención psicológica personalizada para abordar diferentes dificultades emocionales y personales, favoreciendo el bienestar, el autoconocimiento y el desarrollo de estrategias de afrontamiento.",
+        signs: [
+          "Bienestar",
+          "Autoconocimiento",
+          "Estrategias de afrontamiento",
+        ],
+      },
+      {
+        name: "Tratamiento de la ansiedad",
+        description:
+          "Intervención dirigida a reducir la sintomatología ansiosa y aprender a manejar preocupaciones, miedos, pensamientos intrusivos, crisis de ansiedad y otras manifestaciones relacionadas con la ansiedad.",
+        signs: [
+          "Preocupaciones",
+          "Miedos",
+          "Pensamientos intrusivos",
+          "Crisis de ansiedad",
+        ],
+      },
+      {
+        name: "Tratamiento de la depresión",
+        description:
+          "Intervención orientada a reducir síntomas como tristeza, apatía, pérdida de interés, aislamiento o desmotivación, favoreciendo progresivamente la recuperación del bienestar y el funcionamiento cotidiano.",
+        signs: [
+          "Tristeza",
+          "Apatía",
+          "Pérdida de interés",
+          "Aislamiento",
+          "Desmotivación",
+        ],
+      },
+      {
+        name: "Gestión emocional, autoestima y estrés",
+        description:
+          "Trabajo psicológico dirigido a comprender y regular las emociones, mejorar la autoestima y desarrollar recursos para afrontar situaciones de estrés, sobrecarga y dificultades personales.",
+        signs: ["Regulación emocional", "Autoestima", "Estrés", "Sobrecarga"],
+      },
+      {
+        name: "Trauma y experiencias adversas",
+        description:
+          "Intervención especializada para personas que presentan malestar psicológico relacionado con experiencias traumáticas. Se trabaja de forma gradual y segura sobre los recuerdos, emociones y situaciones asociadas a la experiencia traumática.",
+        signs: ["Experiencias traumáticas", "Recuerdos", "Malestar emocional"],
+      },
+      {
+        name: "Fobias y miedos",
+        description:
+          "Tratamiento psicológico orientado a afrontar progresivamente situaciones, objetos o estímulos que generan miedo y evitación, favoreciendo una mayor seguridad y autonomía.",
+        signs: ["Miedo", "Evitación", "Seguridad", "Autonomía"],
+      },
+      {
+        name: "Terapia de pareja",
+        description:
+          "Espacio terapéutico para mejorar la comunicación, abordar conflictos y comprender las necesidades de cada miembro de la pareja, favoreciendo relaciones más saludables y satisfactorias.",
+        signs: ["Comunicación", "Conflictos", "Necesidades de la pareja"],
+      },
+      {
+        name: "Duelo, rupturas y dependencia emocional",
+        description:
+          "Acompañamiento psicológico ante pérdidas y rupturas, así como intervención sobre patrones de dependencia emocional, miedo al abandono, dificultad para estar solo o necesidad excesiva de aprobación.",
+        signs: [
+          "Pérdidas",
+          "Rupturas",
+          "Miedo al abandono",
+          "Necesidad de aprobación",
+        ],
+      },
+      {
+        name: "Trastornos de la conducta alimentaria",
+        description:
+          "Intervención psicológica dirigida a abordar las dificultades relacionadas con la alimentación, la imagen corporal y la relación con el peso y la comida, trabajando los factores emocionales y cognitivos asociados.",
+        signs: ["Alimentación", "Imagen corporal", "Relación con la comida"],
+      },
+      {
+        name: "Adicciones y prevención de recaídas",
+        description:
+          "Intervención dirigida a comprender y modificar los factores que mantienen una conducta adictiva, desarrollar estrategias de cambio y prevenir recaídas, favoreciendo un funcionamiento personal más saludable.",
+        signs: ["Conducta adictiva", "Estrategias de cambio", "Recaídas"],
+      },
+      {
+        name: "Seguimiento psicológico de trastornos mentales graves",
+        description:
+          "Acompañamiento psicológico continuado orientado a mantener la estabilidad, prevenir recaídas, mejorar el funcionamiento cotidiano y favorecer la autonomía y la calidad de vida.",
+        signs: ["Estabilidad", "Prevención de recaídas", "Calidad de vida"],
+      },
+      {
+        name: "Evaluación e informes psicológicos",
+        description:
+          "Evaluación psicológica y elaboración de informes profesionales en función del objetivo de la valoración, integrando la información obtenida y las conclusiones pertinentes.",
+        signs: ["Evaluación psicológica", "Informes profesionales"],
+      },
+    ],
+    warningSigns: [
+      "Preocupación o nerviosismo que no desaparece",
+      "Tristeza, apatía o pérdida de interés",
+      "Dificultad para gestionar el estrés",
+      "Miedos que limitan el día a día",
+      "Conflictos frecuentes en la pareja",
+      "Una pérdida o ruptura difícil de superar",
+      "Malestar relacionado con la comida o la imagen corporal",
+      "Sensación de no saber cómo salir de una situación",
+    ],
+    steps: [
+      {
+        title: "Primera valoración",
+        description:
+          "Escuchamos qué te trae a consulta y exploramos la situación, su historia y cómo afecta a tu día a día.",
+      },
+      {
+        title: "Objetivos terapéuticos",
+        description:
+          "Definimos juntos qué quieres conseguir y planificamos la intervención de forma individualizada.",
+      },
+      {
+        title: "Intervención",
+        description:
+          "Trabajamos con herramientas del enfoque cognitivo-conductual para comprender y afrontar las dificultades.",
+      },
+      {
+        title: "Seguimiento",
+        description:
+          "Revisamos la evolución, ajustamos lo necesario y trabajamos la prevención de recaídas.",
+      },
+    ],
+    benefits: [
+      "Mayor bienestar emocional",
+      "Herramientas prácticas de afrontamiento",
+      "Mejor gestión del estrés y la ansiedad",
+      "Más autoconocimiento",
+      "Relaciones más saludables",
+      "Mayor autonomía",
+    ],
+    cta: "Da el primer paso hacia tu bienestar con atención psicológica en Xàtiva.",
+  },
 ];
 
 export function getServicePage(slug: string) {

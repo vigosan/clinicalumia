@@ -64,4 +64,18 @@ export const services: Service[] = [
       "Mordida abierta",
     ],
   },
+  {
+    number: "06",
+    slug: "psicologia-xativa",
+    title: "Psicología",
+    summary:
+      "Atención psicológica individualizada, con enfoque cognitivo-conductual, para afrontar dificultades emocionales y personales.",
+    tags: [
+      "Ansiedad",
+      "Depresión",
+      "Autoestima",
+      "Trauma",
+      "Terapia de pareja",
+    ],
+  },
 ];
