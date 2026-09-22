@@ -111,7 +111,7 @@ export default async function Home() {
       </section>
 
       <section className="px-6 pt-10 md:px-gutter md:pt-[5.156vw]">
-        <p className="rounded-panel bg-sage-500 px-8 py-10 text-center font-bold text-cream-50 text-section md:py-[2.37vw]">
+        <p className="rounded-panel bg-sage-500 px-8 py-10 text-center font-bold text-cream-50 text-section md:rounded-[clamp(1rem,1.771vw,2.125rem)] md:py-[2.37vw]">
           Clínica de logopedia y terapia miofuncional
         </p>
       </section>
