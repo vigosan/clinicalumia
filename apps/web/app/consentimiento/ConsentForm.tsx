@@ -9,7 +9,6 @@ import {
   privacyLabel,
 } from "@/lib/consent-legal";
 import { type ConsentFormState, sendConsent } from "../actions";
-import { PendingText } from "./PendingText";
 import { SignaturePad } from "./SignaturePad";
 
 const initialState: ConsentFormState = undefined;
@@ -105,9 +104,7 @@ export function ConsentForm() {
         className="flex flex-col gap-3 rounded-2xl bg-white/60 p-5 text-ink-500 text-sm leading-relaxed"
       >
         {consentClauses.map((clause) => (
-          <p key={clause}>
-            <PendingText text={clause} />
-          </p>
+          <p key={clause}>{clause}</p>
         ))}
       </div>
 

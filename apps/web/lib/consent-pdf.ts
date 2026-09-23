@@ -7,13 +7,12 @@ import {
   mediaForTrainingLabel,
   privacyLabel,
 } from "./consent-legal";
-import { PENDING, site } from "./site";
+import { site } from "./site";
 
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 56;
 const INK = rgb(0.28, 0.28, 0.28);
 const SAGE = rgb(0.63, 0.65, 0.57);
-const PENDING_RED = rgb(0.75, 0.1, 0.1);
 
 function encodable(font: PDFFont, text: string) {
   return Array.from(text)
@@ -90,7 +89,7 @@ export async function buildConsentPdf(
         y,
         size,
         font,
-        color: line.includes(PENDING) ? PENDING_RED : color,
+        color,
       });
       y -= size + gap;
     }
