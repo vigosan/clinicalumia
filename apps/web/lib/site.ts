@@ -25,7 +25,10 @@ export const site = {
   },
   maps: "https://www.google.com/maps/search/?api=1&query=Calle%20Montesa%207%2C%2046800%20X%C3%A0tiva%2C%20Valencia",
   instagram: "https://www.instagram.com/clinicalumiaxativa/",
-  schedule: [{ days: PENDING, hours: PENDING }],
+  schedule: [
+    { days: "Mañana", hours: "con cita previa" },
+    { days: "Tarde", hours: "de 15:15 a 20:30" },
+  ],
 } as const;
 
 export const nearbyTowns = [

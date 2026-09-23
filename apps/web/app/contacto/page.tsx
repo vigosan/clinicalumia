@@ -95,11 +95,19 @@ export default function ContactoPage() {
 
             <div>
               <h3 className="font-bold text-ink-600 text-lg">Horario</h3>
-              <p className="mt-2 text-ink-500">
-                {hasSchedule
-                  ? `${site.schedule[0].days}: ${site.schedule[0].hours}`
-                  : "Horario pendiente de confirmar"}
-              </p>
+              {hasSchedule ? (
+                <ul className="mt-2 text-ink-500">
+                  {site.schedule.map((slot) => (
+                    <li key={slot.days}>
+                      {slot.days}: {slot.hours}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-ink-500">
+                  Horario pendiente de confirmar
+                </p>
+              )}
             </div>
 
             <div>
