@@ -5,6 +5,7 @@ import { consentSources } from "@/lib/consent";
 import {
   consentClauses,
   marketingLabel,
+  mediaForTrainingLabel,
   privacyLabel,
 } from "@/lib/consent-legal";
 import { type ConsentFormState, sendConsent } from "../actions";
@@ -127,6 +128,14 @@ export function ConsentForm() {
             className="mt-1 size-4 accent-sage-600"
           />
           <span>{marketingLabel}</span>
+        </label>
+        <label className="flex items-start gap-3 text-ink-500 text-sm">
+          <input
+            type="checkbox"
+            name="mediaForTraining"
+            className="mt-1 size-4 accent-sage-600"
+          />
+          <span>{mediaForTrainingLabel}</span>
         </label>
       </div>
 

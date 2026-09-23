@@ -28,5 +28,8 @@ export const consentClauses = [
 
 export const marketingLabel = `Acepto recibir información sobre los servicios de ${site.name} por email u otros medios (opcional).`;
 
+export const mediaForTrainingLabel =
+  "Autorizo el uso de mis fotografías, audios o vídeos con fines de investigación, ponencias o cursos (opcional).";
+
 export const privacyLabel =
   "He leído la información sobre protección de datos y doy mi consentimiento para el tratamiento de mis datos.";

@@ -7,6 +7,7 @@ export type Consent = {
   email: string;
   sources: string[];
   marketing: boolean;
+  mediaForTraining: boolean;
   signature: string;
 };
 
@@ -88,6 +89,7 @@ export function parseConsent(
       email,
       sources,
       marketing: formData.get("marketing") === "on",
+      mediaForTraining: formData.get("mediaForTraining") === "on",
       signature,
     },
   };

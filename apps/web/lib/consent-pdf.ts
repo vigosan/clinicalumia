@@ -4,6 +4,7 @@ import {
   consentClauses,
   consentTitle,
   marketingLabel,
+  mediaForTrainingLabel,
   privacyLabel,
 } from "./consent-legal";
 import { PENDING, site } from "./site";
@@ -123,6 +124,7 @@ export async function buildConsentPdf(
 
   write(`[X] ${privacyLabel}`);
   write(`[${consent.marketing ? "X" : " "}] ${marketingLabel}`);
+  write(`[${consent.mediaForTraining ? "X" : " "}] ${mediaForTrainingLabel}`);
   y -= 10;
 
   const signer = consent.guardian || fullName;

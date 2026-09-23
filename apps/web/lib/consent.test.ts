@@ -41,6 +41,7 @@ describe("parseConsent", () => {
         email: "ana@example.com",
         sources: ["Familiares o amigos"],
         marketing: false,
+        mediaForTraining: false,
         signature,
       },
     });
@@ -81,6 +82,13 @@ describe("parseConsent", () => {
     const withBox = parseConsent(form({ marketing: "on" }), today);
     expect(withoutBox).toHaveProperty("consent.marketing", false);
     expect(withBox).toHaveProperty("consent.marketing", true);
+  });
+
+  it("never assumes consent to use images for research, talks or courses: it is a separate opt-in", () => {
+    const withoutBox = parseConsent(form(), today);
+    const withBox = parseConsent(form({ mediaForTraining: "on" }), today);
+    expect(withoutBox).toHaveProperty("consent.mediaForTraining", false);
+    expect(withBox).toHaveProperty("consent.mediaForTraining", true);
   });
 
   it("requires accepting the privacy policy", () => {

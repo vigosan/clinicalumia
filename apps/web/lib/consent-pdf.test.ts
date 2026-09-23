@@ -12,6 +12,7 @@ const consent: Consent = {
   email: "ana@example.com",
   sources: ["Familiares o amigos"],
   marketing: false,
+  mediaForTraining: false,
   signature:
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAEElEQVR4nGNgYGD4j4ZRBQB7pgf5fzpslgAAAABJRU5ErkJggg==",
 };
