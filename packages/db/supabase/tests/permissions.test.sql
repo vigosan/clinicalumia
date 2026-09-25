@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(17);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-000000000001', 'owner@test.local'),
@@ -55,6 +55,26 @@ select pg_temp.act_as('00000000-0000-0000-0000-000000000001');
 select lives_ok($$ insert into public.specialties (name, slug) values ('Y', 'y') $$,
   'the active owner can change clinic configuration');
 
+select is((select count(*) from public.profiles where id = '00000000-0000-0000-0000-000000000002'), 1::bigint,
+  'an active owner can read another member''s profile');
+
+update public.profiles set full_name = 'Actualizado por owner' where id = '00000000-0000-0000-0000-000000000002';
+reset role;
+select is((select full_name from public.profiles where id = '00000000-0000-0000-0000-000000000002'), 'Actualizado por owner',
+  'an active owner can update another member''s profile');
+
+select pg_temp.act_as('00000000-0000-0000-0000-000000000002');
+update public.specialties set name = 'Hackeada' where slug = 'prueba';
+reset role;
+select is((select name from public.specialties where slug = 'prueba'), 'Prueba',
+  'an active employee cannot update a specialty');
+
+select pg_temp.act_as('00000000-0000-0000-0000-000000000002');
+delete from public.specialties where slug = 'prueba';
+reset role;
+select is((select count(*) from public.specialties where slug = 'prueba'), 1::bigint,
+  'an active employee cannot delete a specialty');
+
 reset role;
 update public.profiles set is_active = false where id = '00000000-0000-0000-0000-000000000001';
 select pg_temp.act_as('00000000-0000-0000-0000-000000000001');
@@ -63,7 +83,7 @@ select is((select count(*) from public.profiles where id <> '00000000-0000-0000-
 
 update public.profiles set full_name = 'Hacked' where id = '00000000-0000-0000-0000-000000000002';
 reset role;
-select is((select full_name from public.profiles where id = '00000000-0000-0000-0000-000000000002'), 'Employee',
+select is((select full_name from public.profiles where id = '00000000-0000-0000-0000-000000000002'), 'Actualizado por owner',
   'a deactivated owner cannot update another profile');
 
 select pg_temp.act_as('00000000-0000-0000-0000-000000000001');
