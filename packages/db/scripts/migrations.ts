@@ -19,6 +19,24 @@ export function migrationStatus(
   }));
 }
 
+export type ConfiguredEnvironments = { dev: boolean; prod: boolean };
+export type MigrationStatusDisplayRow = {
+  version: string;
+  dev: string;
+  prod: string;
+};
+
+export function formatMigrationStatus(
+  rows: MigrationRow[],
+  configured: ConfiguredEnvironments,
+): MigrationStatusDisplayRow[] {
+  return rows.map((row) => ({
+    version: row.version,
+    dev: configured.dev ? (row.dev ? "✓" : "pendiente") : "sin configurar",
+    prod: configured.prod ? (row.prod ? "✓" : "pendiente") : "sin configurar",
+  }));
+}
+
 export function promotionBlockers(
   local: string[],
   dev: string[],

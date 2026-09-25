@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatMigrationStatus,
   localVersions,
   migrationStatus,
   promotionBlockers,
@@ -29,6 +30,29 @@ describe("migrationStatus", () => {
     expect(migrationStatus(["1"], [], [])).toEqual([
       { version: "1", dev: false, prod: false },
     ]);
+  });
+});
+
+describe("formatMigrationStatus", () => {
+  it("shows a check or pendiente when both environments are configured", () => {
+    expect(
+      formatMigrationStatus(migrationStatus(["1", "2"], ["1"], []), {
+        dev: true,
+        prod: true,
+      }),
+    ).toEqual([
+      { version: "1", dev: "✓", prod: "pendiente" },
+      { version: "2", dev: "pendiente", prod: "pendiente" },
+    ]);
+  });
+
+  it("shows sin configurar for an environment with no DATABASE_URL, instead of throwing", () => {
+    expect(
+      formatMigrationStatus(migrationStatus(["1"], [], []), {
+        dev: true,
+        prod: false,
+      }),
+    ).toEqual([{ version: "1", dev: "pendiente", prod: "sin configurar" }]);
   });
 });
 

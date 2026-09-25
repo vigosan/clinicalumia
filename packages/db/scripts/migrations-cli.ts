@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import postgres from "postgres";
 import {
+  formatMigrationStatus,
   localVersions,
   migrationStatus,
   promotionBlockers,
@@ -23,28 +24,42 @@ async function appliedVersions(url: string | undefined): Promise<string[]> {
   }
 }
 
+async function appliedVersionsOrUnconfigured(
+  url: string | undefined,
+): Promise<{ configured: boolean; versions: string[] }> {
+  if (!url) return { configured: false, versions: [] };
+  return { configured: true, versions: await appliedVersions(url) };
+}
+
 async function main() {
   const command = process.argv[2];
   const local = localVersions(
     readdirSync(resolve(import.meta.dirname, "../supabase/migrations")),
   );
-  const [dev, prod] = await Promise.all([
-    appliedVersions(process.env.DEV_DATABASE_URL),
-    appliedVersions(process.env.PROD_DATABASE_URL),
-  ]);
 
   if (command === "status") {
+    const [dev, prod] = await Promise.all([
+      appliedVersionsOrUnconfigured(process.env.DEV_DATABASE_URL),
+      appliedVersionsOrUnconfigured(process.env.PROD_DATABASE_URL),
+    ]);
     console.table(
-      migrationStatus(local, dev, prod).map((row) => ({
+      formatMigrationStatus(
+        migrationStatus(local, dev.versions, prod.versions),
+        { dev: dev.configured, prod: prod.configured },
+      ).map((row) => ({
         migración: row.version,
-        dev: row.dev ? "✓" : "pendiente",
-        prod: row.prod ? "✓" : "pendiente",
+        dev: row.dev,
+        prod: row.prod,
       })),
     );
     return;
   }
 
   if (command === "check-promotable") {
+    const [dev, prod] = await Promise.all([
+      appliedVersions(process.env.DEV_DATABASE_URL),
+      appliedVersions(process.env.PROD_DATABASE_URL),
+    ]);
     const blockers = promotionBlockers(local, dev, prod);
     if (blockers.length > 0) {
       console.error(
