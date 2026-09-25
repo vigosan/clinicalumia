@@ -193,7 +193,7 @@ typecheck: ## Comprueba tipos
 test: ## Tests unitarios de todo el monorepo
 	pnpm turbo run test
 
-test.db: ## Tests de permisos de base de datos (pgTAP, Supabase local)
+test.db: db.start ## Tests de permisos de base de datos (pgTAP, Supabase local)
 	cd $(DB) && supabase test db
 
 clean: ## Borra compilados y dependencias
