@@ -4,7 +4,7 @@
 
 **Goal:** Dejar el monorepo listo para desarrollar con seguridad: un Makefile que lo hace todo, migraciones sincronizadas entre local, dev y prod, permisos de base de datos probados, tipos generados, acciones del admin seguras y que muestran sus errores, e invitaciones y contraseñas que funcionan.
 
-**Architecture:** Supabase local en Docker para desarrollar y ejecutar tests; `lumia-db-dev` y producción en la nube, alcanzadas solo con migraciones versionadas y un guardián que impide que producción vaya por delante de dev. La configuración de login vive en `packages/db/supabase/config.toml`, con un bloque `[remotes.*]` por entorno. El flujo de invitación y recuperación vive en el dashboard.
+**Architecture:** Supabase local en Docker Desktop para desarrollar y ejecutar tests; `lumia-db-dev` y producción en la nube, alcanzadas solo con migraciones versionadas y un guardián que impide que producción vaya por delante de dev. La configuración de login vive en `packages/db/supabase/config.toml`, con un bloque `[remotes.*]` por entorno. El flujo de invitación y recuperación vive en el dashboard.
 
 **Tech Stack:** pnpm 10 + Turborepo · Next.js 16 · Supabase CLI 2.116+ · Postgres + pgTAP · Vitest · Playwright · Biome.
 
@@ -90,8 +90,8 @@ check() {
 check "node >= 20" 'node -e "process.exit(Number(process.versions.node.split(\".\")[0]) >= 20 ? 0 : 1)"' "instala Node 20 o superior"
 check "pnpm" "pnpm --version" "corepack enable"
 check "supabase CLI" "supabase --version" "brew install supabase/tap/supabase"
-check "docker" "docker --version" "brew install --cask orbstack"
-check "docker en marcha" "docker info" "make docker.up"
+check "docker" "docker --version" "instala Docker Desktop: brew install --cask docker"
+check "docker en marcha" "docker info" "abre Docker Desktop o ejecuta make docker.up"
 
 exit "$missing"
 ```
@@ -101,7 +101,7 @@ exit "$missing"
 Run: `chmod +x scripts/doctor.sh && PATH=/usr/bin:/bin bash scripts/doctor.sh; echo "exit=$?"`
 Expected: líneas con `✗` para pnpm, supabase y docker, y `exit=1`.
 
-Run: `bash scripts/doctor.sh; echo "exit=$?"` (con OrbStack instalado y arrancado)
+Run: `bash scripts/doctor.sh; echo "exit=$?"` (con Docker Desktop abierto)
 Expected: todas con `✓` y `exit=0`.
 
 - [ ] **Step 3: Escribir `scripts/local-env.sh`**
@@ -155,8 +155,8 @@ doctor: ## Comprueba que tienes todo lo necesario
 setup: install docker.up db.start env.local ## Primera vez: instala, arranca Supabase local y genera los .env
 	@echo "Listo. Crea tu cuenta con: make db.bootstrap email=... password=... name=\"...\""
 
-docker.up: ## Arranca OrbStack (Docker) y espera a que responda
-	@docker info >/dev/null 2>&1 || (open -a OrbStack && until docker info >/dev/null 2>&1; do sleep 1; done)
+docker.up: ## Arranca Docker Desktop y espera a que responda
+	@docker info >/dev/null 2>&1 || (open -a Docker && until docker info >/dev/null 2>&1; do sleep 1; done)
 
 install: ## Instala dependencias
 	pnpm install
