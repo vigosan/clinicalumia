@@ -45,7 +45,7 @@ export default async function DashboardLayout({
       nav={[{ href: "/", label: "Inicio" }]}
       user={{
         name: profile.full_name,
-        detail: profile.role === "owner" ? "Propietaria" : "Empleado",
+        detail: profile.role === "owner" ? "Propietaria" : "Equipo",
       }}
       logout={
         <form action={logout}>
