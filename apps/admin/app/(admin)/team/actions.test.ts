@@ -19,7 +19,9 @@ vi.mock("@clinicalumia/api/auth", () => ({
   requireOwner: async () => ownerResult,
 }));
 
-const { setMemberActive, updateMember } = await import("./actions");
+const { createAdminClient } = await import("@clinicalumia/api/admin");
+const { createMember, resendInvite, setMemberActive, updateMember } =
+  await import("./actions");
 
 function nameForm(name: string) {
   const data = new FormData();
@@ -32,6 +34,7 @@ describe("team actions", () => {
     ownerResult = owner;
     result.error = null;
     updateEq.mockClear();
+    vi.mocked(createAdminClient).mockClear();
   });
 
   it("refuses updateMember for a non-owner and skips the update", async () => {
@@ -54,5 +57,24 @@ describe("team actions", () => {
     expect(await setMemberActive("other-id", false)).toEqual({
       error: "No se ha podido cambiar el estado.",
     });
+  });
+
+  it("refuses createMember for a non-owner and never touches the admin client", async () => {
+    ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
+    const data = new FormData();
+    data.set("email", "nuevo@lumia.test");
+    data.set("full_name", "Nueva Persona");
+    expect(await createMember(undefined, data)).toEqual({
+      error: "No tienes permiso para hacer esto.",
+    });
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("refuses resendInvite for a non-owner and never touches the admin client", async () => {
+    ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
+    expect(await resendInvite("nuevo@lumia.test")).toEqual({
+      error: "No tienes permiso para hacer esto.",
+    });
+    expect(createAdminClient).not.toHaveBeenCalled();
   });
 });
