@@ -13,18 +13,22 @@ test("the admin shows an error when a specialty name is already taken", async ({
 }) => {
   const email = `duena-${Date.now()}@test.local`;
   const password = "lumia-segura-2026";
-  const { data } = await admin.auth.admin.createUser({
+  const { data, error: createUserError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
   });
-  await admin.from("profiles").insert({
+  expect(createUserError).toBeNull();
+  expect(data.user).not.toBeNull();
+
+  const { error: profileError } = await admin.from("profiles").insert({
     id: data.user!.id,
     email,
     full_name: "Dueña de prueba",
     role: "owner",
     is_active: true,
   });
+  expect(profileError).toBeNull();
 
   await page.goto("http://localhost:3002/login");
   await page.fill('[name="email"]', email);

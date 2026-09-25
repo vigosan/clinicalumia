@@ -13,13 +13,18 @@ test("an invited employee sets a password and lands in the dashboard", async ({
   page,
 }) => {
   const email = `empleado-${Date.now()}@test.local`;
-  const { data } = await admin.auth.admin.inviteUserByEmail(email);
-  await admin.from("profiles").insert({
+  const { data, error: inviteError } =
+    await admin.auth.admin.inviteUserByEmail(email);
+  expect(inviteError).toBeNull();
+  expect(data.user).not.toBeNull();
+
+  const { error: profileError } = await admin.from("profiles").insert({
     id: data.user!.id,
     email,
     full_name: "Empleada de prueba",
     role: "employee",
   });
+  expect(profileError).toBeNull();
 
   await page.goto(await latestLinkFor(email, "/auth/confirm"));
   await page.fill('[name="password"]', "corta");
