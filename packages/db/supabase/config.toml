@@ -215,8 +215,10 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = false
+# In this Supabase CLI version, disabling this also disables email/password
+# login entirely, not just self-registration, so it must stay on: the
+# top-level [auth] enable_signup already blocks public self-registration.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
