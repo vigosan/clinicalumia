@@ -33,3 +33,10 @@ create policy "specialties_select_active_staff"
   on public.specialties for select
   to authenticated
   using (public.is_active_staff());
+
+drop policy "profiles_select_self_or_owner" on public.profiles;
+
+create policy "profiles_select_self_or_owner"
+  on public.profiles for select
+  to authenticated
+  using ((id = auth.uid() and public.is_active_staff()) or public.is_owner());
