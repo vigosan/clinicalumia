@@ -58,11 +58,14 @@ export async function updateMember(
   id: string,
   formData: FormData,
 ): Promise<ActionResult> {
+  const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
   const fullName = String(formData.get("full_name") ?? "").trim();
   const specialtyId = String(formData.get("specialty_id") ?? "") || null;
   if (!fullName) return { error: "El nombre es obligatorio." };
 
-  const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
     .update({ full_name: fullName, specialty_id: specialtyId })
@@ -78,6 +81,12 @@ export async function setMemberActive(
   isActive: boolean,
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
+  if (!isActive && id === owner.userId)
+    return { error: "No puedes desactivar tu propia cuenta." };
+
   const { error } = await supabase
     .from("profiles")
     .update({ is_active: isActive })
