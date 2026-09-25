@@ -20,18 +20,21 @@ export function Field({
   error?: string;
   children: ReactElement<ControlProps>;
 }) {
-  const id = useId();
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
+  const generatedId = useId();
+  const controlId = children.props.id ?? generatedId;
+  const hintId = `${generatedId}-hint`;
+  const errorId = `${generatedId}-error`;
   const describedBy =
-    [hint && hintId, error && errorId].filter(Boolean).join(" ") || undefined;
+    [children.props["aria-describedby"], hint && hintId, error && errorId]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={controlId}>{label}</Label>
       {cloneElement(children, {
-        id,
-        "aria-invalid": error ? true : undefined,
+        id: controlId,
+        "aria-invalid": error ? true : children.props["aria-invalid"],
         "aria-describedby": describedBy,
       })}
       {hint && (

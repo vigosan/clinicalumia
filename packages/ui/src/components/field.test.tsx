@@ -51,4 +51,25 @@ describe("Field", () => {
     );
     expect(screen.getByLabelText("Nombre")).not.toHaveAttribute("aria-invalid");
   });
+
+  it("keeps the control's own id instead of replacing it with a generated one", () => {
+    render(
+      <Field label="Nombre">
+        <Input name="name" id="custom-id" />
+      </Field>,
+    );
+    expect(screen.getByLabelText("Nombre")).toHaveAttribute("id", "custom-id");
+  });
+
+  it("merges the control's own aria-describedby with the hint instead of overwriting it", () => {
+    render(
+      <Field label="Nombre" hint="Ayuda">
+        <Input name="name" aria-describedby="external-help" />
+      </Field>,
+    );
+    const input = screen.getByLabelText("Nombre");
+    const describedBy = input.getAttribute("aria-describedby")?.split(" ");
+    expect(describedBy).toContain("external-help");
+    expect(input).toHaveAccessibleDescription("Ayuda");
+  });
 });
