@@ -103,28 +103,31 @@ db.bootstrap: ## Crea la propietaria en local: make db.bootstrap email=... passw
 
 DEV_ENV := $(DB)/.env.dev
 PROD_ENV := $(DB)/.env.prod
-env_of = $(shell grep '^$(2)=' $(1) 2>/dev/null | cut -d= -f2- | tr -d '"')
 
 db.status: ## Qué migraciones tiene aplicadas dev y cuáles prod
-	@DEV_DATABASE_URL="$(call env_of,$(DEV_ENV),DATABASE_URL)" \
-	 PROD_DATABASE_URL="$(call env_of,$(PROD_ENV),DATABASE_URL)" \
+	@DEV_DATABASE_URL="$$(grep '^DATABASE_URL=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')" \
+	 PROD_DATABASE_URL="$$(grep '^DATABASE_URL=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')" \
 	 pnpm --silent --filter @clinicalumia/db migrations status
 
 db.push.dev: ## Aplica en lumia-db-dev las migraciones pendientes
-	cd $(DB) && supabase db push --db-url "$(call env_of,$(DEV_ENV),DATABASE_URL)"
+	@url="$$(grep '^DATABASE_URL=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 cd $(DB) && supabase db push --db-url "$$url"
 
 db.push.prod: ## Aplica en producción (solo si dev ya las tiene; pide confirmación)
-	@DEV_DATABASE_URL="$(call env_of,$(DEV_ENV),DATABASE_URL)" \
-	 PROD_DATABASE_URL="$(call env_of,$(PROD_ENV),DATABASE_URL)" \
+	@DEV_DATABASE_URL="$$(grep '^DATABASE_URL=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')" \
+	 PROD_DATABASE_URL="$$(grep '^DATABASE_URL=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')" \
 	 pnpm --silent --filter @clinicalumia/db migrations check-promotable
 	@read -p "¿Aplicar las migraciones pendientes en PRODUCCIÓN? Escribe 'produccion': " answer; \
 	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
-	cd $(DB) && supabase db push --db-url "$(call env_of,$(PROD_ENV),DATABASE_URL)"
+	@url="$$(grep '^DATABASE_URL=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 cd $(DB) && supabase db push --db-url "$$url"
 
 db.config.dev: ## Aplica la configuración de login (config.toml) a lumia-db-dev
-	cd $(DB) && supabase config push --project-ref "$(call env_of,$(DEV_ENV),SUPABASE_PROJECT_REF)"
+	@ref="$$(grep '^SUPABASE_PROJECT_REF=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 cd $(DB) && supabase config push --project-ref "$$ref"
 
 db.config.prod: ## Aplica la configuración de login a producción (pide confirmación)
 	@read -p "¿Aplicar config.toml en PRODUCCIÓN? Escribe 'produccion': " answer; \
 	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
-	cd $(DB) && supabase config push --project-ref "$(call env_of,$(PROD_ENV),SUPABASE_PROJECT_REF)"
+	@ref="$$(grep '^SUPABASE_PROJECT_REF=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 cd $(DB) && supabase config push --project-ref "$$ref"
