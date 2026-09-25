@@ -52,6 +52,43 @@ test("deleting a specialty asks for confirmation and only deletes after confirmi
   await expect(row).toHaveCount(0);
 });
 
+test("deactivating a team member asks for confirmation, and reactivating is immediate", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  const fullName = `Empleada UI ${Date.now()}`;
+  const { data, error } = await admin.auth.admin.createUser({
+    email: `member-ui-${Date.now()}@test.local`,
+    password: "lumia-segura-2026",
+    email_confirm: true,
+  });
+  expect(error).toBeNull();
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: data.user!.id,
+    email: data.user!.email,
+    full_name: fullName,
+    role: "employee",
+    is_active: true,
+  });
+  expect(profileError).toBeNull();
+
+  await page.goto(`${ADMIN}/team`);
+  const row = page.getByRole("listitem").filter({ hasText: fullName });
+  await row.getByRole("button", { name: "Desactivar" }).click();
+  await expect(
+    page.getByRole("alertdialog", { name: `¿Desactivar a ${fullName}?` }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await expect(row.getByRole("button", { name: "Desactivar" })).toBeVisible();
+
+  await row.getByRole("button", { name: "Desactivar" }).click();
+  await page.getByTestId("confirm-action").click();
+  await expect(row.getByTestId("member-status")).toBeVisible();
+
+  await row.getByRole("button", { name: "Activar" }).click();
+  await expect(row.getByTestId("member-status")).toHaveCount(0);
+});
+
 test("the section menu marks the current page and stays usable on a phone", async ({
   page,
 }) => {

@@ -2,6 +2,7 @@
 
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
+import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
@@ -143,17 +144,34 @@ export function MemberRow({
         >
           Reenviar invitación
         </Button>
-        <Button
-          type="button"
-          variant={member.is_active ? "danger" : "secondary"}
-          size="sm"
-          disabled={pending}
-          onClick={() =>
-            run(() => setMemberActive(member.id, !member.is_active))
-          }
-        >
-          {member.is_active ? "Desactivar" : "Activar"}
-        </Button>
+        {member.is_active ? (
+          <ConfirmDialog
+            trigger={
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                disabled={pending}
+              >
+                Desactivar
+              </Button>
+            }
+            title={`¿Desactivar a ${member.full_name}?`}
+            description="Dejará de poder entrar en el dashboard. Puedes volver a activarla cuando quieras."
+            confirmLabel="Desactivar"
+            onConfirm={() => run(() => setMemberActive(member.id, false))}
+          />
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={pending}
+            onClick={() => run(() => setMemberActive(member.id, true))}
+          >
+            Activar
+          </Button>
+        )}
       </div>
       {error && (
         <p
