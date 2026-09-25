@@ -90,8 +90,8 @@ check() {
 check "node >= 20" 'node -e "process.exit(Number(process.versions.node.split(\".\")[0]) >= 20 ? 0 : 1)"' "instala Node 20 o superior"
 check "pnpm" "pnpm --version" "corepack enable"
 check "supabase CLI" "supabase --version" "brew install supabase/tap/supabase"
-check "docker" "docker --version" "instala Docker Desktop: brew install --cask docker"
-check "docker en marcha" "docker info" "abre Docker Desktop o ejecuta make docker.up"
+check "docker" "docker --version" "instala OrbStack (brew install --cask orbstack) o Docker Desktop"
+check "docker en marcha" "docker info" "abre OrbStack o Docker Desktop, o ejecuta make docker.up"
 
 exit "$missing"
 ```
@@ -155,8 +155,8 @@ doctor: ## Comprueba que tienes todo lo necesario
 setup: install docker.up db.start env.local ## Primera vez: instala, arranca Supabase local y genera los .env
 	@echo "Listo. Crea tu cuenta con: make db.bootstrap email=... password=... name=\"...\""
 
-docker.up: ## Arranca Docker Desktop y espera a que responda
-	@docker info >/dev/null 2>&1 || (open -a Docker && until docker info >/dev/null 2>&1; do sleep 1; done)
+docker.up: ## Arranca Docker (OrbStack o Docker Desktop) y espera a que responda
+	@docker info >/dev/null 2>&1 || ((open -a OrbStack 2>/dev/null || open -a Docker) && until docker info >/dev/null 2>&1; do sleep 1; done)
 
 install: ## Instala dependencias
 	pnpm install

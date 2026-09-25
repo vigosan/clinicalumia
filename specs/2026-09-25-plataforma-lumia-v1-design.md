@@ -73,7 +73,7 @@ La agenda reserva "recursos" (hoy, profesionales; mañana, también salas). Las 
   - `make db.push.prod` — pide confirmación y se niega si alguna migración no está aplicada antes en dev.
   - `make db.types` — genera `packages/db/types.ts` desde dev; el archivo se versiona y lo usan `packages/api` y las apps.
   - `make db.config.dev` / `make db.config.prod` — aplican la configuración de login (`supabase/config.toml` más una sección por entorno) para que tampoco se desalinee.
-- **Desarrollo local**: Supabase local en Docker (Docker Desktop, ya instalado en el Mac) para desarrollar y ejecutar los tests sin tocar `lumia-db-dev`; `lumia-db-dev` es el entorno compartido de pruebas antes de producción.
+- **Desarrollo local**: Supabase local en Docker (OrbStack en el Mac; también sirve Docker Desktop) para desarrollar y ejecutar los tests sin tocar `lumia-db-dev`; `lumia-db-dev` es el entorno compartido de pruebas antes de producción.
 - **Makefile como punto de entrada único** de todo el desarrollo: comprobar requisitos, instalar, arrancar y parar Docker y Supabase local, levantar las apps, tests, lint, tipos, migraciones por entorno y despliegues. `make help` los lista todos.
 
 ### 4.2 Esquema (migraciones de esta pieza)
@@ -138,7 +138,7 @@ Pacientes, agenda, reserva web, área de paciente, pagos, facturación y consent
 - **Email**: verificar el dominio `clinicalumia.es` en Resend antes de enviar invitaciones y avisos de citas.
 - **RGPD**: registro de actividades de tratamiento y contratos de encargado con Supabase, Vercel, Resend y el banco (gestoría o asesor).
 - **Planes**: Vercel Pro y Supabase Pro (sección 4.6).
-- **Docker**: Docker Desktop ya está instalado; el Makefile comprueba que responde y lo abre si hace falta.
+- **Docker**: OrbStack instalado (licencia comercial de pago si se mantiene; Docker Desktop es alternativa gratuita para empresas pequeñas). El Makefile comprueba que responde y lo abre si hace falta.
 
 ## 6. Bocetos
 
