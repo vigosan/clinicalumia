@@ -4,7 +4,8 @@ DB := packages/db
 
 .PHONY: help doctor setup docker.up install env.local dev dev.web dev.admin dev.dashboard stop \
         build lint format typecheck test test.db clean \
-        db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap
+        db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
+        db.status db.push.dev db.push.prod
 
 help: ## Muestra los comandos disponibles
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -92,3 +93,23 @@ db.bootstrap: ## Crea la propietaria en local: make db.bootstrap email=... passw
 		SUPABASE_SERVICE_ROLE_KEY=$$(supabase status -o env | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"') \
 		OWNER_EMAIL="$(email)" OWNER_PASSWORD="$(password)" OWNER_FULL_NAME="$(name)" \
 		pnpm bootstrap:owner
+
+DEV_ENV := $(DB)/.env.dev
+PROD_ENV := $(DB)/.env.prod
+env_of = $(shell grep '^$(2)=' $(1) 2>/dev/null | cut -d= -f2- | tr -d '"')
+
+db.status: ## Qué migraciones tiene aplicadas dev y cuáles prod
+	@DEV_DATABASE_URL="$(call env_of,$(DEV_ENV),DATABASE_URL)" \
+	 PROD_DATABASE_URL="$(call env_of,$(PROD_ENV),DATABASE_URL)" \
+	 pnpm --silent --filter @clinicalumia/db migrations status
+
+db.push.dev: ## Aplica en lumia-db-dev las migraciones pendientes
+	cd $(DB) && supabase db push --db-url "$(call env_of,$(DEV_ENV),DATABASE_URL)"
+
+db.push.prod: ## Aplica en producción (solo si dev ya las tiene; pide confirmación)
+	@DEV_DATABASE_URL="$(call env_of,$(DEV_ENV),DATABASE_URL)" \
+	 PROD_DATABASE_URL="$(call env_of,$(PROD_ENV),DATABASE_URL)" \
+	 pnpm --silent --filter @clinicalumia/db migrations check-promotable
+	@read -p "¿Aplicar las migraciones pendientes en PRODUCCIÓN? Escribe 'produccion': " answer; \
+	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
+	cd $(DB) && supabase db push --db-url "$(call env_of,$(PROD_ENV),DATABASE_URL)"
