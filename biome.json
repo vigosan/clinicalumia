@@ -18,7 +18,8 @@
       "!**/next-env.d.ts",
       "!**/*.tsbuildinfo",
       "!**/pnpm-lock.yaml",
-      "!**/*.css"
+      "!**/*.css",
+      "!**/packages/db/types.ts"
     ]
   },
   "formatter": {

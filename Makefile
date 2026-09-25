@@ -5,7 +5,7 @@ DB := packages/db
 .PHONY: help doctor setup docker.up install env.local dev dev.web dev.admin dev.dashboard stop \
         build lint format typecheck test test.db clean \
         db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
-        db.status db.push.dev db.push.prod db.config.dev db.config.prod
+        db.status db.push.dev db.push.prod db.config.dev db.config.prod db.types.check
 
 help: ## Muestra los comandos disponibles
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -77,6 +77,10 @@ db.migrate: ## Crea una migración: make db.migrate name=add_patients
 
 db.types: ## Genera packages/db/types.ts desde la base local
 	cd $(DB) && supabase gen types typescript --local > types.ts
+
+db.types.check: ## Falla si packages/db/types.ts no coincide con las migraciones
+	@cd $(DB) && supabase gen types typescript --local | diff -q - types.ts >/dev/null || \
+	 (echo "types.ts está desactualizado: ejecuta make db.types"; exit 1)
 
 db.studio: ## Abre Supabase Studio local
 	open http://localhost:54323

@@ -20,7 +20,8 @@
     "proxy.ts"
   ],
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
+    "@clinicalumia/db": "workspace:*",
+    "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.46.1"
   },
   "devDependencies": {
