@@ -1,8 +1,11 @@
 "use server";
 
 import { createAdminClient } from "@clinicalumia/api/admin";
+import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
+
+type ActionResult = { ok: true } | { error: string };
 
 export type CreateMemberState = { error: string } | { ok: true } | undefined;
 
@@ -10,6 +13,9 @@ export async function createMember(
   _prev: CreateMemberState,
   formData: FormData,
 ): Promise<CreateMemberState> {
+  const owner = await requireOwner(await createClient());
+  if (!owner.ok) return { error: owner.error };
+
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
@@ -71,8 +77,14 @@ export async function setMemberActive(id: string, isActive: boolean) {
   revalidatePath("/team");
 }
 
-export async function resendInvite(email: string) {
-  const admin = createAdminClient();
-  await admin.auth.admin.inviteUserByEmail(email);
+export async function resendInvite(email: string): Promise<ActionResult> {
+  const owner = await requireOwner(await createClient());
+  if (!owner.ok) return { error: owner.error };
+
+  const { error } =
+    await createAdminClient().auth.admin.inviteUserByEmail(email);
+  if (error) return { error: "No se ha podido reenviar la invitación." };
+
   revalidatePath("/team");
+  return { ok: true };
 }

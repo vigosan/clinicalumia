@@ -108,7 +108,11 @@ export function MemberRow({
       <button
         type="button"
         disabled={pending}
-        onClick={() => startTransition(() => resendInvite(member.email))}
+        onClick={() =>
+          startTransition(() => {
+            resendInvite(member.email);
+          })
+        }
         className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500 disabled:opacity-60"
       >
         Reenviar invitación

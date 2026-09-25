@@ -7,17 +7,20 @@
     "./browser": "./browser.ts",
     "./server": "./server.ts",
     "./admin": "./admin.ts",
-    "./proxy": "./proxy.ts"
+    "./proxy": "./proxy.ts",
+    "./auth": "./auth.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .turbo"
+    "clean": "rm -rf .turbo",
+    "test": "vitest run"
   },
   "files": [
     "browser.ts",
     "server.ts",
     "admin.ts",
-    "proxy.ts"
+    "proxy.ts",
+    "auth.ts"
   ],
   "dependencies": {
     "@clinicalumia/db": "workspace:*",
@@ -28,7 +31,8 @@
     "@clinicalumia/config": "workspace:*",
     "@types/node": "^20",
     "next": "16.2.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.1"
   },
   "peerDependencies": {
     "next": "^16",
