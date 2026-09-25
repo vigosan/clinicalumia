@@ -19,6 +19,9 @@ dist/
 
 # testing
 coverage
+test-results
+playwright-report
+blob-report
 
 # misc
 .DS_Store

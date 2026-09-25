@@ -1,0 +1,12 @@
+{
+  "name": "@clinicalumia/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@supabase/supabase-js": "^2.46.1"
+  }
+}

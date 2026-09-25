@@ -3,7 +3,7 @@ SHELL := /bin/bash
 DB := packages/db
 
 .PHONY: help doctor setup docker.up install env.local dev dev.web dev.admin dev.dashboard stop \
-        build lint format typecheck test test.db clean \
+        build lint format typecheck test test.db test.e2e clean \
         db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
         db.status db.push.dev db.push.prod db.config.dev db.config.prod db.types.check
 
@@ -57,6 +57,9 @@ test: ## Tests unitarios de todo el monorepo
 
 test.db: db.start ## Tests de permisos de base de datos (pgTAP, Supabase local)
 	cd $(DB) && supabase test db
+
+test.e2e: db.start ## Tests de extremo a extremo (Playwright) contra Supabase local
+	pnpm --filter @clinicalumia/e2e test:e2e
 
 clean: ## Borra compilados y dependencias
 	pnpm turbo run clean
