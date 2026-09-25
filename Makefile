@@ -111,6 +111,7 @@ db.status: ## Qué migraciones tiene aplicadas dev y cuáles prod
 
 db.push.dev: ## Aplica en lumia-db-dev las migraciones pendientes
 	@url="$$(grep '^DATABASE_URL=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 if [ -z "$$url" ]; then echo "Falta DATABASE_URL en packages/db/.env.dev"; exit 1; fi; \
 	 cd $(DB) && supabase db push --db-url "$$url"
 
 db.push.prod: ## Aplica en producción (solo si dev ya las tiene; pide confirmación)
@@ -120,14 +121,17 @@ db.push.prod: ## Aplica en producción (solo si dev ya las tiene; pide confirmac
 	@read -p "¿Aplicar las migraciones pendientes en PRODUCCIÓN? Escribe 'produccion': " answer; \
 	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
 	@url="$$(grep '^DATABASE_URL=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 if [ -z "$$url" ]; then echo "Falta DATABASE_URL en packages/db/.env.prod"; exit 1; fi; \
 	 cd $(DB) && supabase db push --db-url "$$url"
 
 db.config.dev: ## Aplica la configuración de login (config.toml) a lumia-db-dev
 	@ref="$$(grep '^SUPABASE_PROJECT_REF=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 if [ -z "$$ref" ]; then echo "Falta SUPABASE_PROJECT_REF en packages/db/.env.dev"; exit 1; fi; \
 	 cd $(DB) && supabase config push --project-ref "$$ref"
 
 db.config.prod: ## Aplica la configuración de login a producción (pide confirmación)
 	@read -p "¿Aplicar config.toml en PRODUCCIÓN? Escribe 'produccion': " answer; \
 	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
 	@ref="$$(grep '^SUPABASE_PROJECT_REF=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 if [ -z "$$ref" ]; then echo "Falta SUPABASE_PROJECT_REF en packages/db/.env.prod"; exit 1; fi; \
 	 cd $(DB) && supabase config push --project-ref "$$ref"
