@@ -36,7 +36,7 @@ export async function createMember(
     id: invited.user.id,
     email,
     full_name: fullName,
-    role: "doctor",
+    role: "employee",
     specialty_id: specialtyId,
   });
 

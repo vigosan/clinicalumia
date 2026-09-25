@@ -9,7 +9,7 @@ export default async function TeamPage() {
     supabase
       .from("profiles")
       .select("id, email, full_name, specialty_id, is_active, role")
-      .eq("role", "doctor")
+      .eq("role", "employee")
       .order("full_name", { ascending: true }),
     supabase
       .from("specialties")
