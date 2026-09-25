@@ -181,9 +181,18 @@ importers:
         specifier: ^3.4.9
         version: 3.4.9
     devDependencies:
+      '@clinicalumia/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^20
+        version: 20.19.39
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
+      typescript:
+        specifier: ^5
+        version: 5.9.3
       vitest:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@20.19.39)(vite@8.3.0(@types/node@20.19.39)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0))
