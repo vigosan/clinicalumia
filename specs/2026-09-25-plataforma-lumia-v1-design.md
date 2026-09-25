@@ -1,6 +1,6 @@
 # Plataforma LUMIA v1 — Diseño
 
-Fecha: 2026-09-25 · Estado: pendiente de revisión
+Fecha: 2026-09-25 · Estado: aprobado
 
 ## 1. Objetivo
 
@@ -33,6 +33,7 @@ cerrar el trimestre, la gestoría recibe los totales y los PDF con un clic.
 | Área de paciente | En la web, acceso por código de un solo uso enviado al email (sin contraseña). Ver, cancelar y cambiar citas; pagar; descargar facturas; ver consentimientos; gestionar a hijos menores. |
 | Cancelación | Plazo de cancelación gratuita en horas, general y sobrescribible por servicio. Dentro de plazo, devolución automática de la señal por Redsys. Fuera de plazo o sin presentarse, la señal se queda en la clínica. Si cancela la clínica, siempre se devuelve. Se puede eximir de señal a pacientes con tratamiento continuado. |
 | Diseño | `packages/ui` compartido por web, admin y dashboard: tokens de marca LUMIA y componentes basados en shadcn/ui restilados. Aprobado a partir de las pantallas de ejemplo. |
+| Diseño visual | Aprobado con los bocetos de la sección 6: admin (facturas), dashboard (agenda del día) y hoja del sistema de diseño. |
 | Forma de trabajar | Commits pequeños e incrementales, cada uno compilando y con sus tests; TDD; un worktree por tarea. |
 
 ## 3. Hoja de ruta
@@ -72,7 +73,8 @@ La agenda reserva "recursos" (hoy, profesionales; mañana, también salas). Las 
   - `make db.push.prod` — pide confirmación y se niega si alguna migración no está aplicada antes en dev.
   - `make db.types` — genera `packages/db/types.ts` desde dev; el archivo se versiona y lo usan `packages/api` y las apps.
   - `make db.config.dev` / `make db.config.prod` — aplican la configuración de login (`supabase/config.toml` más una sección por entorno) para que tampoco se desalinee.
-- **Desarrollo local** contra `lumia-db-dev`. Los tests de base de datos (4.7) necesitan Supabase local, así que hace falta Docker; se propone OrbStack.
+- **Desarrollo local**: Supabase local en Docker (OrbStack en el Mac) para desarrollar y ejecutar los tests sin tocar `lumia-db-dev`; `lumia-db-dev` es el entorno compartido de pruebas antes de producción.
+- **Makefile como punto de entrada único** de todo el desarrollo: comprobar requisitos, instalar, arrancar y parar Docker y Supabase local, levantar las apps, tests, lint, tipos, migraciones por entorno y despliegues. `make help` los lista todos.
 
 ### 4.2 Esquema (migraciones de esta pieza)
 
@@ -136,4 +138,14 @@ Pacientes, agenda, reserva web, área de paciente, pagos, facturación y consent
 - **Email**: verificar el dominio `clinicalumia.es` en Resend antes de enviar invitaciones y avisos de citas.
 - **RGPD**: registro de actividades de tratamiento y contratos de encargado con Supabase, Vercel, Resend y el banco (gestoría o asesor).
 - **Planes**: Vercel Pro y Supabase Pro (sección 4.6).
-- **Docker**: OrbStack en el Mac para los tests de base de datos.
+- **Docker**: instalar OrbStack en el Mac (el Makefile comprueba que está y avisa si no).
+
+## 6. Bocetos
+
+Datos de ejemplo inventados. Original editable: https://claude.ai/artifact/VWXVLhekxVFdp5JKH4pR2h
+
+![Admin · Facturas](bocetos/admin-facturas.png)
+
+![Dashboard · Agenda del día](bocetos/dashboard-agenda.png)
+
+![Sistema de diseño](bocetos/sistema-de-diseno.png)
