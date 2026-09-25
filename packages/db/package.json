@@ -15,7 +15,7 @@
     "migrations": "tsx scripts/migrations-cli.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.46.1",
+    "@supabase/supabase-js": "^2.117.1",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
