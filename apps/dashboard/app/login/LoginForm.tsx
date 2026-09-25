@@ -1,5 +1,11 @@
 "use client";
 
+import { AuthCard } from "@clinicalumia/ui/auth-card";
+import { Button } from "@clinicalumia/ui/button";
+import { Field } from "@clinicalumia/ui/field";
+import { Input } from "@clinicalumia/ui/input";
+import logo from "@clinicalumia/ui/logo-dark.png";
+import Image from "next/image";
 import { useActionState } from "react";
 import { type LoginState, login } from "./actions";
 
@@ -9,74 +15,54 @@ export function LoginForm({ linkExpired }: { linkExpired: boolean }) {
   const [state, formAction, pending] = useActionState(login, initialState);
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <form
-        action={formAction}
-        className="w-full max-w-sm space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
-      >
-        <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            Clínica Lumia
-          </h1>
-          <p className="text-sm text-slate-500">Acceso del equipo</p>
-        </div>
-
+    <AuthCard
+      logo={
+        <Image
+          src={logo}
+          alt="LUMIA · Clínica Logopedia miofuncional"
+          width={160}
+          priority
+        />
+      }
+      title="Clínica LUMIA"
+      subtitle="Acceso del equipo"
+    >
+      <form action={formAction} className="flex flex-col gap-4">
         {linkExpired && (
           <p
             role="alert"
             data-testid="login-link-expired"
-            className="text-sm text-red-600"
+            className="rounded-field bg-warning-100 px-3.5 py-2.5 text-[13px] text-warning-800"
           >
             El enlace ha caducado o ya se usó. Pide uno nuevo desde «¿Has
             olvidado tu contraseña?».
           </p>
         )}
 
-        <div className="space-y-4">
-          <label className="block space-y-1 text-sm">
-            <span className="text-slate-700">Email</span>
-            <input
-              type="email"
-              name="email"
-              required
-              autoComplete="email"
-              className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-500"
-            />
-          </label>
+        <Field label="Email">
+          <Input type="email" name="email" required autoComplete="email" />
+        </Field>
 
-          <label className="block space-y-1 text-sm">
-            <span className="text-slate-700">Contraseña</span>
-            <input
-              type="password"
-              name="password"
-              required
-              autoComplete="current-password"
-              className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-500"
-            />
-          </label>
-        </div>
+        <Field label="Contraseña" error={state?.error}>
+          <Input
+            type="password"
+            name="password"
+            required
+            autoComplete="current-password"
+          />
+        </Field>
 
-        {state?.error && (
-          <p className="text-sm text-red-600" role="alert">
-            {state.error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
-        >
+        <Button type="submit" disabled={pending} className="mt-2 w-full">
           {pending ? "Entrando…" : "Entrar"}
-        </button>
+        </Button>
 
         <a
           href="/login/recuperar"
-          className="block text-center text-sm text-slate-600 underline"
+          className="text-center text-sm text-sage-800 underline underline-offset-4"
         >
           ¿Has olvidado tu contraseña?
         </a>
       </form>
-    </main>
+    </AuthCard>
   );
 }

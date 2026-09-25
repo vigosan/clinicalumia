@@ -1,5 +1,11 @@
 "use client";
 
+import { AuthCard } from "@clinicalumia/ui/auth-card";
+import { Button } from "@clinicalumia/ui/button";
+import { Field } from "@clinicalumia/ui/field";
+import { Input } from "@clinicalumia/ui/input";
+import logo from "@clinicalumia/ui/logo-dark.png";
+import Image from "next/image";
 import { startTransition, useActionState } from "react";
 import { type RecoverState, requestRecovery } from "./actions";
 
@@ -12,11 +18,21 @@ export default function RecoverPage() {
   );
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
+    <AuthCard
+      logo={
+        <Image
+          src={logo}
+          alt="LUMIA · Clínica Logopedia miofuncional"
+          width={160}
+          priority
+        />
+      }
+      title="Recuperar contraseña"
+    >
       {state && "sent" in state ? (
         <p
           data-testid="recover-sent"
-          className="max-w-sm text-center text-slate-700"
+          className="text-center text-[15px] text-ink-800"
         >
           Si el email tiene cuenta, te hemos enviado un enlace para cambiar la
           contraseña.
@@ -28,37 +44,32 @@ export default function RecoverPage() {
             const formData = new FormData(event.currentTarget);
             startTransition(() => formAction(formData));
           }}
-          className="w-full max-w-sm space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
+          className="flex flex-col gap-4"
         >
-          <h1 className="text-center text-2xl font-semibold text-slate-900">
-            Recuperar contraseña
-          </h1>
-          <label className="block space-y-1 text-sm">
-            <span className="text-slate-700">Email</span>
-            <input
+          <Field label="Email">
+            <Input
               type="email"
               name="email"
               required
               autoComplete="email"
               data-testid="recover-email"
-              className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2"
             />
-          </label>
+          </Field>
           {state && "error" in state && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-[13px] text-danger-600">
               {state.error}
             </p>
           )}
-          <button
+          <Button
             type="submit"
             disabled={pending}
             data-testid="recover-submit"
-            className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="w-full"
           >
             {pending ? "Enviando…" : "Enviarme el enlace"}
-          </button>
+          </Button>
         </form>
       )}
-    </main>
+    </AuthCard>
   );
 }
