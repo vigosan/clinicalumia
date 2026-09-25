@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@clinicalumia/api": "workspace:*",
+    "@clinicalumia/ui": "workspace:*",
     "@supabase/supabase-js": "^2.46.1",
     "next": "16.2.4",
     "react": "19.2.4",

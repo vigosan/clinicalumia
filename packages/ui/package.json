@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./brand.css": "./src/styles/brand.css",
+    "./app.css": "./src/styles/app.css",
     "./fonts": "./src/fonts.ts",
     "./logo-dark.png": "./src/assets/logo-dark.png"
   },

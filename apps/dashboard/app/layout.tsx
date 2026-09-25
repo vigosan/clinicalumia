@@ -1,10 +1,6 @@
+import { neueHaas } from "@clinicalumia/ui/fonts";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Dashboard | Clínica Lumia",
@@ -18,8 +14,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.className} h-full`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="es" className={`${neueHaas.variable} h-full`}>
+      <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );
 }

@@ -1,0 +1,16 @@
+@theme {
+  --text-title: 2.25rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.01em;
+  --radius-field: 0.875rem;
+  --radius-card: 1.5rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-cream-50);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}

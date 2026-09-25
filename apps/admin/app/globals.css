@@ -1,6 +1,4 @@
 @import "tailwindcss";
-
-body {
-  background: #f8fafc;
-  color: #0f172a;
-}
+@import "@clinicalumia/ui/brand.css";
+@import "@clinicalumia/ui/app.css";
+@source "../../../packages/ui/src";
