@@ -4,8 +4,7 @@ import { createAdminClient } from "@clinicalumia/api/admin";
 import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
-
-type ActionResult = { ok: true } | { error: string };
+import type { ActionResult } from "@/lib/action-result";
 
 export type CreateMemberState = { error: string } | { ok: true } | undefined;
 
@@ -55,26 +54,38 @@ export async function createMember(
   return { ok: true };
 }
 
-export async function updateMember(id: string, formData: FormData) {
+export async function updateMember(
+  id: string,
+  formData: FormData,
+): Promise<ActionResult> {
   const fullName = String(formData.get("full_name") ?? "").trim();
-  const rawSpecialty = String(formData.get("specialty_id") ?? "");
-  const specialtyId = rawSpecialty || null;
-
-  if (!fullName) return;
+  const specialtyId = String(formData.get("specialty_id") ?? "") || null;
+  if (!fullName) return { error: "El nombre es obligatorio." };
 
   const supabase = await createClient();
-  await supabase
+  const { error } = await supabase
     .from("profiles")
     .update({ full_name: fullName, specialty_id: specialtyId })
     .eq("id", id);
+  if (error) return { error: "No se han podido guardar los cambios." };
 
   revalidatePath("/team");
+  return { ok: true };
 }
 
-export async function setMemberActive(id: string, isActive: boolean) {
+export async function setMemberActive(
+  id: string,
+  isActive: boolean,
+): Promise<ActionResult> {
   const supabase = await createClient();
-  await supabase.from("profiles").update({ is_active: isActive }).eq("id", id);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ is_active: isActive })
+    .eq("id", id);
+  if (error) return { error: "No se ha podido cambiar el estado." };
+
   revalidatePath("/team");
+  return { ok: true };
 }
 
 export async function resendInvite(email: string): Promise<ActionResult> {

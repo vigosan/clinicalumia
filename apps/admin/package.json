@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start --port 3002",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .next .turbo"
+    "clean": "rm -rf .next .turbo",
+    "test": "vitest run"
   },
   "dependencies": {
     "@clinicalumia/api": "workspace:*",
@@ -22,6 +23,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.1"
   }
 }

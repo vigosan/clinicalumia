@@ -12,14 +12,20 @@ type Specialty = {
 export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   if (editing) {
     return (
-      <li className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+      <li className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
         <form
           action={(formData) =>
             startTransition(async () => {
-              await renameSpecialty(specialty.id, formData);
+              const result = await renameSpecialty(specialty.id, formData);
+              if ("error" in result) {
+                setError(result.error);
+                return;
+              }
+              setError(null);
               setEditing(false);
             })
           }
@@ -48,12 +54,21 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
             Cancelar
           </button>
         </form>
+        {error && (
+          <p
+            role="alert"
+            data-testid="specialty-error"
+            className="w-full text-sm text-red-600"
+          >
+            {error}
+          </p>
+        )}
       </li>
     );
   }
 
   return (
-    <li className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+    <li className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
       <div className="flex-1">
         <p className="text-slate-900">{specialty.name}</p>
         <p className="text-xs text-slate-500">{specialty.slug}</p>
@@ -71,13 +86,25 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
         type="button"
         onClick={() => {
           if (!confirm(`¿Eliminar "${specialty.name}"?`)) return;
-          startTransition(() => deleteSpecialty(specialty.id));
+          startTransition(async () => {
+            const result = await deleteSpecialty(specialty.id);
+            setError("error" in result ? result.error : null);
+          });
         }}
         disabled={pending}
         className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:border-red-400 disabled:opacity-60"
       >
         {pending ? "…" : "Eliminar"}
       </button>
+      {error && (
+        <p
+          role="alert"
+          data-testid="specialty-error"
+          className="w-full text-sm text-red-600"
+        >
+          {error}
+        </p>
+      )}
     </li>
   );
 }

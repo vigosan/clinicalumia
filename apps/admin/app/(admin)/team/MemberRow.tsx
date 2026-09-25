@@ -22,6 +22,21 @@ export function MemberRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const run = (
+    action: () => Promise<{ ok: true } | { error: string }>,
+    onOk?: () => void,
+  ) =>
+    startTransition(async () => {
+      const result = await action();
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      onOk?.();
+    });
 
   const specialtyName = specialties.find(
     (s) => s.id === member.specialty_id,
@@ -32,10 +47,10 @@ export function MemberRow({
       <li className="rounded-lg border border-slate-200 bg-white px-4 py-3">
         <form
           action={(formData) =>
-            startTransition(async () => {
-              await updateMember(member.id, formData);
-              setEditing(false);
-            })
+            run(
+              () => updateMember(member.id, formData),
+              () => setEditing(false),
+            )
           }
           className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
         >
@@ -82,6 +97,15 @@ export function MemberRow({
             </button>
           </div>
         </form>
+        {error && (
+          <p
+            role="alert"
+            data-testid="member-error"
+            className="w-full text-sm text-red-600"
+          >
+            {error}
+          </p>
+        )}
       </li>
     );
   }
@@ -108,11 +132,7 @@ export function MemberRow({
       <button
         type="button"
         disabled={pending}
-        onClick={() =>
-          startTransition(() => {
-            resendInvite(member.email);
-          })
-        }
+        onClick={() => run(() => resendInvite(member.email))}
         className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500 disabled:opacity-60"
       >
         Reenviar invitación
@@ -121,9 +141,7 @@ export function MemberRow({
       <button
         type="button"
         disabled={pending}
-        onClick={() =>
-          startTransition(() => setMemberActive(member.id, !member.is_active))
-        }
+        onClick={() => run(() => setMemberActive(member.id, !member.is_active))}
         className={`rounded-md border px-3 py-1.5 text-sm transition disabled:opacity-60 ${
           member.is_active
             ? "border-red-200 text-red-600 hover:border-red-400"
@@ -132,6 +150,15 @@ export function MemberRow({
       >
         {member.is_active ? "Desactivar" : "Activar"}
       </button>
+      {error && (
+        <p
+          role="alert"
+          data-testid="member-error"
+          className="w-full text-sm text-red-600"
+        >
+          {error}
+        </p>
+      )}
     </li>
   );
 }
