@@ -93,7 +93,7 @@ db.mail: ## Abre el buzón local donde llegan los emails (invitaciones, recupera
 
 db.bootstrap: ## Crea la propietaria en local: make db.bootstrap email=... password=... name="..."
 	@if [ -z "$(email)" ] || [ -z "$(password)" ] || [ -z "$(name)" ]; then \
-		echo 'Uso: make db.bootstrap email=user@example.com password=secret name="Dra. Patricia"'; exit 1; \
+		echo 'Uso: make db.bootstrap email=user@example.com password=contrasena-larga-2026 name="Dra. Patricia"'; exit 1; \
 	fi
 	cd $(DB) && \
 		SUPABASE_URL=http://127.0.0.1:54321 \

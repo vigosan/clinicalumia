@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { validateOwnerPassword } from "./password";
 
 function readEnv(name: string): string {
   const value = process.env[name];
@@ -15,6 +16,12 @@ async function main() {
   const email = readEnv("OWNER_EMAIL");
   const password = readEnv("OWNER_PASSWORD");
   const fullName = readEnv("OWNER_FULL_NAME");
+
+  const passwordError = validateOwnerPassword(password);
+  if (passwordError) {
+    console.error(passwordError);
+    process.exit(1);
+  }
 
   const supabase = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
