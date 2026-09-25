@@ -1,4 +1,6 @@
 import { createClient } from "@clinicalumia/api/server";
+import { Card } from "@clinicalumia/ui/card";
+import { PageHeader } from "@clinicalumia/ui/page-header";
 import { CreateForm } from "./CreateForm";
 import { MemberRow } from "./MemberRow";
 
@@ -21,32 +23,31 @@ export default async function TeamPage() {
   const specialtyList = specialties ?? [];
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Equipo</h1>
-        <p className="text-sm text-slate-500">
-          Médicos y personal con acceso al dashboard. Al invitar a alguien
-          recibirá un email para fijar su contraseña.
-        </p>
-      </header>
-
-      <CreateForm specialties={specialtyList} />
-
+    <>
+      <PageHeader
+        title="Equipo"
+        description="Empleados con acceso al dashboard. Al invitar a alguien recibirá un email para crear su contraseña."
+      />
+      <Card>
+        <CreateForm specialties={specialtyList} />
+      </Card>
       {memberList.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          Aún no hay médicos en el equipo. Invita al primero arriba.
-        </p>
+        <Card className="text-center text-sm text-ink-800">
+          Aún no hay empleados. Invita al primero arriba.
+        </Card>
       ) : (
-        <ul className="space-y-2">
-          {memberList.map((member) => (
-            <MemberRow
-              key={member.id}
-              member={member}
-              specialties={specialtyList}
-            />
-          ))}
-        </ul>
+        <Card className="p-2">
+          <ul>
+            {memberList.map((member) => (
+              <MemberRow
+                key={member.id}
+                member={member}
+                specialties={specialtyList}
+              />
+            ))}
+          </ul>
+        </Card>
       )}
-    </div>
+    </>
   );
 }

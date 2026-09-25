@@ -1,5 +1,10 @@
 "use client";
 
+import { Badge } from "@clinicalumia/ui/badge";
+import { Button } from "@clinicalumia/ui/button";
+import { Field } from "@clinicalumia/ui/field";
+import { Input } from "@clinicalumia/ui/input";
+import { Select } from "@clinicalumia/ui/select";
 import { useState, useTransition } from "react";
 import { resendInvite, setMemberActive, updateMember } from "./actions";
 
@@ -44,7 +49,7 @@ export function MemberRow({
 
   if (editing) {
     return (
-      <li className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+      <li className="flex flex-wrap items-center gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t">
         <form
           action={(formData) =>
             run(
@@ -52,56 +57,48 @@ export function MemberRow({
               () => setEditing(false),
             )
           }
-          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+          className="grid flex-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
         >
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Nombre</span>
-            <input
-              type="text"
+          <Field label="Nombre">
+            <Input
               name="full_name"
               defaultValue={member.full_name}
               required
               autoFocus
-              className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 outline-none focus:border-slate-500"
             />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Especialidad</span>
-            <select
+          </Field>
+          <Field label="Especialidad">
+            <Select
               name="specialty_id"
               defaultValue={member.specialty_id ?? ""}
-              className="block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 outline-none focus:border-slate-500"
             >
-              <option value="">— Sin asignar —</option>
+              <option value="">Sin asignar</option>
               {specialties.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
-            >
+            <Button type="submit" size="sm" disabled={pending}>
               {pending ? "Guardando…" : "Guardar"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setEditing(false)}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         </form>
         {error && (
           <p
             role="alert"
             data-testid="member-error"
-            className="w-full text-sm text-red-600"
+            className="w-full text-[13px] text-danger-600"
           >
             {error}
           </p>
@@ -111,50 +108,54 @@ export function MemberRow({
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
-      <div className="flex-1 min-w-0">
-        <p className="truncate text-slate-900">{member.full_name}</p>
-        <p className="truncate text-xs text-slate-500">
-          {member.email}
-          {specialtyName ? ` · ${specialtyName}` : " · sin especialidad"}
-          {!member.is_active && " · inactivo"}
+    <li className="flex flex-wrap items-center gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="truncate text-[15px] font-medium text-ink-900">
+          {member.full_name}
         </p>
+        <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-800">
+          <span className="truncate">{member.email}</span>
+          <Badge tone={specialtyName ? "success" : "neutral"}>
+            {specialtyName ?? "Sin especialidad"}
+          </Badge>
+          {!member.is_active && (
+            <Badge tone="warning" data-testid="member-status">
+              Inactivo
+            </Badge>
+          )}
+        </div>
       </div>
-
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         onClick={() => setEditing(true)}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500"
       >
         Editar
-      </button>
-
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         disabled={pending}
         onClick={() => run(() => resendInvite(member.email))}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500 disabled:opacity-60"
       >
         Reenviar invitación
-      </button>
-
-      <button
+      </Button>
+      <Button
         type="button"
+        variant={member.is_active ? "danger" : "secondary"}
+        size="sm"
         disabled={pending}
         onClick={() => run(() => setMemberActive(member.id, !member.is_active))}
-        className={`rounded-md border px-3 py-1.5 text-sm transition disabled:opacity-60 ${
-          member.is_active
-            ? "border-red-200 text-red-600 hover:border-red-400"
-            : "border-emerald-300 text-emerald-700 hover:border-emerald-500"
-        }`}
       >
         {member.is_active ? "Desactivar" : "Activar"}
-      </button>
+      </Button>
       {error && (
         <p
           role="alert"
           data-testid="member-error"
-          className="w-full text-sm text-red-600"
+          className="w-full text-[13px] text-danger-600"
         >
           {error}
         </p>

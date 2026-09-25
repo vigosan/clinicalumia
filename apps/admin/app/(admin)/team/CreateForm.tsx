@@ -1,5 +1,9 @@
 "use client";
 
+import { Button } from "@clinicalumia/ui/button";
+import { Field } from "@clinicalumia/ui/field";
+import { Input } from "@clinicalumia/ui/input";
+import { Select } from "@clinicalumia/ui/select";
 import { useActionState, useEffect, useRef } from "react";
 import { type CreateMemberState, createMember } from "./actions";
 
@@ -25,68 +29,42 @@ export function CreateForm({
   }, [state]);
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className="space-y-3 rounded-xl border border-slate-200 bg-white p-4"
-    >
-      <p className="text-sm font-medium text-slate-700">Nuevo miembro</p>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Email</span>
-          <input
+    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+      <h2 className="text-lg font-bold text-ink-900">Invitar a un empleado</h2>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Email">
+          <Input
             type="email"
             name="email"
             required
-            placeholder="medico@clinicalumia.es"
-            className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-500"
+            placeholder="nombre@clinicalumia.es"
           />
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Nombre completo</span>
-          <input
-            type="text"
-            name="full_name"
-            required
-            placeholder="Dra. Patricia García"
-            className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-500"
-          />
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Especialidad</span>
-          <select
-            name="specialty_id"
-            defaultValue=""
-            className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-500"
-          >
-            <option value="">— Sin asignar —</option>
+        </Field>
+        <Field label="Nombre completo">
+          <Input name="full_name" required />
+        </Field>
+        <Field label="Especialidad">
+          <Select name="specialty_id" defaultValue="">
+            <option value="">Sin asignar</option>
             {specialties.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
       </div>
-
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
-        >
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending}>
           {pending ? "Invitando…" : "Invitar"}
-        </button>
+        </Button>
         {state && "error" in state && (
-          <p className="text-sm text-red-600" role="alert">
+          <p role="alert" className="text-[13px] text-danger-600">
             {state.error}
           </p>
         )}
         {state && "ok" in state && state.ok && (
-          <p className="text-sm text-emerald-700">
+          <p role="status" className="text-[13px] text-sage-900">
             Invitación enviada por email.
           </p>
         )}
