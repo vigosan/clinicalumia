@@ -1,5 +1,8 @@
 "use client";
 
+import { Button } from "@clinicalumia/ui/button";
+import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import { Input } from "@clinicalumia/ui/input";
 import { useState, useTransition } from "react";
 import { deleteSpecialty, renameSpecialty } from "./actions";
 
@@ -18,7 +21,7 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
     return (
       <li
         data-testid="specialty-row"
-        className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"
+        className="flex flex-wrap items-center gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t"
       >
         <form
           action={(formData) =>
@@ -34,36 +37,38 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
           }
           className="flex flex-1 items-center gap-3"
         >
-          <input
+          <Input
             type="text"
             name="name"
             defaultValue={specialty.name}
             required
             autoFocus
             data-testid="specialty-rename-input"
-            className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-slate-500"
+            className="flex-1"
+            aria-label="Nombre de la especialidad"
           />
-          <button
+          <Button
             type="submit"
+            size="sm"
             disabled={pending}
             data-testid="specialty-save"
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
           >
             {pending ? "Guardando…" : "Guardar"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => setEditing(false)}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500"
           >
             Cancelar
-          </button>
+          </Button>
         </form>
         {error && (
           <p
             role="alert"
             data-testid="specialty-error"
-            className="w-full text-sm text-red-600"
+            className="w-full text-[13px] text-danger-600"
           >
             {error}
           </p>
@@ -75,41 +80,50 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
   return (
     <li
       data-testid="specialty-row"
-      className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"
+      className="flex flex-wrap items-center gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t"
     >
       <div className="flex-1">
-        <p className="text-slate-900">{specialty.name}</p>
-        <p className="text-xs text-slate-500">{specialty.slug}</p>
+        <p className="text-[15px] font-medium text-ink-900">{specialty.name}</p>
+        <p className="text-xs text-ink-800">{specialty.slug}</p>
       </div>
 
-      <button
+      <Button
         type="button"
-        onClick={() => setEditing(true)}
+        variant="secondary"
+        size="sm"
         data-testid="specialty-edit"
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500"
+        onClick={() => setEditing(true)}
       >
         Editar
-      </button>
+      </Button>
 
-      <button
-        type="button"
-        onClick={() => {
-          if (!confirm(`¿Eliminar "${specialty.name}"?`)) return;
+      <ConfirmDialog
+        trigger={
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={pending}
+            data-testid="specialty-delete"
+          >
+            Eliminar
+          </Button>
+        }
+        title={`¿Eliminar «${specialty.name}»?`}
+        description="Los empleados que la tengan asignada se quedarán sin especialidad."
+        confirmLabel="Eliminar"
+        onConfirm={() =>
           startTransition(async () => {
             const result = await deleteSpecialty(specialty.id);
             setError("error" in result ? result.error : null);
-          });
-        }}
-        disabled={pending}
-        className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:border-red-400 disabled:opacity-60"
-      >
-        {pending ? "…" : "Eliminar"}
-      </button>
+          })
+        }
+      />
       {error && (
         <p
           role="alert"
           data-testid="specialty-error"
-          className="w-full text-sm text-red-600"
+          className="w-full text-[13px] text-danger-600"
         >
           {error}
         </p>

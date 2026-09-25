@@ -1,5 +1,8 @@
 "use client";
 
+import { Button } from "@clinicalumia/ui/button";
+import { Field } from "@clinicalumia/ui/field";
+import { Input } from "@clinicalumia/ui/input";
 import { useActionState, useEffect, useRef } from "react";
 import { createSpecialty, type SpecialtyFormState } from "./actions";
 
@@ -22,37 +25,24 @@ export function CreateForm() {
     <form
       ref={formRef}
       action={formAction}
-      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-end"
+      className="flex flex-col gap-3 sm:flex-row sm:items-end"
     >
-      <label className="flex-1 space-y-1 text-sm">
-        <span className="text-slate-700">Nueva especialidad</span>
-        <input
-          type="text"
-          name="name"
-          required
-          placeholder="Logopedia, Psicología…"
-          data-testid="specialty-name-input"
-          className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-500"
-        />
-      </label>
-
-      <button
-        type="submit"
-        disabled={pending}
-        data-testid="specialty-submit"
-        className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
-      >
-        {pending ? "Añadiendo…" : "Añadir"}
-      </button>
-
-      {state && "error" in state && (
-        <p
-          className="text-sm text-red-600 sm:order-last sm:w-full"
-          role="alert"
+      <div className="flex-1">
+        <Field
+          label="Nueva especialidad"
+          error={state && "error" in state ? state.error : undefined}
         >
-          {state.error}
-        </p>
-      )}
+          <Input
+            name="name"
+            required
+            placeholder="Logopedia, Psicología…"
+            data-testid="specialty-name-input"
+          />
+        </Field>
+      </div>
+      <Button type="submit" disabled={pending} data-testid="specialty-submit">
+        {pending ? "Añadiendo…" : "Añadir"}
+      </Button>
     </form>
   );
 }
