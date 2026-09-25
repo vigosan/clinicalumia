@@ -47,3 +47,11 @@ test("a used or expired invite link sends you to login with an explanation", asy
     "ha caducado o ya se usó",
   );
 });
+
+test("a spoofed forwarded host does not redirect off-site", async ({
+  page,
+}) => {
+  await page.setExtraHTTPHeaders({ "X-Forwarded-Host": "evil.example" });
+  await page.goto("/auth/confirm?token_hash=caducado&type=invite");
+  await expect(page).toHaveURL("http://localhost:3001/login?error=enlace");
+});

@@ -4,12 +4,8 @@ import { type NextRequest, NextResponse } from "next/server";
 
 const allowed: EmailOtpType[] = ["invite", "recovery"];
 
-function redirectTo(request: NextRequest, path: string) {
-  const host = request.headers.get("x-forwarded-host") ?? request.nextUrl.host;
-  const protocol =
-    request.headers.get("x-forwarded-proto") ??
-    request.nextUrl.protocol.replace(":", "");
-  return NextResponse.redirect(new URL(path, `${protocol}://${host}`));
+function redirectTo(path: string) {
+  return new NextResponse(null, { status: 307, headers: { Location: path } });
 }
 
 export async function GET(request: NextRequest) {
@@ -23,9 +19,9 @@ export async function GET(request: NextRequest) {
       token_hash: tokenHash,
     });
     if (!error) {
-      return redirectTo(request, "/auth/contrasena");
+      return redirectTo("/auth/contrasena");
     }
   }
 
-  return redirectTo(request, "/login?error=enlace");
+  return redirectTo("/login?error=enlace");
 }
