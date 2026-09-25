@@ -1,24 +1,7 @@
 @import "tailwindcss";
+@import "@clinicalumia/ui/brand.css";
 
 @theme {
-  --font-sans: var(--font-neue-haas), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-neue-haas), ui-sans-serif, system-ui, sans-serif;
-
-  --color-cream-50: #f1ede8;
-  --color-cream-100: #f1ede8;
-  --color-cream-200: #e5e1da;
-  --color-sage-300: #c3c7b8;
-  --color-sage-400: #b5b9a7;
-  --color-sage-500: #a1a791;
-  --color-sage-600: #8d927e;
-  --color-sage-700: #767b68;
-  --color-sage-800: #5c6151;
-  --color-ink-400: #9a9a9a;
-  --color-ink-500: #797979;
-  --color-ink-600: #797979;
-  --color-ink-700: #707070;
-  --color-bark-700: #5b483a;
-
   --text-hero: clamp(2.5rem, 4.167vw, 5rem);
   --text-hero--line-height: 1;
   --text-kicker: clamp(1rem, 1.354vw, 1.625rem);

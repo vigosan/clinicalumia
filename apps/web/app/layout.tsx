@@ -1,22 +1,11 @@
+import { neueHaas } from "@clinicalumia/ui/fonts";
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { pageMetadata } from "@/lib/metadata";
 import { servicePages } from "@/lib/service-pages";
 import { isPending, nearbyTowns, site } from "@/lib/site";
 import "./globals.css";
-
-const neueHaas = localFont({
-  src: [
-    { path: "./fonts/NeueHaasDisplayLight.woff2", weight: "300" },
-    { path: "./fonts/NeueHaasDisplayRoman.woff2", weight: "400" },
-    { path: "./fonts/NeueHaasDisplayMedium.woff2", weight: "500" },
-    { path: "./fonts/NeueHaasDisplayBold.woff2", weight: "700" },
-    { path: "./fonts/NeueHaasDisplayBlack.woff2", weight: "900" },
-  ],
-  variable: "--font-neue-haas",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),

@@ -1,0 +1,27 @@
+{
+  "name": "@clinicalumia/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./brand.css": "./src/styles/brand.css",
+    "./fonts": "./src/fonts.ts",
+    "./logo-dark.png": "./src/assets/logo-dark.png"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo"
+  },
+  "peerDependencies": {
+    "next": "16.2.4",
+    "react": "19.2.4"
+  },
+  "devDependencies": {
+    "@clinicalumia/config": "workspace:*",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "typescript": "^5"
+  }
+}
