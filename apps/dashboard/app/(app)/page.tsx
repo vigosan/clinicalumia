@@ -1,4 +1,5 @@
 import { createClient } from "@clinicalumia/api/server";
+import { PageHeader } from "@clinicalumia/ui/page-header";
 
 export default async function DashboardHome() {
   const supabase = await createClient();
@@ -25,15 +26,13 @@ export default async function DashboardHome() {
   const greeting = profile?.role === "owner" ? "Bienvenida" : "Hola";
 
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-semibold text-slate-900">
-        {greeting}, {profile?.full_name ?? "doctora"}
-      </h1>
-      <p className="text-slate-600">
-        {specialtyName
+    <PageHeader
+      title={`${greeting}, ${profile?.full_name ?? ""}`}
+      description={
+        specialtyName
           ? `Tu especialidad es ${specialtyName}.`
-          : "Aún no tienes una especialidad asignada."}
-      </p>
-    </div>
+          : "Aún no tienes una especialidad asignada."
+      }
+    />
   );
 }

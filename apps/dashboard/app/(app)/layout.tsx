@@ -1,5 +1,8 @@
 import { createClient } from "@clinicalumia/api/server";
-import Link from "next/link";
+import { AppShell } from "@clinicalumia/ui/app-shell";
+import { Button } from "@clinicalumia/ui/button";
+import logo from "@clinicalumia/ui/logo-dark.png";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { logout } from "./actions";
 
@@ -19,7 +22,7 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, is_active")
+    .select("full_name, is_active, role")
     .eq("id", user.id)
     .single();
 
@@ -29,29 +32,30 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="font-semibold text-slate-900">
-            Clínica Lumia
-          </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-600">{profile?.full_name}</span>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 transition hover:border-slate-500 hover:text-slate-900"
-              >
-                Salir
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        {children}
-      </main>
-    </div>
+    <AppShell
+      logo={
+        <Image
+          src={logo}
+          alt="LUMIA · Clínica Logopedia miofuncional"
+          width={150}
+          priority
+        />
+      }
+      section="Clínica"
+      nav={[{ href: "/", label: "Inicio" }]}
+      user={{
+        name: profile.full_name,
+        detail: profile.role === "owner" ? "Propietaria" : "Empleado",
+      }}
+      logout={
+        <form action={logout}>
+          <Button type="submit" variant="ghost" size="sm" data-testid="logout">
+            Salir
+          </Button>
+        </form>
+      }
+    >
+      {children}
+    </AppShell>
   );
 }
