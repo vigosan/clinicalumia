@@ -1,68 +1,94 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
+DB := packages/db
 
-.PHONY: help install dev stop build lint format typecheck test clean \
-        db.start db.stop db.reset db.migrate db.types db.studio db.bootstrap
+.PHONY: help doctor setup docker.up install env.local dev dev.web dev.admin dev.dashboard stop \
+        build lint format typecheck test test.db clean \
+        db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap
 
-help: ## Show available commands
+help: ## Muestra los comandos disponibles
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install workspace dependencies
+doctor: ## Comprueba que tienes todo lo necesario
+	@bash scripts/doctor.sh
+
+setup: install docker.up db.start env.local ## Primera vez: instala, arranca Supabase local y genera los .env
+	@echo "Listo. Crea tu cuenta con: make db.bootstrap email=... password=... name=\"...\""
+
+docker.up: ## Arranca Docker (OrbStack o Docker Desktop) y espera a que responda
+	@docker info >/dev/null 2>&1 || ((open -a OrbStack 2>/dev/null || open -a Docker) && until docker info >/dev/null 2>&1; do sleep 1; done)
+
+install: ## Instala dependencias
 	pnpm install
 
-dev: db.start ## Start full local stack (supabase + apps)
+env.local: ## Escribe apps/*/.env.development.local con las claves del Supabase local
+	@bash scripts/local-env.sh
+
+dev: db.start ## Arranca Supabase local y las tres apps
 	pnpm turbo run dev
 
-stop: db.stop ## Stop everything
+dev.web: ## Solo la web (puerto 3000)
+	pnpm --filter web dev
 
-build: ## Build all apps and packages
+dev.admin: db.start ## Solo el admin (puerto 3002)
+	pnpm --filter admin dev
+
+dev.dashboard: db.start ## Solo el dashboard (puerto 3001)
+	pnpm --filter dashboard dev
+
+stop: db.stop ## Para todo
+
+build: ## Compila apps y paquetes
 	pnpm turbo run build
 
-lint: ## Lint and format-check the repo with Biome
+lint: ## Lint y formato con Biome
 	pnpm lint
 
-format: ## Auto-format the repo with Biome
+format: ## Formatea con Biome
 	pnpm format
 
-typecheck: ## Typecheck all workspaces
+typecheck: ## Comprueba tipos
 	pnpm turbo run typecheck
 
-test: ## Run tests across the monorepo
+test: ## Tests unitarios de todo el monorepo
 	pnpm turbo run test
 
-clean: ## Remove build outputs and caches
+test.db: ## Tests de permisos de base de datos (pgTAP, Supabase local)
+	cd $(DB) && supabase test db
+
+clean: ## Borra compilados y dependencias
 	pnpm turbo run clean
 	rm -rf node_modules
 
-db.start: ## Start local Supabase (Postgres, Auth, Storage)
-	cd packages/db && supabase start
+db.start: docker.up ## Arranca Supabase local
+	@cd $(DB) && (supabase status >/dev/null 2>&1 || supabase start)
 
-db.stop: ## Stop local Supabase
-	cd packages/db && supabase stop
+db.stop: ## Para Supabase local
+	cd $(DB) && supabase stop
 
-db.reset: ## Reset local DB and re-apply migrations + seed
-	cd packages/db && supabase db reset
+db.reset: ## Reinicia la base local y aplica migraciones y seed
+	cd $(DB) && supabase db reset
 
-db.migrate: ## Create new migration: make db.migrate name=add_patients
-	@if [ -z "$(name)" ]; then echo "Usage: make db.migrate name=<migration_name>"; exit 1; fi
-	cd packages/db && supabase migration new $(name)
+db.migrate: ## Crea una migración: make db.migrate name=add_patients
+	@if [ -z "$(name)" ]; then echo "Uso: make db.migrate name=<nombre>"; exit 1; fi
+	cd $(DB) && supabase migration new $(name)
 
-db.types: ## Generate TypeScript types from local DB schema
-	cd packages/db && supabase gen types typescript --local > types.ts
+db.types: ## Genera packages/db/types.ts desde la base local
+	cd $(DB) && supabase gen types typescript --local > types.ts
 
-db.studio: ## Open Supabase Studio in browser
+db.studio: ## Abre Supabase Studio local
 	open http://localhost:54323
 
-db.bootstrap: ## Create the owner user. Usage: make db.bootstrap email=... password=... name="..."
+db.mail: ## Abre el buzón local donde llegan los emails (invitaciones, recuperación)
+	open http://localhost:54324
+
+db.bootstrap: ## Crea la propietaria en local: make db.bootstrap email=... password=... name="..."
 	@if [ -z "$(email)" ] || [ -z "$(password)" ] || [ -z "$(name)" ]; then \
-		echo 'Usage: make db.bootstrap email=user@example.com password=secret name="Dra. Patricia"'; \
-		exit 1; \
+		echo 'Uso: make db.bootstrap email=user@example.com password=secret name="Dra. Patricia"'; exit 1; \
 	fi
-	cd packages/db && \
+	cd $(DB) && \
 		SUPABASE_URL=http://127.0.0.1:54321 \
 		SUPABASE_SERVICE_ROLE_KEY=$$(supabase status -o env | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"') \
-		OWNER_EMAIL="$(email)" \
-		OWNER_PASSWORD="$(password)" \
-		OWNER_FULL_NAME="$(name)" \
+		OWNER_EMAIL="$(email)" OWNER_PASSWORD="$(password)" OWNER_FULL_NAME="$(name)" \
 		pnpm bootstrap:owner
