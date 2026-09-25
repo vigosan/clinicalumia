@@ -5,7 +5,7 @@ DB := packages/db
 .PHONY: help doctor setup docker.up install env.local dev dev.web dev.admin dev.dashboard stop \
         build lint format typecheck test test.db clean \
         db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
-        db.status db.push.dev db.push.prod
+        db.status db.push.dev db.push.prod db.config.dev db.config.prod
 
 help: ## Muestra los comandos disponibles
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -113,3 +113,11 @@ db.push.prod: ## Aplica en producción (solo si dev ya las tiene; pide confirmac
 	@read -p "¿Aplicar las migraciones pendientes en PRODUCCIÓN? Escribe 'produccion': " answer; \
 	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
 	cd $(DB) && supabase db push --db-url "$(call env_of,$(PROD_ENV),DATABASE_URL)"
+
+db.config.dev: ## Aplica la configuración de login (config.toml) a lumia-db-dev
+	cd $(DB) && supabase config push --project-ref "$(call env_of,$(DEV_ENV),SUPABASE_PROJECT_REF)"
+
+db.config.prod: ## Aplica la configuración de login a producción (pide confirmación)
+	@read -p "¿Aplicar config.toml en PRODUCCIÓN? Escribe 'produccion': " answer; \
+	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
+	cd $(DB) && supabase config push --project-ref "$(call env_of,$(PROD_ENV),SUPABASE_PROJECT_REF)"
