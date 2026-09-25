@@ -1,5 +1,6 @@
 "use server";
 
+import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
@@ -20,13 +21,16 @@ export async function createSpecialty(
   _prev: SpecialtyFormState,
   formData: FormData,
 ): Promise<SpecialtyFormState> {
+  const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "El nombre es obligatorio." };
 
   const slug = slugify(name);
   if (!slug) return { error: "El nombre no es válido." };
 
-  const supabase = await createClient();
   const { error } = await supabase.from("specialties").insert({ name, slug });
 
   if (error) {
@@ -43,10 +47,13 @@ export async function renameSpecialty(
   id: string,
   formData: FormData,
 ): Promise<ActionResult> {
+  const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "El nombre es obligatorio." };
 
-  const supabase = await createClient();
   const { error } = await supabase
     .from("specialties")
     .update({ name, slug: slugify(name) })
@@ -62,6 +69,9 @@ export async function renameSpecialty(
 
 export async function deleteSpecialty(id: string): Promise<ActionResult> {
   const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
   const { error } = await supabase.from("specialties").delete().eq("id", id);
 
   if (error?.code === "23503")
