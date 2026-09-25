@@ -19,11 +19,11 @@ export default async function AdminLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, role")
+    .select("full_name, role, is_active")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "owner") {
+  if (profile?.role !== "owner" || !profile.is_active) {
     await supabase.auth.signOut();
     redirect("/login");
   }
