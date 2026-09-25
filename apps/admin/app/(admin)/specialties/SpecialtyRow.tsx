@@ -16,7 +16,10 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
 
   if (editing) {
     return (
-      <li className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+      <li
+        data-testid="specialty-row"
+        className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"
+      >
         <form
           action={(formData) =>
             startTransition(async () => {
@@ -37,11 +40,13 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
             defaultValue={specialty.name}
             required
             autoFocus
+            data-testid="specialty-rename-input"
             className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-slate-500"
           />
           <button
             type="submit"
             disabled={pending}
+            data-testid="specialty-save"
             className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
           >
             {pending ? "Guardando…" : "Guardar"}
@@ -68,7 +73,10 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+    <li
+      data-testid="specialty-row"
+      className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"
+    >
       <div className="flex-1">
         <p className="text-slate-900">{specialty.name}</p>
         <p className="text-xs text-slate-500">{specialty.slug}</p>
@@ -77,6 +85,7 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
       <button
         type="button"
         onClick={() => setEditing(true)}
+        data-testid="specialty-edit"
         className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500"
       >
         Editar

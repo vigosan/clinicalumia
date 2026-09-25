@@ -31,6 +31,7 @@ export function CreateForm() {
           name="name"
           required
           placeholder="Logopedia, Psicología…"
+          data-testid="specialty-name-input"
           className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-500"
         />
       </label>
@@ -38,6 +39,7 @@ export function CreateForm() {
       <button
         type="submit"
         disabled={pending}
+        data-testid="specialty-submit"
         className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
       >
         {pending ? "Añadiendo…" : "Añadir"}
