@@ -109,7 +109,7 @@ export function MemberRow({
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto sm:flex-1">
         <p className="truncate text-[15px] font-medium text-ink-900">
           {member.full_name}
         </p>
@@ -125,32 +125,36 @@ export function MemberRow({
           )}
         </div>
       </div>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        onClick={() => setEditing(true)}
-      >
-        Editar
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        disabled={pending}
-        onClick={() => run(() => resendInvite(member.email))}
-      >
-        Reenviar invitación
-      </Button>
-      <Button
-        type="button"
-        variant={member.is_active ? "danger" : "secondary"}
-        size="sm"
-        disabled={pending}
-        onClick={() => run(() => setMemberActive(member.id, !member.is_active))}
-      >
-        {member.is_active ? "Desactivar" : "Activar"}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setEditing(true)}
+        >
+          Editar
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={pending}
+          onClick={() => run(() => resendInvite(member.email))}
+        >
+          Reenviar invitación
+        </Button>
+        <Button
+          type="button"
+          variant={member.is_active ? "danger" : "secondary"}
+          size="sm"
+          disabled={pending}
+          onClick={() =>
+            run(() => setMemberActive(member.id, !member.is_active))
+          }
+        >
+          {member.is_active ? "Desactivar" : "Activar"}
+        </Button>
+      </div>
       {error && (
         <p
           role="alert"
