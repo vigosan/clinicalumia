@@ -1,32 +1,43 @@
+import { Card } from "@clinicalumia/ui/card";
+import { PageHeader } from "@clinicalumia/ui/page-header";
 import Link from "next/link";
+
+const sections = [
+  {
+    href: "/specialties",
+    title: "Especialidades",
+    text: "Catálogo de especialidades de la clínica.",
+  },
+  {
+    href: "/team",
+    title: "Equipo",
+    text: "Empleados con acceso al dashboard.",
+  },
+];
 
 export default function AdminHome() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Bienvenida</h1>
-      <p className="text-slate-600">Gestiona la clínica desde aquí.</p>
-
+    <>
+      <PageHeader
+        title="Bienvenida"
+        description="Configura la clínica desde aquí."
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/specialties"
-          className="rounded-xl border border-slate-200 bg-white p-6 transition hover:border-slate-400"
-        >
-          <h2 className="font-medium text-slate-900">Especialidades</h2>
-          <p className="text-sm text-slate-500">
-            Catálogo de especialidades clínicas.
-          </p>
-        </Link>
-
-        <Link
-          href="/team"
-          className="rounded-xl border border-slate-200 bg-white p-6 transition hover:border-slate-400"
-        >
-          <h2 className="font-medium text-slate-900">Equipo</h2>
-          <p className="text-sm text-slate-500">
-            Médicos y personal de la clínica.
-          </p>
-        </Link>
+        {sections.map((section) => (
+          <Link
+            key={section.href}
+            href={section.href}
+            className="rounded-card transition-colors focus-visible:outline-2 focus-visible:outline-sage-800"
+          >
+            <Card className="flex h-full flex-col gap-1.5 hover:bg-sage-100">
+              <h2 className="text-lg font-bold text-ink-900">
+                {section.title}
+              </h2>
+              <p className="text-sm text-ink-800">{section.text}</p>
+            </Card>
+          </Link>
+        ))}
       </div>
-    </div>
+    </>
   );
 }

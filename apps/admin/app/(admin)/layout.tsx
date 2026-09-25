@@ -1,5 +1,8 @@
 import { createClient } from "@clinicalumia/api/server";
-import Link from "next/link";
+import { AppShell } from "@clinicalumia/ui/app-shell";
+import { Button } from "@clinicalumia/ui/button";
+import logo from "@clinicalumia/ui/logo-dark.png";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { logout } from "./actions";
 
@@ -29,42 +32,31 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="font-semibold text-slate-900">
-              Clínica Lumia · Admin
-            </Link>
-            <nav className="flex items-center gap-4 text-sm text-slate-600">
-              <Link href="/specialties" className="hover:text-slate-900">
-                Especialidades
-              </Link>
-              <Link href="/team" className="hover:text-slate-900">
-                Equipo
-              </Link>
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-600">
-              {profile?.full_name ?? user.email}
-            </span>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 transition hover:border-slate-500 hover:text-slate-900"
-              >
-                Salir
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        {children}
-      </main>
-    </div>
+    <AppShell
+      logo={
+        <Image
+          src={logo}
+          alt="LUMIA · Clínica Logopedia miofuncional"
+          width={150}
+          priority
+        />
+      }
+      section="Administración"
+      nav={[
+        { href: "/", label: "Inicio" },
+        { href: "/specialties", label: "Especialidades" },
+        { href: "/team", label: "Equipo" },
+      ]}
+      user={{ name: profile.full_name, detail: "Propietaria" }}
+      logout={
+        <form action={logout}>
+          <Button type="submit" variant="ghost" size="sm" data-testid="logout">
+            Salir
+          </Button>
+        </form>
+      }
+    >
+      {children}
+    </AppShell>
   );
 }
