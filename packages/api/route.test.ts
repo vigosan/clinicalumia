@@ -49,6 +49,17 @@ describe("nextRoute", () => {
         nextRoute({ path, search: "", signedIn: true, step: "enroll" }),
       ).toBeNull();
     });
+
+    it("does not let a path that merely starts with /auth/confirm impersonate it", () => {
+      expect(
+        nextRoute({
+          path: "/auth/confirmx",
+          search: "",
+          signedIn: true,
+          step: "enroll",
+        }),
+      ).toEqual({ redirect: "/auth/dos-pasos/activar" });
+    });
   });
 
   describe("step challenge", () => {
@@ -84,6 +95,17 @@ describe("nextRoute", () => {
         }),
       ).toBeNull();
     });
+
+    it("does not let a path that merely starts with /auth/confirm impersonate it", () => {
+      expect(
+        nextRoute({
+          path: "/auth/confirmx",
+          search: "",
+          signedIn: true,
+          step: "challenge",
+        }),
+      ).toEqual({ redirect: "/auth/dos-pasos?next=%2Fauth%2Fconfirmx" });
+    });
   });
 
   describe("step done", () => {
@@ -107,6 +129,17 @@ describe("nextRoute", () => {
         }),
       ).toBeNull();
     });
+
+    it("does not let a path that merely starts with /auth/dos-pasos impersonate it", () => {
+      expect(
+        nextRoute({
+          path: "/auth/dos-pasos-fake",
+          search: "",
+          signedIn: true,
+          step: "done",
+        }),
+      ).toBeNull();
+    });
   });
 });
 
@@ -119,9 +152,27 @@ describe("safeNext", () => {
     "//evil.com",
     "https://evil.com",
     "/\\evil.com",
+    "/\t/evil.com",
+    "/\n/evil.com",
+    "/\r/evil.com",
     "",
     null,
   ])("falls back to / for %s, since it could send the user off-site", (value) => {
     expect(safeNext(value)).toBe("/");
+  });
+
+  it.each([
+    "/clinic",
+    "//evil.com",
+    "https://evil.com",
+    "/\\evil.com",
+    "/\t/evil.com",
+    "/\n/evil.com",
+    "/\r/evil.com",
+    "",
+    null,
+  ])("never resolves to a different origin than panel.clinicalumia.es for %s", (value) => {
+    const resolved = new URL(safeNext(value), "https://panel.clinicalumia.es");
+    expect(resolved.origin).toBe("https://panel.clinicalumia.es");
   });
 });
