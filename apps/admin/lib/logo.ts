@@ -6,9 +6,7 @@ export const LOGO_EXTENSIONS: Record<string, string> = {
   "image/svg+xml": "svg",
 };
 
-export function validateLogoFile(
-  file: File,
-): { error: string } | { ok: true } {
+export function validateLogoFile(file: File): { error: string } | { ok: true } {
   if (!LOGO_EXTENSIONS[file.type])
     return { error: "El logo debe ser PNG, JPG, WebP o SVG." };
   if (file.size > LOGO_MAX_BYTES)

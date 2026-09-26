@@ -151,3 +151,22 @@ test("the owner fixes an invalid tax id, saves the clinic details and uploads th
       .eq("id", true);
   }
 });
+
+test("uploading a logo over 2 MB shows a clear error instead of crashing", async ({
+  page,
+}) => {
+  const pageErrors: Error[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error));
+  await loginAsSeedOwner(page);
+  await page.goto(`${ADMIN}/clinic`);
+  await page.getByTestId("logo-input").setInputFiles({
+    name: "logo-grande.png",
+    mimeType: "image/png",
+    buffer: Buffer.alloc(4 * 1024 * 1024),
+  });
+  await page.getByTestId("logo-submit").click();
+  await expect(page.getByTestId("logo-error")).toHaveText(
+    "El logo no puede pesar más de 2 MB.",
+  );
+  expect(pageErrors).toHaveLength(0);
+});
