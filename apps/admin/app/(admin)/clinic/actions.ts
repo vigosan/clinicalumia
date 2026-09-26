@@ -4,20 +4,13 @@ import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { parseClinicSettings } from "@/lib/clinic-settings";
+import { LOGO_EXTENSIONS, validateLogoFile } from "@/lib/logo";
 
 export type SaveClinicSettingsState =
   | { error: string }
   | { ok: true }
   | undefined;
 export type UploadLogoState = { error: string } | { ok: true } | undefined;
-
-const LOGO_MAX_BYTES = 2 * 1024 * 1024;
-const LOGO_EXTENSIONS: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-  "image/svg+xml": "svg",
-};
 
 export async function saveClinicSettings(
   _prev: SaveClinicSettingsState,
@@ -52,10 +45,9 @@ export async function uploadLogo(
   if (!(file instanceof File) || file.size === 0)
     return { error: "Elige una imagen." };
 
+  const validation = validateLogoFile(file);
+  if ("error" in validation) return validation;
   const extension = LOGO_EXTENSIONS[file.type];
-  if (!extension) return { error: "El logo debe ser PNG, JPG, WebP o SVG." };
-  if (file.size > LOGO_MAX_BYTES)
-    return { error: "El logo no puede pesar más de 2 MB." };
 
   const { data: current } = await supabase
     .from("clinic_settings")
