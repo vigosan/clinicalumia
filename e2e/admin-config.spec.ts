@@ -54,3 +54,48 @@ test("the owner creates a service with a deposit and sees it listed with its pri
   await expect(row).toContainText("50,00 €");
   await expect(row).toContainText("Señal 10,00 €");
 });
+
+test("the owner edits a weekly schedule, is warned about overlaps, and the change survives a reload", async ({
+  page,
+}) => {
+  const employeeId = "a0000000-0000-0000-0000-000000000002";
+  const { data: original } = await admin
+    .from("employee_schedules")
+    .select("weekday, starts_at, ends_at")
+    .eq("profile_id", employeeId);
+  try {
+    await loginAsSeedOwner(page);
+    await page.goto(`${ADMIN}/schedules`);
+    await page
+      .getByTestId("schedule-employee")
+      .selectOption({ label: "Laura Ejemplo" });
+    const saturday = page.getByTestId("schedule-day-6");
+    await page.getByTestId("schedule-add-6").click();
+    await saturday.getByTestId("schedule-start").last().fill("10:00");
+    await saturday.getByTestId("schedule-end").last().fill("12:00");
+    await page.getByTestId("schedule-add-6").click();
+    await saturday.getByTestId("schedule-start").last().fill("11:00");
+    await saturday.getByTestId("schedule-end").last().fill("13:00");
+    await page.getByTestId("schedule-save").click();
+    await expect(page.getByTestId("schedule-error")).toContainText(
+      "El sábado tiene dos tramos que se solapan.",
+    );
+    await saturday.getByTestId("schedule-remove").last().click();
+    await page.getByTestId("schedule-save").click();
+    await expect(page.getByTestId("schedule-saved")).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByTestId("schedule-day-6").getByTestId("schedule-start"),
+    ).toHaveValue("10:00");
+  } finally {
+    await admin
+      .from("employee_schedules")
+      .delete()
+      .eq("profile_id", employeeId);
+    if (original?.length) {
+      await admin
+        .from("employee_schedules")
+        .insert(original.map((row) => ({ ...row, profile_id: employeeId })));
+    }
+  }
+});
