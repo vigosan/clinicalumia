@@ -69,6 +69,7 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
     await page
       .getByTestId("schedule-employee")
       .selectOption({ label: "Laura Ejemplo" });
+    await expect(page).toHaveURL(`${ADMIN}/schedules?employee=${employeeId}`);
     const saturday = page.getByTestId("schedule-day-6");
     await page.getByTestId("schedule-add-6").click();
     await saturday.getByTestId("schedule-start").last().fill("10:00");
