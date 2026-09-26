@@ -23,6 +23,7 @@ export default async function TeamPage() {
 
   const memberList = members ?? [];
   const specialtyList = specialties ?? [];
+  const hasEmployees = memberList.some((member) => member.role === "employee");
 
   return (
     <>
@@ -33,23 +34,22 @@ export default async function TeamPage() {
       <Card>
         <CreateForm specialties={specialtyList} />
       </Card>
-      {memberList.length === 0 ? (
+      {!hasEmployees && (
         <Card className="text-center text-sm text-ink-800">
           Aún no hay empleados. Invita al primero arriba.
         </Card>
-      ) : (
-        <Card className="p-2">
-          <ul>
-            {memberList.map((member) => (
-              <MemberRow
-                key={member.id}
-                member={member}
-                specialties={specialtyList}
-              />
-            ))}
-          </ul>
-        </Card>
       )}
+      <Card className="p-2">
+        <ul>
+          {memberList.map((member) => (
+            <MemberRow
+              key={member.id}
+              member={member}
+              specialties={specialtyList}
+            />
+          ))}
+        </ul>
+      </Card>
     </>
   );
 }

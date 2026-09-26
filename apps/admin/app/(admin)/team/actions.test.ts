@@ -79,6 +79,29 @@ describe("team actions", () => {
     });
   });
 
+  it("saves a null license number when the createMember form leaves it empty", async () => {
+    const insertFn = vi.fn(async () => ({ error: null }));
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: {
+        admin: {
+          inviteUserByEmail: vi.fn(async () => ({
+            data: { user: { id: "new-user-1" } },
+            error: null,
+          })),
+          deleteUser: vi.fn(),
+        },
+      },
+      from: () => ({ insert: insertFn }),
+    } as unknown as ReturnType<typeof createAdminClient>);
+    const data = new FormData();
+    data.set("email", "nueva@lumia.test");
+    data.set("full_name", "Nueva Persona");
+    expect(await createMember(undefined, data)).toEqual({ ok: true });
+    expect(insertFn).toHaveBeenCalledWith(
+      expect.objectContaining({ license_number: null }),
+    );
+  });
+
   it("refuses createMember for a non-owner and never touches the admin client", async () => {
     ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
     const data = new FormData();

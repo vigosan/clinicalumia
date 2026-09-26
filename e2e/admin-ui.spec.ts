@@ -125,7 +125,7 @@ test("the section menu marks the current page and stays usable on a phone", asyn
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("the seed owner is listed as Propietaria without a deactivate button, and a member's license number can be set", async ({
+test("the seed owner is listed first as Propietaria without a deactivate button, the empty-team notice stays hidden, and a member's license number can be set", async ({
   page,
 }) => {
   await loginAsOwner(page);
@@ -140,6 +140,22 @@ test("the seed owner is listed as Propietaria without a deactivate button, and a
   ).toHaveCount(0);
   await expect(
     ownerRow.getByRole("button", { name: "Reenviar invitación" }),
+  ).toHaveCount(0);
+
+  const rowsText = await page.getByRole("listitem").allTextContents();
+  const ownerIndex = rowsText.findIndex((text) =>
+    text.includes("Patricia Hernán"),
+  );
+  const lauraIndex = rowsText.findIndex((text) =>
+    text.includes("Laura Ejemplo"),
+  );
+  const marcIndex = rowsText.findIndex((text) => text.includes("Marc Ejemplo"));
+  expect(ownerIndex).toBe(0);
+  expect(ownerIndex).toBeLessThan(lauraIndex);
+  expect(ownerIndex).toBeLessThan(marcIndex);
+
+  await expect(
+    page.getByText("Aún no hay empleados. Invita al primero arriba."),
   ).toHaveCount(0);
 
   editedProfileId = "a0000000-0000-0000-0000-000000000002";
