@@ -1,13 +1,15 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(17);
 
 insert into auth.users (id, email) values
   ('30000000-0000-0000-0000-000000000001', 'owner-clinic@test.local'),
-  ('30000000-0000-0000-0000-000000000002', 'employee-clinic@test.local');
+  ('30000000-0000-0000-0000-000000000002', 'employee-clinic@test.local'),
+  ('30000000-0000-0000-0000-000000000003', 'inactive-clinic@test.local');
 insert into public.profiles (id, email, full_name, role, is_active) values
   ('30000000-0000-0000-0000-000000000001', 'owner-clinic@test.local', 'Owner', 'owner', true),
-  ('30000000-0000-0000-0000-000000000002', 'employee-clinic@test.local', 'Employee', 'employee', true);
+  ('30000000-0000-0000-0000-000000000002', 'employee-clinic@test.local', 'Employee', 'employee', true),
+  ('30000000-0000-0000-0000-000000000003', 'inactive-clinic@test.local', 'Inactive', 'employee', false);
 
 create or replace function pg_temp.act_as(user_id uuid) returns void language sql as $$
   select set_config('role', 'authenticated', true),
@@ -30,9 +32,22 @@ select is((select legal_name from public.clinic_settings), 'Datos actualizados p
 select throws_ok($$ update public.clinic_settings set cancellation_hours = 800 $$, '23514', null,
   'cancellation_hours cannot exceed 720, the maximum a clinic can require');
 
+with ins as (
+  insert into storage.objects (bucket_id, name) values ('branding', 'logo.png') returning name
+)
+select is((select name from ins), 'logo.png',
+  'the owner sees the uploaded logo back via RETURNING, which the storage API needs to confirm the upload');
+
+select set_config('storage.allow_delete_query', 'true', true);
+with del as (
+  delete from storage.objects where bucket_id = 'branding' and name = 'logo.png' returning name
+)
+select is((select name from del), 'logo.png',
+  'the owner sees the removed logo name back via RETURNING, so remove() does not look like a silent no-op');
+
 select lives_ok($$
-  insert into storage.objects (bucket_id, name) values ('branding', 'logo.png')
-$$, 'the owner can upload the clinic logo to the branding bucket');
+  insert into storage.objects (bucket_id, name) values ('branding', 'logo-final.png')
+$$, 'the owner leaves the current logo in the branding bucket');
 
 select pg_temp.act_as('30000000-0000-0000-0000-000000000002');
 
@@ -45,6 +60,14 @@ select lives_ok($$ update public.clinic_settings set legal_name = 'Intento de em
 select throws_ok($$
   insert into storage.objects (bucket_id, name) values ('branding', 'intruso.png')
 $$, '42501', null, 'an employee cannot upload to the branding bucket, only the owner can');
+
+select is((select count(*) from storage.objects where bucket_id = 'branding')::bigint, 0::bigint,
+  'an active employee cannot see the branding objects at all, even though the current logo exists');
+
+select pg_temp.act_as('30000000-0000-0000-0000-000000000003');
+
+select is((select count(*) from public.clinic_settings)::bigint, 0::bigint,
+  'a deactivated employee sees no clinic settings');
 
 reset role;
 

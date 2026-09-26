@@ -36,6 +36,8 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('branding', 'branding', true, 2097152, array['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
 on conflict (id) do nothing;
 
+create policy "branding_select_owner" on storage.objects
+  for select to authenticated using (bucket_id = 'branding' and public.is_owner());
 create policy "branding_insert_owner" on storage.objects
   for insert to authenticated with check (bucket_id = 'branding' and public.is_owner());
 create policy "branding_update_owner" on storage.objects
