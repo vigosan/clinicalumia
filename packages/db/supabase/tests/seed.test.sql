@@ -13,17 +13,17 @@ select is((select count(*) from public.specialties where name = 'Fisioterapia' a
   'Fisioterapia/fisioterapia exists');
 
 select is((select count(*) from auth.users where email in
-  ('propietaria@lumia.test', 'psicologia@lumia.test', 'fisioterapia@lumia.test'))::bigint, 3::bigint,
+  ('info@clinicalumia.es', 'psicologia@lumia.test', 'fisioterapia@lumia.test'))::bigint, 3::bigint,
   'the owner and the two example employees exist in auth.users');
 
-select is((select p.full_name from public.profiles p where p.email = 'propietaria@lumia.test'),
+select is((select p.full_name from public.profiles p where p.email = 'info@clinicalumia.es'),
   'Patricia Hernán', 'the owner profile has the right name');
-select is((select p.role::text from public.profiles p where p.email = 'propietaria@lumia.test'),
+select is((select p.role::text from public.profiles p where p.email = 'info@clinicalumia.es'),
   'owner', 'the owner profile has the owner role');
-select is((select p.is_active from public.profiles p where p.email = 'propietaria@lumia.test'),
+select is((select p.is_active from public.profiles p where p.email = 'info@clinicalumia.es'),
   true, 'the owner profile is active');
 select is((select s.name from public.profiles p join public.specialties s on s.id = p.specialty_id
-  where p.email = 'propietaria@lumia.test'),
+  where p.email = 'info@clinicalumia.es'),
   'Logopedia', 'the owner profile has the Logopedia specialty');
 
 select is((select p.full_name from public.profiles p where p.email = 'psicologia@lumia.test'),
@@ -51,10 +51,10 @@ select is((select count(*) from public.profiles)::bigint, 3::bigint,
 
 select is((select count(*) from auth.identities where provider = 'email' and provider_id in
   (select id::text from auth.users where email in
-    ('propietaria@lumia.test', 'psicologia@lumia.test', 'fisioterapia@lumia.test')))::bigint, 3::bigint,
+    ('info@clinicalumia.es', 'psicologia@lumia.test', 'fisioterapia@lumia.test')))::bigint, 3::bigint,
   'each seeded user has a matching email identity');
 
-select is((select count(*) from auth.users where email = 'propietaria@lumia.test' and email_confirmed_at is not null)::bigint, 1::bigint,
+select is((select count(*) from auth.users where email = 'info@clinicalumia.es' and email_confirmed_at is not null)::bigint, 1::bigint,
   'the owner email is confirmed so password login works');
 
 select * from finish();

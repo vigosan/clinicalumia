@@ -15,7 +15,7 @@ doctor: ## Comprueba que tienes todo lo necesario
 	@bash scripts/doctor.sh
 
 setup: install docker.up db.start env.local ## Primera vez: instala, arranca Supabase local y genera los .env
-	@echo "Listo. Crea tu cuenta con: make db.bootstrap email=... password=... name=\"...\""
+	@echo "Listo. Entra con info@clinicalumia.es / lumia-desarrollo-2026 (admin :3002, dashboard :3001)"
 
 docker.up: ## Arranca Docker (OrbStack o Docker Desktop) y espera a que responda
 	@docker info >/dev/null 2>&1 || ((open -a OrbStack 2>/dev/null || open -a Docker) && until docker info >/dev/null 2>&1; do sleep 1; done)
@@ -71,7 +71,7 @@ db.start: docker.up ## Arranca Supabase local
 db.stop: ## Para Supabase local
 	cd $(DB) && supabase stop
 
-db.reset: ## Reinicia la base local y aplica migraciones y seed
+db.reset: ## Reinicia la base local, aplica migraciones y carga el seed de desarrollo (info@clinicalumia.es / lumia-desarrollo-2026)
 	cd $(DB) && supabase db reset
 
 db.migrate: ## Crea una migración: make db.migrate name=add_patients
