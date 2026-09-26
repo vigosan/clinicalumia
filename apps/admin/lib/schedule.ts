@@ -30,14 +30,11 @@ export function validateSchedule(
     (a, b) => a.weekday - b.weekday || a.starts_at.localeCompare(b.starts_at),
   );
   for (const [index, block] of sorted.entries()) {
+    if (block.weekday < 1 || block.weekday > 7)
+      return { error: "Hay un día no válido en el horario." };
     const start = minutes(block.starts_at);
     const end = minutes(block.ends_at);
-    if (
-      block.weekday < 1 ||
-      block.weekday > 7 ||
-      start === null ||
-      end === null
-    )
+    if (start === null || end === null)
       return {
         error: `Hay una hora no válida en el ${dayName(block.weekday)}.`,
       };
@@ -56,4 +53,23 @@ export function validateSchedule(
       };
   }
   return { ok: true, blocks: sorted };
+}
+
+function madridOffset(date: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Madrid",
+    timeZoneName: "shortOffset",
+  }).formatToParts(new Date(`${date}T12:00:00Z`));
+  const offset =
+    parts.find((part) => part.type === "timeZoneName")?.value ?? "GMT+1";
+  const hours = Number(/GMT([+-]\d+)/.exec(offset)?.[1] ?? 1);
+  return `${hours >= 0 ? "+" : "-"}${String(Math.abs(hours)).padStart(2, "0")}:00`;
+}
+
+export function madridDayBounds(date: string): { start: string; end: string } {
+  const offset = madridOffset(date);
+  return {
+    start: `${date}T00:00:00${offset}`,
+    end: `${date}T23:59:59${offset}`,
+  };
 }
