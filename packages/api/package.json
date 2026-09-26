@@ -8,7 +8,8 @@
     "./server": "./server.ts",
     "./admin": "./admin.ts",
     "./proxy": "./proxy.ts",
-    "./auth": "./auth.ts"
+    "./auth": "./auth.ts",
+    "./route": "./route.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -20,7 +21,8 @@
     "server.ts",
     "admin.ts",
     "proxy.ts",
-    "auth.ts"
+    "auth.ts",
+    "route.ts"
   ],
   "dependencies": {
     "@clinicalumia/db": "workspace:*",

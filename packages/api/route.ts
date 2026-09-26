@@ -1,0 +1,51 @@
+import type { MfaStep } from "./mfa";
+
+const PUBLIC = ["/login", "/auth/confirm"];
+const ENROLL_ALLOWED = ["/auth/dos-pasos/activar", "/auth/contrasena"];
+
+function startsWithAny(path: string, prefixes: string[]) {
+  return prefixes.some((p) => path === p || path.startsWith(`${p}/`));
+}
+
+export function safeNext(value: string | null): string {
+  if (
+    !value?.startsWith("/") ||
+    value.startsWith("//") ||
+    value.startsWith("/\\")
+  )
+    return "/";
+  return value;
+}
+
+export function nextRoute({
+  path,
+  search,
+  signedIn,
+  step,
+}: {
+  path: string;
+  search: string;
+  signedIn: boolean;
+  step: MfaStep | null;
+}): { redirect: string } | null {
+  if (!signedIn || !step)
+    return startsWithAny(path, PUBLIC) ? null : { redirect: "/login" };
+
+  if (step === "enroll")
+    return startsWithAny(path, ENROLL_ALLOWED) ||
+      path.startsWith("/auth/confirm")
+      ? null
+      : { redirect: "/auth/dos-pasos/activar" };
+
+  if (step === "challenge") {
+    if (path === "/auth/dos-pasos" || path.startsWith("/auth/confirm"))
+      return null;
+    return {
+      redirect: `/auth/dos-pasos?next=${encodeURIComponent(path + search)}`,
+    };
+  }
+
+  if (path === "/login" || path.startsWith("/auth/dos-pasos"))
+    return { redirect: "/" };
+  return null;
+}
