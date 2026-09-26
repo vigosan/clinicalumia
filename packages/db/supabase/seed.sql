@@ -40,3 +40,12 @@ insert into public.profiles (id, email, full_name, role, specialty_id, is_active
   ('a0000000-0000-0000-0000-000000000003', 'fisioterapia@lumia.test', 'Marc Ejemplo', 'employee',
    'a0000000-0000-0000-0000-00000000001c', true)
 on conflict (id) do nothing;
+
+insert into public.services (id, specialty_id, name, duration_minutes, price_cents, vat, bookable_online, booking_payment, booking_payment_value) values
+  ('a0000000-0000-0000-0000-0000000005a1', 'a0000000-0000-0000-0000-00000000001a', 'Valoración inicial', 60, 6000, 'exempt', true, 'fixed', 1000),
+  ('a0000000-0000-0000-0000-0000000005a2', 'a0000000-0000-0000-0000-00000000001a', 'Sesión de logopedia', 45, 4000, 'exempt', true, 'none', 0),
+  ('a0000000-0000-0000-0000-0000000005b1', 'a0000000-0000-0000-0000-00000000001b', 'Psicoterapia individual', 60, 5500, 'exempt', true, 'percent', 20),
+  ('a0000000-0000-0000-0000-0000000005b2', 'a0000000-0000-0000-0000-00000000001b', 'Informe psicológico no sanitario', 60, 9000, 'standard_21', false, 'none', 0),
+  ('a0000000-0000-0000-0000-0000000005c1', 'a0000000-0000-0000-0000-00000000001c', 'Sesión individual de fisioterapia', 60, 4500, 'exempt', true, 'fixed', 1000),
+  ('a0000000-0000-0000-0000-0000000005c2', 'a0000000-0000-0000-0000-00000000001c', 'Sesión de control', 30, 3000, 'exempt', true, 'none', 0)
+on conflict (id) do nothing;

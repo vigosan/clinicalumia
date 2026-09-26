@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(21);
 
 select is((select count(*) from public.specialties)::bigint, 3::bigint,
   'the local seed creates exactly three specialties');
@@ -56,6 +56,9 @@ select is((select count(*) from auth.identities where provider = 'email' and pro
 
 select is((select count(*) from auth.users where email = 'info@clinicalumia.es' and email_confirmed_at is not null)::bigint, 1::bigint,
   'the owner email is confirmed so password login works');
+
+select is((select count(*) from public.services), 6::bigint,
+  'the development seed has example services for the three specialties');
 
 select * from finish();
 rollback;

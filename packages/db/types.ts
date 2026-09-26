@@ -78,6 +78,62 @@ export type Database = {
           },
         ]
       }
+      services: {
+        Row: {
+          bookable_online: boolean
+          booking_payment: Database["public"]["Enums"]["booking_payment"]
+          booking_payment_value: number
+          cancellation_hours: number | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          name: string
+          price_cents: number
+          specialty_id: string
+          updated_at: string
+          vat: Database["public"]["Enums"]["vat_treatment"]
+        }
+        Insert: {
+          bookable_online?: boolean
+          booking_payment?: Database["public"]["Enums"]["booking_payment"]
+          booking_payment_value?: number
+          cancellation_hours?: number | null
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price_cents: number
+          specialty_id: string
+          updated_at?: string
+          vat?: Database["public"]["Enums"]["vat_treatment"]
+        }
+        Update: {
+          bookable_online?: boolean
+          booking_payment?: Database["public"]["Enums"]["booking_payment"]
+          booking_payment_value?: number
+          cancellation_hours?: number | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          specialty_id?: string
+          updated_at?: string
+          vat?: Database["public"]["Enums"]["vat_treatment"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "specialties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       specialties: {
         Row: {
           created_at: string
@@ -111,7 +167,9 @@ export type Database = {
       is_owner: { Args: never; Returns: boolean }
     }
     Enums: {
+      booking_payment: "none" | "fixed" | "percent" | "full"
       user_role: "owner" | "employee"
+      vat_treatment: "exempt" | "standard_21"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -242,7 +300,9 @@ export const Constants = {
   },
   public: {
     Enums: {
+      booking_payment: ["none", "fixed", "percent", "full"],
       user_role: ["owner", "employee"],
+      vat_treatment: ["exempt", "standard_21"],
     },
   },
 } as const
