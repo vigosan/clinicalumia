@@ -96,4 +96,13 @@ describe("parseClinicSettings", () => {
       parseClinicSettings(form({ website: "www.clinicalumia.es" })),
     ).toHaveProperty("settings.website", "https://www.clinicalumia.es");
   });
+
+  it("doesn't double the protocol when the website already has http:// or https://, in any case", () => {
+    expect(
+      parseClinicSettings(form({ website: "http://www.clinicalumia.es" })),
+    ).toHaveProperty("settings.website", "http://www.clinicalumia.es");
+    expect(
+      parseClinicSettings(form({ website: "HTTPS://www.clinicalumia.es" })),
+    ).toHaveProperty("settings.website", "HTTPS://www.clinicalumia.es");
+  });
 });

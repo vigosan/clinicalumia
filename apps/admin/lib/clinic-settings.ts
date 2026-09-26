@@ -75,7 +75,7 @@ export function parseClinicSettings(
       phone,
       email,
       website:
-        website && !website.startsWith("https://")
+        website && !/^https?:\/\//i.test(website)
           ? `https://${website}`
           : website,
       vat_exemption_text: vatExemptionText,
