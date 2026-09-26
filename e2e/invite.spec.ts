@@ -9,6 +9,14 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
 
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 
+const createdUserIds: string[] = [];
+
+test.afterEach(async () => {
+  for (const id of createdUserIds.splice(0)) {
+    await admin.auth.admin.deleteUser(id);
+  }
+});
+
 test("an invited employee sets a password and lands in the dashboard", async ({
   page,
 }) => {
@@ -17,6 +25,7 @@ test("an invited employee sets a password and lands in the dashboard", async ({
     await admin.auth.admin.inviteUserByEmail(email);
   expect(inviteError).toBeNull();
   expect(data.user).not.toBeNull();
+  createdUserIds.push(data.user!.id);
 
   const { error: profileError } = await admin.from("profiles").insert({
     id: data.user!.id,

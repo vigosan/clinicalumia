@@ -8,6 +8,18 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
 
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 
+const createdUserIds: string[] = [];
+const createdSpecialtyNames: string[] = [];
+
+test.afterEach(async () => {
+  for (const id of createdUserIds.splice(0)) {
+    await admin.auth.admin.deleteUser(id);
+  }
+  for (const name of createdSpecialtyNames.splice(0)) {
+    await admin.from("specialties").delete().eq("name", name);
+  }
+});
+
 test("the admin shows an error when a specialty name is already taken", async ({
   page,
 }) => {
@@ -20,6 +32,7 @@ test("the admin shows an error when a specialty name is already taken", async ({
   });
   expect(createUserError).toBeNull();
   expect(data.user).not.toBeNull();
+  createdUserIds.push(data.user!.id);
 
   const { error: profileError } = await admin.from("profiles").insert({
     id: data.user!.id,
@@ -40,6 +53,7 @@ test("the admin shows an error when a specialty name is already taken", async ({
 
   const nameA = `Prueba A ${Date.now()}`;
   const nameB = `Prueba B ${Date.now()}`;
+  createdSpecialtyNames.push(nameA, nameB);
 
   await page.getByTestId("specialty-name-input").fill(nameA);
   await page.getByTestId("specialty-submit").click();
