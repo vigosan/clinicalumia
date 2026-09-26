@@ -34,6 +34,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      clinic_settings: {
+        Row: {
+          address_line: string
+          cancellation_hours: number
+          city: string
+          email: string
+          id: boolean
+          invoice_footer: string
+          invoice_prefix: string
+          legal_name: string
+          logo_path: string | null
+          phone: string
+          postal_code: string
+          province: string
+          rectifying_prefix: string
+          tax_id: string
+          timezone: string
+          updated_at: string
+          vat_exemption_text: string
+          website: string
+        }
+        Insert: {
+          address_line?: string
+          cancellation_hours?: number
+          city?: string
+          email?: string
+          id?: boolean
+          invoice_footer?: string
+          invoice_prefix?: string
+          legal_name?: string
+          logo_path?: string | null
+          phone?: string
+          postal_code?: string
+          province?: string
+          rectifying_prefix?: string
+          tax_id?: string
+          timezone?: string
+          updated_at?: string
+          vat_exemption_text?: string
+          website?: string
+        }
+        Update: {
+          address_line?: string
+          cancellation_hours?: number
+          city?: string
+          email?: string
+          id?: boolean
+          invoice_footer?: string
+          invoice_prefix?: string
+          legal_name?: string
+          logo_path?: string | null
+          phone?: string
+          postal_code?: string
+          province?: string
+          rectifying_prefix?: string
+          tax_id?: string
+          timezone?: string
+          updated_at?: string
+          vat_exemption_text?: string
+          website?: string
+        }
+        Relationships: []
+      }
       employee_schedules: {
         Row: {
           ends_at: string

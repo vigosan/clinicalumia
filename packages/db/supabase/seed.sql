@@ -61,3 +61,15 @@ insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) 
 
 insert into public.employee_time_off (profile_id, starts_at, ends_at, reason) values
   ('a0000000-0000-0000-0000-000000000003', '2026-12-24 00:00+01', '2026-12-26 23:59+01', 'Navidad');
+
+update public.clinic_settings set
+  legal_name = 'Patricia Hernán Sánchez',
+  tax_id = '20449989E',
+  address_line = 'Calle Montesa 7',
+  postal_code = '46800',
+  city = 'Xàtiva',
+  province = 'Valencia',
+  phone = '614 552 808',
+  email = 'info@clinicalumia.es',
+  website = 'https://www.clinicalumia.es',
+  cancellation_hours = 24;
