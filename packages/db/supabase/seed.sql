@@ -58,3 +58,6 @@ cross join generate_series(1, 5) as weekday;
 insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
   ('a0000000-0000-0000-0000-000000000001', 2, '09:30', '13:30'),
   ('a0000000-0000-0000-0000-000000000001', 4, '09:30', '13:30');
+
+insert into public.employee_time_off (profile_id, starts_at, ends_at, reason) values
+  ('a0000000-0000-0000-0000-000000000003', '2026-12-24 00:00+01', '2026-12-26 23:59+01', 'Navidad');

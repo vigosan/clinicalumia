@@ -39,8 +39,8 @@ select lives_ok($$ insert into public.employee_time_off (profile_id, starts_at, 
   'the owner records time off');
 
 select pg_temp.act_as('20000000-0000-0000-0000-000000000002');
-select is((select count(*) from public.employee_schedules where profile_id = '20000000-0000-0000-0000-000000000002'), 1::bigint,
-  'an active employee can read schedules');
+select is((select count(*) from public.employee_schedules), 18::bigint,
+  'an active employee can read schedules across the whole team, not only their own');
 select throws_ok($$ select public.set_employee_schedule('20000000-0000-0000-0000-000000000002', '[]') $$,
   '42501', null, 'an employee cannot change schedules, not even their own');
 
