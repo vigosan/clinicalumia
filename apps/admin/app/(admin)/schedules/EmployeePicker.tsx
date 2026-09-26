@@ -1,5 +1,6 @@
 "use client";
 
+import { Field } from "@clinicalumia/ui/field";
 import { Select } from "@clinicalumia/ui/select";
 import { useRouter } from "next/navigation";
 
@@ -15,18 +16,20 @@ export function EmployeePicker({
   const router = useRouter();
 
   return (
-    <Select
-      data-testid="schedule-employee"
-      value={selectedId}
-      onChange={(event) =>
-        router.push(`/schedules?employee=${event.target.value}`)
-      }
-    >
-      {employees.map((employee) => (
-        <option key={employee.id} value={employee.id}>
-          {employee.full_name}
-        </option>
-      ))}
-    </Select>
+    <Field label="Persona del equipo">
+      <Select
+        data-testid="schedule-employee"
+        value={selectedId}
+        onChange={(event) =>
+          router.push(`/schedules?employee=${event.target.value}`)
+        }
+      >
+        {employees.map((employee) => (
+          <option key={employee.id} value={employee.id}>
+            {employee.full_name}
+          </option>
+        ))}
+      </Select>
+    </Field>
   );
 }

@@ -66,6 +66,7 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
   try {
     await loginAsSeedOwner(page);
     await page.goto(`${ADMIN}/schedules`);
+    await expect(page.getByLabel("Persona del equipo")).toBeVisible();
     await page
       .getByTestId("schedule-employee")
       .selectOption({ label: "Laura Ejemplo" });
