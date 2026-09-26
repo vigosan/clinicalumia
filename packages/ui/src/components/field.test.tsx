@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Field } from "./field";
 import { Input } from "./input";
 import { Select } from "./select";
+import { Textarea } from "./textarea";
 
 describe("Field", () => {
   it("connects the label to its control, so clicking or reading the label reaches the input", () => {
@@ -59,6 +60,18 @@ describe("Field", () => {
       </Field>,
     );
     expect(screen.getByLabelText("Nombre")).toHaveAttribute("id", "custom-id");
+  });
+
+  it("connects the label to a Textarea, so a multiline field is reachable the same way", () => {
+    render(
+      <Field label="Pie de factura">
+        <Textarea name="invoice_footer" />
+      </Field>,
+    );
+    expect(screen.getByLabelText("Pie de factura")).toHaveAttribute(
+      "name",
+      "invoice_footer",
+    );
   });
 
   it("merges the control's own aria-describedby with the hint instead of overwriting it", () => {
