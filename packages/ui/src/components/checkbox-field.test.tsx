@@ -14,6 +14,24 @@ describe("CheckboxField", () => {
     expect(checkbox).toBeChecked();
   });
 
+  it("merges the caller's own aria-describedby with the hint instead of overwriting it", () => {
+    render(
+      <CheckboxField
+        label="Permitir reserva desde la web"
+        hint="Se aplica a todas las especialidades."
+        aria-describedby="extra"
+      />,
+    );
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Permitir reserva desde la web",
+    });
+    const describedBy = checkbox.getAttribute("aria-describedby")?.split(" ");
+    expect(describedBy).toContain("extra");
+    expect(checkbox).toHaveAccessibleDescription(
+      "Se aplica a todas las especialidades.",
+    );
+  });
+
   it("announces the error and links it to the checkbox, so screen reader users hear what to fix", () => {
     render(
       <CheckboxField

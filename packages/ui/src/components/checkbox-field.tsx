@@ -20,16 +20,18 @@ export function CheckboxField({
   const hintId = `${generatedId}-hint`;
   const errorId = `${generatedId}-error`;
   const describedBy =
-    [hint && hintId, error && errorId].filter(Boolean).join(" ") || undefined;
+    [checkboxProps["aria-describedby"], hint && hintId, error && errorId]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
         <Checkbox
-          id={controlId}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy}
           {...checkboxProps}
+          id={controlId}
+          aria-invalid={error ? true : checkboxProps["aria-invalid"]}
+          aria-describedby={describedBy}
         />
         <label htmlFor={controlId} className="text-[15px] text-ink-900">
           {label}
