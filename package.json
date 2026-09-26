@@ -4,7 +4,7 @@
   "packageManager": "pnpm@10.33.2",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "bash scripts/dev-banner.sh && turbo run dev",
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",

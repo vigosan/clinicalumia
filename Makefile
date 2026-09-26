@@ -27,6 +27,7 @@ env.local: ## Escribe apps/*/.env.development.local con las claves del Supabase 
 	@bash scripts/local-env.sh
 
 dev: db.start ## Arranca Supabase local y las tres apps
+	@bash scripts/dev-banner.sh
 	pnpm turbo run dev
 
 dev.web: ## Solo la web (puerto 3000)
