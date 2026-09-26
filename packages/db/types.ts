@@ -34,6 +34,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      employee_schedules: {
+        Row: {
+          ends_at: string
+          id: string
+          profile_id: string
+          starts_at: string
+          weekday: number
+        }
+        Insert: {
+          ends_at: string
+          id?: string
+          profile_id: string
+          starts_at: string
+          weekday: number
+        }
+        Update: {
+          ends_at?: string
+          id?: string
+          profile_id?: string
+          starts_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_schedules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_time_off: {
+        Row: {
+          ends_at: string
+          id: string
+          profile_id: string
+          reason: string
+          starts_at: string
+        }
+        Insert: {
+          ends_at: string
+          id?: string
+          profile_id: string
+          reason?: string
+          starts_at: string
+        }
+        Update: {
+          ends_at?: string
+          id?: string
+          profile_id?: string
+          reason?: string
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_time_off_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -165,6 +229,10 @@ export type Database = {
     Functions: {
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      set_employee_schedule: {
+        Args: { blocks: Json; target: string }
+        Returns: undefined
+      }
     }
     Enums: {
       booking_payment: "none" | "fixed" | "percent" | "full"

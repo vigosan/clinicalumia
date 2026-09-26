@@ -49,3 +49,12 @@ insert into public.services (id, specialty_id, name, duration_minutes, price_cen
   ('a0000000-0000-0000-0000-0000000005c1', 'a0000000-0000-0000-0000-00000000001c', 'Sesión individual de fisioterapia', 60, 4500, 'exempt', true, 'fixed', 1000),
   ('a0000000-0000-0000-0000-0000000005c2', 'a0000000-0000-0000-0000-00000000001c', 'Sesión de control', 30, 3000, 'exempt', true, 'none', 0)
 on conflict (id) do nothing;
+
+insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at)
+select profile_id, weekday, '15:15', '20:30'
+from (values ('a0000000-0000-0000-0000-000000000001'::uuid), ('a0000000-0000-0000-0000-000000000002'::uuid), ('a0000000-0000-0000-0000-000000000003'::uuid)) as p(profile_id)
+cross join generate_series(1, 5) as weekday;
+
+insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
+  ('a0000000-0000-0000-0000-000000000001', 2, '09:30', '13:30'),
+  ('a0000000-0000-0000-0000-000000000001', 4, '09:30', '13:30');
