@@ -82,4 +82,18 @@ describe("madridDayBounds", () => {
       end: "2026-12-24T23:59:59+01:00",
     });
   });
+
+  it("resolves each boundary's own offset on the spring-forward day, when midnight and 23:59:59 fall on different sides of the change", () => {
+    expect(madridDayBounds("2026-03-29")).toEqual({
+      start: "2026-03-29T00:00:00+01:00",
+      end: "2026-03-29T23:59:59+02:00",
+    });
+  });
+
+  it("resolves each boundary's own offset on the fall-back day, when midnight and 23:59:59 fall on different sides of the change", () => {
+    expect(madridDayBounds("2026-10-25")).toEqual({
+      start: "2026-10-25T00:00:00+02:00",
+      end: "2026-10-25T23:59:59+01:00",
+    });
+  });
 });
