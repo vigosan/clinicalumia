@@ -75,6 +75,12 @@ describe("parseClinicSettings", () => {
     });
   });
 
+  it("requires an explicit cancellation window instead of defaulting an empty field to zero, since zero means no free cancellation", () => {
+    expect(parseClinicSettings(form({ cancellation_hours: "" }))).toEqual({
+      error: "Indica el plazo de cancelación gratuita.",
+    });
+  });
+
   it("requires the legal name or owner's name, since invoices need it", () => {
     expect(parseClinicSettings(form({ legal_name: " " }))).toEqual({
       error: "La razón social o nombre del titular es obligatorio.",

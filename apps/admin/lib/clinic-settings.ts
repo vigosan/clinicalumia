@@ -40,7 +40,8 @@ export function parseClinicSettings(
   const invoiceFooter = text(formData, "invoice_footer");
   const invoicePrefix = text(formData, "invoice_prefix");
   const rectifyingPrefix = text(formData, "rectifying_prefix");
-  const cancellationHours = Number(text(formData, "cancellation_hours"));
+  const cancellationHoursText = text(formData, "cancellation_hours");
+  const cancellationHours = Number(cancellationHoursText);
 
   if (!legalName)
     return { error: "La razón social o nombre del titular es obligatorio." };
@@ -51,6 +52,8 @@ export function parseClinicSettings(
   if (!POSTAL_CODE_REGEX.test(postalCode))
     return { error: "El código postal debe tener 5 cifras." };
   if (!EMAIL_REGEX.test(email)) return { error: "El email no es válido." };
+  if (!cancellationHoursText)
+    return { error: "Indica el plazo de cancelación gratuita." };
   if (
     !Number.isInteger(cancellationHours) ||
     cancellationHours < 0 ||
