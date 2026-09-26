@@ -1,5 +1,6 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
+import Image from "next/image";
 
 type ClinicSettings = {
   legal_name: string;
@@ -30,7 +31,14 @@ export async function InvoiceHeaderPreview({
         Vista previa de la cabecera de factura
       </h2>
       {publicUrl ? (
-        <img src={publicUrl} alt="Logo de la clínica" className="h-12" />
+        <Image
+          src={publicUrl}
+          alt="Logo de la clínica"
+          width={192}
+          height={48}
+          unoptimized
+          style={{ height: "48px", width: "auto" }}
+        />
       ) : (
         <p className="text-sm text-ink-800">Aún no hay logo</p>
       )}

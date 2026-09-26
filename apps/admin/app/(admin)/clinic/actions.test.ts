@@ -5,7 +5,11 @@ let ownerResult: { ok: true; userId: string } | { ok: false; error: string } =
   owner;
 const updateResult = { error: null as null | { code: string } };
 const updateEq = vi.fn(async () => updateResult);
-const selectSingle = vi.fn(async () => ({ data: { logo_path: null } }));
+const selectSingle = vi.fn(
+  async (): Promise<{ data: { logo_path: string | null } }> => ({
+    data: { logo_path: null },
+  }),
+);
 const upload = vi.fn(async () => ({ error: null }));
 const remove = vi.fn(async () => ({ error: null }));
 
@@ -140,5 +144,14 @@ describe("uploadLogo", () => {
     expect(remove).toHaveBeenCalledWith([
       expect.stringMatching(/^logo-\d+\.png$/),
     ]);
+  });
+
+  it("removes the previous logo once the replacement has saved, so storage doesn't accumulate unused files", async () => {
+    selectSingle.mockImplementation(async () => ({
+      data: { logo_path: "logo-111.png" },
+    }));
+    await uploadLogo(undefined, logoForm(pngFile(100)));
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith(["logo-111.png"]);
   });
 });
