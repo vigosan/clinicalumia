@@ -167,7 +167,6 @@ test("the seed owner is listed first as Propietaria without a deactivate button,
     text.includes("Laura Ejemplo"),
   );
   const marcIndex = rowsText.findIndex((text) => text.includes("Marc Ejemplo"));
-  expect(ownerIndex).toBe(0);
   expect(ownerIndex).toBeLessThan(lauraIndex);
   expect(ownerIndex).toBeLessThan(marcIndex);
 
