@@ -17,6 +17,8 @@ type Member = {
   full_name: string;
   specialty_id: string | null;
   is_active: boolean;
+  role: "owner" | "employee";
+  license_number: string | null;
 };
 
 export function MemberRow({
@@ -58,7 +60,7 @@ export function MemberRow({
               () => setEditing(false),
             )
           }
-          className="grid flex-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+          className="grid flex-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"
         >
           <Field label="Nombre">
             <Input
@@ -80,6 +82,12 @@ export function MemberRow({
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Nº de colegiado">
+            <Input
+              name="license_number"
+              defaultValue={member.license_number ?? ""}
+            />
           </Field>
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={pending}>
@@ -116,6 +124,7 @@ export function MemberRow({
         </p>
         <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-800">
           <span className="truncate">{member.email}</span>
+          {member.role === "owner" && <Badge tone="bark">Propietaria</Badge>}
           <Badge tone={specialtyName ? "success" : "neutral"}>
             {specialtyName ?? "Sin especialidad"}
           </Badge>
@@ -123,6 +132,11 @@ export function MemberRow({
             <Badge tone="warning" data-testid="member-status">
               Inactivo
             </Badge>
+          )}
+          {member.license_number && (
+            <span data-testid="member-license">
+              Nº colegiado {member.license_number}
+            </span>
           )}
         </div>
       </div>
@@ -135,43 +149,46 @@ export function MemberRow({
         >
           Editar
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={pending}
-          onClick={() => run(() => resendInvite(member.email))}
-        >
-          Reenviar invitación
-        </Button>
-        {member.is_active ? (
-          <ConfirmDialog
-            trigger={
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                disabled={pending}
-              >
-                Desactivar
-              </Button>
-            }
-            title={`¿Desactivar a ${member.full_name}?`}
-            description="Dejará de poder entrar en el dashboard. Puedes volver a activarla cuando quieras."
-            confirmLabel="Desactivar"
-            onConfirm={() => run(() => setMemberActive(member.id, false))}
-          />
-        ) : (
+        {member.role !== "owner" && (
           <Button
             type="button"
             variant="secondary"
             size="sm"
             disabled={pending}
-            onClick={() => run(() => setMemberActive(member.id, true))}
+            onClick={() => run(() => resendInvite(member.email))}
           >
-            Activar
+            Reenviar invitación
           </Button>
         )}
+        {member.role !== "owner" &&
+          (member.is_active ? (
+            <ConfirmDialog
+              trigger={
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  disabled={pending}
+                >
+                  Desactivar
+                </Button>
+              }
+              title={`¿Desactivar a ${member.full_name}?`}
+              description="Dejará de poder entrar en el dashboard. Puedes volver a activarla cuando quieras."
+              confirmLabel="Desactivar"
+              onConfirm={() => run(() => setMemberActive(member.id, false))}
+            />
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={() => run(() => setMemberActive(member.id, true))}
+            >
+              Activar
+            </Button>
+          ))}
       </div>
       {error && (
         <p

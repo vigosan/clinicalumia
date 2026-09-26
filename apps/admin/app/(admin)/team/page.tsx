@@ -10,8 +10,10 @@ export default async function TeamPage() {
   const [{ data: members }, { data: specialties }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, email, full_name, specialty_id, is_active, role")
-      .eq("role", "employee")
+      .select(
+        "id, email, full_name, specialty_id, is_active, role, license_number",
+      )
+      .order("role", { ascending: true })
       .order("full_name", { ascending: true }),
     supabase
       .from("specialties")

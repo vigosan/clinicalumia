@@ -31,7 +31,7 @@ export function CreateForm({
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <h2 className="text-lg font-bold text-ink-900">Invitar a un empleado</h2>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Email">
           <Input
             type="email"
@@ -52,6 +52,12 @@ export function CreateForm({
               </option>
             ))}
           </Select>
+        </Field>
+        <Field
+          label="Nº de colegiado"
+          hint="Opcional. Aparecerá en sus facturas."
+        >
+          <Input name="license_number" />
         </Field>
       </div>
       <div className="flex flex-wrap items-center gap-3">

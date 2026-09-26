@@ -9,10 +9,18 @@ const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 const ADMIN = "http://localhost:3002";
 
 const createdUserIds: string[] = [];
+let editedProfileId: string | null = null;
 
 test.afterEach(async () => {
   for (const id of createdUserIds.splice(0)) {
     await admin.auth.admin.deleteUser(id);
+  }
+  if (editedProfileId) {
+    await admin
+      .from("profiles")
+      .update({ license_number: null })
+      .eq("id", editedProfileId);
+    editedProfileId = null;
   }
 });
 
@@ -115,4 +123,36 @@ test("the section menu marks the current page and stays usable on a phone", asyn
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("the seed owner is listed as Propietaria without a deactivate button, and a member's license number can be set", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  await page.goto(`${ADMIN}/team`);
+
+  const ownerRow = page
+    .getByRole("listitem")
+    .filter({ hasText: "info@clinicalumia.es" });
+  await expect(ownerRow.getByText("Propietaria")).toBeVisible();
+  await expect(
+    ownerRow.getByRole("button", { name: "Desactivar" }),
+  ).toHaveCount(0);
+  await expect(
+    ownerRow.getByRole("button", { name: "Reenviar invitación" }),
+  ).toHaveCount(0);
+
+  editedProfileId = "a0000000-0000-0000-0000-000000000002";
+  const lauraRow = page
+    .getByRole("listitem")
+    .filter({ hasText: "Laura Ejemplo" });
+  await lauraRow.getByRole("button", { name: "Editar" }).click();
+  const editingRow = page
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("button", { name: "Guardar" }) });
+  await editingRow.getByLabel("Nº de colegiado").fill("46-12345");
+  await editingRow.getByRole("button", { name: "Guardar" }).click();
+  await expect(lauraRow.getByTestId("member-license")).toHaveText(
+    "Nº colegiado 46-12345",
+  );
 });

@@ -5,13 +5,14 @@ let ownerResult: { ok: true; userId: string } | { ok: false; error: string } =
   owner;
 const result = { error: null as null | { code: string; message: string } };
 const updateEq = vi.fn(async () => result);
+const updateFn = vi.fn(() => ({ eq: updateEq }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@clinicalumia/api/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({
     from: () => ({
-      update: () => ({ eq: updateEq }),
+      update: updateFn,
     }),
   }),
 }));
@@ -34,6 +35,7 @@ describe("team actions", () => {
     ownerResult = owner;
     result.error = null;
     updateEq.mockClear();
+    updateFn.mockClear();
     vi.mocked(createAdminClient).mockClear();
   });
 
@@ -50,6 +52,24 @@ describe("team actions", () => {
       error: "No puedes desactivar tu propia cuenta.",
     });
     expect(updateEq).not.toHaveBeenCalled();
+  });
+
+  it("saves a trimmed license number when the form brings one", async () => {
+    const data = nameForm("Laura Ejemplo");
+    data.set("license_number", "  46-12345  ");
+    expect(await updateMember("id", data)).toEqual({ ok: true });
+    expect(updateFn).toHaveBeenCalledWith(
+      expect.objectContaining({ license_number: "46-12345" }),
+    );
+  });
+
+  it("saves a null license number when the form leaves it empty", async () => {
+    expect(await updateMember("id", nameForm("Laura Ejemplo"))).toEqual({
+      ok: true,
+    });
+    expect(updateFn).toHaveBeenCalledWith(
+      expect.objectContaining({ license_number: null }),
+    );
   });
 
   it("reports a database error when changing another member's status", async () => {

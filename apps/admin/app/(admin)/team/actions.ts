@@ -21,6 +21,8 @@ export async function createMember(
   const fullName = String(formData.get("full_name") ?? "").trim();
   const rawSpecialty = String(formData.get("specialty_id") ?? "");
   const specialtyId = rawSpecialty || null;
+  const licenseNumber =
+    String(formData.get("license_number") ?? "").trim() || null;
 
   if (!email || !fullName) {
     return { error: "Email y nombre son obligatorios." };
@@ -43,6 +45,7 @@ export async function createMember(
     full_name: fullName,
     role: "employee",
     specialty_id: specialtyId,
+    license_number: licenseNumber,
   });
 
   if (profileError) {
@@ -64,11 +67,17 @@ export async function updateMember(
 
   const fullName = String(formData.get("full_name") ?? "").trim();
   const specialtyId = String(formData.get("specialty_id") ?? "") || null;
+  const licenseNumber =
+    String(formData.get("license_number") ?? "").trim() || null;
   if (!fullName) return { error: "El nombre es obligatorio." };
 
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name: fullName, specialty_id: specialtyId })
+    .update({
+      full_name: fullName,
+      specialty_id: specialtyId,
+      license_number: licenseNumber,
+    })
     .eq("id", id);
   if (error) return { error: "No se han podido guardar los cambios." };
 
