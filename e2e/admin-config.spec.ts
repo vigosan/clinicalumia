@@ -99,3 +99,50 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
     }
   }
 });
+
+test("the owner fixes an invalid tax id, saves the clinic details and uploads the logo shown in the invoice preview", async ({
+  page,
+}) => {
+  const { data: before } = await admin
+    .from("clinic_settings")
+    .select("*")
+    .single();
+  try {
+    await loginAsSeedOwner(page);
+    await page.goto(`${ADMIN}/clinic`);
+    await page.getByLabel("NIF / CIF").fill("20449989A");
+    await page.getByTestId("clinic-submit").click();
+    await expect(page.getByTestId("clinic-error")).toContainText(
+      "El NIF/CIF no es válido",
+    );
+    await expect(
+      page.getByLabel("Razón social o nombre del titular"),
+    ).toHaveValue(before!.legal_name);
+    await page.getByLabel("NIF / CIF").fill("20449989-e");
+    await page.getByLabel("Plazo de cancelación gratuita (horas)").fill("48");
+    await page.getByTestId("clinic-submit").click();
+    await expect(page.getByTestId("clinic-saved")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("NIF / CIF")).toHaveValue("20449989E");
+    await expect(
+      page.getByLabel("Plazo de cancelación gratuita (horas)"),
+    ).toHaveValue("48");
+    await page.getByTestId("logo-input").setInputFiles("fixtures/logo.png");
+    await page.getByTestId("logo-submit").click();
+    await expect(
+      page.getByTestId("logo-preview").getByRole("img"),
+    ).toBeVisible();
+  } finally {
+    const { data: after } = await admin
+      .from("clinic_settings")
+      .select("logo_path")
+      .single();
+    if (after?.logo_path && after.logo_path !== before?.logo_path) {
+      await admin.storage.from("branding").remove([after.logo_path]);
+    }
+    await admin
+      .from("clinic_settings")
+      .update({ ...before, updated_at: undefined })
+      .eq("id", true);
+  }
+});

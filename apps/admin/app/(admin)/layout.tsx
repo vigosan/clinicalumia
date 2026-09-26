@@ -48,6 +48,7 @@ export default async function AdminLayout({
         { href: "/specialties", label: "Especialidades" },
         { href: "/services", label: "Servicios" },
         { href: "/schedules", label: "Horarios" },
+        { href: "/clinic", label: "Datos de la clínica" },
       ]}
       user={{ name: profile.full_name, detail: "Propietaria" }}
       logout={
