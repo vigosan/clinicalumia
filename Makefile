@@ -3,7 +3,7 @@ SHELL := /bin/bash
 DB := packages/db
 
 .PHONY: help doctor setup docker.up install env.local dev dev.web dev.admin dev.dashboard stop \
-        build lint format typecheck test test.db test.e2e clean \
+        build lint format typecheck test test.db test.e2e clean totp \
         db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
         db.status db.push.dev db.push.prod db.config.dev db.config.prod db.types.check
 
@@ -91,6 +91,9 @@ db.studio: ## Abre Supabase Studio local
 
 db.mail: ## Abre el buzón local donde llegan los emails (invitaciones, recuperación)
 	open http://localhost:54324
+
+totp: ## Código de verificación de las cuentas de desarrollo
+	cd $(DB) && pnpm exec tsx scripts/totp.ts
 
 db.bootstrap: ## Crea la propietaria en local: make db.bootstrap email=... password=... name="..."
 	@if [ -z "$(email)" ] || [ -z "$(password)" ] || [ -z "$(name)" ]; then \

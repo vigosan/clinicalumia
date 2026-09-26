@@ -32,6 +32,12 @@ insert into auth.identities (id, user_id, provider_id, provider, identity_data, 
    '{"sub":"a0000000-0000-0000-0000-000000000003","email":"fisioterapia@lumia.test"}', now(), now())
 on conflict (provider_id, provider) do nothing;
 
+insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, secret, created_at, updated_at) values
+  ('a0000000-0000-0000-0000-000000000f01', 'a0000000-0000-0000-0000-000000000001', 'App de autenticación', 'totp', 'verified', 'JBSWY3DPEHPK3PXP', now(), now()),
+  ('a0000000-0000-0000-0000-000000000f02', 'a0000000-0000-0000-0000-000000000002', 'App de autenticación', 'totp', 'verified', 'JBSWY3DPEHPK3PXP', now(), now()),
+  ('a0000000-0000-0000-0000-000000000f03', 'a0000000-0000-0000-0000-000000000003', 'App de autenticación', 'totp', 'verified', 'JBSWY3DPEHPK3PXP', now(), now())
+on conflict (id) do nothing;
+
 insert into public.profiles (id, email, full_name, role, specialty_id, is_active) values
   ('a0000000-0000-0000-0000-000000000001', 'info@clinicalumia.es', 'Patricia Hernán', 'owner',
    'a0000000-0000-0000-0000-00000000001a', true),
