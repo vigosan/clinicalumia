@@ -107,6 +107,23 @@ test("deactivating a team member asks for confirmation, and reactivating is imme
   await expect(row.getByTestId("member-status")).toHaveCount(0);
 });
 
+test("each card on the admin home links to its section", async ({ page }) => {
+  await loginAsOwner(page);
+  await page.goto(`${ADMIN}/`);
+  const sections: [string, string][] = [
+    ["home-card-team", "/team"],
+    ["home-card-specialties", "/specialties"],
+    ["home-card-services", "/services"],
+    ["home-card-schedules", "/schedules"],
+    ["home-card-clinic", "/clinic"],
+  ];
+  for (const [testId, href] of sections) {
+    await page.getByTestId(testId).click();
+    await expect(page).toHaveURL(`${ADMIN}${href}`);
+    await page.goto(`${ADMIN}/`);
+  }
+});
+
 test("the section menu marks the current page and stays usable on a phone", async ({
   page,
 }) => {

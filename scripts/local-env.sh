@@ -17,7 +17,9 @@ for app in web admin dashboard; do
   {
     echo "NEXT_PUBLIC_SUPABASE_URL=\"$url\""
     echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$anon\""
-    echo "SUPABASE_SERVICE_ROLE_KEY=\"$service\""
+    if [ "$app" = "admin" ]; then
+      echo "SUPABASE_SERVICE_ROLE_KEY=\"$service\""
+    fi
   } > "$file"
   echo "  escrito apps/$app/.env.development.local"
 done
