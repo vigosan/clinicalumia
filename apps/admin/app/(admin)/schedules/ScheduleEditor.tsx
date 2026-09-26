@@ -108,6 +108,7 @@ export function ScheduleEditor({
                       variant="ghost"
                       size="sm"
                       data-testid="schedule-remove"
+                      aria-label={`Quitar tramo ${position + 1} del ${label.toLowerCase()}`}
                       onClick={() =>
                         update(
                           day,

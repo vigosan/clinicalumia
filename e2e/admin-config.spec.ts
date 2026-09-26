@@ -82,6 +82,9 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
     await expect(page.getByTestId("schedule-error")).toContainText(
       "El sábado tiene dos tramos que se solapan.",
     );
+    await expect(
+      saturday.getByLabel("Quitar tramo 2 del sábado"),
+    ).toBeVisible();
     await saturday.getByTestId("schedule-remove").last().click();
     await page.getByTestId("schedule-save").click();
     await expect(page.getByTestId("schedule-saved")).toBeVisible();
