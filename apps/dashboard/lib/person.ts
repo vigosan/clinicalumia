@@ -1,4 +1,4 @@
-import { isValidSpanishTaxId, normalizeTaxId } from "@clinicalumia/api/tax-id";
+import { isValidPersonalId, normalizeTaxId } from "@clinicalumia/api/tax-id";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -100,8 +100,8 @@ export function parsePersonForm(
   if (birthDateRaw && birthDateRaw > today)
     return { error: "La fecha de nacimiento no puede ser futura." };
 
-  const taxId = taxIdRaw ? normalizeTaxId(taxIdRaw) : null;
-  if (taxId && !isValidSpanishTaxId(taxId))
+  const taxId = taxIdRaw ? normalizeTaxId(taxIdRaw) || null : null;
+  if (taxId && !isValidPersonalId(taxId))
     return { error: "El DNI/NIE no es válido. Revisa la letra." };
 
   const email = emailRaw ? emailRaw.toLowerCase() : null;

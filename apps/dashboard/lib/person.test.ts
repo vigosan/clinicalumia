@@ -82,6 +82,18 @@ describe("todayInMadrid", () => {
   it("rolls over to the next day since Madrid is ahead of UTC in winter", () => {
     expect(todayInMadrid(new Date("2026-12-31T23:30:00Z"))).toBe("2027-01-01");
   });
+
+  it("rolls over to the next day at midnight in summer, when Madrid is UTC+2", () => {
+    expect(todayInMadrid(new Date("2026-07-14T22:30:00Z"))).toBe("2026-07-15");
+  });
+
+  it("still uses the winter offset just before the spring DST change", () => {
+    expect(todayInMadrid(new Date("2026-03-28T23:30:00Z"))).toBe("2026-03-29");
+  });
+
+  it("still uses the summer offset just before the autumn DST change", () => {
+    expect(todayInMadrid(new Date("2026-10-24T22:30:00Z"))).toBe("2026-10-25");
+  });
 });
 
 describe("parsePersonForm", () => {
@@ -117,6 +129,20 @@ describe("parsePersonForm", () => {
     ).toEqual({
       error: "El DNI/NIE no es válido. Revisa la letra.",
     });
+  });
+
+  it("rejects a valid company CIF, since a person must be a DNI or NIE", () => {
+    expect(
+      parsePersonForm(form({ tax_id: "B12345674" }), "2026-09-27"),
+    ).toEqual({
+      error: "El DNI/NIE no es válido. Revisa la letra.",
+    });
+  });
+
+  it("treats a DNI made only of separators as empty, like the database's nullif", () => {
+    expect(
+      parsePersonForm(form({ tax_id: " . - " }), "2026-09-27"),
+    ).toHaveProperty("person.tax_id", null);
   });
 
   it("rejects an email without an at sign", () => {
