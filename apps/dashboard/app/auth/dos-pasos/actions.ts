@@ -3,6 +3,7 @@
 import {
   confirmTotpEnrollment,
   parseTotpCode,
+  startTotpEnrollment,
   verifyTotp,
 } from "@clinicalumia/api/mfa";
 import { safeNext } from "@clinicalumia/api/route";
@@ -12,6 +13,11 @@ import { redirect } from "next/navigation";
 export type TotpFormState = { error: string } | undefined;
 
 const CODE_REQUIRED = "Escribe los 6 dígitos que muestra tu app.";
+
+export async function startEnrollment() {
+  const supabase = await createClient();
+  return startTotpEnrollment(supabase);
+}
 
 export async function confirmEnrollment(
   _prev: TotpFormState,
