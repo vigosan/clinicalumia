@@ -1,5 +1,6 @@
 "use server";
 
+import { getMfaStep } from "@clinicalumia/api/mfa";
 import { createClient } from "@clinicalumia/api/server";
 import { redirect } from "next/navigation";
 import { validateNewPassword } from "@/lib/password";
@@ -22,5 +23,8 @@ export async function setPassword(
       error: "No se ha podido guardar la contraseña. Pide un enlace nuevo.",
     };
 
+  const step = await getMfaStep(supabase);
+  if (step === "enroll") redirect("/auth/dos-pasos/activar");
+  if (step === "challenge") redirect("/auth/dos-pasos");
   redirect("/");
 }
