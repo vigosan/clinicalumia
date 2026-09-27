@@ -7,12 +7,12 @@ export function totpCode(secret: string): string {
   return new TOTP({ secret }).generate();
 }
 
-async function waitForNextTotpWindow(secret: string) {
+export async function waitForNextTotpWindow(secret: string) {
   const remaining = new TOTP({ secret }).remaining();
   await new Promise((resolve) => setTimeout(resolve, remaining + 500));
 }
 
-async function submitTotpCode(page: Page, secret: string) {
+export async function submitTotpCode(page: Page, secret: string) {
   const submitButton = page.getByTestId("totp-submit");
   await page.getByTestId("totp-code").fill(totpCode(secret));
   await submitButton.click();

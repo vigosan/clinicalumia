@@ -1,8 +1,13 @@
 import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { TOTP } from "otpauth";
-import { DEV_TOTP_SECRET, signIn, totpCode } from "./auth";
+import {
+  DEV_TOTP_SECRET,
+  signIn,
+  submitTotpCode,
+  totpCode,
+  waitForNextTotpWindow,
+} from "./auth";
 import { latestLinkFor } from "./mail";
 
 const env = execSync("cd ../packages/db && supabase status -o env").toString();
@@ -49,28 +54,6 @@ async function loginToChallenge(page: Page, email: string, password: string) {
   await page.getByTestId("totp-code").waitFor({ state: "visible" });
 }
 
-async function waitForNextTotpWindow(secret: string) {
-  const remaining = new TOTP({ secret }).remaining();
-  await new Promise((resolve) => setTimeout(resolve, remaining + 500));
-}
-
-async function submitCodeForSecret(page: Page, secret: string) {
-  await page.getByTestId("totp-code").fill(totpCode(secret));
-  await page.getByTestId("totp-submit").click();
-
-  const rejected = await page
-    .getByTestId("totp-error")
-    .waitFor({ state: "visible", timeout: 3000 })
-    .then(() => true)
-    .catch(() => false);
-
-  if (rejected) {
-    await waitForNextTotpWindow(secret);
-    await page.getByTestId("totp-code").fill(totpCode(secret));
-    await page.getByTestId("totp-submit").click();
-  }
-}
-
 test("a wrong six-digit code shows the error and keeps you at the challenge", async ({
   page,
 }) => {
@@ -108,7 +91,7 @@ test("recovering a password with a factor already active asks for the code befor
   await expect(page.getByTestId("totp-code")).toBeVisible();
   await expect(page.locator('[name="password"]')).toHaveCount(0);
 
-  await submitCodeForSecret(page, secret!);
+  await submitTotpCode(page, secret!);
 
   await expect(page).toHaveURL(/\/auth\/contrasena$/);
   const newPassword = "lumia-recuperada-2026";
@@ -119,7 +102,7 @@ test("recovering a password with a factor already active asks for the code befor
 
   await page.getByTestId("logout").click();
   await loginToChallenge(page, email, newPassword);
-  await submitCodeForSecret(page, secret!);
+  await submitTotpCode(page, secret!);
   await expect(page.getByTestId("logout")).toBeVisible();
 });
 
@@ -132,7 +115,7 @@ test("an open redirect on the challenge's next lands you at this app's home", as
     "lumia-desarrollo-2026",
   );
   await page.goto("/auth/dos-pasos?next=//evil.com");
-  await submitCodeForSecret(page, DEV_TOTP_SECRET);
+  await submitTotpCode(page, DEV_TOTP_SECRET);
 
   await expect(page).toHaveURL("http://localhost:3001/");
   await expect(page.getByTestId("logout")).toBeVisible();
