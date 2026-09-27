@@ -52,11 +52,11 @@ describe("TwoFactorChallenge", () => {
     expect(input).toHaveAttribute("autoComplete", "one-time-code");
   });
 
-  it("helps a locked-out employee ask the owner for a reset", () => {
+  it("helps a locked-out person ask for a reset without assuming they are the owner", () => {
     renderChallenge();
     expect(
       screen.getByText(
-        "¿Has perdido el móvil? Pide a la propietaria que restablezca tu verificación.",
+        "¿Has perdido el móvil? Pide que restablezcan tu verificación.",
       ),
     ).toBeInTheDocument();
   });

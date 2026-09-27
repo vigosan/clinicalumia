@@ -20,12 +20,14 @@ type Enrollment = { factorId: string; qrCode: string; secret: string };
 export function TwoFactorSetup({
   startAction,
   confirmAction,
+  logoutAction,
 }: {
   startAction: () => Promise<Enrollment | { error: string }>;
   confirmAction: (
     state: TwoFactorFormState,
     formData: FormData,
   ) => Promise<TwoFactorFormState>;
+  logoutAction: () => void | Promise<void>;
 }) {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
@@ -151,6 +153,18 @@ export function TwoFactorSetup({
           </form>
         </>
       )}
+
+      <form action={logoutAction}>
+        <Button
+          type="submit"
+          variant="ghost"
+          size="sm"
+          data-testid="totp-logout"
+          className="w-full"
+        >
+          Salir
+        </Button>
+      </form>
     </AuthCard>
   );
 }

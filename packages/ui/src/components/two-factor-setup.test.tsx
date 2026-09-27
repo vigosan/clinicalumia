@@ -38,14 +38,20 @@ const enrollment = {
 function renderSetup({
   startAction = vi.fn(async () => enrollment),
   confirmAction = vi.fn(async () => undefined),
+  logoutAction = vi.fn(async () => undefined),
 }: {
   startAction?: StartAction;
   confirmAction?: ConfirmAction;
+  logoutAction?: () => Promise<void>;
 } = {}) {
   render(
-    <TwoFactorSetup startAction={startAction} confirmAction={confirmAction} />,
+    <TwoFactorSetup
+      startAction={startAction}
+      confirmAction={confirmAction}
+      logoutAction={logoutAction}
+    />,
   );
-  return { startAction, confirmAction };
+  return { startAction, confirmAction, logoutAction };
 }
 
 async function start() {
@@ -54,6 +60,12 @@ async function start() {
 }
 
 describe("TwoFactorSetup", () => {
+  it("signs the person out when they can't finish enrolling", async () => {
+    const { logoutAction } = renderSetup();
+    await userEvent.click(screen.getByTestId("totp-logout"));
+    expect(logoutAction).toHaveBeenCalledOnce();
+  });
+
   it("does not enroll until the person asks to start, so opening the page never burns a factor", () => {
     const { startAction } = renderSetup();
     expect(startAction).not.toHaveBeenCalled();

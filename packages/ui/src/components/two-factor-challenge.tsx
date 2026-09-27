@@ -79,8 +79,7 @@ export function TwoFactorChallenge({
         </Button>
       </form>
       <p className="text-center text-[13px] text-ink-800">
-        ¿Has perdido el móvil? Pide a la propietaria que restablezca tu
-        verificación.
+        ¿Has perdido el móvil? Pide que restablezcan tu verificación.
       </p>
       <form action={logoutAction}>
         <Button
