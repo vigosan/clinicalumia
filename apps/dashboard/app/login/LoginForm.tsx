@@ -52,7 +52,12 @@ export function LoginForm({ linkExpired }: { linkExpired: boolean }) {
           />
         </Field>
 
-        <Button type="submit" disabled={pending} className="mt-2 w-full">
+        <Button
+          type="submit"
+          disabled={pending}
+          data-testid="login-submit"
+          className="mt-2 w-full"
+        >
           {pending ? "Entrando…" : "Entrar"}
         </Button>
 
