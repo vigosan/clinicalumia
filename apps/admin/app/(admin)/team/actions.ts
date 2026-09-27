@@ -108,6 +108,7 @@ export async function setMemberActive(
       { target: id },
     );
     if (revokeError) {
+      revalidatePath("/team");
       return { error: "No se ha podido cerrar sus sesiones abiertas." };
     }
   }
@@ -142,7 +143,8 @@ export async function resetTwoFactor(memberId: string): Promise<ActionResult> {
   const { data, error: listError } = await admin.auth.admin.mfa.listFactors({
     userId: memberId,
   });
-  if (listError) return { error: listError.message };
+  if (listError)
+    return { error: "No se ha podido restablecer la verificación." };
 
   for (const factor of data.factors) {
     const { error: deleteError } = await admin.auth.admin.mfa.deleteFactor({

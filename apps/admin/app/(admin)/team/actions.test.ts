@@ -7,7 +7,8 @@ const result = { error: null as null | { code: string; message: string } };
 const updateEq = vi.fn(async () => result);
 const updateFn = vi.fn(() => ({ eq: updateEq }));
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const revalidatePathMock = vi.fn();
+vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
 vi.mock("@clinicalumia/api/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({
@@ -42,6 +43,7 @@ describe("team actions", () => {
     updateEq.mockClear();
     updateFn.mockClear();
     vi.mocked(createAdminClient).mockClear();
+    revalidatePathMock.mockClear();
   });
 
   it("refuses updateMember for a non-owner and skips the update", async () => {
@@ -141,10 +143,10 @@ describe("team actions", () => {
     expect(createAdminClient).not.toHaveBeenCalled();
   });
 
-  it("returns the list error message when listing factors fails, without deleting anything", async () => {
+  it("returns a Spanish generic error when listing factors fails, never GoTrue's raw English message", async () => {
     const listFactors = vi.fn(async () => ({
       data: null,
-      error: { message: "No se puede conectar." },
+      error: { message: "Unable to connect to the authentication server." },
     }));
     const deleteFactor = vi.fn();
     vi.mocked(createAdminClient).mockReturnValue({
@@ -152,7 +154,7 @@ describe("team actions", () => {
     } as unknown as ReturnType<typeof createAdminClient>);
 
     expect(await resetTwoFactor("employee-1")).toEqual({
-      error: "No se puede conectar.",
+      error: "No se ha podido restablecer la verificación.",
     });
     expect(deleteFactor).not.toHaveBeenCalled();
   });
@@ -239,7 +241,7 @@ describe("team actions", () => {
     });
   });
 
-  it("reports a specific error when it can't close the employee's sessions after deactivating them", async () => {
+  it("reports a specific error when it can't close the employee's sessions after deactivating them, but still revalidates so the row doesn't show stale as active", async () => {
     const rpc = vi.fn(async () => ({ error: { message: "boom" } }));
     vi.mocked(createAdminClient).mockReturnValue({
       rpc,
@@ -248,6 +250,7 @@ describe("team actions", () => {
     expect(await setMemberActive("employee-1", false)).toEqual({
       error: "No se ha podido cerrar sus sesiones abiertas.",
     });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/team");
   });
 
   it("does not try to close sessions when reactivating a member", async () => {
