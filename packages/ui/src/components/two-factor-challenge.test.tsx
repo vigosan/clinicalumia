@@ -19,7 +19,6 @@ vi.mock("next/image", () => ({
     priority?: boolean;
     unoptimized?: boolean;
   } & Record<string, unknown>) => (
-    // biome-ignore lint/performance/noImgElement: test double for next/image
     <img src={typeof src === "string" ? src : src.src} alt={alt} {...props} />
   ),
 }));

@@ -47,5 +47,17 @@
         "noNonNullAssertion": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noImgElement": "off"
+          }
+        }
+      }
+    }
+  ]
 }
