@@ -10,6 +10,7 @@
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > types.ts",
     "bootstrap:owner": "tsx scripts/bootstrap-owner.ts",
+    "invite:owner": "tsx scripts/invite-owner.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "migrations": "tsx scripts/migrations-cli.ts"

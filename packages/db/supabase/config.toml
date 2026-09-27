@@ -419,9 +419,27 @@ project_id = "cbyarpxrhgvmllneodoz"
 site_url = "http://localhost:3001"
 additional_redirect_urls = ["http://localhost:3001", "http://127.0.0.1:3001"]
 
+[remotes.dev.auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "no-responder@clinicalumia.es"
+sender_name = "Clínica LUMIA"
+
 [remotes.prod]
 project_id = "xdcyltzvqaqppdguexkj"
 
 [remotes.prod.auth]
 site_url = "https://panel.clinicalumia.es"
 additional_redirect_urls = ["https://panel.clinicalumia.es", "https://admin.clinicalumia.es"]
+
+[remotes.prod.auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "no-responder@clinicalumia.es"
+sender_name = "Clínica LUMIA"

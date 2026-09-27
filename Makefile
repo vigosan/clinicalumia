@@ -5,7 +5,8 @@ DB := packages/db
 .PHONY: help doctor setup docker.up install env.local dev dev.web dev.admin dev.dashboard stop \
         build lint format typecheck test test.db test.e2e clean totp \
         db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
-        db.status db.push.dev db.push.prod db.config.dev db.config.prod db.types.check
+        db.status db.push.dev db.push.prod db.config.dev db.config.prod db.types.check \
+        db.owner.local db.owner.prod
 
 help: ## Muestra los comandos disponibles
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -130,12 +131,42 @@ db.push.prod: ## Aplica en producción (solo si dev ya las tiene; pide confirmac
 
 db.config.dev: ## Aplica la configuración de login (config.toml) a lumia-db-dev
 	@ref="$$(grep '^SUPABASE_PROJECT_REF=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 key="$$(grep '^RESEND_API_KEY=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
 	 if [ -z "$$ref" ]; then echo "Falta SUPABASE_PROJECT_REF en packages/db/.env.dev"; exit 1; fi; \
-	 cd $(DB) && supabase config push --project-ref "$$ref"
+	 if [ -z "$$key" ]; then echo "Falta RESEND_API_KEY en packages/db/.env.dev"; exit 1; fi; \
+	 cd $(DB) && RESEND_API_KEY="$$key" supabase config push --project-ref "$$ref"
 
 db.config.prod: ## Aplica la configuración de login a producción (pide confirmación)
 	@read -p "¿Aplicar config.toml en PRODUCCIÓN? Escribe 'produccion': " answer; \
 	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
 	@ref="$$(grep '^SUPABASE_PROJECT_REF=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 key="$$(grep '^RESEND_API_KEY=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
 	 if [ -z "$$ref" ]; then echo "Falta SUPABASE_PROJECT_REF en packages/db/.env.prod"; exit 1; fi; \
-	 cd $(DB) && supabase config push --project-ref "$$ref"
+	 if [ -z "$$key" ]; then echo "Falta RESEND_API_KEY en packages/db/.env.prod"; exit 1; fi; \
+	 cd $(DB) && RESEND_API_KEY="$$key" supabase config push --project-ref "$$ref"
+
+db.owner.local: ## Invita a la propietaria en local, para probarlo con Mailpit: make db.owner.local email=... name="..."
+	@if [ -z "$(email)" ] || [ -z "$(name)" ]; then \
+		echo 'Uso: make db.owner.local email=nueva-duena@lumia.test name="Dueña de prueba"'; exit 1; \
+	fi
+	cd $(DB) && \
+		SUPABASE_URL=http://127.0.0.1:54321 \
+		SUPABASE_SERVICE_ROLE_KEY=$$(supabase status -o env | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"') \
+		OWNER_EMAIL="$(email)" OWNER_FULL_NAME="$(name)" \
+		REDIRECT_TO="http://127.0.0.1:3001/auth/confirm" \
+		pnpm invite:owner
+
+db.owner.prod: ## Invita a la propietaria en producción (pide confirmación): make db.owner.prod email=... name="..."
+	@if [ -z "$(email)" ] || [ -z "$(name)" ]; then \
+		echo 'Uso: make db.owner.prod email=info@clinicalumia.es name="Patricia Hernán Sánchez"'; exit 1; \
+	fi
+	@read -p "¿Invitar a la propietaria en PRODUCCIÓN? Escribe 'produccion': " answer; \
+	 [ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1)
+	@url="$$(grep '^NEXT_PUBLIC_SUPABASE_URL=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 key="$$(grep '^SUPABASE_SERVICE_ROLE_KEY=' $(PROD_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
+	 if [ -z "$$url" ] || [ -z "$$key" ]; then echo "Falta NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en packages/db/.env.prod"; exit 1; fi; \
+	 cd $(DB) && \
+	 SUPABASE_URL="$$url" SUPABASE_SERVICE_ROLE_KEY="$$key" \
+	 OWNER_EMAIL="$(email)" OWNER_FULL_NAME="$(name)" \
+	 REDIRECT_TO="https://panel.clinicalumia.es/auth/confirm" \
+	 pnpm invite:owner
