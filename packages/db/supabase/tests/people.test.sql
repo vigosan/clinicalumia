@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(50);
 
 insert into auth.users (id, email) values
   ('50000000-0000-0000-0000-000000000001', 'owner-people@test.local'),
@@ -70,6 +70,25 @@ select is((select count(*) from public.people), 0::bigint,
 select pg_temp.act_as('50000000-0000-0000-0000-000000000002');
 
 select lives_ok($$
+  insert into public.people (id, first_name, last_name, birth_date, created_by)
+  values ('50000000-0000-0000-0000-0000000000e2', 'Alguien', 'Suplantado', '1985-01-01',
+    '50000000-0000-0000-0000-000000000001')
+$$, 'an employee can insert a person even while trying to set created_by to someone else');
+
+select is((select created_by from public.people where id = '50000000-0000-0000-0000-0000000000e2')::text,
+  '50000000-0000-0000-0000-000000000002',
+  'created_by is forced to the session''s own user, ignoring whatever the employee tried to spoof it with');
+
+select lives_ok($$
+  update public.people set created_by = '50000000-0000-0000-0000-000000000001'
+  where id = '50000000-0000-0000-0000-0000000000e2'
+$$, 'updating a person while trying to change created_by does not raise');
+
+select is((select created_by from public.people where id = '50000000-0000-0000-0000-0000000000e2')::text,
+  '50000000-0000-0000-0000-000000000002',
+  'created_by stays pinned to whoever created the record, even across later updates by someone else');
+
+select lives_ok($$
   insert into public.people (id, first_name, last_name, birth_date, email)
   values ('50000000-0000-0000-0000-0000000000c1', 'Marta', 'Lopez', '1985-03-03', ' Ana@Example.COM ')
 $$, 'inserting a spaced, mixed-case email succeeds');
@@ -100,6 +119,22 @@ $$, 'inserting a foreign phone number succeeds');
 
 select is((select phone from public.people where id = '50000000-0000-0000-0000-0000000000d3'), '+442079460958',
   'a non-spanish phone keeps its + country code, since only the spanish prefix is stripped');
+
+select lives_ok($$
+  insert into public.people (id, first_name, last_name, birth_date, phone)
+  values ('50000000-0000-0000-0000-0000000000e3', 'Persona', 'TelSoloMas', '1985-01-01', '+')
+$$, 'inserting a lone plus sign as a phone succeeds');
+
+select is((select phone from public.people where id = '50000000-0000-0000-0000-0000000000e3'), null::text,
+  'a phone with no digits at all is stored as null, since a lone + is not a phone number');
+
+select lives_ok($$
+  insert into public.people (id, first_name, last_name, birth_date, phone)
+  values ('50000000-0000-0000-0000-0000000000e4', 'Persona', 'TelSoloGuion', '1985-01-01', ' - ')
+$$, 'inserting a phone made only of punctuation succeeds');
+
+select is((select phone from public.people where id = '50000000-0000-0000-0000-0000000000e4'), null::text,
+  'a phone with no digits at all is stored as null, whatever punctuation surrounds it');
 
 select lives_ok($$
   insert into public.people (id, first_name, last_name, birth_date, tax_id, email, phone)
@@ -177,6 +212,35 @@ select throws_ok($$
   insert into public.guardianships (minor_id, guardian_id, relationship, is_primary)
   values ('50000000-0000-0000-0000-0000000000c2', '50000000-0000-0000-0000-0000000000c4', 'padre', true)
 $$, '23505', null, 'a minor cannot have two primary guardians at the same time');
+
+insert into public.people (id, first_name, last_name, birth_date) values
+  ('50000000-0000-0000-0000-0000000000c5', 'Nino', 'MenorDos', '2016-06-01'),
+  ('50000000-0000-0000-0000-0000000000c6', 'Tutor', 'ActivoDos', '1980-04-04'),
+  ('50000000-0000-0000-0000-0000000000c7', 'Nino', 'MenorTres', '2017-06-01'),
+  ('50000000-0000-0000-0000-0000000000c8', 'Tutor', 'InactivoDos', '1980-04-04');
+
+insert into public.guardianships (minor_id, guardian_id, relationship) values
+  ('50000000-0000-0000-0000-0000000000c5', '50000000-0000-0000-0000-0000000000c6', 'otro'),
+  ('50000000-0000-0000-0000-0000000000c7', '50000000-0000-0000-0000-0000000000c8', 'otro');
+
+select lives_ok($$
+  delete from public.guardianships
+  where minor_id = '50000000-0000-0000-0000-0000000000c5' and guardian_id = '50000000-0000-0000-0000-0000000000c6'
+$$, 'an active employee can remove a guardian link without deleting either person');
+
+select is((select count(*) from public.guardianships where minor_id = '50000000-0000-0000-0000-0000000000c5'), 0::bigint,
+  'the guardian link removed by an active employee is gone');
+
+select pg_temp.act_as('50000000-0000-0000-0000-000000000003');
+
+select lives_ok($$
+  delete from public.guardianships
+  where minor_id = '50000000-0000-0000-0000-0000000000c7' and guardian_id = '50000000-0000-0000-0000-0000000000c8'
+$$, 'RLS silently filters a deactivated employee''s delete instead of raising');
+
+reset role;
+select is((select count(*) from public.guardianships where minor_id = '50000000-0000-0000-0000-0000000000c7'), 1::bigint,
+  'checked as postgres: the deactivated employee removed 0 rows, the guardian link is still there');
 
 select pg_temp.act_as('50000000-0000-0000-0000-000000000001');
 

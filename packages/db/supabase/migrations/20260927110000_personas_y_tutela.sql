@@ -20,7 +20,7 @@ parallel safe
 set search_path = ''
 as $$
   select case
-    when cleaned = '' then null
+    when cleaned !~ '[0-9]' then null
     when cleaned ~ '^(\+34|0034)[0-9]{9}$' then right(cleaned, 9)
     else cleaned
   end
@@ -74,6 +74,13 @@ begin
   new.phone := public.normalize_phone(new.phone);
   if new.birth_date is not null and new.birth_date > current_date then
     raise exception 'birth_date must not be in the future' using errcode = '23514';
+  end if;
+  if tg_op = 'INSERT' then
+    if auth.uid() is not null then
+      new.created_by := auth.uid();
+    end if;
+  else
+    new.created_by := old.created_by;
   end if;
   return new;
 end;
