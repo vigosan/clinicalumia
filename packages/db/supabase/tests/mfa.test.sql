@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(30);
 
 insert into auth.users (id, email) values
   ('40000000-0000-0000-0000-000000000001', 'owner-mfa@test.local'),
@@ -26,6 +26,18 @@ create or replace function pg_temp.act_as(user_id uuid, aal text default 'aal2')
          set_config('request.jwt.claims',
            json_build_object('sub', user_id, 'role', 'authenticated', 'aal', aal,
              'session_id', pg_temp.create_test_session(user_id))::text,
+           true);
+$$;
+
+create or replace function pg_temp.act_as_raw_session(user_id uuid, session_id text) returns void language sql as $$
+  select set_config('role', 'authenticated', true),
+         set_config('request.jwt.claims',
+           case
+             when session_id is null
+               then json_build_object('sub', user_id, 'role', 'authenticated', 'aal', 'aal2')::text
+             else json_build_object('sub', user_id, 'role', 'authenticated', 'aal', 'aal2',
+               'session_id', session_id)::text
+           end,
            true);
 $$;
 
@@ -112,5 +124,19 @@ select is(public.is_owner(), false,
 select is((select count(*) from public.clinic_settings), 0::bigint,
   'a revoked session cannot read clinic settings, closing the gap a stolen access token could otherwise exploit');
 
+reset role;
+select pg_temp.act_as_raw_session('40000000-0000-0000-0000-000000000001', null);
+select is(public.is_owner(), false,
+  'is_owner returns false instead of raising when the JWT carries no session_id at all');
+select is(public.is_active_staff(), false,
+  'is_active_staff returns false instead of raising when the JWT carries no session_id at all');
+
+select pg_temp.act_as_raw_session('40000000-0000-0000-0000-000000000001', 'not-a-uuid');
+select is(public.is_owner(), false,
+  'is_owner returns false instead of raising when session_id is not a valid uuid');
+select is(public.is_active_staff(), false,
+  'is_active_staff returns false instead of raising when session_id is not a valid uuid');
+
+reset role;
 select * from finish();
 rollback;
