@@ -46,6 +46,9 @@ test("the admin shows an error when a specialty name is already taken", async ({
 
   await signIn(page, "http://localhost:3002", email, password);
   await expect(page).toHaveURL("http://localhost:3002/");
+  await expect(
+    page.getByRole("navigation", { name: "Secciones" }),
+  ).toBeVisible();
 
   await page.goto("http://localhost:3002/specialties");
 
