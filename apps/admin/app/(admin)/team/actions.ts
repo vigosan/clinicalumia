@@ -117,3 +117,33 @@ export async function resendInvite(email: string): Promise<ActionResult> {
   revalidatePath("/team");
   return { ok: true };
 }
+
+export async function resetTwoFactor(memberId: string): Promise<ActionResult> {
+  const owner = await requireOwner(await createClient());
+  if (!owner.ok) return { error: owner.error };
+
+  if (memberId === owner.userId) {
+    return {
+      error: "No puedes restablecer tu propia verificación desde aquí.",
+    };
+  }
+
+  const admin = createAdminClient();
+  const { data, error: listError } = await admin.auth.admin.mfa.listFactors({
+    userId: memberId,
+  });
+  if (listError) return { error: listError.message };
+
+  for (const factor of data.factors) {
+    const { error: deleteError } = await admin.auth.admin.mfa.deleteFactor({
+      id: factor.id,
+      userId: memberId,
+    });
+    if (deleteError) {
+      return { error: "No se ha podido restablecer la verificación." };
+    }
+  }
+
+  revalidatePath("/team");
+  return { ok: true };
+}

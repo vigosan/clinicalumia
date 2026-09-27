@@ -7,7 +7,12 @@ import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
 import { useState, useTransition } from "react";
-import { resendInvite, setMemberActive, updateMember } from "./actions";
+import {
+  resendInvite,
+  resetTwoFactor,
+  setMemberActive,
+  updateMember,
+} from "./actions";
 
 type Specialty = { id: string; name: string };
 
@@ -159,6 +164,25 @@ export function MemberRow({
           >
             Reenviar invitación
           </Button>
+        )}
+        {member.role !== "owner" && (
+          <ConfirmDialog
+            trigger={
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={pending}
+                data-testid="member-reset-2fa"
+              >
+                Restablecer verificación
+              </Button>
+            }
+            title="¿Restablecer la verificación en dos pasos?"
+            description="La próxima vez que entre tendrá que activarla de nuevo."
+            confirmLabel="Restablecer"
+            onConfirm={() => run(() => resetTwoFactor(member.id))}
+          />
         )}
         {member.role !== "owner" &&
           (member.is_active ? (

@@ -21,8 +21,13 @@ vi.mock("@clinicalumia/api/auth", () => ({
 }));
 
 const { createAdminClient } = await import("@clinicalumia/api/admin");
-const { createMember, resendInvite, setMemberActive, updateMember } =
-  await import("./actions");
+const {
+  createMember,
+  resendInvite,
+  resetTwoFactor,
+  setMemberActive,
+  updateMember,
+} = await import("./actions");
 
 function nameForm(name: string) {
   const data = new FormData();
@@ -119,5 +124,81 @@ describe("team actions", () => {
       error: "No tienes permiso para hacer esto.",
     });
     expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("refuses resetTwoFactor for a non-owner and never touches the admin client", async () => {
+    ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
+    expect(await resetTwoFactor("employee-1")).toEqual({
+      error: "No tienes permiso para hacer esto.",
+    });
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("refuses to let the owner reset her own two-factor verification", async () => {
+    expect(await resetTwoFactor(owner.userId)).toEqual({
+      error: "No puedes restablecer tu propia verificación desde aquí.",
+    });
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("returns the list error message when listing factors fails, without deleting anything", async () => {
+    const listFactors = vi.fn(async () => ({
+      data: null,
+      error: { message: "No se puede conectar." },
+    }));
+    const deleteFactor = vi.fn();
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: { admin: { mfa: { listFactors, deleteFactor } } },
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    expect(await resetTwoFactor("employee-1")).toEqual({
+      error: "No se puede conectar.",
+    });
+    expect(deleteFactor).not.toHaveBeenCalled();
+  });
+
+  it("returns a generic error when deleting a factor fails", async () => {
+    const listFactors = vi.fn(async () => ({
+      data: { factors: [{ id: "factor-1" }, { id: "factor-2" }] },
+      error: null,
+    }));
+    const deleteFactor = vi.fn(async ({ id }: { id: string }) =>
+      id === "factor-1"
+        ? { data: { id }, error: null }
+        : { data: null, error: { message: "boom" } },
+    );
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: { admin: { mfa: { listFactors, deleteFactor } } },
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    expect(await resetTwoFactor("employee-1")).toEqual({
+      error: "No se ha podido restablecer la verificación.",
+    });
+  });
+
+  it("deletes every factor belonging to the employee", async () => {
+    const listFactors = vi.fn(async () => ({
+      data: { factors: [{ id: "factor-1" }, { id: "factor-2" }] },
+      error: null,
+    }));
+    const deleteFactor = vi.fn(async () => ({
+      data: { id: "factor-1" },
+      error: null,
+    }));
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: { admin: { mfa: { listFactors, deleteFactor } } },
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    expect(await resetTwoFactor("employee-1")).toEqual({ ok: true });
+    expect(listFactors).toHaveBeenCalledWith({ userId: "employee-1" });
+    expect(deleteFactor).toHaveBeenCalledWith({
+      id: "factor-1",
+      userId: "employee-1",
+    });
+    expect(deleteFactor).toHaveBeenCalledWith({
+      id: "factor-2",
+      userId: "employee-1",
+    });
+    expect(deleteFactor).toHaveBeenCalledTimes(2);
   });
 });

@@ -8,6 +8,7 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 const ADMIN = "http://localhost:3002";
+const DASHBOARD = "http://localhost:3001";
 
 const createdUserIds: string[] = [];
 let editedProfileId: string | null = null;
@@ -185,4 +186,63 @@ test("the seed owner is listed first as Propietaria without a deactivate button,
   await expect(lauraRow.getByTestId("member-license")).toHaveText(
     "Nº colegiado 46-12345",
   );
+});
+
+test("the owner resets an employee's two-factor step and their next login asks them to activate it again", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const employeeContext = await browser.newContext();
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const employeePage = await employeeContext.newPage();
+
+    const fullName = `Empleado Reset ${Date.now()}`;
+    const employeeEmail = `empleado-reset-${Date.now()}@test.local`;
+    const employeePassword = "lumia-segura-2026";
+    const { data, error } = await admin.auth.admin.createUser({
+      email: employeeEmail,
+      password: employeePassword,
+      email_confirm: true,
+    });
+    expect(error).toBeNull();
+    createdUserIds.push(data.user!.id);
+    const { error: profileError } = await admin.from("profiles").insert({
+      id: data.user!.id,
+      email: employeeEmail,
+      full_name: fullName,
+      role: "employee",
+      is_active: true,
+    });
+    expect(profileError).toBeNull();
+
+    await signIn(employeePage, DASHBOARD, employeeEmail, employeePassword);
+    await employeePage.getByTestId("logout").click();
+
+    await loginAsOwner(ownerPage);
+    await ownerPage.goto(`${ADMIN}/team`);
+    const row = ownerPage.getByRole("listitem").filter({ hasText: fullName });
+    await row.getByRole("button", { name: "Restablecer verificación" }).click();
+    await ownerPage.getByTestId("confirm-action").click();
+    await expect(row.getByTestId("member-error")).toHaveCount(0);
+
+    await expect
+      .poll(async () => {
+        const { data: factors } = await admin.auth.admin.mfa.listFactors({
+          userId: data.user!.id,
+        });
+        return factors?.factors.length ?? -1;
+      })
+      .toBe(0);
+
+    await employeePage.goto(`${DASHBOARD}/login`);
+    await employeePage.fill('[name="email"]', employeeEmail);
+    await employeePage.fill('[name="password"]', employeePassword);
+    await employeePage.getByTestId("login-submit").click();
+    await expect(employeePage.getByTestId("totp-start")).toBeVisible();
+    await expect(employeePage.getByTestId("totp-code")).toHaveCount(0);
+  } finally {
+    await ownerContext.close();
+    await employeeContext.close();
+  }
 });
