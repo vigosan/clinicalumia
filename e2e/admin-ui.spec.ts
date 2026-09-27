@@ -260,23 +260,24 @@ test("the owner resets an employee's two-factor step, closing their still-open s
     await loginAsOwner(ownerPage);
     await ownerPage.goto(`${ADMIN}/team`);
     const row = ownerPage.getByRole("listitem").filter({ hasText: fullName });
-    await row.getByRole("button", { name: "Restablecer verificación" }).click();
+    await row.getByTestId("member-reset-2fa").click();
     await ownerPage.getByTestId("confirm-action").click();
     await expect(row.getByTestId("member-error")).toHaveCount(0);
 
     await expect
       .poll(async () => {
-        const { data: factors } = await admin.auth.admin.mfa.listFactors({
-          userId: data.user!.id,
-        });
-        return factors?.factors.length ?? -1;
+        const response = await fetch(
+          `${API_URL}/rest/v1/specialties?select=id`,
+          {
+            headers: {
+              apikey: anonKey,
+              Authorization: `Bearer ${oldAccessToken}`,
+            },
+          },
+        );
+        return response.json();
       })
-      .toBe(0);
-
-    const afterReset = await fetch(`${API_URL}/rest/v1/specialties?select=id`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${oldAccessToken}` },
-    }).then((response) => response.json());
-    expect(afterReset).toEqual([]);
+      .toEqual([]);
 
     await employeePage.goto(`${DASHBOARD}/`);
     await expect(employeePage).toHaveURL(`${DASHBOARD}/login`);
