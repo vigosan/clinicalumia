@@ -23,9 +23,10 @@ export function parseTotpCode(input: string): string | null {
 }
 
 function toQrCodeSrc(qrCode: string): string {
-  return qrCode.startsWith("data:")
-    ? qrCode
-    : `data:image/svg+xml;utf-8,${qrCode}`;
+  const trimmed = qrCode.trim();
+  return trimmed.startsWith("data:")
+    ? trimmed
+    : `data:image/svg+xml;utf-8,${trimmed}`;
 }
 
 export async function startTotpEnrollment(

@@ -77,9 +77,11 @@ describe("parseTotpCode", () => {
 function fakeEnrollClient({
   factors = [],
   enrollError = null,
+  qrCode = "<svg/>",
 }: {
   factors?: { id: string; factor_type: string; status: string }[];
   enrollError?: { message: string } | null;
+  qrCode?: string;
 } = {}) {
   const unenroll = vi.fn(async () => ({ data: { id: "x" }, error: null }));
   const enroll = vi.fn(async () => ({
@@ -89,7 +91,7 @@ function fakeEnrollClient({
           id: "new-factor",
           type: "totp",
           totp: {
-            qr_code: "<svg/>",
+            qr_code: qrCode,
             secret: "SECRET123",
             uri: "otpauth://totp/x",
           },
@@ -138,6 +140,21 @@ describe("startTotpEnrollment", () => {
     await startTotpEnrollment(client);
 
     expect(unenroll).not.toHaveBeenCalled();
+  });
+
+  it("trims trailing whitespace from the QR svg, since Next's Image rejects a src ending in a control character", async () => {
+    const { client } = fakeEnrollClient({
+      qrCode: '<?xml version="1.0"?>\n<svg><rect /></svg>\n',
+    });
+
+    const result = await startTotpEnrollment(client);
+
+    expect(result).toEqual({
+      factorId: "new-factor",
+      qrCode:
+        'data:image/svg+xml;utf-8,<?xml version="1.0"?>\n<svg><rect /></svg>',
+      secret: "SECRET123",
+    });
   });
 
   it("reports a friendly error when Supabase refuses to enroll", async () => {
