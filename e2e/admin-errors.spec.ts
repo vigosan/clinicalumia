@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { signIn } from "./auth";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -43,10 +44,7 @@ test("the admin shows an error when a specialty name is already taken", async ({
   });
   expect(profileError).toBeNull();
 
-  await page.goto("http://localhost:3002/login");
-  await page.fill('[name="email"]', email);
-  await page.fill('[name="password"]', password);
-  await page.getByTestId("login-submit").click();
+  await signIn(page, "http://localhost:3002", email, password);
   await expect(page).toHaveURL("http://localhost:3002/");
 
   await page.goto("http://localhost:3002/specialties");

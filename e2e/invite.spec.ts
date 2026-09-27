@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { completeTwoFactorStep } from "./auth";
 import { latestLinkFor } from "./mail";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
@@ -47,6 +48,7 @@ test("an invited employee sets a password and lands in the dashboard", async ({
   await page.fill('[name="password"]', "lumia-segura-2026");
   await page.fill('[name="confirmation"]', "lumia-segura-2026");
   await page.getByTestId("password-submit").click();
+  await completeTwoFactorStep(page);
   await expect(
     page.getByRole("heading", { name: /Empleada de prueba/ }),
   ).toBeVisible();

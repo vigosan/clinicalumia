@@ -167,6 +167,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.117.1
         version: 2.117.1
+      otpauth:
+        specifier: ^9.5.2
+        version: 9.5.2
 
   packages/api:
     dependencies:

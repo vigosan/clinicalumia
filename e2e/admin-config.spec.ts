@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { signIn } from "./auth";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -8,12 +9,27 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 const ADMIN = "http://localhost:3002";
 const createdServiceNames: string[] = [];
+const createdUserIds: string[] = [];
 
-async function loginAsSeedOwner(page: Page) {
-  await page.goto(`${ADMIN}/login`);
-  await page.fill('[name="email"]', "info@clinicalumia.es");
-  await page.fill('[name="password"]', "lumia-desarrollo-2026");
-  await page.getByTestId("login-submit").click();
+async function loginAsOwner(page: Page) {
+  const email = `owner-config-${Date.now()}@test.local`;
+  const password = "lumia-segura-2026";
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  expect(error).toBeNull();
+  createdUserIds.push(data.user!.id);
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: data.user!.id,
+    email,
+    full_name: "Propietaria de prueba",
+    role: "owner",
+    is_active: true,
+  });
+  expect(profileError).toBeNull();
+  await signIn(page, ADMIN, email, password);
   await expect(
     page.getByRole("navigation", { name: "Secciones" }),
   ).toBeVisible();
@@ -26,12 +42,15 @@ test.afterEach(async () => {
       .delete()
       .in("name", createdServiceNames.splice(0));
   }
+  for (const id of createdUserIds.splice(0)) {
+    await admin.auth.admin.deleteUser(id);
+  }
 });
 
 test("the owner creates a service with a deposit and sees it listed with its price", async ({
   page,
 }) => {
-  await loginAsSeedOwner(page);
+  await loginAsOwner(page);
   const name = `Sesión e2e ${Date.now()}`;
   createdServiceNames.push(name);
   await page.goto(`${ADMIN}/services`);
@@ -64,7 +83,7 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
     .select("weekday, starts_at, ends_at")
     .eq("profile_id", employeeId);
   try {
-    await loginAsSeedOwner(page);
+    await loginAsOwner(page);
     await page.goto(`${ADMIN}/schedules`);
     await expect(page.getByLabel("Persona del equipo")).toBeVisible();
     await page
@@ -113,7 +132,7 @@ test("the owner fixes an invalid tax id, saves the clinic details and uploads th
     .select("*")
     .single();
   try {
-    await loginAsSeedOwner(page);
+    await loginAsOwner(page);
     await page.goto(`${ADMIN}/clinic`);
     await page.getByLabel("NIF / CIF").fill("20449989A");
     await page.getByTestId("clinic-submit").click();
@@ -157,7 +176,7 @@ test("uploading a logo over 2 MB shows a clear error instead of crashing", async
 }) => {
   const pageErrors: Error[] = [];
   page.on("pageerror", (error) => pageErrors.push(error));
-  await loginAsSeedOwner(page);
+  await loginAsOwner(page);
   await page.goto(`${ADMIN}/clinic`);
   await page.getByTestId("logo-input").setInputFiles({
     name: "logo-grande.png",
