@@ -9,7 +9,8 @@
     "./admin": "./admin.ts",
     "./proxy": "./proxy.ts",
     "./auth": "./auth.ts",
-    "./route": "./route.ts"
+    "./route": "./route.ts",
+    "./mfa": "./mfa.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -22,7 +23,8 @@
     "admin.ts",
     "proxy.ts",
     "auth.ts",
-    "route.ts"
+    "route.ts",
+    "mfa.ts"
   ],
   "dependencies": {
     "@clinicalumia/db": "workspace:*",
