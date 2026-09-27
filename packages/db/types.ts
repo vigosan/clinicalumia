@@ -392,6 +392,21 @@ export type Database = {
     }
     Functions: {
       f_unaccent: { Args: { value: string }; Returns: string }
+      find_possible_duplicates: {
+        Args: {
+          p_email: string
+          p_exclude?: string
+          p_phone: string
+          p_tax_id: string
+        }
+        Returns: {
+          first_name: string
+          id: string
+          last_name: string
+          matched: string[]
+          minors: string[]
+        }[]
+      }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       normalize_phone: { Args: { value: string }; Returns: string }

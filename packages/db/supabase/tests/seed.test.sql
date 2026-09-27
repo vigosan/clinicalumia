@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(27);
 
 select is((select count(*) from public.specialties)::bigint, 3::bigint,
   'the local seed creates exactly three specialties');
@@ -70,6 +70,12 @@ select is((select tax_id from public.clinic_settings), '20449989E', 'the develop
 
 select is((select count(*) from auth.mfa_factors where factor_type = 'totp' and status = 'verified')::bigint, 3::bigint,
   'each seeded account has a verified TOTP factor so local login works like production');
+
+select is((select count(*) from public.people)::bigint, 5::bigint,
+  'the seed creates an example family of five people, so the file and the duplicate warning have realistic local data');
+
+select is((select count(*) from public.guardianships)::bigint, 2::bigint,
+  'the seed links both minors of the example family to their mother, so guardianship shows up realistically in local dev');
 
 select * from finish();
 rollback;

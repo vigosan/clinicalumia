@@ -79,3 +79,25 @@ update public.clinic_settings set
   email = 'info@clinicalumia.es',
   website = 'https://www.clinicalumia.es',
   cancellation_hours = 24;
+
+insert into public.people (id, first_name, last_name, is_patient, phone, email) values
+  ('a0000000-0000-0000-0000-000000000601', 'Lucía', 'Martínez Soler', false, '600111222', 'lucia.martinez@example.com')
+on conflict (id) do nothing;
+
+insert into public.people (id, first_name, last_name, is_patient, birth_date) values
+  ('a0000000-0000-0000-0000-000000000602', 'Pablo', 'Ferrer Martínez', true, '2019-04-10'),
+  ('a0000000-0000-0000-0000-000000000603', 'Nora', 'Ferrer Martínez', true, '2014-01-20')
+on conflict (id) do nothing;
+
+insert into public.people (id, first_name, last_name, is_patient, birth_date, tax_id) values
+  ('a0000000-0000-0000-0000-000000000604', 'Jorge', 'Ruiz Pérez', true, '1985-06-15', '11223344B')
+on conflict (id) do nothing;
+
+insert into public.people (id, first_name, last_name, is_patient, birth_date) values
+  ('a0000000-0000-0000-0000-000000000605', 'Elena', 'Gómez Díaz', true, '1990-03-22')
+on conflict (id) do nothing;
+
+insert into public.guardianships (minor_id, guardian_id, relationship, is_primary) values
+  ('a0000000-0000-0000-0000-000000000602', 'a0000000-0000-0000-0000-000000000601', 'madre', true),
+  ('a0000000-0000-0000-0000-000000000603', 'a0000000-0000-0000-0000-000000000601', 'madre', true)
+on conflict (minor_id, guardian_id) do nothing;

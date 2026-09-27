@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(59);
 
 insert into auth.users (id, email) values
   ('50000000-0000-0000-0000-000000000001', 'owner-people@test.local'),
@@ -254,6 +254,67 @@ $$, 'the owner can delete the minor');
 
 select is((select count(*) from public.guardianships where minor_id = '50000000-0000-0000-0000-0000000000c2'), 0::bigint,
   'deleting the minor cascades to remove their guardianship rows');
+
+insert into public.people (id, first_name, last_name, birth_date, phone, archived_at) values
+  ('50000000-0000-0000-0000-0000000000e5', 'Persona', 'Archivada', '1990-01-01', '600444555', now());
+
+insert into public.people (id, first_name, last_name, birth_date, phone) values
+  ('50000000-0000-0000-0000-0000000000e6', 'Persona', 'ParaExcluir', '1990-01-01', '600444666');
+
+insert into public.people (id, first_name, last_name, birth_date, phone) values
+  ('50000000-0000-0000-0000-0000000000e7', 'Tutora', 'ConMenor', '1980-01-01', '600444777');
+
+insert into public.people (id, first_name, last_name, birth_date) values
+  ('50000000-0000-0000-0000-0000000000e8', 'Menor', 'DeTutora', '2018-01-01');
+
+insert into public.guardianships (minor_id, guardian_id, relationship, is_primary) values
+  ('50000000-0000-0000-0000-0000000000e8', '50000000-0000-0000-0000-0000000000e7', 'madre', true);
+
+select is(
+  (select matched from public.find_possible_duplicates(null, null, '+34 614 55 28 08') where id = '50000000-0000-0000-0000-0000000000d1'),
+  array['phone'],
+  'searching by a formatted spanish phone finds the person whose normalized phone matches, flagged only on phone'
+);
+
+select is(
+  (select matched from public.find_possible_duplicates(null, 'ANA@EXAMPLE.COM', null) where id = '50000000-0000-0000-0000-0000000000c1'),
+  array['email'],
+  'searching by an uppercase email finds the person whose normalized email matches, flagged only on email'
+);
+
+select is(
+  (select matched from public.find_possible_duplicates('12.345.678-z', null, null) where id = '50000000-0000-0000-0000-0000000000b1'),
+  array['tax_id'],
+  'searching by a dni written with dots and a dash finds the person whose normalized tax id matches, flagged only on tax_id'
+);
+
+select is(
+  (select matched from public.find_possible_duplicates('12345678Z', null, '614552808') where id = '50000000-0000-0000-0000-0000000000b1'),
+  array['tax_id', 'phone'],
+  'when both the tax id and the phone match the same person, matched reports both fields'
+);
+
+select is((select count(*) from public.find_possible_duplicates(null, null, '600444555')), 0::bigint,
+  'an archived person never appears among possible duplicates');
+
+select is((select count(*) from public.find_possible_duplicates(null, null, '600444666', '50000000-0000-0000-0000-0000000000e6')), 0::bigint,
+  'p_exclude removes the person''s own record from her own duplicate search');
+
+select is(
+  (select minors from public.find_possible_duplicates(null, null, '600444777') where id = '50000000-0000-0000-0000-0000000000e7'),
+  array['Menor DeTutora'],
+  'a guardian''s duplicate row lists the full name of the minor she is responsible for'
+);
+
+select pg_temp.act_as('50000000-0000-0000-0000-000000000003');
+
+select is((select count(*) from public.find_possible_duplicates(null, null, '614552808')), 0::bigint,
+  'a deactivated employee finds no possible duplicates at all, since the function runs with her own RLS-restricted privileges');
+
+select pg_temp.act_as('50000000-0000-0000-0000-000000000001');
+
+select is((select count(*) from public.find_possible_duplicates(null, null, null)), 0::bigint,
+  'with every parameter empty there is nothing to match against, so no rows come back');
 
 select * from finish();
 rollback;
