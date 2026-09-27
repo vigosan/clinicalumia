@@ -15,7 +15,16 @@ import { Input } from "./input";
 
 export type TwoFactorFormState = { error: string } | undefined;
 
-type Enrollment = { factorId: string; qrCode: string; secret: string };
+type Enrollment = {
+  factorId: string;
+  qrCode: string;
+  secret: string;
+  uri: string;
+};
+
+function groupSecret(secret: string): string {
+  return secret.replace(/(.{4})/g, "$1 ").trim();
+}
 
 export function TwoFactorSetup({
   startAction,
@@ -106,10 +115,17 @@ export function TwoFactorSetup({
             />
             <p
               data-testid="totp-secret"
-              className="rounded-field bg-cream-50 px-3.5 py-2 text-[13px] tracking-wide text-ink-900"
+              className="w-full break-all rounded-field bg-cream-50 px-3.5 py-2 text-center text-[13px] tracking-wide text-ink-900"
             >
-              {enrollment.secret}
+              {groupSecret(enrollment.secret)}
             </p>
+            <a
+              href={enrollment.uri}
+              data-testid="totp-open-app"
+              className="text-[13px] text-sage-800 underline underline-offset-4 hover:text-sage-900"
+            >
+              Abrir en la app de autenticación
+            </a>
           </div>
 
           <form

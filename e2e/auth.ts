@@ -61,7 +61,10 @@ export async function completeTwoFactorStep(
   }
 
   await page.getByTestId("totp-start").click();
-  const secret = (await page.getByTestId("totp-secret").textContent())?.trim();
+  const secret = (await page.getByTestId("totp-secret").textContent())?.replace(
+    /\s+/g,
+    "",
+  );
   await submitTotpCode(page, secret ?? DEV_TOTP_SECRET);
   return secret;
 }

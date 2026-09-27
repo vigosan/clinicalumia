@@ -25,7 +25,8 @@ type ConfirmAction = Mock<
 >;
 type StartAction = Mock<
   () => Promise<
-    { factorId: string; qrCode: string; secret: string } | { error: string }
+    | { factorId: string; qrCode: string; secret: string; uri: string }
+    | { error: string }
   >
 >;
 
@@ -33,6 +34,7 @@ const enrollment = {
   factorId: "factor-1",
   qrCode: "data:image/svg+xml;utf-8,<svg/>",
   secret: "JBSWY3DPEHPK3PXP",
+  uri: "otpauth://totp/LUMIA:empleada%40lumia.test?secret=JBSWY3DPEHPK3PXP&issuer=LUMIA",
 };
 
 function renderSetup({
@@ -76,8 +78,24 @@ describe("TwoFactorSetup", () => {
     renderSetup();
     await start();
     expect(screen.getByTestId("totp-secret")).toHaveTextContent(
-      "JBSWY3DPEHPK3PXP",
+      "JBSW Y3DP EHPK 3PXP",
     );
+  });
+
+  it("groups the secret in fours so it doesn't overflow a narrow phone screen", async () => {
+    renderSetup();
+    await start();
+    expect(screen.getByTestId("totp-secret").textContent).toBe(
+      "JBSW Y3DP EHPK 3PXP",
+    );
+  });
+
+  it("links to opening the authenticator app directly, for a phone that can't scan its own QR", async () => {
+    renderSetup();
+    await start();
+    const link = screen.getByTestId("totp-open-app");
+    expect(link).toHaveAttribute("href", enrollment.uri);
+    expect(link).toHaveTextContent("Abrir en la app de autenticación");
   });
 
   it("shows the QR with alt text describing it to screen reader users", async () => {
@@ -141,7 +159,7 @@ describe("TwoFactorSetup", () => {
     await userEvent.click(screen.getByTestId("totp-submit"));
     await screen.findByTestId("totp-error");
     expect(screen.getByTestId("totp-secret")).toHaveTextContent(
-      "JBSWY3DPEHPK3PXP",
+      "JBSW Y3DP EHPK 3PXP",
     );
 
     await userEvent.clear(screen.getByTestId("totp-code"));

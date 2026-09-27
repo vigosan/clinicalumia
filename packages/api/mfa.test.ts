@@ -129,6 +129,7 @@ describe("startTotpEnrollment", () => {
       factorId: "new-factor",
       qrCode: "data:image/svg+xml;utf-8,<svg/>",
       secret: "SECRET123",
+      uri: "otpauth://totp/x",
     });
   });
 
@@ -154,6 +155,7 @@ describe("startTotpEnrollment", () => {
       qrCode:
         'data:image/svg+xml;utf-8,<?xml version="1.0"?>\n<svg><rect /></svg>',
       secret: "SECRET123",
+      uri: "otpauth://totp/x",
     });
   });
 

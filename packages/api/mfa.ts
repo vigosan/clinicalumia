@@ -32,7 +32,8 @@ function toQrCodeSrc(qrCode: string): string {
 export async function startTotpEnrollment(
   supabase: SupabaseClient<Database>,
 ): Promise<
-  { factorId: string; qrCode: string; secret: string } | { error: string }
+  | { factorId: string; qrCode: string; secret: string; uri: string }
+  | { error: string }
 > {
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const unverified =
@@ -55,6 +56,7 @@ export async function startTotpEnrollment(
     factorId: data.id,
     qrCode: toQrCodeSrc(data.totp.qr_code),
     secret: data.totp.secret,
+    uri: data.totp.uri,
   };
 }
 
