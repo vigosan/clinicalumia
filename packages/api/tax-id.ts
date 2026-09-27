@@ -29,8 +29,7 @@ function validCif(cif: string) {
   return control === String(check) || control === CIF_LETTERS[check];
 }
 
-export function isValidSpanishTaxId(input: string): boolean {
-  const id = normalizeTaxId(input);
+function isValidDniOrNie(id: string): boolean {
   const dni = /^(\d{8})([A-Z])$/.exec(id);
   if (dni) return dni[2] === dniLetter(dni[1] ?? "");
   const nie = /^([XYZ])(\d{7})([A-Z])$/.exec(id);
@@ -38,5 +37,14 @@ export function isValidSpanishTaxId(input: string): boolean {
     return (
       nie[3] === dniLetter(`${"XYZ".indexOf(nie[1] ?? "")}${nie[2] ?? ""}`)
     );
-  return validCif(id);
+  return false;
+}
+
+export function isValidPersonalId(input: string): boolean {
+  return isValidDniOrNie(normalizeTaxId(input));
+}
+
+export function isValidSpanishTaxId(input: string): boolean {
+  const id = normalizeTaxId(input);
+  return isValidDniOrNie(id) || validCif(id);
 }
