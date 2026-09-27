@@ -292,6 +292,7 @@ export type Database = {
     Functions: {
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      revoke_user_sessions: { Args: { target: string }; Returns: undefined }
       set_employee_schedule: {
         Args: { blocks: Json; target: string }
         Returns: undefined

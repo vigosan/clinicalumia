@@ -188,7 +188,7 @@ test("the seed owner is listed first as Propietaria without a deactivate button,
   );
 });
 
-test("the owner resets an employee's two-factor step and their next login asks them to activate it again", async ({
+test("the owner resets an employee's two-factor step, closing their still-open session and requiring them to activate it again", async ({
   browser,
 }) => {
   const ownerContext = await browser.newContext();
@@ -217,7 +217,6 @@ test("the owner resets an employee's two-factor step and their next login asks t
     expect(profileError).toBeNull();
 
     await signIn(employeePage, DASHBOARD, employeeEmail, employeePassword);
-    await employeePage.getByTestId("logout").click();
 
     await loginAsOwner(ownerPage);
     await ownerPage.goto(`${ADMIN}/team`);
@@ -235,7 +234,9 @@ test("the owner resets an employee's two-factor step and their next login asks t
       })
       .toBe(0);
 
-    await employeePage.goto(`${DASHBOARD}/login`);
+    await employeePage.goto(`${DASHBOARD}/`);
+    await expect(employeePage).toHaveURL(`${DASHBOARD}/login`);
+
     await employeePage.fill('[name="email"]', employeeEmail);
     await employeePage.fill('[name="password"]', employeePassword);
     await employeePage.getByTestId("login-submit").click();

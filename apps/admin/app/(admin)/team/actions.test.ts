@@ -185,8 +185,10 @@ describe("team actions", () => {
       data: { id: "factor-1" },
       error: null,
     }));
+    const rpc = vi.fn(async () => ({ error: null }));
     vi.mocked(createAdminClient).mockReturnValue({
       auth: { admin: { mfa: { listFactors, deleteFactor } } },
+      rpc,
     } as unknown as ReturnType<typeof createAdminClient>);
 
     expect(await resetTwoFactor("employee-1")).toEqual({ ok: true });
@@ -200,5 +202,56 @@ describe("team actions", () => {
       userId: "employee-1",
     });
     expect(deleteFactor).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenCalledWith("revoke_user_sessions", {
+      target: "employee-1",
+    });
+  });
+
+  it("reports a specific error when it can't close the employee's sessions after resetting their two-factor", async () => {
+    const listFactors = vi.fn(async () => ({
+      data: { factors: [{ id: "factor-1" }] },
+      error: null,
+    }));
+    const deleteFactor = vi.fn(async () => ({
+      data: { id: "factor-1" },
+      error: null,
+    }));
+    const rpc = vi.fn(async () => ({ error: { message: "boom" } }));
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: { admin: { mfa: { listFactors, deleteFactor } } },
+      rpc,
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    expect(await resetTwoFactor("employee-1")).toEqual({
+      error: "No se ha podido cerrar sus sesiones abiertas.",
+    });
+  });
+
+  it("closes the employee's sessions after deactivating them", async () => {
+    const rpc = vi.fn(async () => ({ error: null }));
+    vi.mocked(createAdminClient).mockReturnValue({
+      rpc,
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    expect(await setMemberActive("employee-1", false)).toEqual({ ok: true });
+    expect(rpc).toHaveBeenCalledWith("revoke_user_sessions", {
+      target: "employee-1",
+    });
+  });
+
+  it("reports a specific error when it can't close the employee's sessions after deactivating them", async () => {
+    const rpc = vi.fn(async () => ({ error: { message: "boom" } }));
+    vi.mocked(createAdminClient).mockReturnValue({
+      rpc,
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    expect(await setMemberActive("employee-1", false)).toEqual({
+      error: "No se ha podido cerrar sus sesiones abiertas.",
+    });
+  });
+
+  it("does not try to close sessions when reactivating a member", async () => {
+    expect(await setMemberActive("employee-1", true)).toEqual({ ok: true });
+    expect(createAdminClient).not.toHaveBeenCalled();
   });
 });

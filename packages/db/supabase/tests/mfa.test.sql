@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(22);
 
 insert into auth.users (id, email) values
   ('40000000-0000-0000-0000-000000000001', 'owner-mfa@test.local'),
@@ -65,6 +65,28 @@ select lives_ok($$ update public.clinic_settings set legal_name = 'Datos con seg
   'the owner can update clinic settings once verified with the second factor');
 select is((select legal_name from public.clinic_settings), 'Datos con segundo factor',
   'the update by a verified owner is persisted');
+
+reset role;
+insert into auth.sessions (id, user_id, created_at, updated_at) values
+  ('40000000-0000-0000-0000-0000000000f1', '40000000-0000-0000-0000-000000000002', now(), now()),
+  ('40000000-0000-0000-0000-0000000000f2', '40000000-0000-0000-0000-000000000001', now(), now());
+
+select pg_temp.act_as('40000000-0000-0000-0000-000000000001');
+select throws_ok($$ select public.revoke_user_sessions('40000000-0000-0000-0000-000000000002') $$,
+  '42501', null, 'an authenticated owner cannot call revoke_user_sessions directly, even at aal2');
+
+select pg_temp.act_as('40000000-0000-0000-0000-000000000002');
+select throws_ok($$ select public.revoke_user_sessions('40000000-0000-0000-0000-000000000001') $$,
+  '42501', null, 'an authenticated employee cannot call revoke_user_sessions either');
+
+reset role;
+select set_config('role', 'service_role', true);
+select public.revoke_user_sessions('40000000-0000-0000-0000-000000000002');
+reset role;
+select is((select count(*) from auth.sessions where user_id = '40000000-0000-0000-0000-000000000002'), 0::bigint,
+  'revoke_user_sessions removes every session belonging to the target user');
+select is((select count(*) from auth.sessions where user_id = '40000000-0000-0000-0000-000000000001'), 1::bigint,
+  'revoke_user_sessions leaves other users'' sessions untouched');
 
 select * from finish();
 rollback;

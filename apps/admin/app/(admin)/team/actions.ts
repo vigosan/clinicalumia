@@ -102,6 +102,16 @@ export async function setMemberActive(
     .eq("id", id);
   if (error) return { error: "No se ha podido cambiar el estado." };
 
+  if (!isActive) {
+    const { error: revokeError } = await createAdminClient().rpc(
+      "revoke_user_sessions",
+      { target: id },
+    );
+    if (revokeError) {
+      return { error: "No se ha podido cerrar sus sesiones abiertas." };
+    }
+  }
+
   revalidatePath("/team");
   return { ok: true };
 }
@@ -142,6 +152,13 @@ export async function resetTwoFactor(memberId: string): Promise<ActionResult> {
     if (deleteError) {
       return { error: "No se ha podido restablecer la verificación." };
     }
+  }
+
+  const { error: revokeError } = await admin.rpc("revoke_user_sessions", {
+    target: memberId,
+  });
+  if (revokeError) {
+    return { error: "No se ha podido cerrar sus sesiones abiertas." };
   }
 
   revalidatePath("/team");
