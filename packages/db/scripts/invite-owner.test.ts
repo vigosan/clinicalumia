@@ -3,12 +3,17 @@ import { inviteOwner } from "./invite-owner";
 
 function fakeSupabase({
   existingProfile = null,
+  existingError = null,
   profileError = null,
 }: {
   existingProfile?: { id: string } | null;
+  existingError?: { message: string } | null;
   profileError?: { message: string } | null;
 } = {}) {
-  const maybeSingle = vi.fn(async () => ({ data: existingProfile }));
+  const maybeSingle = vi.fn(async () => ({
+    data: existingProfile,
+    error: existingError,
+  }));
   const eq = vi.fn(() => ({ maybeSingle }));
   const select = vi.fn(() => ({ eq }));
   const insert = vi.fn(async () => ({ error: profileError }));
@@ -62,6 +67,17 @@ describe("inviteOwner", () => {
       created: false,
       message: `Profile already exists for ${params.email}. Nothing to do.`,
     });
+    expect(inviteUserByEmail).not.toHaveBeenCalled();
+  });
+
+  it("stops with the select error instead of inviting when checking for an existing profile fails", async () => {
+    const { supabase, inviteUserByEmail } = fakeSupabase({
+      existingError: { message: "connection refused" },
+    });
+
+    const result = await inviteOwner(supabase, params);
+
+    expect(result).toEqual({ ok: false, error: "connection refused" });
     expect(inviteUserByEmail).not.toHaveBeenCalled();
   });
 

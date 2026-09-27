@@ -15,11 +15,15 @@ export async function inviteOwner(
   supabase: SupabaseClient,
   { email, fullName, redirectTo }: InviteOwnerParams,
 ): Promise<InviteOwnerResult> {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("profiles")
     .select("id")
     .eq("email", email.toLowerCase())
     .maybeSingle();
+
+  if (existingError) {
+    return { ok: false, error: existingError.message };
+  }
 
   if (existing) {
     return {
@@ -91,5 +95,8 @@ async function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }
