@@ -1,4 +1,4 @@
-import { isValidSpanishTaxId, normalizeTaxId } from "./tax-id";
+import { isValidSpanishTaxId, normalizeTaxId } from "@clinicalumia/api/tax-id";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const POSTAL_CODE_REGEX = /^\d{5}$/;
