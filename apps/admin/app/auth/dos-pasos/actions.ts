@@ -2,6 +2,7 @@
 
 import {
   confirmTotpEnrollment,
+  getMfaStep,
   parseTotpCode,
   startTotpEnrollment,
   verifyTotp,
@@ -13,9 +14,12 @@ import { redirect } from "next/navigation";
 export type TotpFormState = { error: string } | undefined;
 
 const CODE_REQUIRED = "Escribe los 6 dígitos que muestra tu app.";
+const ENROLLMENT_NOT_ALLOWED = "No puedes activar la verificación desde aquí.";
 
 export async function startEnrollment() {
   const supabase = await createClient();
+  const step = await getMfaStep(supabase);
+  if (step !== "enroll") return { error: ENROLLMENT_NOT_ALLOWED };
   return startTotpEnrollment(supabase);
 }
 

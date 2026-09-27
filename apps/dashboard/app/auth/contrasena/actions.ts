@@ -7,6 +7,9 @@ import { validateNewPassword } from "@/lib/password";
 
 export type PasswordState = { error: string } | undefined;
 
+const TWO_FACTOR_PENDING =
+  "Termina la verificación en dos pasos antes de cambiar la contraseña.";
+
 export async function setPassword(
   _prev: PasswordState,
   formData: FormData,
@@ -17,14 +20,15 @@ export async function setPassword(
   if (invalid) return { error: invalid };
 
   const supabase = await createClient();
+  const step = await getMfaStep(supabase);
+  if (step === "challenge") return { error: TWO_FACTOR_PENDING };
+
   const { error } = await supabase.auth.updateUser({ password });
   if (error)
     return {
       error: "No se ha podido guardar la contraseña. Pide un enlace nuevo.",
     };
 
-  const step = await getMfaStep(supabase);
   if (step === "enroll") redirect("/auth/dos-pasos/activar");
-  if (step === "challenge") redirect("/auth/dos-pasos");
   redirect("/");
 }
