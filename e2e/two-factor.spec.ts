@@ -43,7 +43,7 @@ async function createEmployee() {
   });
   expect(profileError).toBeNull();
 
-  return { email, password };
+  return { id: data.user!.id, email, password };
 }
 
 async function loginToChallenge(page: Page, email: string, password: string) {
@@ -159,4 +159,67 @@ test("a session that only passed the password sees no specialties until it passe
     headers: { apikey: anonKey, Authorization: `Bearer ${aal2Token}` },
   }).then((response) => response.json());
   expect(afterCode.length).toBeGreaterThan(0);
+});
+
+test("a password-only (aal1) session on a factored account can't change the password, enroll a new factor, or drop the existing one", async ({
+  page,
+}) => {
+  const { id, email, password } = await createEmployee();
+  const secret = await signIn(page, "http://localhost:3001", email, password);
+  expect(secret).toBeTruthy();
+  await page.getByTestId("logout").click();
+
+  const attacker = createClient(API_URL, anonKey);
+  const { error: signInError } = await attacker.auth.signInWithPassword({
+    email,
+    password,
+  });
+  expect(signInError).toBeNull();
+
+  const { data: factorsBefore } = await attacker.auth.mfa.listFactors();
+  const verifiedFactor = factorsBefore?.totp.find(
+    (factor) => factor.status === "verified",
+  );
+  expect(verifiedFactor).toBeTruthy();
+
+  const { error: updateError } = await attacker.auth.updateUser({
+    password: "contrasena-robada-2026",
+  });
+  const { error: enrollError } = await attacker.auth.mfa.enroll({
+    factorType: "totp",
+  });
+  const { error: unenrollError } = await attacker.auth.mfa.unenroll({
+    factorId: verifiedFactor!.id,
+  });
+
+  expect(
+    updateError,
+    "an aal1 session updated the password of an account it does not fully control",
+  ).not.toBeNull();
+  expect(
+    enrollError,
+    "an aal1 session enrolled a new factor of its own on an already-factored account",
+  ).not.toBeNull();
+  expect(
+    unenrollError,
+    "an aal1 session removed the account's existing verified factor",
+  ).not.toBeNull();
+
+  const { data: factorsAfter } = await admin.auth.admin.mfa.listFactors({
+    userId: id,
+  });
+  expect(factorsAfter?.factors.map((factor) => factor.id).sort()).toEqual(
+    factorsBefore?.totp.map((factor) => factor.id).sort(),
+  );
+  expect(
+    factorsAfter?.factors.find((factor) => factor.id === verifiedFactor!.id)
+      ?.status,
+  ).toBe("verified");
+
+  await page.goto("/login");
+  await page.fill('[name="email"]', email);
+  await page.fill('[name="password"]', password);
+  await page.getByTestId("login-submit").click();
+  await submitTotpCode(page, secret!);
+  await expect(page.getByTestId("logout")).toBeVisible();
 });
