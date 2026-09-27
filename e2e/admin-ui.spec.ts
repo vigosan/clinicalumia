@@ -1,12 +1,13 @@
 import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { signIn } from "./auth";
+import { signIn, totpCode, waitForNextTotpWindow } from "./auth";
 
-const serviceKey = execSync("cd ../packages/db && supabase status -o env")
-  .toString()
-  .match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
-const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
+const env = execSync("cd ../packages/db && supabase status -o env").toString();
+const serviceKey = env.match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
+const anonKey = env.match(/^ANON_KEY="?([^"\n]+)/m)?.[1] ?? "";
+const API_URL = "http://127.0.0.1:54321";
+const admin = createClient(API_URL, serviceKey ?? "");
 const ADMIN = "http://localhost:3002";
 const DASHBOARD = "http://localhost:3001";
 
@@ -216,7 +217,45 @@ test("the owner resets an employee's two-factor step, closing their still-open s
     });
     expect(profileError).toBeNull();
 
-    await signIn(employeePage, DASHBOARD, employeeEmail, employeePassword);
+    const secret = await signIn(
+      employeePage,
+      DASHBOARD,
+      employeeEmail,
+      employeePassword,
+    );
+    expect(secret).toBeTruthy();
+
+    const rawClient = createClient(API_URL, anonKey);
+    const { error: rawSignInError } = await rawClient.auth.signInWithPassword({
+      email: employeeEmail,
+      password: employeePassword,
+    });
+    expect(rawSignInError).toBeNull();
+    const { data: factorsData } = await rawClient.auth.mfa.listFactors();
+    const factor = factorsData?.totp.find((f) => f.status === "verified");
+    expect(factor).toBeTruthy();
+    let { error: verifyError } = await rawClient.auth.mfa.challengeAndVerify({
+      factorId: factor!.id,
+      code: totpCode(secret!),
+    });
+    if (verifyError) {
+      await waitForNextTotpWindow(secret!);
+      ({ error: verifyError } = await rawClient.auth.mfa.challengeAndVerify({
+        factorId: factor!.id,
+        code: totpCode(secret!),
+      }));
+    }
+    expect(verifyError).toBeNull();
+    const { data: rawSessionData } = await rawClient.auth.getSession();
+    const oldAccessToken = rawSessionData.session!.access_token;
+
+    const beforeReset = await fetch(
+      `${API_URL}/rest/v1/specialties?select=id`,
+      {
+        headers: { apikey: anonKey, Authorization: `Bearer ${oldAccessToken}` },
+      },
+    ).then((response) => response.json());
+    expect(beforeReset.length).toBeGreaterThan(0);
 
     await loginAsOwner(ownerPage);
     await ownerPage.goto(`${ADMIN}/team`);
@@ -233,6 +272,11 @@ test("the owner resets an employee's two-factor step, closing their still-open s
         return factors?.factors.length ?? -1;
       })
       .toBe(0);
+
+    const afterReset = await fetch(`${API_URL}/rest/v1/specialties?select=id`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${oldAccessToken}` },
+    }).then((response) => response.json());
+    expect(afterReset).toEqual([]);
 
     await employeePage.goto(`${DASHBOARD}/`);
     await expect(employeePage).toHaveURL(`${DASHBOARD}/login`);

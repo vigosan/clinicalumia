@@ -11,9 +11,18 @@ insert into public.profiles (id, email, full_name, role, is_active) values
   ('20000000-0000-0000-0000-000000000002', 'employee-sched@test.local', 'Employee', 'employee', true),
   ('20000000-0000-0000-0000-000000000003', 'inactive-sched@test.local', 'Inactive', 'employee', false);
 
+create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
+  insert into auth.sessions (id, user_id, created_at, updated_at)
+  values (gen_random_uuid(), user_id, now(), now())
+  returning id;
+$$;
+
 create or replace function pg_temp.act_as(user_id uuid, aal text default 'aal2') returns void language sql as $$
   select set_config('role', 'authenticated', true),
-         set_config('request.jwt.claims', json_build_object('sub', user_id, 'role', 'authenticated', 'aal', aal)::text, true);
+         set_config('request.jwt.claims',
+           json_build_object('sub', user_id, 'role', 'authenticated', 'aal', aal,
+             'session_id', pg_temp.create_test_session(user_id))::text,
+           true);
 $$;
 
 select pg_temp.act_as('20000000-0000-0000-0000-000000000001');

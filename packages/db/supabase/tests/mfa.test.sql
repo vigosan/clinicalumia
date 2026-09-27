@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(26);
 
 insert into auth.users (id, email) values
   ('40000000-0000-0000-0000-000000000001', 'owner-mfa@test.local'),
@@ -15,9 +15,18 @@ insert into public.services (specialty_id, name, duration_minutes, price_cents) 
 insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
   ('40000000-0000-0000-0000-000000000002', 1, '09:00', '10:00');
 
+create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
+  insert into auth.sessions (id, user_id, created_at, updated_at)
+  values (gen_random_uuid(), user_id, now(), now())
+  returning id;
+$$;
+
 create or replace function pg_temp.act_as(user_id uuid, aal text default 'aal2') returns void language sql as $$
   select set_config('role', 'authenticated', true),
-         set_config('request.jwt.claims', json_build_object('sub', user_id, 'role', 'authenticated', 'aal', aal)::text, true);
+         set_config('request.jwt.claims',
+           json_build_object('sub', user_id, 'role', 'authenticated', 'aal', aal,
+             'session_id', pg_temp.create_test_session(user_id))::text,
+           true);
 $$;
 
 select pg_temp.act_as('40000000-0000-0000-0000-000000000002', 'aal1');
@@ -83,10 +92,25 @@ reset role;
 select set_config('role', 'service_role', true);
 select public.revoke_user_sessions('40000000-0000-0000-0000-000000000002');
 reset role;
-select is((select count(*) from auth.sessions where user_id = '40000000-0000-0000-0000-000000000002'), 0::bigint,
-  'revoke_user_sessions removes every session belonging to the target user');
-select is((select count(*) from auth.sessions where user_id = '40000000-0000-0000-0000-000000000001'), 1::bigint,
-  'revoke_user_sessions leaves other users'' sessions untouched');
+select is((select count(*) from auth.sessions where id = '40000000-0000-0000-0000-0000000000f1'), 0::bigint,
+  'revoke_user_sessions removes the session row belonging to the target user');
+select is((select count(*) from auth.sessions where id = '40000000-0000-0000-0000-0000000000f2'), 1::bigint,
+  'revoke_user_sessions leaves another user''s session row intact');
+
+select pg_temp.act_as('40000000-0000-0000-0000-000000000001');
+select is(public.is_owner(), true,
+  'a fresh, still-open session lets a verified owner pass is_owner');
+select is((select count(*) from public.clinic_settings), 1::bigint,
+  'a fresh, still-open session can read clinic settings');
+
+reset role;
+select set_config('role', 'service_role', true);
+select public.revoke_user_sessions('40000000-0000-0000-0000-000000000001');
+select set_config('role', 'authenticated', true);
+select is(public.is_owner(), false,
+  'is_owner returns false once the session behind the JWT has been revoked, even though the JWT itself has not expired');
+select is((select count(*) from public.clinic_settings), 0::bigint,
+  'a revoked session cannot read clinic settings, closing the gap a stolen access token could otherwise exploit');
 
 select * from finish();
 rollback;
