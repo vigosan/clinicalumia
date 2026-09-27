@@ -1,5 +1,6 @@
 import { createClient } from "@clinicalumia/api/server";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import { redirect } from "next/navigation";
 
 export default async function DashboardHome() {
   const supabase = await createClient();
@@ -7,10 +8,14 @@ export default async function DashboardHome() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name, role, specialty_id")
-    .eq("id", user!.id)
+    .eq("id", user.id)
     .single();
 
   let specialtyName: string | null = null;

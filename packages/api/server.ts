@@ -2,10 +2,11 @@ import "server-only";
 import type { Database } from "@clinicalumia/db";
 import { type CookieOptions, createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-export async function createClient() {
+export const createClient = cache(async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
@@ -28,4 +29,4 @@ export async function createClient() {
       },
     },
   );
-}
+});
