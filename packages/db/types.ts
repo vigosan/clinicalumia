@@ -161,6 +161,107 @@ export type Database = {
           },
         ]
       }
+      guardianships: {
+        Row: {
+          created_at: string
+          guardian_id: string
+          is_primary: boolean
+          minor_id: string
+          relationship: Database["public"]["Enums"]["guardian_relationship"]
+        }
+        Insert: {
+          created_at?: string
+          guardian_id: string
+          is_primary?: boolean
+          minor_id: string
+          relationship: Database["public"]["Enums"]["guardian_relationship"]
+        }
+        Update: {
+          created_at?: string
+          guardian_id?: string
+          is_primary?: boolean
+          minor_id?: string
+          relationship?: Database["public"]["Enums"]["guardian_relationship"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guardianships_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardianships_minor_id_fkey"
+            columns: ["minor_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people: {
+        Row: {
+          address: string
+          admin_notes: string
+          archived_at: string | null
+          birth_date: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          first_name: string
+          id: string
+          is_patient: boolean
+          last_name: string
+          phone: string | null
+          search_text: string | null
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          admin_notes?: string
+          archived_at?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          first_name: string
+          id?: string
+          is_patient?: boolean
+          last_name: string
+          phone?: string | null
+          search_text?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          admin_notes?: string
+          archived_at?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          is_patient?: boolean
+          last_name?: string
+          phone?: string | null
+          search_text?: string | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -290,8 +391,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      f_unaccent: { Args: { value: string }; Returns: string }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      normalize_phone: { Args: { value: string }; Returns: string }
       revoke_user_sessions: { Args: { target: string }; Returns: undefined }
       set_employee_schedule: {
         Args: { blocks: Json; target: string }
@@ -300,6 +403,7 @@ export type Database = {
     }
     Enums: {
       booking_payment: "none" | "fixed" | "percent" | "full"
+      guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
       user_role: "owner" | "employee"
       vat_treatment: "exempt" | "standard_21"
     }
@@ -433,6 +537,7 @@ export const Constants = {
   public: {
     Enums: {
       booking_payment: ["none", "fixed", "percent", "full"],
+      guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
       user_role: ["owner", "employee"],
       vat_treatment: ["exempt", "standard_21"],
     },
