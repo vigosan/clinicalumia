@@ -81,6 +81,24 @@ describe("madridInstant", () => {
       "2026-10-25T10:00:00+01:00",
     );
   });
+
+  it("never throws for the hour skipped when clocks go forward, and returns a valid ISO string", () => {
+    const instant = madridInstant("2026-03-29", "02:30");
+    expect(instant).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/,
+    );
+    expect(Number.isNaN(new Date(instant).getTime())).toBe(false);
+    expect(instant).toBe("2026-03-29T02:30:00+02:00");
+  });
+
+  it("never throws for the hour repeated when clocks go back, and returns a valid ISO string", () => {
+    const instant = madridInstant("2026-10-25", "02:30");
+    expect(instant).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/,
+    );
+    expect(Number.isNaN(new Date(instant).getTime())).toBe(false);
+    expect(instant).toBe("2026-10-25T02:30:00+01:00");
+  });
 });
 
 describe("madridDateTime", () => {
@@ -102,6 +120,20 @@ describe("madridDateTime", () => {
     expect(madridDateTime("2026-10-24T22:30:00Z")).toEqual({
       date: "2026-10-25",
       time: "00:30",
+    });
+  });
+
+  it("round-trips the repeated hour back to itself, since madridInstant resolves it to its later, unambiguous occurrence", () => {
+    expect(madridDateTime(madridInstant("2026-10-25", "02:30"))).toEqual({
+      date: "2026-10-25",
+      time: "02:30",
+    });
+  });
+
+  it("does not round-trip the skipped hour, since 02:30 never happens on the Madrid clock on the spring-forward day", () => {
+    expect(madridDateTime(madridInstant("2026-03-29", "02:30"))).toEqual({
+      date: "2026-03-29",
+      time: "01:30",
     });
   });
 });
