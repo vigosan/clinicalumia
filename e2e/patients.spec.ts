@@ -112,6 +112,32 @@ test("adding an adult with a unique name takes you to their record", async ({
   expect(data).toEqual({ first_name: "Persona", last_name: lastName });
 });
 
+test("double-clicking Guardar on a new unique person creates exactly one row, not two", async ({
+  page,
+}) => {
+  const lastName = `DobleClic${Date.now()}`;
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+
+  await page.getByLabel("Nombre").fill("Persona");
+  await page.getByLabel("Apellidos").fill(lastName);
+  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Teléfono").fill(`6${Date.now() % 100000000}`);
+  await page.getByTestId("person-submit").dblclick();
+
+  await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
+  const id = page.url().split("/").pop() ?? "";
+  createdPersonIds.push(id);
+
+  const { data, count } = await admin
+    .from("people")
+    .select("id", { count: "exact" })
+    .eq("last_name", lastName);
+  expect(count).toBe(1);
+  expect(data?.map((row) => row.id)).toEqual([id]);
+});
+
 test('adding someone with Lucía\'s phone shows the duplicate warning, and "Usar esta persona" takes you to her record without creating anything', async ({
   page,
 }) => {

@@ -18,6 +18,7 @@ import {
   createDuplicateChecker,
   type DuplicateFields,
 } from "@/lib/duplicate-checker";
+import { createSubmitGate } from "@/lib/submit-gate";
 import { checkDuplicates, type Duplicate, savePerson } from "./actions";
 import { DuplicateWarning } from "./DuplicateWarning";
 
@@ -38,6 +39,7 @@ export function PersonForm({ person }: { person?: Person }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(savePerson, undefined);
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
+  const [checking, setChecking] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkerRef = useRef(
@@ -45,6 +47,7 @@ export function PersonForm({ person }: { person?: Person }) {
       checkDuplicates({ ...fields, exclude: person?.id }),
     ),
   );
+  const submitGateRef = useRef(createSubmitGate());
 
   useEffect(
     () => () => {
@@ -52,6 +55,10 @@ export function PersonForm({ person }: { person?: Person }) {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!pending) submitGateRef.current.finish();
+  }, [pending]);
 
   function currentFields(): DuplicateFields {
     const data = new FormData(formRef.current ?? undefined);
@@ -83,11 +90,17 @@ export function PersonForm({ person }: { person?: Person }) {
       data-testid="person-form"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!submitGateRef.current.tryStart()) return;
         if (debounceRef.current) clearTimeout(debounceRef.current);
         const formData = new FormData(event.currentTarget);
+        setChecking(true);
         void (async () => {
           const found = await resolveDuplicates();
-          if (found.length > 0) return;
+          setChecking(false);
+          if (found.length > 0) {
+            submitGateRef.current.finish();
+            return;
+          }
           startTransition(() => formAction(formData));
         })();
       }}
@@ -168,7 +181,11 @@ export function PersonForm({ person }: { person?: Person }) {
       )}
 
       <div className="flex flex-wrap gap-2.5">
-        <Button type="submit" disabled={pending} data-testid="person-submit">
+        <Button
+          type="submit"
+          disabled={pending || checking}
+          data-testid="person-submit"
+        >
           {pending ? "Guardando…" : "Guardar"}
         </Button>
         <Button asChild variant="secondary">
