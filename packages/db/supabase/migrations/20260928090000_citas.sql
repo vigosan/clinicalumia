@@ -61,6 +61,7 @@ set search_path = ''
 as $$
 declare
   service record;
+  professional record;
 begin
   if auth.uid() is not null then
     if not (public.is_owner() or (public.is_active_staff() and new.professional_id = auth.uid())) then
@@ -75,16 +76,19 @@ begin
   ) then
     raise exception 'patient_not_bookable' using errcode = '23514';
   end if;
-  select price_cents, vat into service
+  select price_cents, vat, specialty_id into service
   from public.services
   where id = new.service_id and is_active;
   if not found then
     raise exception 'service_inactive' using errcode = '23514';
   end if;
-  if not exists (
-    select 1 from public.profiles where id = new.professional_id and is_active
-  ) then
+  select specialty_id into professional
+  from public.profiles where id = new.professional_id and is_active;
+  if not found then
     raise exception 'professional_inactive' using errcode = '23514';
+  end if;
+  if professional.specialty_id is distinct from service.specialty_id then
+    raise exception 'service_not_for_professional' using errcode = '23514';
   end if;
   if (new.starts_at at time zone 'Europe/Madrid')::date <> (new.ends_at at time zone 'Europe/Madrid')::date
     and not (

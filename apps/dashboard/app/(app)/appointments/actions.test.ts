@@ -192,6 +192,16 @@ describe("createAppointment", () => {
     });
     expect(appointmentsSelect).not.toHaveBeenCalled();
   });
+
+  it("reports the professional is inactive when they are missing from staff_directory, without computing warnings", async () => {
+    rpcResults.staff_directory = { data: [], error: null };
+
+    expect(await createAppointment(undefined, appointmentForm())).toEqual({
+      error: "Ese profesional no está activo.",
+    });
+    expect(schedulesSelect).not.toHaveBeenCalled();
+    expect(appointmentsInsert).not.toHaveBeenCalled();
+  });
 });
 
 describe("searchPatients", () => {

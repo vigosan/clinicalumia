@@ -1,22 +1,26 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(86);
+select plan(89);
 
 insert into auth.users (id, email) values
   ('60000000-0000-0000-0000-000000000001', 'owner-appointments@test.local'),
   ('60000000-0000-0000-0000-000000000002', 'a-appointments@test.local'),
   ('60000000-0000-0000-0000-000000000003', 'b-appointments@test.local'),
-  ('60000000-0000-0000-0000-000000000004', 'inactive-appointments@test.local');
-insert into public.profiles (id, email, full_name, role, is_active) values
-  ('60000000-0000-0000-0000-000000000001', 'owner-appointments@test.local', 'Owner', 'owner', true),
-  ('60000000-0000-0000-0000-000000000002', 'a-appointments@test.local', 'Empleada A', 'employee', true),
-  ('60000000-0000-0000-0000-000000000003', 'b-appointments@test.local', 'Empleada B', 'employee', true),
-  ('60000000-0000-0000-0000-000000000004', 'inactive-appointments@test.local', 'Inactiva', 'employee', false);
+  ('60000000-0000-0000-0000-000000000004', 'inactive-appointments@test.local'),
+  ('60000000-0000-0000-0000-000000000005', 'no-specialty-appointments@test.local');
 insert into public.specialties (id, name, slug) values
-  ('60000000-0000-0000-0000-0000000000aa', 'Citas test', 'citas-test');
+  ('60000000-0000-0000-0000-0000000000aa', 'Citas test', 'citas-test'),
+  ('60000000-0000-0000-0000-0000000000dd', 'Otra especialidad test', 'otra-especialidad-test');
+insert into public.profiles (id, email, full_name, role, is_active, specialty_id) values
+  ('60000000-0000-0000-0000-000000000001', 'owner-appointments@test.local', 'Owner', 'owner', true, null),
+  ('60000000-0000-0000-0000-000000000002', 'a-appointments@test.local', 'Empleada A', 'employee', true, '60000000-0000-0000-0000-0000000000aa'),
+  ('60000000-0000-0000-0000-000000000003', 'b-appointments@test.local', 'Empleada B', 'employee', true, '60000000-0000-0000-0000-0000000000aa'),
+  ('60000000-0000-0000-0000-000000000004', 'inactive-appointments@test.local', 'Inactiva', 'employee', false, '60000000-0000-0000-0000-0000000000aa'),
+  ('60000000-0000-0000-0000-000000000005', 'no-specialty-appointments@test.local', 'Sin Especialidad', 'employee', true, null);
 insert into public.services (id, specialty_id, name, duration_minutes, price_cents, vat, is_active) values
   ('60000000-0000-0000-0000-0000000000b1', '60000000-0000-0000-0000-0000000000aa', 'Sesión activa', 45, 4000, 'standard_21', true),
-  ('60000000-0000-0000-0000-0000000000b2', '60000000-0000-0000-0000-0000000000aa', 'Sesión retirada', 45, 3000, 'exempt', false);
+  ('60000000-0000-0000-0000-0000000000b2', '60000000-0000-0000-0000-0000000000aa', 'Sesión retirada', 45, 3000, 'exempt', false),
+  ('60000000-0000-0000-0000-0000000000b3', '60000000-0000-0000-0000-0000000000dd', 'Sesión de otra especialidad', 45, 4000, 'standard_21', true);
 insert into public.people (id, first_name, last_name, birth_date, is_patient, archived_at) values
   ('60000000-0000-0000-0000-0000000000c1', 'Paciente', 'Activa', '1990-01-01', true, null),
   ('60000000-0000-0000-0000-0000000000c2', 'Paciente', 'Archivada', '1990-01-01', true, now()),
@@ -350,6 +354,21 @@ select lives_ok($$
   update public.appointments set status = 'cancelled', cancelled_by = 'clinic'
   where id = '60000000-0000-0000-0000-0000000000d7'
 $$, 'the owner can cancel an employee''s appointment on behalf of the clinic');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b3', '2099-06-08 11:00 Europe/Madrid', '2099-06-08 11:45 Europe/Madrid')
+$$, '23514', 'service_not_for_professional', 'a service from another specialty cannot be booked with this professional');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-08 11:00 Europe/Madrid', '2099-06-08 11:45 Europe/Madrid')
+$$, '23514', 'service_not_for_professional', 'a professional with no specialty at all cannot be booked for any service either');
+select lives_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-08 12:00 Europe/Madrid', '2099-06-08 12:45 Europe/Madrid')
+$$, 'a service that matches the professional''s specialty is accepted');
 
 select pg_temp.act_as('60000000-0000-0000-0000-000000000002');
 

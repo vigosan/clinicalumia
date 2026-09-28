@@ -93,9 +93,11 @@ export async function createAppointment(
     await supabase.rpc("staff_directory");
   if (directoryError || !directory)
     return { error: "No se ha podido guardar." };
-  const professionalName =
-    directory.find((profile) => profile.id === appointment.professional_id)
-      ?.full_name ?? "";
+  const professional = directory.find(
+    (profile) => profile.id === appointment.professional_id,
+  );
+  if (!professional) return { error: "Ese profesional no está activo." };
+  const professionalName = professional.full_name;
 
   const confirmed = String(formData.get("confirm") ?? "") === "1";
 

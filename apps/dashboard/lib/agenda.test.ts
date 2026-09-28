@@ -648,6 +648,15 @@ describe("appointmentError", () => {
     ).toBe("Ese profesional no está activo.");
   });
 
+  it("maps service_not_for_professional", () => {
+    expect(
+      appointmentError({
+        code: "23514",
+        message: "service_not_for_professional",
+      }),
+    ).toBe("Ese servicio no es de la especialidad del profesional.");
+  });
+
   it("maps appointment_invalid_transition to the no_show-cannot-be-cancelled ruling", () => {
     expect(
       appointmentError({

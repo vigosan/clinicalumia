@@ -278,6 +278,8 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   patient_not_bookable: "Esa persona no es paciente o está archivada.",
   service_inactive: "Ese servicio ya no está activo.",
   professional_inactive: "Ese profesional no está activo.",
+  service_not_for_professional:
+    "Ese servicio no es de la especialidad del profesional.",
   cancelled_by_required: "Indica quién cancela la cita.",
   appointment_invalid_transition:
     "No se puede cancelar una cita marcada como no presentada.",
