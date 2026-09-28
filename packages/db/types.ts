@@ -563,6 +563,15 @@ export type Database = {
         Args: { blocks: Json; target: string }
         Returns: undefined
       }
+      staff_directory: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          specialty_id: string
+        }[]
+      }
     }
     Enums: {
       appointment_canceller: "patient" | "clinic"
