@@ -80,11 +80,18 @@ function scheduleSpan(block: ScheduleBlock): [number, number] {
   return [minutesOfDay(block.starts_at), minutesOfDay(block.ends_at)];
 }
 
-function blockSpan(block: TimeSpan): [number, number] {
-  return [
-    minutesOfDay(madridDateTime(block.startsAt).time),
-    minutesOfDay(madridDateTime(block.endsAt).time),
-  ];
+function intersectsDay(block: TimeSpan, date: string): boolean {
+  const start = madridDateTime(block.startsAt).date;
+  const end = madridDateTime(block.endsAt).date;
+  return start <= date && end >= date;
+}
+
+function blockSpan(block: TimeSpan, date: string): [number, number] {
+  const start = madridDateTime(block.startsAt);
+  const end = madridDateTime(block.endsAt);
+  const startMinutes = start.date < date ? 0 : minutesOfDay(start.time);
+  const endMinutes = end.date > date ? 24 * 60 : minutesOfDay(end.time);
+  return [startMinutes, endMinutes];
 }
 
 function hoursSpan(spans: [number, number][]): {
@@ -94,6 +101,7 @@ function hoursSpan(spans: [number, number][]): {
   if (spans.length === 0) return { firstHour: 8, lastHour: 20 };
   const firstHour = Math.floor(Math.min(...spans.map(([start]) => start)) / 60);
   const lastHour = Math.ceil(Math.max(...spans.map(([, end]) => end)) / 60);
+  if (lastHour <= firstHour) return { firstHour, lastHour: firstHour + 1 };
   return { firstHour, lastHour };
 }
 
@@ -101,18 +109,27 @@ export function visibleHours(
   schedules: ScheduleBlock[],
   weekday: number,
   blocks: TimeSpan[] = [],
+  date = "",
 ): { firstHour: number; lastHour: number } {
   const scheduleSpans = schedules
     .filter((schedule) => schedule.weekday === weekday)
     .map(scheduleSpan);
-  return hoursSpan([...scheduleSpans, ...blocks.map(blockSpan)]);
+  const blockSpans = date
+    ? blocks
+        .filter((block) => intersectsDay(block, date))
+        .map((block) => blockSpan(block, date))
+    : [];
+  return hoursSpan([...scheduleSpans, ...blockSpans]);
 }
 
 export function visibleWeekHours(
   schedules: ScheduleBlock[],
   blocks: TimeSpan[] = [],
 ): { firstHour: number; lastHour: number } {
-  return hoursSpan([...schedules.map(scheduleSpan), ...blocks.map(blockSpan)]);
+  const blockSpans = blocks.map((block) =>
+    blockSpan(block, madridDateTime(block.startsAt).date),
+  );
+  return hoursSpan([...schedules.map(scheduleSpan), ...blockSpans]);
 }
 
 export type TimeOff = { starts_at: string; ends_at: string; reason: string };

@@ -454,3 +454,90 @@ test("la propietaria pasa de la semana de Marc a Día con with=Marc, y de un sol
     new RegExp(`person=${MARC_ID}`),
   );
 });
+
+test("una ausencia de varios días no invierte la rejilla y se ve en Día y en Semana", async ({
+  page,
+}) => {
+  const startDate = futureDate(53);
+  const middleDate = futureDate(54);
+  const endDate = futureDate(56);
+
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Ausencia Larga",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+
+  const { data, error } = await admin
+    .from("employee_time_off")
+    .insert({
+      profile_id: employee.id,
+      starts_at: `${startDate} 18:00:00 Europe/Madrid`,
+      ends_at: `${endDate} 09:00:00 Europe/Madrid`,
+      reason: "Formación larga",
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdTimeOffIds.push(data!.id);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+
+  await page.goto(`${DASHBOARD}/?date=${middleDate}&view=day`);
+  await expect(
+    columnFor(page, employee.id).getByTestId("time-off-block"),
+  ).toBeVisible();
+
+  await page.goto(`${DASHBOARD}/?date=${middleDate}&view=week`);
+  await expect(
+    weekDayFor(page, middleDate).getByTestId("time-off-block"),
+  ).toBeVisible();
+});
+
+test("una ausencia de varios días no impide ver una cita normal ese mismo día", async ({
+  page,
+}) => {
+  const startDate = futureDate(53);
+  const middleDate = futureDate(54);
+  const endDate = futureDate(56);
+
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Ausencia Y Cita",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+
+  const { data, error } = await admin
+    .from("employee_time_off")
+    .insert({
+      profile_id: employee.id,
+      starts_at: `${startDate} 18:00:00 Europe/Madrid`,
+      ends_at: `${endDate} 09:00:00 Europe/Madrid`,
+      reason: "Formación larga",
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdTimeOffIds.push(data!.id);
+
+  await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date: middleDate,
+    time: "11:00",
+    endTime: "12:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+
+  await page.goto(`${DASHBOARD}/?date=${middleDate}&view=day`);
+  await expect(
+    columnFor(page, employee.id).getByTestId("appointment-block"),
+  ).toContainText("Jorge Ruiz Pérez");
+
+  await page.goto(`${DASHBOARD}/?date=${middleDate}&view=week`);
+  await expect(
+    weekDayFor(page, middleDate).getByTestId("appointment-block"),
+  ).toContainText("Jorge Ruiz Pérez");
+});

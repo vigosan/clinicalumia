@@ -1,7 +1,6 @@
 import "server-only";
 import {
   addDays,
-  madridDateTime,
   madridDayBounds,
   weekdayOf,
   weekStart,
@@ -78,6 +77,17 @@ export type WeekAgendaData = {
   firstHour: number;
   lastHour: number;
 };
+
+function overlapsDay(
+  block: { startsAt: string; endsAt: string },
+  day: string,
+): boolean {
+  const bounds = madridDayBounds(day);
+  return (
+    new Date(block.startsAt).getTime() < new Date(bounds.end).getTime() &&
+    new Date(block.endsAt).getTime() > new Date(bounds.start).getTime()
+  );
+}
 
 function toAppointment(row: {
   id: string;
@@ -266,11 +276,12 @@ export async function loadAgenda({
       (row) => row.profile_id === column.id,
     );
   }
-  const { firstHour, lastHour } = visibleHours(scheduleRows, weekday, [
-    ...appointments,
-    ...busy,
-    ...timeOff,
-  ]);
+  const { firstHour, lastHour } = visibleHours(
+    scheduleRows,
+    weekday,
+    [...appointments, ...busy],
+    date,
+  );
 
   return {
     ok: true,
@@ -356,19 +367,14 @@ async function loadWeekAgenda(
 
   const weekDays: WeekDayData[] = days.map((day) => ({
     date: day,
-    appointments: appointments.filter(
-      (appointment) => madridDateTime(appointment.startsAt).date === day,
+    appointments: appointments.filter((appointment) =>
+      overlapsDay(appointment, day),
     ),
-    timeOff: timeOff.filter(
-      (entry) => madridDateTime(entry.startsAt).date === day,
-    ),
+    timeOff: timeOff.filter((entry) => overlapsDay(entry, day)),
     schedule: scheduleRows.filter((row) => row.weekday === weekdayOf(day)),
   }));
 
-  const { firstHour, lastHour } = visibleWeekHours(scheduleRows, [
-    ...appointments,
-    ...timeOff,
-  ]);
+  const { firstHour, lastHour } = visibleWeekHours(scheduleRows, appointments);
 
   return {
     ok: true,

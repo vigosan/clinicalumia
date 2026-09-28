@@ -121,14 +121,115 @@ describe("visibleHours", () => {
         endsAt: "2026-07-13T21:30:00+02:00",
       },
     ];
-    expect(visibleHours(schedules, 1, blocks)).toEqual({
+    expect(visibleHours(schedules, 1, blocks, "2026-07-13")).toEqual({
       firstHour: 7,
       lastHour: 22,
     });
   });
 
   it("still falls back to 8-20 when neither the schedule nor any block is shown", () => {
-    expect(visibleHours([], 1, [])).toEqual({ firstHour: 8, lastHour: 20 });
+    expect(visibleHours([], 1, [], "2026-07-13")).toEqual({
+      firstHour: 8,
+      lastHour: 20,
+    });
+  });
+
+  it("widens the window up to midnight for an appointment that crosses into the next day", () => {
+    const blocks = [
+      {
+        startsAt: "2026-07-13T22:30:00+02:00",
+        endsAt: "2026-07-14T00:30:00+02:00",
+      },
+    ];
+    expect(visibleHours([], 1, blocks, "2026-07-13")).toEqual({
+      firstHour: 22,
+      lastHour: 24,
+    });
+  });
+
+  it("clips a block that starts the day before to midnight, rather than pulling firstHour past midnight", () => {
+    const blocks = [
+      {
+        startsAt: "2026-07-12T22:30:00+02:00",
+        endsAt: "2026-07-13T00:30:00+02:00",
+      },
+    ];
+    expect(visibleHours([], 1, blocks, "2026-07-13")).toEqual({
+      firstHour: 0,
+      lastHour: 1,
+    });
+  });
+
+  it("ignores a block that doesn't intersect the rendered day at all", () => {
+    const blocks = [
+      {
+        startsAt: "2026-07-10T09:00:00+02:00",
+        endsAt: "2026-07-10T10:00:00+02:00",
+      },
+    ];
+    expect(visibleHours([], 1, blocks, "2026-07-13")).toEqual({
+      firstHour: 8,
+      lastHour: 20,
+    });
+  });
+
+  it("clips a multi-day span to the rendered day instead of inverting the window (the reported bug: Fri 18:00 -> Mon 09:00)", () => {
+    const schedules = [
+      { weekday: 5, starts_at: "09:00:00", ends_at: "13:00:00" },
+    ];
+    const blocks = [
+      {
+        startsAt: "2026-07-10T18:00:00+02:00",
+        endsAt: "2026-07-13T09:00:00+02:00",
+      },
+    ];
+    const result = visibleHours(schedules, 5, blocks, "2026-07-10");
+    expect(result.firstHour).toBeLessThanOrEqual(result.lastHour);
+    expect(result).toEqual({ firstHour: 9, lastHour: 24 });
+  });
+
+  it("clips a whole-day span to exactly 0-24, not beyond", () => {
+    const blocks = [
+      {
+        startsAt: "2026-07-13T00:00:00+02:00",
+        endsAt: "2026-07-13T23:59:59+02:00",
+      },
+    ];
+    expect(visibleHours([], 1, blocks, "2026-07-13")).toEqual({
+      firstHour: 0,
+      lastHour: 24,
+    });
+  });
+
+  it.each([
+    [
+      "a normal daytime block",
+      "2026-07-13T09:00:00+02:00",
+      "2026-07-13T10:00:00+02:00",
+    ],
+    [
+      "a whole-day block",
+      "2026-07-13T00:00:00+02:00",
+      "2026-07-13T23:59:59+02:00",
+    ],
+    [
+      "a block crossing into the next day",
+      "2026-07-13T23:30:00+02:00",
+      "2026-07-14T01:00:00+02:00",
+    ],
+    [
+      "a block starting the day before",
+      "2026-07-12T20:00:00+02:00",
+      "2026-07-13T02:00:00+02:00",
+    ],
+    [
+      "a multi-day block",
+      "2026-07-10T18:00:00+02:00",
+      "2026-07-16T09:00:00+02:00",
+    ],
+  ])("never inverts firstHour past lastHour for %s", (_label, startsAt, endsAt) => {
+    const result = visibleHours([], 1, [{ startsAt, endsAt }], "2026-07-13");
+    expect(result.firstHour).toBeLessThanOrEqual(result.lastHour);
   });
 });
 
@@ -163,6 +264,31 @@ describe("visibleWeekHours", () => {
       firstHour: 7,
       lastHour: 22,
     });
+  });
+
+  it("widens a day's window up to midnight for an appointment on that day that crosses into the next", () => {
+    const blocks = [
+      {
+        startsAt: "2026-07-13T22:30:00+02:00",
+        endsAt: "2026-07-14T00:30:00+02:00",
+      },
+    ];
+    expect(visibleWeekHours([], blocks)).toEqual({
+      firstHour: 22,
+      lastHour: 24,
+    });
+  });
+
+  it("never inverts the window for a multi-day span (clipped to the day it starts on)", () => {
+    const blocks = [
+      {
+        startsAt: "2026-07-10T18:00:00+02:00",
+        endsAt: "2026-07-16T09:00:00+02:00",
+      },
+    ];
+    const result = visibleWeekHours([], blocks);
+    expect(result.firstHour).toBeLessThanOrEqual(result.lastHour);
+    expect(result).toEqual({ firstHour: 18, lastHour: 24 });
   });
 });
 
