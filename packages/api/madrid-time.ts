@@ -49,7 +49,7 @@ function dateParts(date: string): { year: number; month: number; day: number } {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/;
 
-function isValidCalendarDate(date: string): boolean {
+export function isValidDate(date: string): boolean {
   if (!DATE_RE.test(date)) return false;
   const { year, month, day } = dateParts(date);
   const utc = new Date(Date.UTC(year, month - 1, day));
@@ -60,10 +60,14 @@ function isValidCalendarDate(date: string): boolean {
   );
 }
 
+export function isValidTime(time: string): boolean {
+  return TIME_RE.test(time);
+}
+
 export function madridInstant(date: string, time: string): string {
-  if (!isValidCalendarDate(date))
+  if (!isValidDate(date))
     throw new Error(`madridInstant: invalid date "${date}"`);
-  if (!TIME_RE.test(time))
+  if (!isValidTime(time))
     throw new Error(`madridInstant: invalid time "${time}"`);
   const normalizedTime = time.length === 5 ? `${time}:00` : time;
   return `${date}T${normalizedTime}${madridOffsetAt(date, normalizedTime)}`;

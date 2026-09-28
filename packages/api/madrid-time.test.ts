@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  isValidDate,
+  isValidTime,
   madridDateTime,
   madridDayBounds,
   madridInstant,
@@ -104,22 +106,58 @@ describe("madridInstant", () => {
     expect(() => madridInstant("2026-02-30", "10:00")).toThrow();
   });
 
-  it("throws for a month out of range", () => {
-    expect(() => madridInstant("2026-13-01", "10:00")).toThrow();
-  });
-
-  it("throws for an hour out of range", () => {
+  it("throws for a time with an hour out of range", () => {
     expect(() => madridInstant("2026-01-15", "25:00")).toThrow();
-  });
-
-  it("throws for a minute out of range", () => {
-    expect(() => madridInstant("2026-01-15", "10:60")).toThrow();
   });
 
   it("still accepts a valid leap day", () => {
     expect(madridInstant("2028-02-29", "09:00")).toBe(
       "2028-02-29T09:00:00+01:00",
     );
+  });
+});
+
+describe("isValidDate", () => {
+  it("rejects a date that does not match the YYYY-MM-DD shape", () => {
+    expect(isValidDate("2026-2-3")).toBe(false);
+  });
+
+  it("rejects a date that does not exist on the calendar, like February 30th", () => {
+    expect(isValidDate("2026-02-30")).toBe(false);
+  });
+
+  it("rejects a month out of range", () => {
+    expect(isValidDate("2026-13-01")).toBe(false);
+  });
+
+  it("accepts a valid leap day", () => {
+    expect(isValidDate("2028-02-29")).toBe(true);
+  });
+
+  it("rejects February 29th on a non-leap year", () => {
+    expect(isValidDate("2026-02-29")).toBe(false);
+  });
+
+  it("accepts an ordinary valid date", () => {
+    expect(isValidDate("2026-07-15")).toBe(true);
+  });
+});
+
+describe("isValidTime", () => {
+  it("rejects an hour out of range", () => {
+    expect(isValidTime("25:00")).toBe(false);
+  });
+
+  it("rejects a minute out of range", () => {
+    expect(isValidTime("10:60")).toBe(false);
+  });
+
+  it("accepts a plain HH:MM time", () => {
+    expect(isValidTime("09:30")).toBe(true);
+  });
+
+  it("accepts HH:MM:SS, since madridInstant may normalize either form", () => {
+    expect(isValidTime("09:30:00")).toBe(true);
   });
 });
 

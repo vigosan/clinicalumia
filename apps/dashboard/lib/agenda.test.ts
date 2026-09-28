@@ -205,26 +205,14 @@ describe("parseAppointmentForm", () => {
     });
   });
 
-  it("rejects a time with an hour out of range instead of throwing", () => {
+  it("rejects an invalid time instead of throwing, delegating the rule to isValidTime", () => {
     expect(parseAppointmentForm(form({ time: "25:00" }))).toEqual({
       error: "Indica fecha y hora.",
     });
   });
 
-  it("rejects a time with a minute out of range", () => {
-    expect(parseAppointmentForm(form({ time: "10:60" }))).toEqual({
-      error: "Indica fecha y hora.",
-    });
-  });
-
-  it("rejects a date that does not exist on the calendar, instead of rolling over", () => {
+  it("rejects a date that does not exist on the calendar, delegating the rule to isValidDate", () => {
     expect(parseAppointmentForm(form({ date: "2026-02-30" }))).toEqual({
-      error: "Indica fecha y hora.",
-    });
-  });
-
-  it("rejects a date with a month out of range", () => {
-    expect(parseAppointmentForm(form({ date: "2026-13-01" }))).toEqual({
       error: "Indica fecha y hora.",
     });
   });

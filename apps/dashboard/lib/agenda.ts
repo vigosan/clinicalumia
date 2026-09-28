@@ -1,4 +1,6 @@
 import {
+  isValidDate,
+  isValidTime,
   madridDateTime,
   madridInstant,
   weekdayOf,
@@ -147,22 +149,6 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
-
-function isValidCalendarDate(date: string): boolean {
-  if (!DATE_RE.test(date)) return false;
-  const year = Number(date.slice(0, 4));
-  const month = Number(date.slice(5, 7));
-  const day = Number(date.slice(8, 10));
-  const utc = new Date(Date.UTC(year, month - 1, day));
-  return (
-    utc.getUTCFullYear() === year &&
-    utc.getUTCMonth() === month - 1 &&
-    utc.getUTCDate() === day
-  );
-}
-
 export function parseAppointmentForm(
   formData: FormData,
 ): { ok: true; appointment: AppointmentInput } | { error: string } {
@@ -178,7 +164,7 @@ export function parseAppointmentForm(
   if (!serviceId) return { error: "Elige un servicio." };
   if (!professionalId) return { error: "Elige profesional." };
   if (!date || !time) return { error: "Indica fecha y hora." };
-  if (!isValidCalendarDate(date) || !TIME_RE.test(time))
+  if (!isValidDate(date) || !isValidTime(time))
     return { error: "Indica fecha y hora." };
 
   const duration = Number(durationRaw);
