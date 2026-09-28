@@ -37,6 +37,7 @@ export function AppointmentForm({
   initialDate,
   initialTime,
   initialProfessionalId,
+  initialPatient,
 }: {
   professionals: Professional[];
   fixedProfessionalId: string | null;
@@ -44,6 +45,7 @@ export function AppointmentForm({
   initialDate: string;
   initialTime: string;
   initialProfessionalId: string | null;
+  initialPatient?: PatientOption | null;
 }) {
   const [state, formAction, pending] = useActionState(
     createAppointment,
@@ -54,7 +56,11 @@ export function AppointmentForm({
   );
   const [serviceId, setServiceId] = useState("");
   const [duration, setDuration] = useState("");
-  const [patient, setPatient] = useState<PatientOption | null>(null);
+  const [date, setDate] = useState(initialDate);
+  const [time, setTime] = useState(initialTime);
+  const [patient, setPatient] = useState<PatientOption | null>(
+    initialPatient ?? null,
+  );
   const formRef = useRef<HTMLFormElement>(null);
   const submitGateRef = useRef(createSubmitGate());
   const dismissedStateRef = useRef(state);
@@ -74,6 +80,15 @@ export function AppointmentForm({
   const filteredServices = services.filter(
     (service) => service.specialtyId === currentSpecialtyId,
   );
+
+  const returnTo = (() => {
+    const search = new URLSearchParams();
+    if (date) search.set("date", date);
+    if (time) search.set("time", time);
+    if (professionalId) search.set("professional", professionalId);
+    const query = search.toString();
+    return query ? `/appointments/new?${query}` : "/appointments/new";
+  })();
 
   const warnings =
     state && "warnings" in state && dismissedStateRef.current !== state
@@ -114,6 +129,7 @@ export function AppointmentForm({
         selected={patient}
         onSelect={setPatient}
         onClear={() => setPatient(null)}
+        returnTo={returnTo}
       />
 
       {fixedProfessional ? (
@@ -178,7 +194,10 @@ export function AppointmentForm({
             type="date"
             data-testid="appointment-date"
             defaultValue={initialDate}
-            onChange={resetConfirmation}
+            onChange={(event) => {
+              setDate(event.target.value);
+              resetConfirmation();
+            }}
           />
         </Field>
         <Field label="Hora">
@@ -187,7 +206,10 @@ export function AppointmentForm({
             type="time"
             data-testid="appointment-time"
             defaultValue={initialTime}
-            onChange={resetConfirmation}
+            onChange={(event) => {
+              setTime(event.target.value);
+              resetConfirmation();
+            }}
           />
         </Field>
         <Field label="Duración (minutos)">

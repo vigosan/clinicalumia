@@ -64,6 +64,8 @@ const rpc = vi.fn(async () => rpcResult);
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+
+const { redirect } = await import("next/navigation");
 vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({
     from: (table: string) =>
@@ -104,6 +106,7 @@ function personForm(overrides: Record<string, string> = {}) {
     address: "",
     admin_notes: "",
     is_patient: "on",
+    return_to: "",
   };
   for (const [key, value] of Object.entries({ ...defaults, ...overrides })) {
     data.set(key, value);
@@ -122,6 +125,7 @@ describe("savePerson", () => {
     peopleUpdate.mockClear();
     updateEq.mockClear();
     updateEqSelect.mockClear();
+    vi.mocked(redirect).mockClear();
   });
 
   it("returns the parser's error for an invalid form without touching the database", async () => {
@@ -159,6 +163,31 @@ describe("savePerson", () => {
     expect(await savePerson(undefined, personForm({ id: "person-1" }))).toEqual(
       { error: "No tienes permiso para hacer esto." },
     );
+  });
+
+  it("redirects back to return_to with the new patient selected, so the appointment form does not lose its date/time/professional", async () => {
+    await savePerson(
+      undefined,
+      personForm({
+        return_to: "/appointments/new?date=2026-10-05&professional=prof-1",
+      }),
+    );
+    expect(redirect).toHaveBeenCalledWith(
+      "/appointments/new?date=2026-10-05&professional=prof-1&patient=person-1",
+    );
+  });
+
+  it("ignores a return_to that does not point at /appointments/new, since that would be an open redirect", async () => {
+    await savePerson(
+      undefined,
+      personForm({ return_to: "https://evil.example/steal" }),
+    );
+    expect(redirect).toHaveBeenCalledWith("/patients/person-1");
+  });
+
+  it("falls back to the patient page when there is no return_to", async () => {
+    await savePerson(undefined, personForm());
+    expect(redirect).toHaveBeenCalledWith("/patients/person-1");
   });
 });
 

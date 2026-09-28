@@ -13,10 +13,12 @@ export function PatientPicker({
   selected,
   onSelect,
   onClear,
+  returnTo,
 }: {
   selected: PatientOption | null;
   onSelect: (patient: PatientOption) => void;
   onClear: () => void;
+  returnTo?: string;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PatientOption[]>([]);
@@ -117,7 +119,15 @@ export function PatientPicker({
         </p>
       )}
       <Button asChild variant="ghost" size="sm">
-        <Link href="/patients/new">Nueva persona</Link>
+        <Link
+          href={
+            returnTo
+              ? `/patients/new?returnTo=${encodeURIComponent(returnTo)}`
+              : "/patients/new"
+          }
+        >
+          Nueva persona
+        </Link>
       </Button>
     </div>
   );

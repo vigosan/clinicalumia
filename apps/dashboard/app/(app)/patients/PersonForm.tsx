@@ -49,9 +49,11 @@ type GuardianOf = { id: string; minorName: string };
 export function PersonForm({
   person,
   guardianOf,
+  returnTo,
 }: {
   person?: Person;
   guardianOf?: GuardianOf;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(savePerson, undefined);
@@ -167,6 +169,7 @@ export function PersonForm({
       {guardianOf && (
         <input type="hidden" name="guardian_of" value={guardianOf.id} />
       )}
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre">
           <Input name="first_name" defaultValue={person?.first_name} required />

@@ -9,9 +9,9 @@ const UUID_REGEX =
 export default async function NewPersonPage({
   searchParams,
 }: {
-  searchParams: Promise<{ guardianOf?: string }>;
+  searchParams: Promise<{ guardianOf?: string; returnTo?: string }>;
 }) {
-  const { guardianOf } = await searchParams;
+  const { guardianOf, returnTo } = await searchParams;
   const minorId = guardianOf && UUID_REGEX.test(guardianOf) ? guardianOf : null;
 
   let guardianOfProp: { id: string; minorName: string } | undefined;
@@ -39,7 +39,7 @@ export default async function NewPersonPage({
         }
       />
       <Card>
-        <PersonForm guardianOf={guardianOfProp} />
+        <PersonForm guardianOf={guardianOfProp} returnTo={returnTo} />
       </Card>
     </>
   );

@@ -1,6 +1,7 @@
 "use server";
 
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { safeNext } from "@clinicalumia/api/route";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -66,6 +67,9 @@ export async function savePerson(
     redirect(`/patients/${id}`);
   }
 
+  const returnTo = safeAppointmentReturn(
+    String(formData.get("return_to") ?? ""),
+  );
   const guardianOf = String(formData.get("guardian_of") ?? "");
   const relationship = String(
     formData.get("relationship") ?? "otro",
@@ -113,7 +117,18 @@ export async function savePerson(
     redirect(`/patients/${guardianOf}`);
   }
 
+  if (returnTo) {
+    redirect(
+      `${returnTo}${returnTo.includes("?") ? "&" : "?"}patient=${data.id}`,
+    );
+  }
+
   redirect(`/patients/${data.id}`);
+}
+
+function safeAppointmentReturn(value: string): string | null {
+  const target = safeNext(value);
+  return target.startsWith("/appointments/new") ? target : null;
 }
 
 export async function checkDuplicates(input: {

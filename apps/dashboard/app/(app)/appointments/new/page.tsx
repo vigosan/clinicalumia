@@ -16,6 +16,7 @@ export default async function NewAppointmentPage({
     date?: string;
     time?: string;
     professional?: string;
+    patient?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -26,21 +27,59 @@ export default async function NewAppointmentPage({
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: ownProfile } = await supabase
+  const { data: ownProfile, error: ownProfileError } = await supabase
     .from("profiles")
     .select("id, role, specialty_id")
     .eq("id", user.id)
     .single();
-  if (!ownProfile) return null;
+  if (ownProfileError || !ownProfile) {
+    return (
+      <Card
+        role="alert"
+        className="text-center text-danger-600 text-sm"
+        data-testid="appointment-form-error"
+      >
+        No se han podido cargar los datos del formulario.
+      </Card>
+    );
+  }
 
-  const [{ data: directory }, { data: services }] = await Promise.all([
+  const patientId =
+    params.patient && isUuid(params.patient) ? params.patient : null;
+
+  const [
+    { data: directory, error: directoryError },
+    { data: services, error: servicesError },
+    { data: patient },
+  ] = await Promise.all([
     supabase.rpc("staff_directory"),
     supabase
       .from("services")
       .select("id, name, duration_minutes, specialty_id")
       .eq("is_active", true)
       .order("name"),
+    patientId
+      ? supabase
+          .from("people")
+          .select("id, first_name, last_name")
+          .eq("id", patientId)
+          .eq("is_patient", true)
+          .is("archived_at", null)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
+
+  if (directoryError || servicesError) {
+    return (
+      <Card
+        role="alert"
+        className="text-center text-danger-600 text-sm"
+        data-testid="appointment-form-error"
+      >
+        No se han podido cargar los datos del formulario.
+      </Card>
+    );
+  }
 
   const professionals = (directory ?? []).map((profile) => ({
     id: profile.id,
@@ -80,6 +119,7 @@ export default async function NewAppointmentPage({
           initialDate={initialDate}
           initialTime={initialTime}
           initialProfessionalId={initialProfessionalId}
+          initialPatient={patient}
         />
       </Card>
     </>
