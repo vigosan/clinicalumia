@@ -42,7 +42,10 @@ export default async function DashboardLayout({
         />
       }
       section="Clínica"
-      nav={[{ href: "/", label: "Inicio" }]}
+      nav={[
+        { href: "/", label: "Inicio" },
+        { href: "/patients", label: "Pacientes" },
+      ]}
       user={{
         name: profile.full_name,
         detail: profile.role === "owner" ? "Propietaria" : "Equipo",
