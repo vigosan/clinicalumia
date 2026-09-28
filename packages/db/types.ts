@@ -34,6 +34,146 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_events: {
+        Row: {
+          actor_id: string | null
+          appointment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["appointment_event_kind"]
+          previous_ends_at: string | null
+          previous_starts_at: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          appointment_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["appointment_event_kind"]
+          previous_ends_at?: string | null
+          previous_starts_at?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["appointment_event_kind"]
+          previous_ends_at?: string | null
+          previous_starts_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_events_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          cancel_reason: string
+          cancelled_at: string | null
+          cancelled_by:
+            | Database["public"]["Enums"]["appointment_canceller"]
+            | null
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          modality: Database["public"]["Enums"]["appointment_modality"]
+          notes: string
+          patient_id: string
+          price_cents: number
+          professional_id: string
+          service_id: string
+          starts_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+          vat: Database["public"]["Enums"]["vat_treatment"]
+        }
+        Insert: {
+          cancel_reason?: string
+          cancelled_at?: string | null
+          cancelled_by?:
+            | Database["public"]["Enums"]["appointment_canceller"]
+            | null
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          modality?: Database["public"]["Enums"]["appointment_modality"]
+          notes?: string
+          patient_id: string
+          price_cents?: number
+          professional_id: string
+          service_id: string
+          starts_at: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+          vat?: Database["public"]["Enums"]["vat_treatment"]
+        }
+        Update: {
+          cancel_reason?: string
+          cancelled_at?: string | null
+          cancelled_by?:
+            | Database["public"]["Enums"]["appointment_canceller"]
+            | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          modality?: Database["public"]["Enums"]["appointment_modality"]
+          notes?: string
+          patient_id?: string
+          price_cents?: number
+          professional_id?: string
+          service_id?: string
+          starts_at?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+          vat?: Database["public"]["Enums"]["vat_treatment"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_settings: {
         Row: {
           address_line: string
@@ -417,6 +557,15 @@ export type Database = {
       }
     }
     Enums: {
+      appointment_canceller: "patient" | "clinic"
+      appointment_event_kind:
+        | "created"
+        | "moved"
+        | "cancelled"
+        | "no_show"
+        | "restored"
+      appointment_modality: "in_person" | "online"
+      appointment_status: "scheduled" | "cancelled" | "no_show"
       booking_payment: "none" | "fixed" | "percent" | "full"
       guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
       user_role: "owner" | "employee"
@@ -551,6 +700,16 @@ export const Constants = {
   },
   public: {
     Enums: {
+      appointment_canceller: ["patient", "clinic"],
+      appointment_event_kind: [
+        "created",
+        "moved",
+        "cancelled",
+        "no_show",
+        "restored",
+      ],
+      appointment_modality: ["in_person", "online"],
+      appointment_status: ["scheduled", "cancelled", "no_show"],
       booking_payment: ["none", "fixed", "percent", "full"],
       guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
       user_role: ["owner", "employee"],
