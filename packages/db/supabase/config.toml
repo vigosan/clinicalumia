@@ -425,7 +425,7 @@ host = "smtp.resend.com"
 port = 465
 user = "resend"
 pass = "env(RESEND_API_KEY)"
-admin_email = "no-responder@clinicalumia.es"
+admin_email = "no-responder@notifications.clinicalumia.es"
 sender_name = "Clínica LUMIA"
 
 [remotes.prod]
@@ -441,5 +441,5 @@ host = "smtp.resend.com"
 port = 465
 user = "resend"
 pass = "env(RESEND_API_KEY)"
-admin_email = "no-responder@clinicalumia.es"
+admin_email = "no-responder@notifications.clinicalumia.es"
 sender_name = "Clínica LUMIA"
