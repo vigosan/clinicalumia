@@ -11,7 +11,8 @@
     "./auth": "./auth.ts",
     "./route": "./route.ts",
     "./mfa": "./mfa.ts",
-    "./tax-id": "./tax-id.ts"
+    "./tax-id": "./tax-id.ts",
+    "./madrid-time": "./madrid-time.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -26,7 +27,8 @@
     "auth.ts",
     "route.ts",
     "mfa.ts",
-    "tax-id.ts"
+    "tax-id.ts",
+    "madrid-time.ts"
   ],
   "dependencies": {
     "@clinicalumia/db": "workspace:*",

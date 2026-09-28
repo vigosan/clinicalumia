@@ -5,7 +5,6 @@ import {
   normalizePhone,
   normalizeSearch,
   parsePersonForm,
-  todayInMadrid,
   toIlikePattern,
 } from "./person";
 
@@ -107,24 +106,6 @@ describe("ageOn / isMinor", () => {
   it("treats a February 29 birthday as turning a year older on March 1 in non-leap years", () => {
     expect(ageOn("2008-02-29", "2025-02-28")).toBe(16);
     expect(ageOn("2008-02-29", "2025-03-01")).toBe(17);
-  });
-});
-
-describe("todayInMadrid", () => {
-  it("rolls over to the next day since Madrid is ahead of UTC in winter", () => {
-    expect(todayInMadrid(new Date("2026-12-31T23:30:00Z"))).toBe("2027-01-01");
-  });
-
-  it("rolls over to the next day at midnight in summer, when Madrid is UTC+2", () => {
-    expect(todayInMadrid(new Date("2026-07-14T22:30:00Z"))).toBe("2026-07-15");
-  });
-
-  it("still uses the winter offset just before the spring DST change", () => {
-    expect(todayInMadrid(new Date("2026-03-28T23:30:00Z"))).toBe("2026-03-29");
-  });
-
-  it("still uses the summer offset just before the autumn DST change", () => {
-    expect(todayInMadrid(new Date("2026-10-24T22:30:00Z"))).toBe("2026-10-25");
   });
 });
 

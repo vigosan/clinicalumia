@@ -1,14 +1,11 @@
 "use server";
 
 import { requireOwner } from "@clinicalumia/api/auth";
+import { madridDayBounds } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
-import {
-  madridDayBounds,
-  type ScheduleBlock,
-  validateSchedule,
-} from "@/lib/schedule";
+import { type ScheduleBlock, validateSchedule } from "@/lib/schedule";
 
 export type TimeOffState = { error: string } | { ok: true } | undefined;
 

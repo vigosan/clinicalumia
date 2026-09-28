@@ -76,15 +76,6 @@ export function isMinor(birthDate: string, today: string): boolean {
   return ageOn(birthDate, today) < 18;
 }
 
-export function todayInMadrid(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Madrid",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
-}
-
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }

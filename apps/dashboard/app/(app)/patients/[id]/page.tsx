@@ -1,10 +1,11 @@
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { notFound } from "next/navigation";
 import { guardianErrorMessage } from "@/lib/guardian-error";
-import { ageOn, isMinor, todayInMadrid } from "@/lib/person";
+import { ageOn, isMinor } from "@/lib/person";
 import { GuardiansSection } from "./GuardiansSection";
 import { PersonActions } from "./PersonActions";
 

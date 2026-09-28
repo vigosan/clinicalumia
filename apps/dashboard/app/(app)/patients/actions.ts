@@ -1,5 +1,6 @@
 "use server";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -9,7 +10,6 @@ import {
   isMinor,
   normalizeSearch,
   parsePersonForm,
-  todayInMadrid,
   toIlikePattern,
 } from "@/lib/person";
 import type { Ward } from "@/lib/ward-label";

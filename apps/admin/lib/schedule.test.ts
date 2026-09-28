@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { madridDayBounds, validateSchedule } from "./schedule";
+import { validateSchedule } from "./schedule";
 
 describe("validateSchedule", () => {
   it("accepts separate blocks and returns them ordered by day and time", () => {
@@ -64,36 +64,6 @@ describe("validateSchedule", () => {
       validateSchedule([{ weekday: 0, starts_at: "10:00", ends_at: "12:00" }]),
     ).toEqual({
       error: "Hay un día no válido en el horario.",
-    });
-  });
-});
-
-describe("madridDayBounds", () => {
-  it("uses the summer offset (CEST) for a date in July", () => {
-    expect(madridDayBounds("2026-07-15")).toEqual({
-      start: "2026-07-15T00:00:00+02:00",
-      end: "2026-07-15T23:59:59+02:00",
-    });
-  });
-
-  it("uses the winter offset (CET) for a date in December", () => {
-    expect(madridDayBounds("2026-12-24")).toEqual({
-      start: "2026-12-24T00:00:00+01:00",
-      end: "2026-12-24T23:59:59+01:00",
-    });
-  });
-
-  it("resolves each boundary's own offset on the spring-forward day, when midnight and 23:59:59 fall on different sides of the change", () => {
-    expect(madridDayBounds("2026-03-29")).toEqual({
-      start: "2026-03-29T00:00:00+01:00",
-      end: "2026-03-29T23:59:59+02:00",
-    });
-  });
-
-  it("resolves each boundary's own offset on the fall-back day, when midnight and 23:59:59 fall on different sides of the change", () => {
-    expect(madridDayBounds("2026-10-25")).toEqual({
-      start: "2026-10-25T00:00:00+02:00",
-      end: "2026-10-25T23:59:59+01:00",
     });
   });
 });
