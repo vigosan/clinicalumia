@@ -30,8 +30,15 @@ function isValidPhone(phone: string | null): boolean {
   return digits.length >= minDigits;
 }
 
+const SPANISH_PHONE_PREFIX = /^(\+34|0034)[0-9]*$/;
+const DIGITS_WITH_OPTIONAL_CHECK_LETTER = /^[0-9]+[a-z]?$/;
+
 export function normalizeSearch(input: string): string {
   const base = input.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  const stripped = base.replace(/[.\s-]/g, "");
+  if (SPANISH_PHONE_PREFIX.test(stripped))
+    return stripped.replace(/^(\+34|0034)/, "");
+  if (DIGITS_WITH_OPTIONAL_CHECK_LETTER.test(stripped)) return stripped;
   if (/^[0-9\s+-]*$/.test(base)) return normalizePhone(base) ?? "";
   return base;
 }

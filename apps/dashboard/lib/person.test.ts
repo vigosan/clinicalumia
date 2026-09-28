@@ -60,6 +60,18 @@ describe("normalizeSearch", () => {
   it("trims surrounding spaces from a plain name", () => {
     expect(normalizeSearch("  Ana  ")).toBe("ana");
   });
+
+  it("strips the dash from a dni typed as digits-dash-letter, so it matches the stored dni", () => {
+    expect(normalizeSearch("11223344-B")).toBe("11223344b");
+  });
+
+  it("strips the dots from a dni typed with dot separators", () => {
+    expect(normalizeSearch("11.223.344")).toBe("11223344");
+  });
+
+  it("treats a +34-prefixed fragment as a phone search, dropping the country code like the stored phone does", () => {
+    expect(normalizeSearch("+34 600")).toBe("600");
+  });
 });
 
 describe("toIlikePattern", () => {

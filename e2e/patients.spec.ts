@@ -93,6 +93,18 @@ test("searching by phone with a space finds the guardian, and a search with no m
   await expect(page.getByTestId("patients-empty")).toBeVisible();
 });
 
+test("searching by a dni written with dot separators finds the person, since the stored dni has none", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients`);
+
+  await page.getByTestId("patients-search").fill("11.223.344");
+  await expect(
+    page.getByTestId("patient-row").filter({ hasText: "Jorge Ruiz Pérez" }),
+  ).toBeVisible();
+});
+
 test('an archived person is hidden by default and appears once "Ver archivados" is checked', async ({
   page,
 }) => {
