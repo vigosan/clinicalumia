@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
@@ -23,6 +24,7 @@ const FISIOTERAPIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005c1";
 const createdAppointmentIds: string[] = [];
 const createdTimeOffIds: string[] = [];
 const createdUserIds: string[] = [];
+const createdPersonIds: string[] = [];
 
 function visibleColumns(page: Page) {
   return page.locator('[data-testid="agenda-column"]:visible');
@@ -43,15 +45,11 @@ function weekDayFor(page: Page, date: string) {
 }
 
 function futureDate(offsetDays: number): string {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
+  return addDays(todayInMadrid(), offsetDays);
 }
 
 function pastDate(daysAgo: number): string {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() - daysAgo);
-  return date.toISOString().slice(0, 10);
+  return addDays(todayInMadrid(), -daysAgo);
 }
 
 function isoWeekday(date: string): number {
@@ -146,19 +144,37 @@ async function loginAsThrowawayOwner(page: Page, fullName: string) {
 
 test.afterEach(async () => {
   if (createdAppointmentIds.length > 0) {
-    await admin
+    const { error } = await admin
       .from("appointments")
       .delete()
       .in("id", createdAppointmentIds.splice(0));
+    expect(error).toBeNull();
   }
   if (createdTimeOffIds.length > 0) {
-    await admin
+    const { error } = await admin
       .from("employee_time_off")
       .delete()
       .in("id", createdTimeOffIds.splice(0));
+    expect(error).toBeNull();
   }
-  for (const id of createdUserIds.splice(0)) {
-    await admin.auth.admin.deleteUser(id);
+  if (createdPersonIds.length > 0) {
+    const { error } = await admin
+      .from("people")
+      .delete()
+      .in("id", createdPersonIds.splice(0));
+    expect(error).toBeNull();
+  }
+  const userIds = createdUserIds.splice(0);
+  if (userIds.length > 0) {
+    const { error } = await admin
+      .from("appointments")
+      .delete()
+      .in("professional_id", userIds);
+    expect(error).toBeNull();
+  }
+  for (const id of userIds) {
+    const { error } = await admin.auth.admin.deleteUser(id);
+    expect(error).toBeNull();
   }
 });
 
@@ -612,6 +628,45 @@ test("desde un hueco de mañana, buscar «nora», elegir servicio y guardar crea
   ).toContainText("Nora");
 });
 
+test("«Nueva persona» desde el formulario de cita vuelve con la persona nueva elegida y conserva fecha, hora y profesional", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(61, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Nueva Persona",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=11:00&professional=${employee.id}`,
+  );
+
+  await page.getByRole("link", { name: "Nueva persona" }).click();
+  await page.waitForURL(/\/patients\/new\?returnTo=/);
+
+  const lastName = `PruebaVolver${Date.now()}`;
+  await page.getByLabel("Nombre").fill("Persona");
+  await page.getByLabel("Apellidos").fill(lastName);
+  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByTestId("person-submit").click();
+
+  await page.waitForURL(/\/appointments\/new\?/);
+  const url = new URL(page.url());
+  expect(url.pathname).toBe("/appointments/new");
+  expect(url.searchParams.get("date")).toBe(date);
+  expect(url.searchParams.get("time")).toBe("11:00");
+  expect(url.searchParams.get("professional")).toBe(employee.id);
+  const newPatientId = url.searchParams.get("patient");
+  expect(newPatientId).toBeTruthy();
+  createdPersonIds.push(newPatientId ?? "");
+
+  await expect(page.getByTestId("patient-selected")).toContainText(
+    `Persona ${lastName}`,
+  );
+});
+
 test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55", async ({
   page,
 }) => {
@@ -824,7 +879,118 @@ test("abrir una cita del test, moverla a otra hora, la agenda la muestra en su s
   );
 });
 
-test("cancelar como «paciente» con motivo la quita de la agenda y el historial dice «Cancelada por el paciente»", async ({
+test("mover una cita a otro día hace que el historial muestre la fecha en «Movida de…», no solo la hora", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(104, [1, 2, 3]);
+  const nextDate = dateWithWeekday(105, [4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Mover Otro Día",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await admin.from("employee_schedules").insert([
+    {
+      profile_id: employee.id,
+      weekday: isoWeekday(date),
+      starts_at: "09:00",
+      ends_at: "20:00",
+    },
+    {
+      profile_id: employee.id,
+      weekday: isoWeekday(nextDate),
+      starts_at: "09:00",
+      ends_at: "20:00",
+    },
+  ]);
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "16:00",
+    endTime: "17:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await page.getByTestId("appointment-move-date").fill(nextDate);
+  await page.getByTestId("appointment-move-time").fill("16:00");
+  await page.getByTestId("appointment-move").click();
+
+  await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
+  const [fromDay, fromMonth] = date.split("-").slice(1).reverse();
+  const [toDay, toMonth] = nextDate.split("-").slice(1).reverse();
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    `Movida de ${fromDay}/${fromMonth} 16:00 a ${toDay}/${toMonth} 16:00`,
+  );
+});
+
+test("mover una cita de duración personalizada conserva esa duración, y cambiarla en el formulario de mover funciona", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(103, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Duración Personalizada",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await admin.from("employee_schedules").insert({
+    profile_id: employee.id,
+    weekday: isoWeekday(date),
+    starts_at: "09:00",
+    ends_at: "20:00",
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:30",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await expect(page.getByTestId("appointment-move-duration")).toHaveValue("90");
+
+  await page.getByTestId("appointment-move-time").fill("14:00");
+  await page.getByTestId("appointment-move").click();
+  await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
+
+  const afterMove = await admin
+    .from("appointments")
+    .select("starts_at, ends_at")
+    .eq("id", appointmentId)
+    .single();
+  expect(afterMove.error).toBeNull();
+  const movedMinutes =
+    (new Date(afterMove.data!.ends_at).getTime() -
+      new Date(afterMove.data!.starts_at).getTime()) /
+    60_000;
+  expect(movedMinutes).toBe(90);
+
+  await page.getByTestId("appointment-move-time").fill("16:00");
+  await page.getByTestId("appointment-move-duration").fill("30");
+  await page.getByTestId("appointment-move").click();
+  await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
+
+  const afterDurationChange = await admin
+    .from("appointments")
+    .select("starts_at, ends_at")
+    .eq("id", appointmentId)
+    .single();
+  expect(afterDurationChange.error).toBeNull();
+  const finalMinutes =
+    (new Date(afterDurationChange.data!.ends_at).getTime() -
+      new Date(afterDurationChange.data!.starts_at).getTime()) /
+    60_000;
+  expect(finalMinutes).toBe(30);
+});
+
+test("cancelar como «paciente» con motivo la quita de la agenda y el historial dice «Cancelada (paciente) por»", async ({
   page,
 }) => {
   const date = dateWithWeekday(101, [1, 2, 3, 4, 5]);
@@ -851,7 +1017,7 @@ test("cancelar como «paciente» con motivo la quita de la agenda y el historial
   await page.getByTestId("cancel-confirm").click();
 
   await expect(page.getByTestId("appointment-history")).toContainText(
-    "Cancelada por el paciente",
+    "Cancelada (paciente) por",
   );
   await expect(
     columnFor(page, employee.id).getByTestId("appointment-block"),
@@ -948,7 +1114,7 @@ test("hacer doble clic en confirmar cancelación crea un solo evento", async ({
   await page.getByTestId("cancel-confirm").dblclick();
 
   await expect(page.getByTestId("appointment-history")).toContainText(
-    "Cancelada por la clínica",
+    "Cancelada (clínica) por",
   );
 
   const { data, error } = await admin

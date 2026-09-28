@@ -6,6 +6,7 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@clinicalumia/api": "workspace:*",
     "@playwright/test": "^1.55.0",
     "@supabase/supabase-js": "^2.117.1",
     "otpauth": "^9.5.2"
