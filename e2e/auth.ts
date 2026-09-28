@@ -1,7 +1,41 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { TOTP } from "otpauth";
 
 export const DEV_TOTP_SECRET = "JBSWY3DPEHPK3PXP";
+
+const SIGN_IN_LOCK_TIMEOUT_MS = 60_000;
+const SIGN_IN_LOCK_STALE_MS = 30_000;
+const SIGN_IN_LOCK_POLL_MS = 100;
+
+async function acquireSignInLock(email: string): Promise<() => void> {
+  const lockPath = path.join(os.tmpdir(), `lumia-e2e-signin-${email}.lock`);
+  const deadline = Date.now() + SIGN_IN_LOCK_TIMEOUT_MS;
+
+  while (true) {
+    try {
+      fs.closeSync(fs.openSync(lockPath, "wx"));
+      return () => fs.rmSync(lockPath, { force: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+
+      const stale = fs.statSync(lockPath, { throwIfNoEntry: false });
+      if (stale && Date.now() - stale.mtimeMs > SIGN_IN_LOCK_STALE_MS) {
+        fs.rmSync(lockPath, { force: true });
+        continue;
+      }
+
+      if (Date.now() > deadline) {
+        throw new Error(
+          `Tiempo agotado esperando el bloqueo de inicio de sesión de ${email}`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, SIGN_IN_LOCK_POLL_MS));
+    }
+  }
+}
 
 export function totpCode(secret: string): string {
   return new TOTP({ secret }).generate();
@@ -75,16 +109,21 @@ export async function signIn(
   email: string,
   password = "lumia-desarrollo-2026",
 ): Promise<string | undefined> {
-  await page.goto(`${baseUrl}/login`);
-  await page.fill('[name="email"]', email);
-  await page.fill('[name="password"]', password);
-  await page.getByTestId("login-submit").click();
-  const secret = await completeTwoFactorStep(page);
+  const releaseLock = await acquireSignInLock(email);
+  try {
+    await page.goto(`${baseUrl}/login`);
+    await page.fill('[name="email"]', email);
+    await page.fill('[name="password"]', password);
+    await page.getByTestId("login-submit").click();
+    const secret = await completeTwoFactorStep(page);
 
-  await expect(page).toHaveURL(
-    (url) => !/^\/(login|auth)(\/|$)/.test(url.pathname),
-  );
-  await expect(page.getByTestId("logout")).toBeVisible();
+    await expect(page).toHaveURL(
+      (url) => !/^\/(login|auth)(\/|$)/.test(url.pathname),
+    );
+    await expect(page.getByTestId("logout")).toBeVisible();
 
-  return secret;
+    return secret;
+  } finally {
+    releaseLock();
+  }
 }
