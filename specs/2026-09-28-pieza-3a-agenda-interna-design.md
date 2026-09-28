@@ -71,7 +71,7 @@ Restricciones:
 |---|---|
 | `id` | uuid |
 | `appointment_id` | uuid → `appointments` (cascade) |
-| `kind` | enum `created`, `moved`, `cancelled`, `no_show` |
+| `kind` | enum `created`, `moved`, `cancelled`, `no_show`, `restored` (deshacer "no se presentó") |
 | `previous_starts_at`, `previous_ends_at` | timestamptz, nulos (solo en `moved`) |
 | `actor_id` | uuid (= `auth.uid()`) |
 | `created_at` | timestamptz |
