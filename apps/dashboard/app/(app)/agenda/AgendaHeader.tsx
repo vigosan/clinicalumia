@@ -88,19 +88,23 @@ export function AgendaHeader({
         </h1>
       </div>
       <div className="flex items-center gap-3">
-        <Link
-          href={buildHref("/", {
-            date: today,
-            view,
-            with: view === "day" ? withParam : undefined,
-            person: view === "week" ? personParam : undefined,
-          })}
+        <Button
+          asChild
+          variant="secondary"
+          size="sm"
           data-testid="agenda-today"
         >
-          <Button variant="secondary" size="sm">
+          <Link
+            href={buildHref("/", {
+              date: today,
+              view,
+              with: view === "day" ? withParam : undefined,
+              person: view === "week" ? personParam : undefined,
+            })}
+          >
             Hoy
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <div className="flex overflow-hidden rounded-full border border-line">
           <Link
             href={buildHref("/", {
@@ -128,15 +132,16 @@ export function AgendaHeader({
             Semana
           </Link>
         </div>
-        <Link
-          href={buildHref("/appointments/new", {
-            date,
-            professional: isOwner ? undefined : selfId,
-          })}
-          data-testid="agenda-new"
-        >
-          <Button size="sm">+ Nueva cita</Button>
-        </Link>
+        <Button asChild size="sm" data-testid="agenda-new">
+          <Link
+            href={buildHref("/appointments/new", {
+              date,
+              professional: isOwner ? undefined : selfId,
+            })}
+          >
+            + Nueva cita
+          </Link>
+        </Button>
       </div>
     </div>
   );

@@ -208,6 +208,8 @@ export function parseAppointmentForm(
   if (!date || !time) return { error: "Indica fecha y hora." };
   if (!isValidDate(date) || !isValidTime(time))
     return { error: "Indica fecha y hora." };
+  if (notes.length > 2000)
+    return { error: "Las notas no pueden superar los 2000 caracteres." };
 
   const duration = Number(durationRaw);
   if (

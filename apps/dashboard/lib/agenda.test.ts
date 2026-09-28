@@ -458,6 +458,12 @@ describe("parseAppointmentForm", () => {
     });
   });
 
+  it("rejects notes longer than 2000 characters, matching the database check constraint", () => {
+    expect(parseAppointmentForm(form({ notes: "a".repeat(2001) }))).toEqual({
+      error: "Las notas no pueden superar los 2000 caracteres.",
+    });
+  });
+
   it("computes starts_at with the summer offset", () => {
     const result = parseAppointmentForm(
       form({ date: "2026-07-15", time: "10:00", duration_minutes: "30" }),
@@ -515,6 +521,22 @@ describe("parseAppointmentForm", () => {
         const ends = new Date(result.appointment.ends_at).getTime();
         expect(ends - starts).toBe(duration * 60_000);
       }
+    }
+  });
+
+  it("keeps ends_at exactly duration_minutes after starts_at across the autumn clock change, when the Madrid-offset round trip could otherwise drift by an hour", () => {
+    const result = parseAppointmentForm(
+      form({
+        date: "2026-10-25",
+        time: "01:00",
+        duration_minutes: "180",
+      }),
+    );
+    expect(result).toHaveProperty("ok", true);
+    if ("appointment" in result) {
+      const starts = new Date(result.appointment.starts_at).getTime();
+      const ends = new Date(result.appointment.ends_at).getTime();
+      expect(ends - starts).toBe(180 * 60_000);
     }
   });
 

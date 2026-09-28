@@ -56,6 +56,16 @@ function timeOf(instant: string): string {
   }).format(new Date(instant));
 }
 
+function dateOf(instant: string): string {
+  const formatted = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(instant));
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
 function formatPrice(cents: number): string {
   return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 }
@@ -99,9 +109,12 @@ export function AppointmentPanel({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[13px] text-ink-800">
-            {timeOf(appointment.startsAt)} – {timeOf(appointment.endsAt)} ·{" "}
-            {appointment.professionalName}
+          <p
+            className="text-[13px] text-ink-800"
+            data-testid="appointment-panel-date"
+          >
+            {dateOf(appointment.startsAt)} · {timeOf(appointment.startsAt)} –{" "}
+            {timeOf(appointment.endsAt)} · {appointment.professionalName}
           </p>
           <Link
             href={`/patients/${appointment.patientId}`}

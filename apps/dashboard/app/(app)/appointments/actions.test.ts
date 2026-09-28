@@ -12,7 +12,6 @@ const rpcResults: Record<string, { data: unknown; error: unknown }> = {
     ],
     error: null,
   },
-  agenda_busy: { data: [], error: null },
 };
 const rpc = vi.fn(async (name: string) => rpcResults[name]);
 
@@ -135,7 +134,6 @@ describe("createAppointment", () => {
       ],
       error: null,
     };
-    rpcResults.agenda_busy = { data: [], error: null };
     schedulesResult.data = [];
     schedulesResult.error = null;
     schedulesSelect.mockClear();
@@ -261,7 +259,6 @@ describe("moveAppointment", () => {
       ],
       error: null,
     };
-    rpcResults.agenda_busy = { data: [], error: null };
     schedulesResult.data = [];
     schedulesResult.error = null;
     timeOffResult.data = [];
@@ -277,6 +274,19 @@ describe("moveAppointment", () => {
   it("returns the parser's error for an invalid form without touching the database", async () => {
     expect(await moveAppointment(undefined, moveForm({ date: "" }))).toEqual({
       error: "Indica fecha y hora.",
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects moving an appointment to a start that has already passed, without touching the database", async () => {
+    expect(
+      await moveAppointment(
+        undefined,
+        moveForm({ date: "2020-01-01", confirm: "1" }),
+      ),
+    ).toEqual({
+      error: "No se puede mover una cita a una hora que ya ha pasado.",
     });
     expect(rpc).not.toHaveBeenCalled();
     expect(appointmentsUpdate).not.toHaveBeenCalled();
@@ -358,6 +368,15 @@ describe("cancelAppointment", () => {
       cancel_reason: "Se puso enfermo",
     });
     expect(updateEq).toHaveBeenCalledWith("id", "appt-1");
+  });
+
+  it("rejects a reason longer than 2000 characters, without touching the database", async () => {
+    expect(
+      await cancelAppointment("appt-1", "patient", "a".repeat(2001)),
+    ).toEqual({
+      error: "El motivo no puede superar los 2000 caracteres.",
+    });
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
   });
 
   it("reports it could not cancel when 0 rows matched", async () => {

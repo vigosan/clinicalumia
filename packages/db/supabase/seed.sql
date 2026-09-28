@@ -119,5 +119,5 @@ from (select (date_trunc('week', (now() at time zone 'Europe/Madrid')::date))::d
 on conflict (id) do nothing;
 
 update public.appointments
-set status = 'cancelled', cancelled_by = 'clinic', cancel_reason = 'Imprevisto de la paciente'
+set status = 'cancelled', cancelled_by = 'clinic', cancel_reason = 'Imprevisto de la clínica'
 where id = 'a0000000-0000-0000-0000-000000000705';

@@ -9,10 +9,12 @@ function AppointmentList({
   title,
   rows,
   truncated,
+  truncatedMessage,
 }: {
   title: string;
   rows: PatientAppointmentRow[];
   truncated: boolean;
+  truncatedMessage: string;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -40,9 +42,7 @@ function AppointmentList({
         ))}
       </ul>
       {truncated && (
-        <p className="text-[13px] text-ink-800">
-          Se muestran solo las 20 más recientes.
-        </p>
+        <p className="text-[13px] text-ink-800">{truncatedMessage}</p>
       )}
     </div>
   );
@@ -87,8 +87,14 @@ export function PatientAppointments({
         title="Próximas"
         rows={upcoming}
         truncated={upcomingTruncated}
+        truncatedMessage="Se muestran solo las 20 más próximas."
       />
-      <AppointmentList title="Pasadas" rows={past} truncated={pastTruncated} />
+      <AppointmentList
+        title="Pasadas"
+        rows={past}
+        truncated={pastTruncated}
+        truncatedMessage="Se muestran solo las 20 más recientes."
+      />
     </div>
   );
 }

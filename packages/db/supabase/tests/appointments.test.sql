@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(89);
+select plan(91);
 
 insert into auth.users (id, email) values
   ('60000000-0000-0000-0000-000000000001', 'owner-appointments@test.local'),
@@ -207,6 +207,19 @@ select throws_ok($$
   values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
     '60000000-0000-0000-0000-0000000000b1', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 18:05 Europe/Madrid')
 $$, '23514', null, 'an appointment longer than 8 hours is rejected');
+
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at, notes)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 10:45 Europe/Madrid',
+    repeat('a', 2001))
+$$, '23514', null, 'notes longer than 2000 characters are rejected at the database level too');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at, cancel_reason)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 10:45 Europe/Madrid',
+    repeat('a', 2001))
+$$, '23514', null, 'a cancel_reason longer than 2000 characters is rejected at the database level too');
 
 select throws_ok($$
   insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)

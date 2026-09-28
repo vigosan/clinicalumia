@@ -1,6 +1,6 @@
 "use server";
 
-import { madridDateTime, madridDayBounds } from "@clinicalumia/api/madrid-time";
+import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -103,30 +103,10 @@ async function findOverlapTimes(
     .gt("ends_at", appointment.starts_at);
   if (excludeId) query = query.neq("id", excludeId);
   const { data } = await query.limit(1).maybeSingle();
-  if (data) {
-    return {
-      start: madridDateTime(data.starts_at).time.slice(0, 5),
-      end: madridDateTime(data.ends_at).time.slice(0, 5),
-    };
-  }
-
-  const bounds = madridDayBounds(madridDateTime(appointment.starts_at).date);
-  const { data: busy } = await supabase.rpc("agenda_busy", {
-    p_from: bounds.start,
-    p_to: bounds.end,
-  });
-  const clash = (busy ?? []).find(
-    (row) =>
-      row.professional_id === appointment.professional_id &&
-      new Date(row.starts_at).getTime() <
-        new Date(appointment.ends_at).getTime() &&
-      new Date(row.ends_at).getTime() >
-        new Date(appointment.starts_at).getTime(),
-  );
-  if (!clash) return null;
+  if (!data) return null;
   return {
-    start: madridDateTime(clash.starts_at).time.slice(0, 5),
-    end: madridDateTime(clash.ends_at).time.slice(0, 5),
+    start: madridDateTime(data.starts_at).time.slice(0, 5),
+    end: madridDateTime(data.ends_at).time.slice(0, 5),
   };
 }
 
@@ -195,6 +175,9 @@ export async function moveAppointment(
   if ("error" in parsed) return parsed;
   const { appointment } = parsed;
 
+  if (new Date(appointment.starts_at).getTime() <= Date.now())
+    return { error: "No se puede mover una cita a una hora que ya ha pasado." };
+
   const supabase = await createClient();
 
   const professional = await resolveProfessional(
@@ -247,6 +230,9 @@ export async function cancelAppointment(
   by: "patient" | "clinic",
   reason: string,
 ): Promise<ActionResult> {
+  if (reason.length > 2000)
+    return { error: "El motivo no puede superar los 2000 caracteres." };
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("appointments")
