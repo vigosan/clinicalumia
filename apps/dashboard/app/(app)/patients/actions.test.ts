@@ -8,9 +8,6 @@ const updateResult: {
   data: { id: string }[] | null;
   error: { code: string } | null;
 } = { data: null, error: null };
-const archivedUpdateResult: { error: { code?: string } | null } = {
-  error: null,
-};
 const rpcResult: { data: unknown; error: { message: string } | null } = {
   data: [],
   error: null,
@@ -24,19 +21,19 @@ const guardianshipInsertResult: {
 } = { error: null };
 const deletePersonResult: {
   data: { id: string }[] | null;
-  error: { code?: string } | null;
+  error: { code?: string; message?: string; details?: string } | null;
 } = { data: [], error: null };
+const primaryGuardianLookupResult: {
+  data: { guardian_id: string } | null;
+  error: null;
+} = { data: null, error: null };
 
 const insertSelectSingle = vi.fn(async () => insertResult);
 const peopleInsert = vi.fn(() => ({
   select: () => ({ single: insertSelectSingle }),
 }));
 const updateEqSelect = vi.fn(async () => updateResult);
-const updateEq = vi.fn(() =>
-  Object.assign(Promise.resolve(archivedUpdateResult), {
-    select: updateEqSelect,
-  }),
-);
+const updateEq = vi.fn(() => ({ select: updateEqSelect }));
 const peopleUpdate = vi.fn(() => ({ eq: updateEq }));
 const guardianMaybeSingle = vi.fn(async () => guardianLookupResult);
 const guardianEq = vi.fn(() => ({ maybeSingle: guardianMaybeSingle }));
@@ -45,12 +42,22 @@ const deleteSelect = vi.fn(async () => deletePersonResult);
 const deleteEq = vi.fn(() => ({ select: deleteSelect }));
 const peopleDelete = vi.fn(() => ({ eq: deleteEq }));
 const guardianshipsInsert = vi.fn(async () => guardianshipInsertResult);
-const guardianshipDeleteResult: { error: { code?: string } | null } = {
-  error: null,
-};
-const guardianshipDeleteEq2 = vi.fn(() =>
-  Promise.resolve(guardianshipDeleteResult),
+const primaryGuardianMaybeSingle = vi.fn(
+  async () => primaryGuardianLookupResult,
 );
+const primaryGuardianEq2 = vi.fn(() => ({
+  maybeSingle: primaryGuardianMaybeSingle,
+}));
+const primaryGuardianEq1 = vi.fn(() => ({ eq: primaryGuardianEq2 }));
+const guardianshipsSelect = vi.fn(() => ({ eq: primaryGuardianEq1 }));
+const guardianshipDeleteResult: {
+  data: { minor_id: string }[] | null;
+  error: { code?: string } | null;
+} = { data: [{ minor_id: "minor-1" }], error: null };
+const guardianshipDeleteSelect = vi.fn(async () => guardianshipDeleteResult);
+const guardianshipDeleteEq2 = vi.fn(() => ({
+  select: guardianshipDeleteSelect,
+}));
 const guardianshipDeleteEq1 = vi.fn(() => ({ eq: guardianshipDeleteEq2 }));
 const guardianshipsDelete = vi.fn(() => ({ eq: guardianshipDeleteEq1 }));
 const rpc = vi.fn(async () => rpcResult);
@@ -61,7 +68,11 @@ vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({
     from: (table: string) =>
       table === "guardianships"
-        ? { insert: guardianshipsInsert, delete: guardianshipsDelete }
+        ? {
+            insert: guardianshipsInsert,
+            delete: guardianshipsDelete,
+            select: guardianshipsSelect,
+          }
         : {
             insert: peopleInsert,
             update: peopleUpdate,
@@ -151,6 +162,42 @@ describe("savePerson", () => {
   });
 });
 
+describe("savePerson with guardian_of", () => {
+  beforeEach(() => {
+    primaryGuardianLookupResult.data = null;
+    peopleInsert.mockClear();
+    guardianshipsSelect.mockClear();
+  });
+
+  it("rejects a new person under 18 as a guardian without creating anything", async () => {
+    expect(
+      await savePerson(
+        undefined,
+        personForm({
+          guardian_of: "minor-1",
+          birth_date: "2015-01-01",
+        }),
+      ),
+    ).toEqual({ error: "Un tutor tiene que ser mayor de edad." });
+    expect(peopleInsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a new primary guardian when the minor already has one, without creating anything", async () => {
+    primaryGuardianLookupResult.data = { guardian_id: "existing-guardian" };
+    expect(
+      await savePerson(
+        undefined,
+        personForm({
+          guardian_of: "minor-1",
+          birth_date: "1980-01-01",
+          is_primary: "on",
+        }),
+      ),
+    ).toEqual({ error: "Ya tiene un tutor principal." });
+    expect(peopleInsert).not.toHaveBeenCalled();
+  });
+});
+
 describe("checkDuplicates", () => {
   beforeEach(() => {
     rpc.mockClear();
@@ -228,6 +275,11 @@ describe("addGuardian", () => {
 });
 
 describe("removeGuardian", () => {
+  beforeEach(() => {
+    guardianshipDeleteResult.data = [{ minor_id: "minor-1" }];
+    guardianshipDeleteResult.error = null;
+  });
+
   it("deletes the guardianship row for the given minor and guardian", async () => {
     expect(await removeGuardian("minor-1", "guardian-1")).toEqual({
       ok: true,
@@ -238,11 +290,19 @@ describe("removeGuardian", () => {
       "guardian-1",
     );
   });
+
+  it("reports it could not be removed when no row was deleted", async () => {
+    guardianshipDeleteResult.data = [];
+    expect(await removeGuardian("minor-1", "guardian-1")).toEqual({
+      error: "No se ha podido quitar el tutor.",
+    });
+  });
 });
 
 describe("setArchived", () => {
   beforeEach(() => {
-    archivedUpdateResult.error = null;
+    updateResult.data = [{ id: "person-1" }];
+    updateResult.error = null;
     peopleUpdate.mockClear();
   });
 
@@ -256,6 +316,13 @@ describe("setArchived", () => {
   it("writes archived_at to null when restoring", async () => {
     expect(await setArchived("person-1", false)).toEqual({ ok: true });
     expect(peopleUpdate).toHaveBeenCalledWith({ archived_at: null });
+  });
+
+  it("reports it could not be updated when no row was changed", async () => {
+    updateResult.data = [];
+    expect(await setArchived("person-1", true)).toEqual({
+      error: "No se ha podido actualizar.",
+    });
   });
 });
 
@@ -272,11 +339,27 @@ describe("deletePerson", () => {
     });
   });
 
-  it("reports the wards message for a 23503 foreign key violation", async () => {
+  it("reports the wards message when the 23503 error names the guardianships_guardian_id_fkey constraint", async () => {
     deletePersonResult.data = null;
-    deletePersonResult.error = { code: "23503" };
+    deletePersonResult.error = {
+      code: "23503",
+      message:
+        'update or delete on table "people" violates foreign key constraint "guardianships_guardian_id_fkey" on table "guardianships"',
+    };
     expect(await deletePerson("person-1")).toEqual({
       error: "No se puede eliminar: tiene menores a su cargo.",
+    });
+  });
+
+  it("reports a generic linked-data message for a 23503 error naming a different constraint", async () => {
+    deletePersonResult.data = null;
+    deletePersonResult.error = {
+      code: "23503",
+      message:
+        'update or delete on table "people" violates foreign key constraint "appointments_person_id_fkey" on table "appointments"',
+    };
+    expect(await deletePerson("person-1")).toEqual({
+      error: "No se puede eliminar: tiene datos ligados.",
     });
   });
 });

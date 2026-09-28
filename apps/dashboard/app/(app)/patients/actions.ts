@@ -4,6 +4,7 @@ import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionResult } from "@/lib/action-result";
+import { guardianErrorCode } from "@/lib/guardian-error";
 import {
   isMinor,
   normalizeSearch,
@@ -43,7 +44,8 @@ export async function savePerson(
   _prev: PersonFormState,
   formData: FormData,
 ): Promise<PersonFormState> {
-  const parsed = parsePersonForm(formData, todayInMadrid());
+  const today = todayInMadrid();
+  const parsed = parsePersonForm(formData, today);
   if ("error" in parsed) return parsed;
 
   const supabase = await createClient();
@@ -64,6 +66,27 @@ export async function savePerson(
     redirect(`/patients/${id}`);
   }
 
+  const guardianOf = String(formData.get("guardian_of") ?? "");
+  const relationship = String(
+    formData.get("relationship") ?? "otro",
+  ) as Ward["relationship"];
+  const isPrimary = formData.get("is_primary") === "on";
+
+  if (guardianOf) {
+    if (parsed.person.birth_date && isMinor(parsed.person.birth_date, today))
+      return { error: "Un tutor tiene que ser mayor de edad." };
+
+    if (isPrimary) {
+      const { data: existingPrimary } = await supabase
+        .from("guardianships")
+        .select("guardian_id")
+        .eq("minor_id", guardianOf)
+        .eq("is_primary", true)
+        .maybeSingle();
+      if (existingPrimary) return { error: "Ya tiene un tutor principal." };
+    }
+  }
+
   const { data, error } = await supabase
     .from("people")
     .insert(parsed.person)
@@ -75,12 +98,7 @@ export async function savePerson(
 
   revalidatePath("/patients");
 
-  const guardianOf = String(formData.get("guardian_of") ?? "");
   if (guardianOf) {
-    const relationship = String(
-      formData.get("relationship") ?? "otro",
-    ) as Ward["relationship"];
-    const isPrimary = formData.get("is_primary") === "on";
     const guardianResult = await addGuardian(
       guardianOf,
       data.id,
@@ -89,7 +107,7 @@ export async function savePerson(
     );
     if ("error" in guardianResult) {
       redirect(
-        `/patients/${guardianOf}?guardianError=${encodeURIComponent(guardianResult.error)}`,
+        `/patients/${guardianOf}?guardianError=${guardianErrorCode(guardianResult.error)}`,
       );
     }
     redirect(`/patients/${guardianOf}`);
@@ -146,7 +164,7 @@ export async function searchGuardianCandidates(
     .ilike("search_text", toIlikePattern(normalized))
     .order("last_name", { ascending: true })
     .limit(10);
-  if (error) return [];
+  if (error) throw new Error("No se ha podido buscar.");
   return data ?? [];
 }
 
@@ -202,12 +220,15 @@ export async function removeGuardian(
   guardianId: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("guardianships")
     .delete()
     .eq("minor_id", minorId)
-    .eq("guardian_id", guardianId);
+    .eq("guardian_id", guardianId)
+    .select("minor_id");
   if (error) return { error: "No se ha podido quitar el tutor." };
+  if (!data || data.length === 0)
+    return { error: "No se ha podido quitar el tutor." };
 
   revalidatePath(`/patients/${minorId}`);
   revalidatePath(`/patients/${guardianId}`);
@@ -219,11 +240,14 @@ export async function setArchived(
   archived: boolean,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("people")
     .update({ archived_at: archived ? new Date().toISOString() : null })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) return { error: "No se ha podido actualizar." };
+  if (!data || data.length === 0)
+    return { error: "No se ha podido actualizar." };
 
   revalidatePath("/patients");
   revalidatePath(`/patients/${id}`);
@@ -239,8 +263,12 @@ export async function deletePerson(id: string): Promise<ActionResult> {
     .select("id");
 
   if (error) {
-    if (error.code === "23503")
-      return { error: "No se puede eliminar: tiene menores a su cargo." };
+    if (error.code === "23503") {
+      const text = `${error.message ?? ""} ${error.details ?? ""}`;
+      if (text.includes("guardianships_guardian_id_fkey"))
+        return { error: "No se puede eliminar: tiene menores a su cargo." };
+      return { error: "No se puede eliminar: tiene datos ligados." };
+    }
     return { error: "No se ha podido eliminar." };
   }
   if (!data || data.length === 0)
