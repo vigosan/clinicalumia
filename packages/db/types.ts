@@ -611,6 +611,32 @@ export type Database = {
           starts_at: string
         }[]
       }
+      available_slots: {
+        Args: {
+          p_from: string
+          p_professional_id: string
+          p_service_id: string
+          p_to: string
+        }
+        Returns: {
+          professional_id: string
+          starts_at: string
+        }[]
+      }
+      booking_catalog: {
+        Args: never
+        Returns: {
+          bookable_online: boolean
+          duration_minutes: number
+          phone_only: boolean
+          price_cents: number
+          professionals: Json
+          service_id: string
+          service_name: string
+          specialty_id: string
+          specialty_name: string
+        }[]
+      }
       f_unaccent: { Args: { value: string }; Returns: string }
       find_possible_duplicates: {
         Args: {
