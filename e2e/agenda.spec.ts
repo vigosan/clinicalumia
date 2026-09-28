@@ -275,3 +275,33 @@ test("una ausencia creada por el test aparece como time-off-block", async ({
   await expect(timeOffBlock).toBeVisible();
   await expect(timeOffBlock).toContainText("Formación e2e");
 });
+
+test("pulsar un hueco fuera de horario en la propia columna da de alta una cita, y pulsar la columna de un compañero no navega", async ({
+  page,
+}) => {
+  const employeeId = await loginAsThrowawayEmployee(page, "Profesional Seis");
+
+  const seeAlso = page.getByTestId("see-also");
+  await seeAlso
+    .getByTestId("see-also-option")
+    .filter({ hasText: "Marc Ejemplo" })
+    .getByRole("checkbox")
+    .check();
+
+  const marcColumn = columnFor(page, MARC_ID);
+  await expect(marcColumn).toBeVisible();
+  const beforeUrl = page.url();
+  await marcColumn.click({ position: { x: 10, y: 130 } });
+  await expect(page).toHaveURL(beforeUrl);
+
+  const ownColumnBody = columnFor(page, employeeId).locator('[role="button"]');
+  await ownColumnBody.click({ position: { x: 10, y: 130 } });
+
+  await expect(page).toHaveURL(/\/appointments\/new\?/);
+  const url = new URL(page.url());
+  expect(url.searchParams.get("date")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  const [, , minute] =
+    url.searchParams.get("time")?.match(/^(\d{2}):(\d{2})$/) ?? [];
+  expect(["00", "15", "30", "45"]).toContain(minute);
+  expect(url.searchParams.get("professional")).toBe(employeeId);
+});

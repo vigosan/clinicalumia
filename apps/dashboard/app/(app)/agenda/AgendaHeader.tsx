@@ -83,7 +83,7 @@ export function AgendaHeader({
           <Link
             href={buildHref("/", { date, view: "day", with: withParam })}
             data-testid="agenda-view-day"
-            aria-pressed={view === "day"}
+            aria-current={view === "day" ? "page" : undefined}
             className={`px-4 py-2 text-sm ${view === "day" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
           >
             Día
@@ -91,7 +91,7 @@ export function AgendaHeader({
           <Link
             href={buildHref("/", { date, view: "week", with: withParam })}
             data-testid="agenda-view-week"
-            aria-pressed={view === "week"}
+            aria-current={view === "week" ? "page" : undefined}
             className={`px-4 py-2 text-sm ${view === "week" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
           >
             Semana

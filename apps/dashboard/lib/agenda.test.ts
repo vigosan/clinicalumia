@@ -4,6 +4,7 @@ import {
   type Block,
   canMarkNoShow,
   canMove,
+  isUuid,
   layoutDay,
   parseAppointmentForm,
   scheduleWarnings,
@@ -459,5 +460,23 @@ describe("specialtyTone", () => {
 
   it("maps any other slug to neutral", () => {
     expect(specialtyTone("otra-especialidad")).toBe("neutral");
+  });
+});
+
+describe("isUuid", () => {
+  it("accepts a well-formed uuid", () => {
+    expect(isUuid("a0000000-0000-0000-0000-000000000001")).toBe(true);
+  });
+
+  it("accepts uppercase hex digits", () => {
+    expect(isUuid("A0000000-0000-0000-0000-000000000001")).toBe(true);
+  });
+
+  it("rejects a value that is not a uuid, so stray ?with= entries are ignored", () => {
+    expect(isUuid("not-a-uuid")).toBe(false);
+  });
+
+  it("rejects an empty string", () => {
+    expect(isUuid("")).toBe(false);
   });
 });

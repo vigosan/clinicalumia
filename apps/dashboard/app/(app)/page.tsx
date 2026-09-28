@@ -1,12 +1,10 @@
 import { isValidDate, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Card } from "@clinicalumia/ui/card";
+import { isUuid } from "@/lib/agenda";
 import { AgendaHeader } from "./agenda/AgendaHeader";
 import { DayView } from "./agenda/DayView";
 import { loadAgenda } from "./agenda/load";
 import { SeeAlso } from "./agenda/SeeAlso";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function DashboardHome({
   searchParams,
@@ -20,7 +18,7 @@ export default async function DashboardHome({
   const withIds = (params.with ?? "")
     .split(",")
     .map((id) => id.trim())
-    .filter((id) => UUID_RE.test(id));
+    .filter((id) => isUuid(id));
 
   const result = await loadAgenda({ date, view, withIds });
 

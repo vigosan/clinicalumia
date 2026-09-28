@@ -355,7 +355,7 @@ export function DayView({
                   ).map((band) => (
                     <div
                       key={band.top}
-                      className="absolute inset-x-0 bg-ink-900/5"
+                      className="pointer-events-none absolute inset-x-0 bg-ink-900/5"
                       style={{
                         top: band.top * PX_PER_MINUTE,
                         height: band.height * PX_PER_MINUTE,

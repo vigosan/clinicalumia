@@ -2,10 +2,7 @@ import "server-only";
 import { madridDayBounds, weekdayOf } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import type { ScheduleBlock } from "@/lib/agenda";
-import { visibleHours } from "@/lib/agenda";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid, visibleHours } from "@/lib/agenda";
 
 export type AgendaColumn = {
   id: string;
@@ -114,7 +111,7 @@ export async function loadAgenda({
     toColumn(ownProfile);
 
   const validWithIds = withIds.filter(
-    (id) => UUID_RE.test(id) && directoryColumns.some((c) => c.id === id),
+    (id) => isUuid(id) && directoryColumns.some((c) => c.id === id),
   );
 
   const columns = isOwner
