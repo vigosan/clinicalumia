@@ -958,7 +958,9 @@ test("mover una cita de duración personalizada conserva esa duración, y cambia
 
   await page.getByTestId("appointment-move-time").fill("14:00");
   await page.getByTestId("appointment-move").click();
-  await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
+  await expect(page.getByTestId("appointment-panel-date")).toContainText(
+    "14:00",
+  );
 
   const afterMove = await admin
     .from("appointments")
@@ -975,7 +977,9 @@ test("mover una cita de duración personalizada conserva esa duración, y cambia
   await page.getByTestId("appointment-move-time").fill("16:00");
   await page.getByTestId("appointment-move-duration").fill("30");
   await page.getByTestId("appointment-move").click();
-  await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
+  await expect(page.getByTestId("appointment-panel-date")).toContainText(
+    "16:00",
+  );
 
   const afterDurationChange = await admin
     .from("appointments")
