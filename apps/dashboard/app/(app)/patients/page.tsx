@@ -100,9 +100,12 @@ export default async function PatientsPage({
                   <TableRow key={person.id} data-testid="patient-row">
                     <TableCell className="font-medium">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span>
+                        <Link
+                          href={`/patients/${person.id}`}
+                          data-testid="patient-link"
+                        >
                           {person.first_name} {person.last_name}
-                        </span>
+                        </Link>
                         {minor && (
                           <Badge tone="warning" data-testid="patient-minor">
                             Menor

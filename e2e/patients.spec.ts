@@ -555,3 +555,85 @@ test("a throwaway owner cannot delete a guardian who still has wards, but can de
     .maybeSingle();
   expect(stillThere).toBeNull();
 });
+
+test("clicking a person's name in the list, an archive/recover round trip, and clicking a guardian's name from a minor's record", async ({
+  page,
+}) => {
+  const minorLastName = `ClicMenor${Date.now()}`;
+  const motherLastName = `ClicMadre${Date.now()}`;
+
+  const { data: mother, error: motherError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Madre",
+      last_name: motherLastName,
+      is_patient: false,
+    })
+    .select("id")
+    .single();
+  expect(motherError).toBeNull();
+  const motherId = mother!.id;
+  createdPersonIds.push(motherId);
+
+  const { data: minor, error: minorError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Hijo",
+      last_name: minorLastName,
+      is_patient: true,
+      birth_date: "2015-01-01",
+    })
+    .select("id")
+    .single();
+  expect(minorError).toBeNull();
+  const minorId = minor!.id;
+  createdPersonIds.push(minorId);
+
+  const { error: guardianshipError } = await admin
+    .from("guardianships")
+    .insert({
+      minor_id: minorId,
+      guardian_id: motherId,
+      relationship: "madre",
+      is_primary: true,
+    });
+  expect(guardianshipError).toBeNull();
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients`);
+  await page.getByTestId("patients-search").fill(minorLastName);
+
+  await page
+    .getByTestId("patient-row")
+    .filter({ hasText: minorLastName })
+    .getByTestId("patient-link")
+    .click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);
+
+  await page.getByTestId("person-archive").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("person-archive")).toHaveText("Recuperar");
+
+  await page.goto(`${DASHBOARD}/patients`);
+  await page.getByTestId("patients-search").fill(minorLastName);
+  await page.getByTestId("patients-archived").check();
+  await page
+    .getByTestId("patient-row")
+    .filter({ hasText: minorLastName })
+    .getByTestId("patient-link")
+    .click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);
+
+  await page.getByTestId("person-archive").click();
+  await expect(page.getByTestId("person-archive")).toHaveText("Archivar");
+
+  const guardianRow = page
+    .getByTestId("guardian-row")
+    .filter({ hasText: motherLastName });
+  await guardianRow.getByTestId("guardian-link").click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${motherId}`);
+
+  await expect(
+    page.getByTestId("ward-row").filter({ hasText: minorLastName }),
+  ).toBeVisible();
+});

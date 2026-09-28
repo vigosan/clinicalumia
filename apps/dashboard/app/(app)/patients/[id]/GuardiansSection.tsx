@@ -2,6 +2,7 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Ward } from "@/lib/ward-label";
 import { removeGuardian } from "../actions";
@@ -44,7 +45,7 @@ export function GuardiansSection({
 
   return (
     <Card className="flex flex-col gap-4">
-      {isMinorPerson ? (
+      {(isMinorPerson || guardians.length > 0) && (
         <>
           <h2 className="text-lg font-bold text-ink-900">Tutores</h2>
           {guardians.length === 0 ? (
@@ -58,8 +59,13 @@ export function GuardiansSection({
                   className="flex flex-wrap items-center justify-between gap-2"
                 >
                   <span className="text-[15px] text-ink-900">
-                    {guardian.name} ·{" "}
-                    {RELATIONSHIP_LABEL[guardian.relationship]}
+                    <Link
+                      href={`/patients/${guardian.id}`}
+                      data-testid="guardian-link"
+                    >
+                      {guardian.name}
+                    </Link>{" "}
+                    · {RELATIONSHIP_LABEL[guardian.relationship]}
                     {guardian.isPrimary && " · Principal"}
                   </span>
                   <Button
@@ -76,26 +82,30 @@ export function GuardiansSection({
               ))}
             </ul>
           )}
-          <AddGuardian minorId={personId} onError={setError} />
+          {isMinorPerson && (
+            <AddGuardian minorId={personId} onError={setError} />
+          )}
         </>
-      ) : (
-        wards.length > 0 && (
-          <>
-            <h2 className="text-lg font-bold text-ink-900">A su cargo</h2>
-            <ul className="flex flex-col gap-2">
-              {wards.map((ward) => (
-                <li
-                  key={ward.id}
-                  data-testid="ward-row"
-                  className="text-[15px] text-ink-900"
-                >
-                  {ward.name} · {RELATIONSHIP_LABEL[ward.relationship]}
-                  {ward.isPrimary && " · Principal"}
-                </li>
-              ))}
-            </ul>
-          </>
-        )
+      )}
+      {!isMinorPerson && wards.length > 0 && (
+        <>
+          <h2 className="text-lg font-bold text-ink-900">A su cargo</h2>
+          <ul className="flex flex-col gap-2">
+            {wards.map((ward) => (
+              <li
+                key={ward.id}
+                data-testid="ward-row"
+                className="text-[15px] text-ink-900"
+              >
+                <Link href={`/patients/${ward.id}`} data-testid="ward-link">
+                  {ward.name}
+                </Link>{" "}
+                · {RELATIONSHIP_LABEL[ward.relationship]}
+                {ward.isPrimary && " · Principal"}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       {error && (
         <p
