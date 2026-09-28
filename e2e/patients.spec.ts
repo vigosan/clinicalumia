@@ -192,15 +192,17 @@ test('adding someone with Lucía\'s phone shows the duplicate warning, and "Usar
 
   const warning = page.getByTestId("duplicate-warning");
   await expect(warning).toBeVisible();
-  await expect(warning).toContainText(
-    "Lucía Martínez Soler · madre de Nora Ferrer Martínez, Pablo Ferrer Martínez",
+  const duplicateRow = warning
+    .locator("li")
+    .filter({ hasText: "Lucía Martínez Soler" });
+  await expect(duplicateRow.getByTestId("duplicate-matched")).toHaveText(
+    "mismo teléfono",
+  );
+  await expect(duplicateRow).toContainText(
+    "madre de Nora Ferrer Martínez, Pablo Ferrer Martínez",
   );
 
-  await warning
-    .locator("li")
-    .filter({ hasText: "Lucía Martínez Soler" })
-    .getByTestId("duplicate-use")
-    .click();
+  await duplicateRow.getByTestId("duplicate-use").click();
   await expect(page).toHaveURL(
     `${DASHBOARD}/patients/a0000000-0000-0000-0000-000000000601`,
   );

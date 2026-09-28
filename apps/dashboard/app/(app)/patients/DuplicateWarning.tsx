@@ -2,6 +2,19 @@ import { Button } from "@clinicalumia/ui/button";
 import { wardsLabel } from "@/lib/ward-label";
 import type { Duplicate } from "./actions";
 
+const MATCHED_FIELD_LABEL: Record<string, string> = {
+  tax_id: "mismo DNI/NIE",
+  email: "mismo email",
+  phone: "mismo teléfono",
+};
+
+function matchedLabel(matched: string[]): string {
+  return matched
+    .map((field) => MATCHED_FIELD_LABEL[field])
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function DuplicateWarning({
   duplicates,
   onUseExisting,
@@ -28,6 +41,10 @@ export function DuplicateWarning({
           >
             <span className="text-[15px] text-ink-900">
               {duplicate.first_name} {duplicate.last_name}
+              {" · "}
+              <span data-testid="duplicate-matched">
+                {matchedLabel(duplicate.matched)}
+              </span>
               {duplicate.wards.length > 0 &&
                 ` · ${wardsLabel(duplicate.wards)}`}
             </span>
