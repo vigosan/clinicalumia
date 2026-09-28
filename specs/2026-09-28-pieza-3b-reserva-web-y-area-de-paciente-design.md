@@ -46,10 +46,10 @@ Que un paciente, o su madre o padre, reserve una cita desde la web en un par de 
   - `booked_by_account` (uuid → `auth.users`, nulo en citas del equipo);
   - `payment_required` (enum `none`, `fixed`, `percent`, `full`) y `payment_amount_cents` (integer), copiados del servicio al crear;
   - `payment_status` (enum `not_required`, `pending`, `paid`, `refunded`, por defecto `not_required`).
-- **`appointment_events`:** `actor_kind` (enum `staff`, `patient`). En los eventos de pacientes, `actor_id` es la cuenta.
+- **`appointment_events`:** `actor_kind` (enum `staff`, `patient`). En los eventos de pacientes, `actor_id` es nulo; la cuenta queda en la cita (`booked_by_account`).
 - **Triggers de citas:**
   - las reservas y cambios de pacientes solo llegan desde las funciones de paciente;
-  - el trigger lo reconoce porque se ejecutan como propietario (`current_user` distinto del rol del cliente), y en ese caso no aplica la comprobación "personal activo";
+  - el trigger lo reconoce por una marca local de la transacción (`lumia.booking_account` = `auth.uid()`) que solo esas funciones pueden poner, y en ese caso no aplica la comprobación "personal activo";
   - todo lo demás (solapes, estados, medianoche, especialidad) se aplica igual.
 - **`clinic_settings`:** `booking_min_notice_hours` (0–168, por defecto 24) y `booking_horizon_days` (1–365, por defecto 60).
 
