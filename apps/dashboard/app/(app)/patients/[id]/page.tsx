@@ -5,8 +5,11 @@ import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { notFound } from "next/navigation";
 import { guardianErrorMessage } from "@/lib/guardian-error";
+import type { PatientAppointmentSource } from "@/lib/patient-appointments";
+import { splitPatientAppointments } from "@/lib/patient-appointments";
 import { ageOn, isMinor } from "@/lib/person";
 import { GuardiansSection } from "./GuardiansSection";
+import { PatientAppointments } from "./PatientAppointments";
 import { PersonActions } from "./PersonActions";
 
 export default async function PatientPage({
@@ -106,6 +109,44 @@ export default async function PatientPage({
       wardPeopleError,
   );
 
+  const [
+    { data: appointmentRows, error: appointmentsError },
+    { data: directory, error: directoryError },
+  ] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select(
+        "id, starts_at, status, cancelled_by, professional_id, service:services(name)",
+      )
+      .eq("patient_id", id),
+    supabase.rpc("staff_directory"),
+  ]);
+
+  const appointmentsFailed = Boolean(
+    appointmentsError ||
+      directoryError ||
+      (appointmentRows ?? []).some((row) => !row.service),
+  );
+
+  const professionalNameById = new Map(
+    (directory ?? []).map((member) => [member.id, member.full_name]),
+  );
+
+  const appointmentSources: PatientAppointmentSource[] = appointmentsFailed
+    ? []
+    : (appointmentRows ?? []).map((row) => ({
+        id: row.id,
+        startsAt: row.starts_at,
+        serviceName: row.service?.name ?? "—",
+        professionalName:
+          professionalNameById.get(row.professional_id) ?? "Profesional",
+        status: row.status,
+        cancelledBy: row.cancelled_by,
+      }));
+
+  const { upcoming, upcomingTruncated, past, pastTruncated } =
+    splitPatientAppointments(appointmentSources, new Date());
+
   return (
     <>
       <PageHeader
@@ -172,9 +213,13 @@ export default async function PatientPage({
 
       <Card className="flex flex-col gap-2">
         <h2 className="text-lg font-bold text-ink-900">Historial</h2>
-        <p className="text-sm text-ink-800">
-          Aquí aparecerán sus citas, cobros y facturas.
-        </p>
+        <PatientAppointments
+          error={appointmentsFailed}
+          upcoming={upcoming}
+          upcomingTruncated={upcomingTruncated}
+          past={past}
+          pastTruncated={pastTruncated}
+        />
       </Card>
     </>
   );

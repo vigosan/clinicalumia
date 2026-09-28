@@ -978,3 +978,65 @@ test("un empleado no ve el panel de una cita de otro profesional", async ({
 
   await expect(page.getByTestId("appointment-panel")).toHaveCount(0);
 });
+
+test("una cita de Nora aparece en «Próximas» en su ficha para la empleada que la dio, no para otra empleada, y sí para la propietaria", async ({
+  browser,
+}) => {
+  const date = futureDate(130);
+  const employeeA = await createThrowawayUser({
+    fullName: "Empleada Ficha Una",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const employeeB = await createThrowawayUser({
+    fullName: "Empleada Ficha Dos",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const owner = await createThrowawayUser({
+    fullName: "Propietaria Ficha",
+    role: "owner",
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employeeA.id,
+    patientId: NORA_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "16:00",
+    endTime: "17:00",
+  });
+
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  const contextOwner = await browser.newContext();
+  try {
+    const pageA = await contextA.newPage();
+    const pageB = await contextB.newPage();
+    const pageOwner = await contextOwner.newPage();
+
+    await signIn(pageA, DASHBOARD, employeeA.email, employeeA.password);
+    await pageA.goto(`${DASHBOARD}/patients/${NORA_ID}`);
+    const ownRow = pageA.getByTestId("patient-appointment");
+    await expect(ownRow).toHaveCount(1);
+    await expect(ownRow).toHaveAttribute(
+      "href",
+      `/?date=${date}&appointment=${appointmentId}`,
+    );
+
+    await signIn(pageB, DASHBOARD, employeeB.email, employeeB.password);
+    await pageB.goto(`${DASHBOARD}/patients/${NORA_ID}`);
+    await expect(pageB.getByTestId("patient-appointment")).toHaveCount(0);
+
+    await signIn(pageOwner, DASHBOARD, owner.email, owner.password);
+    await pageOwner.goto(`${DASHBOARD}/patients/${NORA_ID}`);
+    await expect(
+      pageOwner.locator(
+        `[data-testid="patient-appointment"][href="/?date=${date}&appointment=${appointmentId}"]`,
+      ),
+    ).toBeVisible();
+  } finally {
+    await contextA.close();
+    await contextB.close();
+    await contextOwner.close();
+  }
+});
