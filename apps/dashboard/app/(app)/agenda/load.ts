@@ -1,8 +1,14 @@
 import "server-only";
-import { madridDayBounds, weekdayOf } from "@clinicalumia/api/madrid-time";
+import {
+  addDays,
+  madridDateTime,
+  madridDayBounds,
+  weekdayOf,
+  weekStart,
+} from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import type { ScheduleBlock } from "@/lib/agenda";
-import { isUuid, visibleHours } from "@/lib/agenda";
+import { isUuid, visibleHours, visibleWeekHours } from "@/lib/agenda";
 
 export type AgendaColumn = {
   id: string;
@@ -37,6 +43,7 @@ export type AgendaTimeOff = {
 };
 
 export type AgendaData = {
+  kind: "day";
   date: string;
   isOwner: boolean;
   selfId: string;
@@ -51,15 +58,79 @@ export type AgendaData = {
   lastHour: number;
 };
 
-export type LoadAgendaResult = { ok: true; data: AgendaData } | { ok: false };
+export type WeekDayData = {
+  date: string;
+  appointments: AgendaAppointment[];
+  timeOff: AgendaTimeOff[];
+  schedule: ScheduleBlock[];
+};
+
+export type WeekAgendaData = {
+  kind: "week";
+  date: string;
+  isOwner: boolean;
+  selfId: string;
+  personId: string;
+  personName: string;
+  personSpecialtySlug: string | null;
+  candidates: AgendaColumn[];
+  days: WeekDayData[];
+  firstHour: number;
+  lastHour: number;
+};
+
+function toAppointment(row: {
+  id: string;
+  professional_id: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  patient: { first_name: string; last_name: string } | null;
+  service: { name: string } | null;
+}): AgendaAppointment {
+  return {
+    id: row.id,
+    professionalId: row.professional_id,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    status: row.status as "scheduled" | "no_show",
+    patientName: row.patient
+      ? `${row.patient.first_name} ${row.patient.last_name}`
+      : "",
+    serviceName: row.service?.name ?? "",
+  };
+}
+
+function toTimeOff(row: {
+  id: string;
+  profile_id: string;
+  starts_at: string;
+  ends_at: string;
+  reason: string;
+}): AgendaTimeOff {
+  return {
+    id: row.id,
+    professionalId: row.profile_id,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    reason: row.reason,
+  };
+}
+
+export type LoadAgendaResult =
+  | { ok: true; data: AgendaData | WeekAgendaData }
+  | { ok: false };
 
 export async function loadAgenda({
   date,
+  view,
   withIds,
+  personId,
 }: {
   date: string;
   view: "day" | "week";
   withIds: string[];
+  personId: string | null;
 }): Promise<LoadAgendaResult> {
   const supabase = await createClient();
 
@@ -110,6 +181,16 @@ export async function loadAgenda({
     directoryColumns.find((column) => column.id === ownProfile.id) ??
     toColumn(ownProfile);
 
+  if (view === "week") {
+    return loadWeekAgenda(supabase, {
+      date,
+      isOwner,
+      self,
+      directoryColumns,
+      personId,
+    });
+  }
+
   const validWithIds = withIds.filter(
     (id) => isUuid(id) && directoryColumns.some((c) => c.id === id),
   );
@@ -157,17 +238,7 @@ export async function loadAgenda({
   if (timeOffError || !timeOffRows) return { ok: false };
   if (schedulesError || !scheduleRows) return { ok: false };
 
-  const appointments: AgendaAppointment[] = appointmentRows.map((row) => ({
-    id: row.id,
-    professionalId: row.professional_id,
-    startsAt: row.starts_at,
-    endsAt: row.ends_at,
-    status: row.status as "scheduled" | "no_show",
-    patientName: row.patient
-      ? `${row.patient.first_name} ${row.patient.last_name}`
-      : "",
-    serviceName: row.service?.name ?? "",
-  }));
+  const appointments: AgendaAppointment[] = appointmentRows.map(toAppointment);
 
   const colleagueIds = isOwner ? [] : columnIds.filter((id) => id !== self.id);
 
@@ -187,13 +258,7 @@ export async function loadAgenda({
       }));
   }
 
-  const timeOff: AgendaTimeOff[] = timeOffRows.map((row) => ({
-    id: row.id,
-    professionalId: row.profile_id,
-    startsAt: row.starts_at,
-    endsAt: row.ends_at,
-    reason: row.reason,
-  }));
+  const timeOff: AgendaTimeOff[] = timeOffRows.map(toTimeOff);
 
   const schedulesByColumn: Record<string, ScheduleBlock[]> = {};
   for (const column of columns) {
@@ -206,6 +271,7 @@ export async function loadAgenda({
   return {
     ok: true,
     data: {
+      kind: "day",
       date,
       isOwner,
       selfId: self.id,
@@ -216,6 +282,99 @@ export async function loadAgenda({
       busy,
       timeOff,
       schedulesByColumn,
+      firstHour,
+      lastHour,
+    },
+  };
+}
+
+async function loadWeekAgenda(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  {
+    date,
+    isOwner,
+    self,
+    directoryColumns,
+    personId,
+  }: {
+    date: string;
+    isOwner: boolean;
+    self: AgendaColumn;
+    directoryColumns: AgendaColumn[];
+    personId: string | null;
+  },
+): Promise<LoadAgendaResult> {
+  const targetPersonId =
+    isOwner && personId && directoryColumns.some((c) => c.id === personId)
+      ? personId
+      : self.id;
+  const person =
+    directoryColumns.find((column) => column.id === targetPersonId) ?? self;
+
+  const start = weekStart(date);
+  const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
+  const bounds = {
+    start: madridDayBounds(start).start,
+    end: madridDayBounds(addDays(start, 6)).end,
+  };
+
+  const [
+    { data: appointmentRows, error: appointmentsError },
+    { data: timeOffRows, error: timeOffError },
+    { data: scheduleRows, error: schedulesError },
+  ] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select(
+        "id, professional_id, starts_at, ends_at, status, patient:people(first_name, last_name), service:services(name)",
+      )
+      .eq("professional_id", targetPersonId)
+      .neq("status", "cancelled")
+      .lt("starts_at", bounds.end)
+      .gt("ends_at", bounds.start),
+    supabase
+      .from("employee_time_off")
+      .select("id, profile_id, starts_at, ends_at, reason")
+      .eq("profile_id", targetPersonId)
+      .lt("starts_at", bounds.end)
+      .gt("ends_at", bounds.start),
+    supabase
+      .from("employee_schedules")
+      .select("profile_id, weekday, starts_at, ends_at")
+      .eq("profile_id", targetPersonId),
+  ]);
+  if (appointmentsError || !appointmentRows) return { ok: false };
+  if (timeOffError || !timeOffRows) return { ok: false };
+  if (schedulesError || !scheduleRows) return { ok: false };
+
+  const appointments = appointmentRows.map(toAppointment);
+  const timeOff = timeOffRows.map(toTimeOff);
+
+  const weekDays: WeekDayData[] = days.map((day) => ({
+    date: day,
+    appointments: appointments.filter(
+      (appointment) => madridDateTime(appointment.startsAt).date === day,
+    ),
+    timeOff: timeOff.filter(
+      (entry) => madridDateTime(entry.startsAt).date === day,
+    ),
+    schedule: scheduleRows.filter((row) => row.weekday === weekdayOf(day)),
+  }));
+
+  const { firstHour, lastHour } = visibleWeekHours(scheduleRows);
+
+  return {
+    ok: true,
+    data: {
+      kind: "week",
+      date,
+      isOwner,
+      selfId: self.id,
+      personId: person.id,
+      personName: person.fullName,
+      personSpecialtySlug: person.specialtySlug,
+      candidates: isOwner ? directoryColumns : [],
+      days: weekDays,
       firstHour,
       lastHour,
     },

@@ -1,6 +1,11 @@
-import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import {
+  addDays,
+  todayInMadrid,
+  weekStart,
+} from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
 import Link from "next/link";
+import { weekTitle } from "@/lib/agenda";
 
 function buildHref(base: string, params: Record<string, string | undefined>) {
   const search = new URLSearchParams();
@@ -11,7 +16,11 @@ function buildHref(base: string, params: Record<string, string | undefined>) {
   return query ? `${base}?${query}` : base;
 }
 
-function titleFor(date: string): string {
+function titleFor(date: string, view: string): string {
+  if (view === "week") {
+    const start = weekStart(date);
+    return weekTitle(start, addDays(start, 6));
+  }
   const formatted = new Intl.DateTimeFormat("es-ES", {
     timeZone: "UTC",
     weekday: "long",
@@ -25,40 +34,45 @@ export function AgendaHeader({
   date,
   view,
   withParam,
+  personParam,
   isOwner,
   selfId,
 }: {
   date: string;
   view: string;
   withParam: string;
+  personParam: string;
   isOwner: boolean;
   selfId: string;
 }) {
   const today = todayInMadrid();
+  const step = view === "week" ? 7 : 1;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
         <Link
           href={buildHref("/", {
-            date: addDays(date, -1),
+            date: addDays(date, -step),
             view,
-            with: withParam,
+            with: view === "day" ? withParam : undefined,
+            person: view === "week" ? personParam : undefined,
           })}
           data-testid="agenda-prev"
-          aria-label="Día anterior"
+          aria-label={view === "week" ? "Semana anterior" : "Día anterior"}
           className="flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200"
         >
           ‹
         </Link>
         <Link
           href={buildHref("/", {
-            date: addDays(date, 1),
+            date: addDays(date, step),
             view,
-            with: withParam,
+            with: view === "day" ? withParam : undefined,
+            person: view === "week" ? personParam : undefined,
           })}
           data-testid="agenda-next"
-          aria-label="Día siguiente"
+          aria-label={view === "week" ? "Semana siguiente" : "Día siguiente"}
           className="flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200"
         >
           ›
@@ -67,12 +81,17 @@ export function AgendaHeader({
           data-testid="agenda-title"
           className="font-bold text-title text-ink-900"
         >
-          {titleFor(date)}
+          {titleFor(date, view)}
         </h1>
       </div>
       <div className="flex items-center gap-3">
         <Link
-          href={buildHref("/", { date: today, view, with: withParam })}
+          href={buildHref("/", {
+            date: today,
+            view,
+            with: view === "day" ? withParam : undefined,
+            person: view === "week" ? personParam : undefined,
+          })}
           data-testid="agenda-today"
         >
           <Button variant="secondary" size="sm">
@@ -81,7 +100,11 @@ export function AgendaHeader({
         </Link>
         <div className="flex overflow-hidden rounded-full border border-line">
           <Link
-            href={buildHref("/", { date, view: "day", with: withParam })}
+            href={buildHref("/", {
+              date,
+              view: "day",
+              with: view === "day" ? withParam : undefined,
+            })}
             data-testid="agenda-view-day"
             aria-current={view === "day" ? "page" : undefined}
             className={`px-4 py-2 text-sm ${view === "day" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
@@ -89,7 +112,11 @@ export function AgendaHeader({
             Día
           </Link>
           <Link
-            href={buildHref("/", { date, view: "week", with: withParam })}
+            href={buildHref("/", {
+              date,
+              view: "week",
+              person: view === "week" ? personParam : undefined,
+            })}
             data-testid="agenda-view-week"
             aria-current={view === "week" ? "page" : undefined}
             className={`px-4 py-2 text-sm ${view === "week" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}

@@ -33,6 +33,14 @@ function columnFor(page: Page, professionalId: string) {
   );
 }
 
+function visibleWeekDays(page: Page) {
+  return page.locator('[data-testid="week-day"]:visible');
+}
+
+function weekDayFor(page: Page, date: string) {
+  return page.locator(`[data-testid="week-day"][data-date="${date}"]:visible`);
+}
+
 function futureDate(offsetDays: number): string {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + offsetDays);
@@ -304,4 +312,96 @@ test("pulsar un hueco fuera de horario en la propia columna da de alta una cita,
     url.searchParams.get("time")?.match(/^(\d{2}):(\d{2})$/) ?? [];
   expect(["00", "15", "30", "45"]).toContain(minute);
   expect(url.searchParams.get("professional")).toBe(employeeId);
+});
+
+test("cambiar a Semana muestra siete week-day, y una cita del test aparece en su día", async ({
+  page,
+}) => {
+  const date = futureDate(50);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Semana Uno",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "11:00",
+    endTime: "12:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&view=week`);
+
+  await expect(visibleWeekDays(page)).toHaveCount(7);
+  await expect(
+    weekDayFor(page, date).getByTestId("appointment-block"),
+  ).toContainText("Jorge Ruiz Pérez");
+});
+
+test("la semana del 25 de octubre de 2026 (cambio de hora) muestra del 19 al 25 y una cita de las 10:00 se ve a las 10:00", async ({
+  page,
+}) => {
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Cambio De Hora",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date: "2026-10-25",
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=2026-10-25&view=week`);
+
+  const weekDays = visibleWeekDays(page);
+  await expect(weekDays).toHaveCount(7);
+  const dates = await weekDays.evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute("data-date")),
+  );
+  expect(dates).toEqual([
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21",
+    "2026-10-22",
+    "2026-10-23",
+    "2026-10-24",
+    "2026-10-25",
+  ]);
+
+  await expect(
+    weekDayFor(page, "2026-10-25").getByTestId("appointment-block"),
+  ).toContainText("10:00");
+});
+
+test("la propietaria elige a Marc y ve su semana", async ({ page }) => {
+  const date = futureDate(51);
+  await createAppointment({
+    professionalId: MARC_ID,
+    patientId: ELENA_ID,
+    serviceId: FISIOTERAPIA_SERVICE_ID,
+    date,
+    time: "16:00",
+    endTime: "17:00",
+  });
+
+  await loginAsThrowawayOwner(page, "Propietaria Semana");
+  await page.goto(`${DASHBOARD}/?date=${date}&view=week`);
+
+  await page
+    .getByTestId("week-person")
+    .filter({ hasText: "Marc Ejemplo" })
+    .click();
+
+  await expect(page).toHaveURL(new RegExp(`person=${MARC_ID}`));
+  await expect(
+    weekDayFor(page, date).getByTestId("appointment-block"),
+  ).toContainText("Elena Gómez Díaz");
 });

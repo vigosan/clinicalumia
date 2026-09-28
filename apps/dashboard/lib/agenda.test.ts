@@ -10,6 +10,8 @@ import {
   scheduleWarnings,
   specialtyTone,
   visibleHours,
+  visibleWeekHours,
+  weekTitle,
 } from "./agenda";
 
 function form(values: Record<string, string>) {
@@ -103,6 +105,40 @@ describe("visibleHours", () => {
       { weekday: 1, starts_at: "09:00:00", ends_at: "13:00:00" },
     ];
     expect(visibleHours(schedules, 6)).toEqual({ firstHour: 8, lastHour: 20 });
+  });
+});
+
+describe("visibleWeekHours", () => {
+  it("spans the earliest start and latest end across every weekday, not just one", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "13:00:00" },
+      { weekday: 6, starts_at: "10:00:00", ends_at: "14:30:00" },
+    ];
+    expect(visibleWeekHours(schedules)).toEqual({ firstHour: 9, lastHour: 15 });
+  });
+
+  it("falls back to 8-20 when the person has no schedule at all that week", () => {
+    expect(visibleWeekHours([])).toEqual({ firstHour: 8, lastHour: 20 });
+  });
+});
+
+describe("weekTitle", () => {
+  it("uses one month name when the week crosses months, per the brief's exact example", () => {
+    expect(weekTitle("2026-09-28", "2026-10-04")).toBe(
+      "Semana del 28 de septiembre al 4 de octubre",
+    );
+  });
+
+  it("does not repeat the month name when the week stays inside one month", () => {
+    expect(weekTitle("2026-09-21", "2026-09-27")).toBe(
+      "Semana del 21 al 27 de septiembre",
+    );
+  });
+
+  it("includes both years when the week crosses a year boundary", () => {
+    expect(weekTitle("2026-12-28", "2027-01-03")).toBe(
+      "Semana del 28 de diciembre de 2026 al 3 de enero de 2027",
+    );
   });
 });
 

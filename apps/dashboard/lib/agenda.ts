@@ -70,25 +70,38 @@ export type ScheduleBlock = {
   ends_at: string;
 };
 
-export function visibleHours(
-  schedules: ScheduleBlock[],
-  weekday: number,
-): { firstHour: number; lastHour: number } {
-  const dayBlocks = schedules.filter(
-    (schedule) => schedule.weekday === weekday,
-  );
-  if (dayBlocks.length === 0) return { firstHour: 8, lastHour: 20 };
+function hoursSpan(blocks: ScheduleBlock[]): {
+  firstHour: number;
+  lastHour: number;
+} {
+  if (blocks.length === 0) return { firstHour: 8, lastHour: 20 };
   const firstHour = Math.min(
-    ...dayBlocks.map((block) => Number(block.starts_at.slice(0, 2))),
+    ...blocks.map((block) => Number(block.starts_at.slice(0, 2))),
   );
   const lastHour = Math.max(
-    ...dayBlocks.map((block) => {
+    ...blocks.map((block) => {
       const hour = Number(block.ends_at.slice(0, 2));
       const minute = Number(block.ends_at.slice(3, 5));
       return minute > 0 ? hour + 1 : hour;
     }),
   );
   return { firstHour, lastHour };
+}
+
+export function visibleHours(
+  schedules: ScheduleBlock[],
+  weekday: number,
+): { firstHour: number; lastHour: number } {
+  return hoursSpan(
+    schedules.filter((schedule) => schedule.weekday === weekday),
+  );
+}
+
+export function visibleWeekHours(schedules: ScheduleBlock[]): {
+  firstHour: number;
+  lastHour: number;
+} {
+  return hoursSpan(schedules);
 }
 
 export type TimeOff = { starts_at: string; ends_at: string; reason: string };
@@ -251,6 +264,32 @@ const UUID_RE =
 
 export function isUuid(value: string): boolean {
   return UUID_RE.test(value);
+}
+
+function monthNameOf(date: string): string {
+  return new Intl.DateTimeFormat("es-ES", {
+    timeZone: "UTC",
+    month: "long",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
+
+export function weekTitle(start: string, end: string): string {
+  const startYear = start.slice(0, 4);
+  const startMonth = start.slice(5, 7);
+  const startDay = Number(start.slice(8, 10));
+  const endYear = end.slice(0, 4);
+  const endMonth = end.slice(5, 7);
+  const endDay = Number(end.slice(8, 10));
+  const endMonthName = monthNameOf(end);
+
+  if (startYear === endYear && startMonth === endMonth) {
+    return `Semana del ${startDay} al ${endDay} de ${endMonthName}`;
+  }
+  const startMonthName = monthNameOf(start);
+  if (startYear === endYear) {
+    return `Semana del ${startDay} de ${startMonthName} al ${endDay} de ${endMonthName}`;
+  }
+  return `Semana del ${startDay} de ${startMonthName} de ${startYear} al ${endDay} de ${endMonthName} de ${endYear}`;
 }
 
 export type SpecialtyTone = "sage" | "bark" | "pebble" | "neutral";
