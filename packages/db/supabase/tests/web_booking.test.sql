@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(81);
+select plan(82);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
@@ -138,6 +138,8 @@ select throws_ok($$ update public.appointments set booked_by_account = '80000000
   '23514', 'appointment_immutable_fields', 'an appointment cannot be handed to a patient account after booking');
 select throws_ok($$ update public.appointments set payment_status = 'paid' where id = '80000000-0000-0000-0000-0000000000d1' $$,
   '23514', 'payment_status_locked', 'staff cannot mark a deposit as paid: until piece 4 only the server may record payments');
+select throws_ok($$ update public.appointments set created_by = null where id = '80000000-0000-0000-0000-0000000000d1' $$,
+  '23514', 'appointment_immutable_fields', 'staff cannot erase who booked an appointment; only an account deletion clears it');
 
 reset role;
 select set_config('request.jwt.claims', '', true);
@@ -275,7 +277,7 @@ select is((select count(*) from public.patient_accounts where id = '80000000-000
 select throws_ok($$ update public.appointments set booked_by_account = '80000000-0000-0000-0000-000000000011' where id = '80000000-0000-0000-0000-0000000000d6' $$,
   '23514', 'appointment_immutable_fields', 'a web booking cannot be moved to another account');
 select lives_ok($$ update public.appointments set created_by = null where id = '80000000-0000-0000-0000-0000000000d1' $$,
-  'the author can become null, which is what deleting a team profile does through its foreign key');
+  'without a user session the author can become null, which is what deleting a team profile does through its foreign key');
 
 select pg_temp.act_as('80000000-0000-0000-0000-000000000002');
 select lives_ok($$

@@ -129,12 +129,12 @@ begin
   if new.professional_id is distinct from old.professional_id
     or new.patient_id is distinct from old.patient_id
     or new.service_id is distinct from old.service_id
-    or (new.created_by is distinct from old.created_by and new.created_by is not null)
+    or (new.created_by is distinct from old.created_by and (new.created_by is not null or auth.uid() is not null))
     or new.created_at is distinct from old.created_at
     or new.price_cents is distinct from old.price_cents
     or new.vat is distinct from old.vat
     or new.origin is distinct from old.origin
-    or (new.booked_by_account is distinct from old.booked_by_account and new.booked_by_account is not null)
+    or (new.booked_by_account is distinct from old.booked_by_account and (new.booked_by_account is not null or auth.uid() is not null))
     or new.payment_required is distinct from old.payment_required
     or new.payment_amount_cents is distinct from old.payment_amount_cents then
     raise exception 'appointment_immutable_fields' using errcode = '23514';
