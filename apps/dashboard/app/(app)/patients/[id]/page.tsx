@@ -3,6 +3,7 @@ import { Badge } from "@clinicalumia/ui/badge";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { notFound } from "next/navigation";
+import { guardianErrorMessage } from "@/lib/guardian-error";
 import { ageOn, isMinor, todayInMadrid } from "@/lib/person";
 import { GuardiansSection } from "./GuardiansSection";
 import { PersonActions } from "./PersonActions";
@@ -18,13 +19,20 @@ export default async function PatientPage({
   const { guardianError } = await searchParams;
   const supabase = await createClient();
 
-  const { data: person } = await supabase
+  const { data: person, error: personError } = await supabase
     .from("people")
     .select(
       "id, first_name, last_name, birth_date, tax_id, email, phone, address, admin_notes, is_patient, archived_at",
     )
     .eq("id", id)
     .maybeSingle();
+  if (personError) {
+    return (
+      <Card role="alert" className="text-center text-sm text-danger-600">
+        No se ha podido cargar la ficha. Recarga la página.
+      </Card>
+    );
+  }
   if (!person) notFound();
 
   const {
@@ -40,18 +48,18 @@ export default async function PatientPage({
   const today = todayInMadrid();
   const minor = person.birth_date ? isMinor(person.birth_date, today) : false;
 
-  const { data: guardianRows } = await supabase
+  const { data: guardianRows, error: guardianRowsError } = await supabase
     .from("guardianships")
     .select("guardian_id, relationship, is_primary")
     .eq("minor_id", id);
   const guardianIds = (guardianRows ?? []).map((row) => row.guardian_id);
-  const { data: guardianPeople } =
+  const { data: guardianPeople, error: guardianPeopleError } =
     guardianIds.length > 0
       ? await supabase
           .from("people")
           .select("id, first_name, last_name")
           .in("id", guardianIds)
-      : { data: [] };
+      : { data: [], error: null };
   const guardians = (guardianRows ?? []).map((row) => {
     const guardianPerson = guardianPeople?.find(
       (p) => p.id === row.guardian_id,
@@ -66,18 +74,18 @@ export default async function PatientPage({
     };
   });
 
-  const { data: wardRows } = await supabase
+  const { data: wardRows, error: wardRowsError } = await supabase
     .from("guardianships")
     .select("minor_id, relationship, is_primary")
     .eq("guardian_id", id);
   const wardIds = (wardRows ?? []).map((row) => row.minor_id);
-  const { data: wardPeople } =
+  const { data: wardPeople, error: wardPeopleError } =
     wardIds.length > 0
       ? await supabase
           .from("people")
           .select("id, first_name, last_name")
           .in("id", wardIds)
-      : { data: [] };
+      : { data: [], error: null };
   const wards = (wardRows ?? []).map((row) => {
     const wardPerson = wardPeople?.find((p) => p.id === row.minor_id);
     return {
@@ -89,6 +97,13 @@ export default async function PatientPage({
       isPrimary: row.is_primary,
     };
   });
+
+  const guardianDataError = Boolean(
+    guardianRowsError ||
+      guardianPeopleError ||
+      wardRowsError ||
+      wardPeopleError,
+  );
 
   return (
     <>
@@ -109,13 +124,22 @@ export default async function PatientPage({
       />
       <div className="flex flex-wrap items-center gap-2">
         {minor && <Badge tone="warning">Menor</Badge>}
-        {minor && guardians.length === 0 && (
+        {minor && !guardianDataError && guardians.length === 0 && (
           <Badge tone="warning" data-testid="patient-no-guardian">
             Menor sin tutor
           </Badge>
         )}
         {person.archived_at && <Badge tone="neutral">Archivada</Badge>}
       </div>
+      {guardianDataError && (
+        <Card
+          role="alert"
+          data-testid="guardian-load-error"
+          className="text-center text-sm text-danger-600"
+        >
+          No se han podido cargar los tutores. Recarga la página.
+        </Card>
+      )}
 
       <Card className="flex flex-col gap-2">
         <p>
@@ -142,7 +166,7 @@ export default async function PatientPage({
         isMinorPerson={minor}
         guardians={guardians}
         wards={wards}
-        initialError={guardianError}
+        initialError={guardianErrorMessage(guardianError)}
       />
 
       <Card className="flex flex-col gap-2">
