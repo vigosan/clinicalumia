@@ -44,6 +44,34 @@ describe("createDuplicateChecker", () => {
     expect(check).toHaveBeenCalledTimes(2);
   });
 
+  it("propagates a rejection to the caller instead of swallowing it", async () => {
+    const check = vi.fn(async () => {
+      throw new Error("transport failure");
+    });
+    const checker = createDuplicateChecker(check);
+
+    await expect(
+      checker.ensureResolved(fields({ phone: "600111222" })),
+    ).rejects.toThrow("transport failure");
+  });
+
+  it("clears the in-flight request on rejection so a later call for the same fields retries instead of getting stuck", async () => {
+    const check = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("transport failure"))
+      .mockResolvedValueOnce(["Jorge Ruiz Pérez"]);
+    const checker = createDuplicateChecker(check);
+
+    await expect(
+      checker.ensureResolved(fields({ tax_id: "11223344B" })),
+    ).rejects.toThrow("transport failure");
+
+    expect(
+      await checker.ensureResolved(fields({ tax_id: "11223344B" })),
+    ).toEqual(["Jorge Ruiz Pérez"]);
+    expect(check).toHaveBeenCalledTimes(2);
+  });
+
   it("treats fields marked resolved (after the user chose to continue) as already checked", async () => {
     const check = vi.fn(async () => ["Jorge Ruiz Pérez"]);
     const checker = createDuplicateChecker(check);

@@ -80,7 +80,7 @@ export function PersonForm({ person }: { person?: Person }) {
   function handleDuplicateFieldBlur() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      void resolveDuplicates();
+      void resolveDuplicates().catch(() => {});
     }, 300);
   }
 
@@ -95,8 +95,14 @@ export function PersonForm({ person }: { person?: Person }) {
         const formData = new FormData(event.currentTarget);
         setChecking(true);
         void (async () => {
-          const found = await resolveDuplicates();
-          setChecking(false);
+          let found: Duplicate[] = [];
+          try {
+            found = await resolveDuplicates();
+          } catch {
+            found = [];
+          } finally {
+            setChecking(false);
+          }
           if (found.length > 0) {
             submitGateRef.current.finish();
             return;

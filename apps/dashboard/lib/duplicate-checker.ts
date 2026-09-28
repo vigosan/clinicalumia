@@ -16,14 +16,18 @@ export function createDuplicateChecker<D>(
     if (nextKey === key) return pending ?? result;
 
     key = nextKey;
-    const request = check(fields).then((found) => {
+    const request = check(fields);
+    pending = request;
+    try {
+      const found = await request;
       result = found;
       return found;
-    });
-    pending = request;
-    const found = await request;
-    if (key === nextKey) pending = null;
-    return found;
+    } catch (err) {
+      key = null;
+      throw err;
+    } finally {
+      if (pending === request) pending = null;
+    }
   }
 
   function markResolved(fields: DuplicateFields, found: D[]) {
