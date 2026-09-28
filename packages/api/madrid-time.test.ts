@@ -99,6 +99,28 @@ describe("madridInstant", () => {
     expect(Number.isNaN(new Date(instant).getTime())).toBe(false);
     expect(instant).toBe("2026-10-25T02:30:00+01:00");
   });
+
+  it("throws for a date that does not exist on the calendar, instead of silently rolling over", () => {
+    expect(() => madridInstant("2026-02-30", "10:00")).toThrow();
+  });
+
+  it("throws for a month out of range", () => {
+    expect(() => madridInstant("2026-13-01", "10:00")).toThrow();
+  });
+
+  it("throws for an hour out of range", () => {
+    expect(() => madridInstant("2026-01-15", "25:00")).toThrow();
+  });
+
+  it("throws for a minute out of range", () => {
+    expect(() => madridInstant("2026-01-15", "10:60")).toThrow();
+  });
+
+  it("still accepts a valid leap day", () => {
+    expect(madridInstant("2028-02-29", "09:00")).toBe(
+      "2028-02-29T09:00:00+01:00",
+    );
+  });
 });
 
 describe("madridDateTime", () => {

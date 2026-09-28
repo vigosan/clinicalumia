@@ -38,7 +38,33 @@ export function todayInMadrid(now: Date = new Date()): string {
   }).format(now);
 }
 
+function dateParts(date: string): { year: number; month: number; day: number } {
+  return {
+    year: Number(date.slice(0, 4)),
+    month: Number(date.slice(5, 7)),
+    day: Number(date.slice(8, 10)),
+  };
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/;
+
+function isValidCalendarDate(date: string): boolean {
+  if (!DATE_RE.test(date)) return false;
+  const { year, month, day } = dateParts(date);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return (
+    utc.getUTCFullYear() === year &&
+    utc.getUTCMonth() === month - 1 &&
+    utc.getUTCDate() === day
+  );
+}
+
 export function madridInstant(date: string, time: string): string {
+  if (!isValidCalendarDate(date))
+    throw new Error(`madridInstant: invalid date "${date}"`);
+  if (!TIME_RE.test(time))
+    throw new Error(`madridInstant: invalid time "${time}"`);
   const normalizedTime = time.length === 5 ? `${time}:00` : time;
   return `${date}T${normalizedTime}${madridOffsetAt(date, normalizedTime)}`;
 }
@@ -56,14 +82,6 @@ export function madridDateTime(instant: string | Date): {
     hourCycle: "h23",
   }).format(value);
   return { date, time };
-}
-
-function dateParts(date: string): { year: number; month: number; day: number } {
-  return {
-    year: Number(date.slice(0, 4)),
-    month: Number(date.slice(5, 7)),
-    day: Number(date.slice(8, 10)),
-  };
 }
 
 export function addDays(date: string, days: number): string {

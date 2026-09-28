@@ -205,6 +205,40 @@ describe("parseAppointmentForm", () => {
     });
   });
 
+  it("rejects a time with an hour out of range instead of throwing", () => {
+    expect(parseAppointmentForm(form({ time: "25:00" }))).toEqual({
+      error: "Indica fecha y hora.",
+    });
+  });
+
+  it("rejects a time with a minute out of range", () => {
+    expect(parseAppointmentForm(form({ time: "10:60" }))).toEqual({
+      error: "Indica fecha y hora.",
+    });
+  });
+
+  it("rejects a date that does not exist on the calendar, instead of rolling over", () => {
+    expect(parseAppointmentForm(form({ date: "2026-02-30" }))).toEqual({
+      error: "Indica fecha y hora.",
+    });
+  });
+
+  it("rejects a date with a month out of range", () => {
+    expect(parseAppointmentForm(form({ date: "2026-13-01" }))).toEqual({
+      error: "Indica fecha y hora.",
+    });
+  });
+
+  it("accepts a valid leap day", () => {
+    const result = parseAppointmentForm(
+      form({ date: "2028-02-29", time: "09:00", duration_minutes: "30" }),
+    );
+    expect(result).toHaveProperty(
+      "appointment.starts_at",
+      "2028-02-29T09:00:00+01:00",
+    );
+  });
+
   it("rejects a duration under 5 minutes", () => {
     expect(parseAppointmentForm(form({ duration_minutes: "0" }))).toEqual({
       error: "La duración debe estar entre 5 y 480 minutos, en pasos de 5.",
@@ -253,6 +287,16 @@ describe("parseAppointmentForm", () => {
       const ends = new Date(result.appointment.ends_at).getTime();
       expect(ends - starts).toBe(45 * 60_000);
     }
+  });
+
+  it("emits ends_at in the same Madrid-offset form as starts_at", () => {
+    const result = parseAppointmentForm(
+      form({ date: "2026-07-15", time: "10:00", duration_minutes: "45" }),
+    );
+    expect(result).toHaveProperty(
+      "appointment.ends_at",
+      "2026-07-15T10:45:00+02:00",
+    );
   });
 
   it("returns the rest of the appointment fields", () => {
