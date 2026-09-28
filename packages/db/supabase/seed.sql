@@ -101,3 +101,23 @@ insert into public.guardianships (minor_id, guardian_id, relationship, is_primar
   ('a0000000-0000-0000-0000-000000000602', 'a0000000-0000-0000-0000-000000000601', 'madre', true),
   ('a0000000-0000-0000-0000-000000000603', 'a0000000-0000-0000-0000-000000000601', 'madre', true)
 on conflict (minor_id, guardian_id) do nothing;
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at)
+select
+  v.id, v.professional_id, v.patient_id, v.service_id,
+  ((week.monday + v.offset_days)::text || ' ' || v.starts_time || ' Europe/Madrid')::timestamptz,
+  ((week.monday + v.offset_days)::text || ' ' || v.ends_time || ' Europe/Madrid')::timestamptz
+from (select (date_trunc('week', (now() at time zone 'Europe/Madrid')::date))::date as monday) as week,
+(values
+  ('a0000000-0000-0000-0000-000000000701'::uuid, 'a0000000-0000-0000-0000-000000000003'::uuid, 'a0000000-0000-0000-0000-000000000604'::uuid, 'a0000000-0000-0000-0000-0000000005c1'::uuid, -3, '16:00', '17:00'),
+  ('a0000000-0000-0000-0000-000000000702'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid, 'a0000000-0000-0000-0000-000000000605'::uuid, 'a0000000-0000-0000-0000-0000000005b1'::uuid, 0, '16:00', '17:00'),
+  ('a0000000-0000-0000-0000-000000000703'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000603'::uuid, 'a0000000-0000-0000-0000-0000000005a2'::uuid, 0, '17:15', '18:00'),
+  ('a0000000-0000-0000-0000-000000000704'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'a0000000-0000-0000-0000-000000000602'::uuid, 'a0000000-0000-0000-0000-0000000005a1'::uuid, 1, '10:00', '11:00'),
+  ('a0000000-0000-0000-0000-000000000705'::uuid, 'a0000000-0000-0000-0000-000000000003'::uuid, 'a0000000-0000-0000-0000-000000000605'::uuid, 'a0000000-0000-0000-0000-0000000005c2'::uuid, 2, '16:00', '16:30'),
+  ('a0000000-0000-0000-0000-000000000706'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid, 'a0000000-0000-0000-0000-000000000604'::uuid, 'a0000000-0000-0000-0000-0000000005b2'::uuid, 3, '16:00', '17:00')
+) as v(id, professional_id, patient_id, service_id, offset_days, starts_time, ends_time)
+on conflict (id) do nothing;
+
+update public.appointments
+set status = 'cancelled', cancelled_by = 'clinic', cancel_reason = 'Imprevisto de la paciente'
+where id = 'a0000000-0000-0000-0000-000000000705';

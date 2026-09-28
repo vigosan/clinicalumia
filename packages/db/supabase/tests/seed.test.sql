@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(28);
 
 select is((select count(*) from public.specialties)::bigint, 3::bigint,
   'the local seed creates exactly three specialties');
@@ -76,6 +76,9 @@ select is((select count(*) from public.people)::bigint, 5::bigint,
 
 select is((select count(*) from public.guardianships)::bigint, 2::bigint,
   'the seed links both minors of the example family to their mother, so guardianship shows up realistically in local dev');
+
+select is((select count(*) from public.appointments)::bigint, 6::bigint,
+  'the seed books six appointments across the current week for the three professionals and four patients, including a past one and a cancelled one, so the agenda looks realistic in local dev');
 
 select * from finish();
 rollback;

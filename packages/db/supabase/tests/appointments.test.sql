@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(72);
+select plan(81);
 
 insert into auth.users (id, email) values
   ('60000000-0000-0000-0000-000000000001', 'owner-appointments@test.local'),
@@ -384,6 +384,47 @@ $$), 0::bigint, 'not even the owner can delete an appointment');
 reset role;
 select is((select count(*) from public.appointments where id = '60000000-0000-0000-0000-0000000000d1'), 1::bigint,
   'checked as postgres: the appointment survived both delete attempts');
+
+select pg_temp.act_as('60000000-0000-0000-0000-000000000003');
+
+select is(pg_get_function_result('public.agenda_busy(timestamptz, timestamptz)'::regprocedure),
+  'TABLE(professional_id uuid, starts_at timestamp with time zone, ends_at timestamp with time zone)',
+  'agenda_busy exposes only the professional, start and end at the catalog level, never a patient or service column');
+
+select results_eq($$
+  select professional_id, starts_at, ends_at from public.agenda_busy(
+    '2099-06-01 00:00 Europe/Madrid', '2099-06-02 00:00 Europe/Madrid')
+$$, $$
+  values ('60000000-0000-0000-0000-000000000002'::uuid,
+    '2099-06-01 11:00 Europe/Madrid'::timestamptz, '2099-06-01 11:45 Europe/Madrid'::timestamptz)
+$$, 'a colleague sees only professional A''s busy slot with no patient or service data, and not the inactive colleague''s appointment at the same time');
+
+select is((select count(*) from public.agenda_busy(
+    '2099-06-04 00:00 Europe/Madrid', '2099-06-05 00:00 Europe/Madrid')), 0::bigint,
+  'cancelled appointments never show up as busy slots');
+
+select pg_temp.act_as('60000000-0000-0000-0000-000000000004');
+select throws_ok($$
+  select * from public.agenda_busy('2099-06-01 00:00 Europe/Madrid', '2099-06-02 00:00 Europe/Madrid')
+$$, '42501', 'agenda_busy_forbidden', 'a deactivated employee cannot see the shared agenda either');
+
+select pg_temp.act_as('60000000-0000-0000-0000-000000000002', 'aal1');
+select throws_ok($$
+  select * from public.agenda_busy('2099-06-01 00:00 Europe/Madrid', '2099-06-02 00:00 Europe/Madrid')
+$$, '42501', 'agenda_busy_forbidden', 'aal1 is not enough to see the shared agenda, even for an active employee');
+
+select pg_temp.act_as('60000000-0000-0000-0000-000000000002');
+select throws_ok($$
+  select * from public.agenda_busy('2099-06-01 00:00 Europe/Madrid', '2099-07-11 00:00 Europe/Madrid')
+$$, '22023', 'agenda_busy_range', 'a 40-day window is refused, so the shared agenda cannot be scraped far into the future');
+select throws_ok($$
+  select * from public.agenda_busy('2099-06-01 00:00 Europe/Madrid', '2099-06-01 00:00 Europe/Madrid')
+$$, '22023', 'agenda_busy_range', 'an empty or inverted window is refused too');
+
+select is(has_function_privilege('anon', 'public.agenda_busy(timestamptz, timestamptz)', 'execute'), false,
+  'anon cannot call agenda_busy at all, not even to be told the window is invalid');
+select is(has_function_privilege('authenticated', 'public.agenda_busy(timestamptz, timestamptz)', 'execute'), true,
+  'authenticated can call agenda_busy, since its own logic gates access by role and session');
 
 select * from finish();
 rollback;

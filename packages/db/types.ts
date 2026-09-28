@@ -531,6 +531,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agenda_busy: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          ends_at: string
+          professional_id: string
+          starts_at: string
+        }[]
+      }
       f_unaccent: { Args: { value: string }; Returns: string }
       find_possible_duplicates: {
         Args: {
