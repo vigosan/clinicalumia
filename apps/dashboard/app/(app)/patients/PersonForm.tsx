@@ -14,6 +14,10 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  createDuplicateChecker,
+  type DuplicateFields,
+} from "@/lib/duplicate-checker";
 import { checkDuplicates, type Duplicate, savePerson } from "./actions";
 import { DuplicateWarning } from "./DuplicateWarning";
 
@@ -36,7 +40,11 @@ export function PersonForm({ person }: { person?: Person }) {
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastCheckRef = useRef("");
+  const checkerRef = useRef(
+    createDuplicateChecker<Duplicate>((fields) =>
+      checkDuplicates({ ...fields, exclude: person?.id }),
+    ),
+  );
 
   useEffect(
     () => () => {
@@ -45,25 +53,27 @@ export function PersonForm({ person }: { person?: Person }) {
     [],
   );
 
+  function currentFields(): DuplicateFields {
+    const data = new FormData(formRef.current ?? undefined);
+    return {
+      tax_id: String(data.get("tax_id") ?? "").trim(),
+      email: String(data.get("email") ?? "").trim(),
+      phone: String(data.get("phone") ?? "").trim(),
+    };
+  }
+
+  async function resolveDuplicates(): Promise<Duplicate[]> {
+    const fields = currentFields();
+    if (!fields.tax_id && !fields.email && !fields.phone) return [];
+    const found = await checkerRef.current.ensureResolved(fields);
+    setDuplicates(found);
+    return found;
+  }
+
   function handleDuplicateFieldBlur() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      const form = formRef.current;
-      if (!form) return;
-      const data = new FormData(form);
-      const tax_id = String(data.get("tax_id") ?? "").trim();
-      const email = String(data.get("email") ?? "").trim();
-      const phone = String(data.get("phone") ?? "").trim();
-      if (!tax_id && !email && !phone) return;
-      const key = JSON.stringify({ tax_id, email, phone });
-      if (key === lastCheckRef.current) return;
-      lastCheckRef.current = key;
-      void checkDuplicates({
-        tax_id,
-        email,
-        phone,
-        exclude: person?.id,
-      }).then(setDuplicates);
+      void resolveDuplicates();
     }, 300);
   }
 
@@ -73,9 +83,13 @@ export function PersonForm({ person }: { person?: Person }) {
       data-testid="person-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (duplicates.length > 0) return;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
         const formData = new FormData(event.currentTarget);
-        startTransition(() => formAction(formData));
+        void (async () => {
+          const found = await resolveDuplicates();
+          if (found.length > 0) return;
+          startTransition(() => formAction(formData));
+        })();
       }}
       className="flex flex-col gap-5"
     >
@@ -136,7 +150,10 @@ export function PersonForm({ person }: { person?: Person }) {
         <DuplicateWarning
           duplicates={duplicates}
           onUseExisting={(id) => router.push(`/patients/${id}`)}
-          onContinue={() => setDuplicates([])}
+          onContinue={() => {
+            checkerRef.current.markResolved(currentFields(), []);
+            setDuplicates([]);
+          }}
         />
       )}
 

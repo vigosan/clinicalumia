@@ -133,10 +133,40 @@ test('adding someone with Lucía\'s phone shows the duplicate warning, and "Usar
     "Lucía Martínez Soler · madre de Nora Ferrer Martínez, Pablo Ferrer Martínez",
   );
 
-  await page.getByTestId("duplicate-use").click();
+  await warning
+    .locator("li")
+    .filter({ hasText: "Lucía Martínez Soler" })
+    .getByTestId("duplicate-use")
+    .click();
   await expect(page).toHaveURL(
     `${DASHBOARD}/patients/a0000000-0000-0000-0000-000000000601`,
   );
+
+  const { data } = await admin
+    .from("people")
+    .select("id")
+    .eq("last_name", lastName);
+  expect(data).toEqual([]);
+});
+
+test("submitting right after typing the seed phone, before the debounced check would have fired on its own, still shows the warning instead of saving", async ({
+  page,
+}) => {
+  const lastName = `Rapida${Date.now()}`;
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+
+  await page.getByLabel("Nombre").fill("Otra");
+  await page.getByLabel("Apellidos").fill(lastName);
+  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Teléfono").fill("+34 600 111 222");
+  await page.getByTestId("person-submit").click();
+
+  const warning = page.getByTestId("duplicate-warning");
+  await expect(warning).toBeVisible();
+  await expect(warning).toContainText("Lucía Martínez Soler");
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/new`);
 
   const { data } = await admin
     .from("people")
