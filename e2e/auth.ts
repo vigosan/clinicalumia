@@ -6,8 +6,8 @@ import { TOTP } from "otpauth";
 
 export const DEV_TOTP_SECRET = "JBSWY3DPEHPK3PXP";
 
-const SIGN_IN_LOCK_TIMEOUT_MS = 60_000;
-const SIGN_IN_LOCK_STALE_MS = 30_000;
+const SIGN_IN_LOCK_TIMEOUT_MS = 180_000;
+const SIGN_IN_LOCK_STALE_MS = 120_000;
 const SIGN_IN_LOCK_POLL_MS = 100;
 
 async function acquireSignInLock(email: string): Promise<() => void> {
