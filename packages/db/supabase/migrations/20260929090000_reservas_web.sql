@@ -7,7 +7,10 @@ alter table public.appointments
   add column booked_by_account uuid references auth.users(id) on delete set null,
   add column payment_required public.booking_payment not null default 'none',
   add column payment_amount_cents integer not null default 0 check (payment_amount_cents >= 0),
-  add column payment_status public.payment_status not null default 'not_required';
+  add column payment_status public.payment_status not null default 'not_required',
+  add constraint appointments_payment_status_required check (
+    (payment_required = 'none' or payment_amount_cents = 0) = (payment_status = 'not_required')
+  );
 
 alter table public.appointment_events
   add column actor_kind public.actor_kind not null default 'staff';
@@ -50,7 +53,8 @@ as $$
 declare
   service record;
   professional record;
-  patient_booking boolean := coalesce(current_setting('lumia.booking_account', true) = auth.uid()::text, false);
+  patient_booking boolean := coalesce(current_setting('lumia.booking_account', true) = auth.uid()::text, false)
+    and exists (select 1 from public.patient_accounts where id = auth.uid());
 begin
   if patient_booking then
     new.origin := 'web';
@@ -99,12 +103,12 @@ begin
   new.payment_required := service.booking_payment;
   new.payment_amount_cents := case service.booking_payment
     when 'fixed' then service.booking_payment_value
-    when 'percent' then round(service.price_cents * service.booking_payment_value / 100.0)::integer
+    when 'percent' then round(service.price_cents::numeric * service.booking_payment_value / 100)::integer
     when 'full' then service.price_cents
     else 0
   end;
   new.payment_status := case
-    when service.booking_payment = 'none' then 'not_required'::public.payment_status
+    when new.payment_required = 'none' or new.payment_amount_cents = 0 then 'not_required'::public.payment_status
     else 'pending'::public.payment_status
   end;
   new.status := 'scheduled';
@@ -125,15 +129,19 @@ begin
   if new.professional_id is distinct from old.professional_id
     or new.patient_id is distinct from old.patient_id
     or new.service_id is distinct from old.service_id
-    or new.created_by is distinct from old.created_by
+    or (new.created_by is distinct from old.created_by and new.created_by is not null)
     or new.created_at is distinct from old.created_at
     or new.price_cents is distinct from old.price_cents
     or new.vat is distinct from old.vat
     or new.origin is distinct from old.origin
-    or new.booked_by_account is distinct from old.booked_by_account
+    or (new.booked_by_account is distinct from old.booked_by_account and new.booked_by_account is not null)
     or new.payment_required is distinct from old.payment_required
     or new.payment_amount_cents is distinct from old.payment_amount_cents then
     raise exception 'appointment_immutable_fields' using errcode = '23514';
+  end if;
+
+  if new.payment_status is distinct from old.payment_status and auth.uid() is not null then
+    raise exception 'payment_status_locked' using errcode = '23514';
   end if;
 
   if old.status = 'cancelled' then

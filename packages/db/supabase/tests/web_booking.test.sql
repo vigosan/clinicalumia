@@ -1,28 +1,37 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(61);
+select plan(81);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
   ('80000000-0000-0000-0000-000000000002', 'a-web-booking@test.local'),
   ('80000000-0000-0000-0000-000000000010', 'paciente-web-booking@test.local'),
-  ('80000000-0000-0000-0000-000000000011', 'otra-paciente-web-booking@test.local');
+  ('80000000-0000-0000-0000-000000000011', 'otra-paciente-web-booking@test.local'),
+  ('80000000-0000-0000-0000-000000000012', 'borrada-web-booking@test.local'),
+  ('80000000-0000-0000-0000-000000000013', 'sin-cuenta-web-booking@test.local');
 insert into public.specialties (id, name, slug) values
-  ('80000000-0000-0000-0000-0000000000aa', 'Reservas web test', 'reservas-web-test');
+  ('80000000-0000-0000-0000-0000000000aa', 'Reservas web test', 'reservas-web-test'),
+  ('80000000-0000-0000-0000-0000000000bb', 'Otra reservas web test', 'otra-reservas-web-test');
 insert into public.profiles (id, email, full_name, role, is_active, specialty_id) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local', 'Owner', 'owner', true, null),
   ('80000000-0000-0000-0000-000000000002', 'a-web-booking@test.local', 'Empleada A', 'employee', true, '80000000-0000-0000-0000-0000000000aa');
 insert into public.patient_accounts (id, email) values
   ('80000000-0000-0000-0000-000000000010', 'paciente-web-booking@test.local'),
-  ('80000000-0000-0000-0000-000000000011', 'otra-paciente-web-booking@test.local');
+  ('80000000-0000-0000-0000-000000000011', 'otra-paciente-web-booking@test.local'),
+  ('80000000-0000-0000-0000-000000000012', 'borrada-web-booking@test.local');
 insert into public.services (id, specialty_id, name, duration_minutes, price_cents, booking_payment, booking_payment_value) values
   ('80000000-0000-0000-0000-0000000000b1', '80000000-0000-0000-0000-0000000000aa', 'Con señal fija', 45, 4000, 'fixed', 1000),
   ('80000000-0000-0000-0000-0000000000b2', '80000000-0000-0000-0000-0000000000aa', 'Sin pago', 45, 4000, 'none', 0),
   ('80000000-0000-0000-0000-0000000000b3', '80000000-0000-0000-0000-0000000000aa', 'Con porcentaje', 45, 3333, 'percent', 25),
   ('80000000-0000-0000-0000-0000000000b4', '80000000-0000-0000-0000-0000000000aa', 'Pago completo', 45, 5000, 'full', 0),
-  ('80000000-0000-0000-0000-0000000000b5', '80000000-0000-0000-0000-0000000000aa', 'Gratis con porcentaje', 45, 0, 'percent', 50);
-insert into public.people (id, first_name, last_name, birth_date, email, is_patient) values
-  ('80000000-0000-0000-0000-0000000000c1', 'Paciente', 'Web', '1990-01-01', 'paciente-web-booking@test.local', true);
+  ('80000000-0000-0000-0000-0000000000b5', '80000000-0000-0000-0000-0000000000aa', 'Gratis con porcentaje', 45, 0, 'percent', 50),
+  ('80000000-0000-0000-0000-0000000000b6', '80000000-0000-0000-0000-0000000000aa', 'Gratis completo', 45, 0, 'full', 0);
+insert into public.services (id, specialty_id, name, duration_minutes, price_cents, is_active) values
+  ('80000000-0000-0000-0000-0000000000b7', '80000000-0000-0000-0000-0000000000aa', 'Retirado', 45, 4000, false),
+  ('80000000-0000-0000-0000-0000000000b8', '80000000-0000-0000-0000-0000000000bb', 'De otra especialidad', 45, 4000, true);
+insert into public.people (id, first_name, last_name, birth_date, email, is_patient, archived_at) values
+  ('80000000-0000-0000-0000-0000000000c1', 'Paciente', 'Web', '1990-01-01', 'paciente-web-booking@test.local', true, null),
+  ('80000000-0000-0000-0000-0000000000c2', 'Paciente', 'Archivada', '1990-01-01', 'paciente-web-booking@test.local', true, now());
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -127,8 +136,11 @@ select throws_ok($$ update public.appointments set origin = 'web' where id = '80
   '23514', 'appointment_immutable_fields', 'the origin cannot be rewritten after booking');
 select throws_ok($$ update public.appointments set booked_by_account = '80000000-0000-0000-0000-000000000010' where id = '80000000-0000-0000-0000-0000000000d1' $$,
   '23514', 'appointment_immutable_fields', 'an appointment cannot be handed to a patient account after booking');
+select throws_ok($$ update public.appointments set payment_status = 'paid' where id = '80000000-0000-0000-0000-0000000000d1' $$,
+  '23514', 'payment_status_locked', 'staff cannot mark a deposit as paid: until piece 4 only the server may record payments');
 
 reset role;
+select set_config('request.jwt.claims', '', true);
 
 insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
   ('80000000-0000-0000-0000-0000000000d3', '80000000-0000-0000-0000-000000000002',
@@ -139,13 +151,28 @@ insert into public.appointments (id, professional_id, patient_id, service_id, st
    '2099-06-02 11:00 Europe/Madrid', '2099-06-02 11:45 Europe/Madrid'),
   ('80000000-0000-0000-0000-0000000000d5', '80000000-0000-0000-0000-000000000002',
    '80000000-0000-0000-0000-0000000000c1', '80000000-0000-0000-0000-0000000000b5',
-   '2099-06-02 12:00 Europe/Madrid', '2099-06-02 12:45 Europe/Madrid');
+   '2099-06-02 12:00 Europe/Madrid', '2099-06-02 12:45 Europe/Madrid'),
+  ('80000000-0000-0000-0000-0000000000d7', '80000000-0000-0000-0000-000000000002',
+   '80000000-0000-0000-0000-0000000000c1', '80000000-0000-0000-0000-0000000000b6',
+   '2099-06-02 13:00 Europe/Madrid', '2099-06-02 13:45 Europe/Madrid');
 select is((select payment_amount_cents from public.appointments where id = '80000000-0000-0000-0000-0000000000d3'), 833,
   'a percent deposit is rounded to whole cents: 25% of 33.33 is 8.33');
 select is((select payment_amount_cents from public.appointments where id = '80000000-0000-0000-0000-0000000000d4'), 5000,
   'a full payment charges the whole price');
 select is((select payment_amount_cents from public.appointments where id = '80000000-0000-0000-0000-0000000000d5'), 0,
   'a percent of a free service is zero');
+select is((select payment_status::text from public.appointments where id = '80000000-0000-0000-0000-0000000000d5'), 'not_required',
+  'a zero percent deposit is not_required, so nobody chases a payment of nothing');
+select is((select payment_status::text || ':' || payment_amount_cents from public.appointments where id = '80000000-0000-0000-0000-0000000000d7'),
+  'not_required:0', 'a full payment of a free service is not_required too');
+select lives_ok($$ update public.appointments set payment_status = 'paid' where id = '80000000-0000-0000-0000-0000000000d1' $$,
+  'the server, with no user session, can record a payment');
+select is((select payment_status::text from public.appointments where id = '80000000-0000-0000-0000-0000000000d1'), 'paid',
+  'the payment recorded by the server is kept');
+select throws_ok($$ update public.appointments set payment_status = 'pending' where id = '80000000-0000-0000-0000-0000000000d2' $$,
+  '23514', null, 'an appointment without anything to charge can never be pending, not even by the server');
+select throws_ok($$ update public.appointments set payment_status = 'not_required' where id = '80000000-0000-0000-0000-0000000000d1' $$,
+  '23514', null, 'an appointment with an amount to charge can never become not_required');
 select is((select origin::text from public.appointments where id = '80000000-0000-0000-0000-0000000000d3'), 'staff',
   'a server-side insert without a patient session is a staff booking');
 
@@ -196,6 +223,60 @@ select is((select actor_id from public.appointment_events
   where appointment_id = '80000000-0000-0000-0000-0000000000d6' and kind = 'created'), null,
   'the patient is not a team profile, so the event has no team actor');
 
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('80000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-0000000000c1',
+    '80000000-0000-0000-0000-0000000000b7', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 10:45 Europe/Madrid')
+$$, '23514', 'service_inactive', 'a patient cannot book a retired service');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('80000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-0000000000c1',
+    '80000000-0000-0000-0000-0000000000b8', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 10:45 Europe/Madrid')
+$$, '23514', 'service_not_for_professional', 'a patient cannot book a service with a professional of another specialty');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('80000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-0000000000c1',
+    '80000000-0000-0000-0000-0000000000b2', '2099-06-05 23:30 Europe/Madrid', '2099-06-06 00:15 Europe/Madrid')
+$$, '23514', 'appointment_crosses_midnight', 'a patient booking cannot cross midnight in Madrid');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('80000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-0000000000c2',
+    '80000000-0000-0000-0000-0000000000b2', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 10:45 Europe/Madrid')
+$$, '23514', 'patient_not_bookable', 'a patient cannot book for an archived person');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('80000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-0000000000c1',
+    '80000000-0000-0000-0000-0000000000b2', '2099-06-01 10:15 Europe/Madrid', '2099-06-01 11:00 Europe/Madrid')
+$$, '23P01', null, 'a patient booking cannot overlap an existing appointment of the professional');
+
+select pg_temp.act_as_patient('80000000-0000-0000-0000-000000000013');
+reset role;
+select set_config('lumia.booking_account', '80000000-0000-0000-0000-000000000013', true);
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('80000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-0000000000c1',
+    '80000000-0000-0000-0000-0000000000b2', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 10:45 Europe/Madrid')
+$$, '42501', 'appointment_forbidden', 'a matching marker is not enough without a patient account behind the session');
+
+select pg_temp.act_as_patient('80000000-0000-0000-0000-000000000012');
+reset role;
+select set_config('lumia.booking_account', '80000000-0000-0000-0000-000000000012', true);
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('80000000-0000-0000-0000-0000000000d8', '80000000-0000-0000-0000-000000000002',
+   '80000000-0000-0000-0000-0000000000c1', '80000000-0000-0000-0000-0000000000b2',
+   '2099-06-04 10:00 Europe/Madrid', '2099-06-04 10:45 Europe/Madrid');
+select set_config('request.jwt.claims', '', true);
+select lives_ok($$ delete from auth.users where id = '80000000-0000-0000-0000-000000000012' $$,
+  'a patient''s auth user can be deleted even when she has web bookings, so account deletion requests can be honoured');
+select is((select booked_by_account from public.appointments where id = '80000000-0000-0000-0000-0000000000d8'), null,
+  'the booking survives the account deletion, only losing the link to the account');
+select is((select count(*) from public.patient_accounts where id = '80000000-0000-0000-0000-000000000012'), 0::bigint,
+  'the patient account goes away with its auth user');
+select throws_ok($$ update public.appointments set booked_by_account = '80000000-0000-0000-0000-000000000011' where id = '80000000-0000-0000-0000-0000000000d6' $$,
+  '23514', 'appointment_immutable_fields', 'a web booking cannot be moved to another account');
+select lives_ok($$ update public.appointments set created_by = null where id = '80000000-0000-0000-0000-0000000000d1' $$,
+  'the author can become null, which is what deleting a team profile does through its foreign key');
+
 select pg_temp.act_as('80000000-0000-0000-0000-000000000002');
 select lives_ok($$
   update public.appointments set status = 'cancelled', cancelled_by = 'clinic'
@@ -210,12 +291,16 @@ select is((select actor_kind::text || ':' || actor_id::text from public.appointm
 select pg_temp.act_as_patient('80000000-0000-0000-0000-000000000010');
 select throws_ok($$ select * from public.patient_accounts $$, '42501', null,
   'a patient cannot read the accounts table, not even her own row');
+select throws_ok($$ select * from public.access_requests $$, '42501', null,
+  'a signed-in user cannot read who asked for access');
 select throws_ok($$ insert into public.access_requests (email, ip_hash) values ('x@test.local', 'x') $$, '42501', null,
   'a patient cannot write access requests to dodge or poison the rate limit');
 reset role;
 set local role anon;
 select throws_ok($$ select * from public.access_requests $$, '42501', null,
   'an anonymous visitor cannot read who asked for access');
+select throws_ok($$ select * from public.patient_accounts $$, '42501', null,
+  'an anonymous visitor cannot read patient accounts');
 reset role;
 
 select throws_ok($$ update public.clinic_settings set booking_min_notice_hours = 169 $$, '23514', null,
