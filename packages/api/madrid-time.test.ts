@@ -156,8 +156,8 @@ describe("isValidTime", () => {
     expect(isValidTime("09:30")).toBe(true);
   });
 
-  it("accepts HH:MM:SS, since madridInstant may normalize either form", () => {
-    expect(isValidTime("09:30:00")).toBe(true);
+  it("rejects a time with seconds, since a value with non-zero seconds would silently truncate when normalized back to HH:MM", () => {
+    expect(isValidTime("10:00:30")).toBe(false);
   });
 });
 

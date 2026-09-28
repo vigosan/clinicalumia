@@ -217,6 +217,12 @@ describe("parseAppointmentForm", () => {
     });
   });
 
+  it("rejects a time with seconds, since it would silently drop when ends_at is normalized back to HH:MM", () => {
+    expect(parseAppointmentForm(form({ time: "10:00:30" }))).toEqual({
+      error: "Indica fecha y hora.",
+    });
+  });
+
   it("accepts a valid leap day", () => {
     const result = parseAppointmentForm(
       form({ date: "2028-02-29", time: "09:00", duration_minutes: "30" }),
@@ -285,6 +291,24 @@ describe("parseAppointmentForm", () => {
       "appointment.ends_at",
       "2026-07-15T10:45:00+02:00",
     );
+  });
+
+  it("keeps ends_at exactly duration_minutes after starts_at, for any valid duration, so the database never sees a fractional-minute gap", () => {
+    for (const duration of [5, 30, 45, 300, 475, 480]) {
+      const result = parseAppointmentForm(
+        form({
+          date: "2026-07-15",
+          time: "10:00",
+          duration_minutes: String(duration),
+        }),
+      );
+      expect(result).toHaveProperty("ok", true);
+      if ("appointment" in result) {
+        const starts = new Date(result.appointment.starts_at).getTime();
+        const ends = new Date(result.appointment.ends_at).getTime();
+        expect(ends - starts).toBe(duration * 60_000);
+      }
+    }
   });
 
   it("returns the rest of the appointment fields", () => {
