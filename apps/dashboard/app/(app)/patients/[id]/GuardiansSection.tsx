@@ -100,7 +100,7 @@ export function GuardiansSection({
       {error && (
         <p
           role="alert"
-          data-testid="person-action-error"
+          data-testid="guardian-error"
           className="text-[13px] text-danger-600"
         >
           {error}

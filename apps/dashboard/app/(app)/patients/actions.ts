@@ -123,15 +123,26 @@ export type GuardianCandidate = {
 
 export async function searchGuardianCandidates(
   query: string,
+  minorId: string,
 ): Promise<GuardianCandidate[]> {
   const normalized = normalizeSearch(query);
   if (!normalized) return [];
 
   const supabase = await createClient();
+  const { data: existingGuardians } = await supabase
+    .from("guardianships")
+    .select("guardian_id")
+    .eq("minor_id", minorId);
+  const excludeIds = [
+    minorId,
+    ...(existingGuardians ?? []).map((row) => row.guardian_id),
+  ];
+
   const { data, error } = await supabase
     .from("people")
     .select("id, first_name, last_name")
     .is("archived_at", null)
+    .not("id", "in", `(${excludeIds.join(",")})`)
     .ilike("search_text", toIlikePattern(normalized))
     .order("last_name", { ascending: true })
     .limit(10);

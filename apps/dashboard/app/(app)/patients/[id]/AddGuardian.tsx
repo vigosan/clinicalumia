@@ -31,6 +31,7 @@ export function AddGuardian({
   const [isPrimary, setIsPrimary] = useState(false);
   const [pending, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
 
   useEffect(
     () => () => {
@@ -47,8 +48,11 @@ export function AddGuardian({
       setCandidates([]);
       return;
     }
+    const seq = ++searchSeqRef.current;
     debounceRef.current = setTimeout(() => {
-      void searchGuardianCandidates(value).then(setCandidates);
+      void searchGuardianCandidates(value, minorId).then((results) => {
+        if (searchSeqRef.current === seq) setCandidates(results);
+      });
     }, 300);
   }
 

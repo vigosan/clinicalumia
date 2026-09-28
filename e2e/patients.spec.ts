@@ -344,39 +344,78 @@ test('creating a minor patient shows "Menor sin tutor", and adding their mother 
   await expect(wardRow).toBeVisible();
 });
 
-test("trying to add the minor as their own guardian shows the error", async ({
+test("the guardian picker excludes the ficha's own person and people already added as guardians", async ({
   page,
 }) => {
-  const lastName = `Autotutor${Date.now()}`;
-  const { data, error } = await admin
+  const shared = `Candidato${Date.now()}`;
+  const minorLastName = `${shared}Menor`;
+  const guardianLastName = `${shared}Tutora`;
+  const newLastName = `${shared}Nueva`;
+
+  const { data: minor, error: minorError } = await admin
     .from("people")
     .insert({
-      first_name: "Solo",
-      last_name: lastName,
+      first_name: "Hijo",
+      last_name: minorLastName,
       is_patient: true,
       birth_date: "2015-01-01",
     })
     .select("id")
     .single();
-  expect(error).toBeNull();
-  const minorId = data!.id;
+  expect(minorError).toBeNull();
+  const minorId = minor!.id;
   createdPersonIds.push(minorId);
+
+  const { data: guardian, error: guardianError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Madre",
+      last_name: guardianLastName,
+      is_patient: false,
+    })
+    .select("id")
+    .single();
+  expect(guardianError).toBeNull();
+  const guardianId = guardian!.id;
+  createdPersonIds.push(guardianId);
+
+  const { error: guardianshipError } = await admin
+    .from("guardianships")
+    .insert({
+      minor_id: minorId,
+      guardian_id: guardianId,
+      relationship: "madre",
+      is_primary: true,
+    });
+  expect(guardianshipError).toBeNull();
+
+  const { data: newPerson, error: newPersonError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Vecina",
+      last_name: newLastName,
+      is_patient: false,
+    })
+    .select("id")
+    .single();
+  expect(newPersonError).toBeNull();
+  createdPersonIds.push(newPerson!.id);
 
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
   await page.goto(`${DASHBOARD}/patients/${minorId}`);
 
   await page.getByTestId("guardian-add").click();
-  await page.getByTestId("guardian-search").fill(lastName);
-  const option = page
-    .getByTestId("guardian-option")
-    .filter({ hasText: lastName });
-  await expect(option).toBeVisible();
-  await option.click();
-  await page.getByTestId("guardian-save").click();
+  await page.getByTestId("guardian-search").fill(shared);
 
-  await expect(page.getByTestId("person-action-error")).toHaveText(
-    "Una persona no puede ser su propio tutor.",
-  );
+  await expect(
+    page.getByTestId("guardian-option").filter({ hasText: newLastName }),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("guardian-option").filter({ hasText: minorLastName }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByTestId("guardian-option").filter({ hasText: guardianLastName }),
+  ).toHaveCount(0);
 });
 
 test('archiving a minor patient hides them from the list, "Ver archivados" shows them, and Recuperar brings them back', async ({
