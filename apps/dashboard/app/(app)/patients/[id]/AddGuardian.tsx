@@ -25,6 +25,8 @@ export function AddGuardian({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<GuardianCandidate[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [selected, setSelected] = useState<GuardianCandidate | null>(null);
   const [relationship, setRelationship] =
     useState<Ward["relationship"]>("madre");
@@ -32,6 +34,16 @@ export function AddGuardian({
   const [pending, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchSeqRef = useRef(0);
+
+  function reset() {
+    setOpen(false);
+    setQuery("");
+    setCandidates([]);
+    setSearched(false);
+    setSearchFailed(false);
+    setSelected(null);
+    setIsPrimary(false);
+  }
 
   useEffect(
     () => () => {
@@ -43,6 +55,8 @@ export function AddGuardian({
   function handleQueryChange(value: string) {
     setQuery(value);
     setSelected(null);
+    setSearched(false);
+    setSearchFailed(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!value.trim()) {
       setCandidates([]);
@@ -50,9 +64,18 @@ export function AddGuardian({
     }
     const seq = ++searchSeqRef.current;
     debounceRef.current = setTimeout(() => {
-      void searchGuardianCandidates(value, minorId).then((results) => {
-        if (searchSeqRef.current === seq) setCandidates(results);
-      });
+      void searchGuardianCandidates(value, minorId)
+        .then((results) => {
+          if (searchSeqRef.current !== seq) return;
+          setCandidates(results);
+          setSearched(true);
+        })
+        .catch(() => {
+          if (searchSeqRef.current !== seq) return;
+          setCandidates([]);
+          setSearchFailed(true);
+          setSearched(true);
+        });
     }, 300);
   }
 
@@ -70,11 +93,7 @@ export function AddGuardian({
         onError(result.error);
         return;
       }
-      setOpen(false);
-      setQuery("");
-      setCandidates([]);
-      setSelected(null);
-      setIsPrimary(false);
+      reset();
     });
   }
 
@@ -101,7 +120,16 @@ export function AddGuardian({
           onChange={(event) => handleQueryChange(event.target.value)}
         />
       </Field>
-      {candidates.length > 0 && !selected && (
+      {!selected && searchFailed && (
+        <p
+          role="alert"
+          data-testid="guardian-search-error"
+          className="text-[13px] text-danger-600"
+        >
+          No se ha podido buscar. Inténtalo de nuevo.
+        </p>
+      )}
+      {!selected && !searchFailed && candidates.length > 0 && (
         <ul className="flex flex-col gap-1">
           {candidates.map((candidate) => (
             <li key={candidate.id}>
@@ -117,6 +145,11 @@ export function AddGuardian({
             </li>
           ))}
         </ul>
+      )}
+      {!selected && !searchFailed && searched && candidates.length === 0 && (
+        <p className="text-sm text-ink-800" data-testid="guardian-search-empty">
+          No hay nadie con esos datos.
+        </p>
       )}
       <Button asChild variant="ghost" size="sm">
         <Link href={`/patients/new?guardianOf=${minorId}`}>Nueva persona</Link>
@@ -147,27 +180,28 @@ export function AddGuardian({
             checked={isPrimary}
             onChange={(event) => setIsPrimary(event.target.checked)}
           />
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending}
-              data-testid="guardian-save"
-              onClick={handleSave}
-            >
-              {pending ? "Guardando…" : "Guardar"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setOpen(false)}
-            >
-              Cancelar
-            </Button>
-          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending}
+            data-testid="guardian-save"
+            onClick={handleSave}
+          >
+            {pending ? "Guardando…" : "Guardar"}
+          </Button>
         </>
       )}
+      <div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          data-testid="guardian-close"
+          onClick={reset}
+        >
+          Cerrar
+        </Button>
+      </div>
     </div>
   );
 }

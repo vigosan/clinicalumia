@@ -509,6 +509,41 @@ test("the guardian picker excludes the ficha's own person and people already add
   ).toHaveCount(0);
 });
 
+test('searching for someone who does not exist shows "No hay nadie con esos datos.", and Cerrar always closes the panel', async ({
+  page,
+}) => {
+  const minorLastName = `MenorCerrar${Date.now()}`;
+
+  const { data: minor, error: minorError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Hijo",
+      last_name: minorLastName,
+      is_patient: true,
+      birth_date: "2015-01-01",
+    })
+    .select("id")
+    .single();
+  expect(minorError).toBeNull();
+  const minorId = minor!.id;
+  createdPersonIds.push(minorId);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${minorId}`);
+
+  await page.getByTestId("guardian-add").click();
+  await expect(page.getByTestId("guardian-close")).toBeVisible();
+
+  await page.getByTestId("guardian-search").fill("zzz-no-existe-zzz");
+  await expect(page.getByTestId("guardian-search-empty")).toHaveText(
+    "No hay nadie con esos datos.",
+  );
+
+  await page.getByTestId("guardian-close").click();
+  await expect(page.getByTestId("guardian-add")).toBeVisible();
+  await expect(page.getByTestId("guardian-search")).toHaveCount(0);
+});
+
 test('archiving a minor patient hides them from the list, "Ver archivados" shows them, and Recuperar brings them back', async ({
   page,
 }) => {
