@@ -63,8 +63,12 @@ declare
   service record;
 begin
   if auth.uid() is not null then
+    if not (public.is_owner() or (public.is_active_staff() and new.professional_id = auth.uid())) then
+      raise exception 'appointment_forbidden' using errcode = '42501';
+    end if;
     new.created_by := auth.uid();
   end if;
+  new.created_at := now();
   if not exists (
     select 1 from public.people
     where id = new.patient_id and is_patient and archived_at is null
@@ -103,6 +107,7 @@ begin
     or new.patient_id is distinct from old.patient_id
     or new.service_id is distinct from old.service_id
     or new.created_by is distinct from old.created_by
+    or new.created_at is distinct from old.created_at
     or new.price_cents is distinct from old.price_cents
     or new.vat is distinct from old.vat then
     raise exception 'appointment_immutable_fields' using errcode = '23514';

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(58);
+select plan(72);
 
 insert into auth.users (id, email) values
   ('60000000-0000-0000-0000-000000000001', 'owner-appointments@test.local'),
@@ -49,18 +49,30 @@ $$;
 insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
   ('60000000-0000-0000-0000-0000000000e1', '60000000-0000-0000-0000-000000000002',
    '60000000-0000-0000-0000-0000000000c1', '60000000-0000-0000-0000-0000000000b1',
-   '2020-01-10 10:00 Europe/Madrid', '2020-01-10 10:45 Europe/Madrid');
+   '2020-01-10 10:00 Europe/Madrid', '2020-01-10 10:45 Europe/Madrid'),
+  ('60000000-0000-0000-0000-0000000000e2', '60000000-0000-0000-0000-000000000002',
+   '60000000-0000-0000-0000-0000000000c1', '60000000-0000-0000-0000-0000000000b1',
+   '2020-01-11 10:00 Europe/Madrid', '2020-01-11 10:45 Europe/Madrid');
+
+update public.profiles set is_active = true where id = '60000000-0000-0000-0000-000000000004';
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('60000000-0000-0000-0000-0000000000f1', '60000000-0000-0000-0000-000000000004',
+   '60000000-0000-0000-0000-0000000000c1', '60000000-0000-0000-0000-0000000000b1',
+   '2099-06-01 10:00 Europe/Madrid', '2099-06-01 10:45 Europe/Madrid');
+update public.profiles set is_active = false where id = '60000000-0000-0000-0000-000000000004';
 
 select pg_temp.act_as('60000000-0000-0000-0000-000000000002');
 
 select lives_ok($$
   insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at,
-    created_by, price_cents, vat)
+    created_by, price_cents, vat, created_at)
   values ('60000000-0000-0000-0000-0000000000d1', '60000000-0000-0000-0000-000000000002',
     '60000000-0000-0000-0000-0000000000c1', '60000000-0000-0000-0000-0000000000b1',
     '2099-06-01 10:00 Europe/Madrid', '2099-06-01 10:45 Europe/Madrid',
-    '60000000-0000-0000-0000-000000000001', 1, 'exempt')
-$$, 'an active employee can book an appointment for herself, even while spoofing author and price');
+    '60000000-0000-0000-0000-000000000001', 1, 'exempt', '2000-01-01')
+$$, 'an active employee can book an appointment for herself, even while spoofing author, price and creation time');
+select is((select created_at from public.appointments where id = '60000000-0000-0000-0000-0000000000d1'), now(),
+  'the creation time is stamped by the database, so a booking cannot be backdated');
 
 select is((select count(*) from public.appointments where id = '60000000-0000-0000-0000-0000000000d1'), 1::bigint,
   'the employee reads back the appointment she just booked');
@@ -79,6 +91,17 @@ select throws_ok($$
   values ('60000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-0000000000c1',
     '60000000-0000-0000-0000-0000000000b1', '2099-06-01 12:00 Europe/Madrid', '2099-06-01 12:45 Europe/Madrid')
 $$, '42501', null, 'an employee cannot book into a colleague''s agenda, even calling the API directly');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-01 12:00 Europe/Madrid', '2099-06-01 12:45 Europe/Madrid')
+$$, '42501', null,
+  'booking for an inactive colleague is refused as forbidden, not as professional_inactive, so employees cannot probe who is active');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-0000000000ff', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-01 12:00 Europe/Madrid', '2099-06-01 12:45 Europe/Madrid')
+$$, '42501', null, 'booking for an unknown uuid is refused the same way, so it reveals nothing either');
 
 select throws_ok($$
   update public.appointments set professional_id = '60000000-0000-0000-0000-000000000003'
@@ -109,8 +132,10 @@ $$, '23514', 'professional_inactive', 'nobody can book with a professional who n
 
 select pg_temp.act_as('60000000-0000-0000-0000-000000000004');
 
-select is((select count(*) from public.appointments), 0::bigint,
-  'a deactivated employee sees no appointments at all');
+select is((select count(*) from public.appointments where id = '60000000-0000-0000-0000-0000000000f1'), 0::bigint,
+  'a deactivated employee can no longer see even her own appointments, since leaving the clinic ends access to patient data');
+select is((select count(*) from public.appointment_events where appointment_id = '60000000-0000-0000-0000-0000000000f1'), 0::bigint,
+  'a deactivated employee can no longer see the history of her own appointments either');
 
 select pg_temp.act_as('60000000-0000-0000-0000-000000000002');
 
@@ -150,6 +175,18 @@ select lives_ok($$
     '60000000-0000-0000-0000-0000000000c1', '60000000-0000-0000-0000-0000000000b1',
     '2099-06-03 16:50 Europe/Madrid', '2099-06-03 17:35 Europe/Madrid')
 $$, 'a cancelled appointment frees its slot for a new booking');
+
+select lives_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-09 16:10 Europe/Madrid', '2099-06-09 16:55 Europe/Madrid')
+$$, 'booking 16:10 to 16:55 on a fresh day succeeds');
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-09 16:54 Europe/Madrid', '2099-06-09 17:39 Europe/Madrid')
+$$, '23P01', 'conflicting key value violates exclusion constraint "appointments_no_overlap"',
+  'even a single minute of overlap is refused');
 
 select throws_ok($$
   insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
@@ -194,6 +231,9 @@ select throws_ok($$
   update public.appointments set starts_at = starts_at + interval '1 hour', ends_at = ends_at + interval '1 hour'
   where id = '60000000-0000-0000-0000-0000000000d6'
 $$, '23514', 'appointment_cancelled_final', 'a cancelled appointment cannot be moved either');
+select throws_ok($$
+  update public.appointments set cancelled_by = 'clinic' where id = '60000000-0000-0000-0000-0000000000d6'
+$$, '23514', 'appointment_cancelled_final', 'who cancelled is frozen once recorded, so the record cannot be rewritten later');
 
 select throws_ok($$
   update public.appointments set status = 'no_show' where id = '60000000-0000-0000-0000-0000000000d7'
@@ -209,6 +249,22 @@ $$, '23514', 'appointment_invalid_transition', 'a no-show cannot be turned into 
 select lives_ok($$
   update public.appointments set status = 'scheduled' where id = '60000000-0000-0000-0000-0000000000e1'
 $$, 'a mistaken no-show can be undone back to scheduled');
+
+select throws_ok($$
+  update public.appointments
+  set status = 'cancelled', cancelled_by = 'clinic',
+    starts_at = '2099-06-06 10:00 Europe/Madrid', ends_at = '2099-06-06 10:45 Europe/Madrid'
+  where id = '60000000-0000-0000-0000-0000000000e1'
+$$, '23514', 'appointment_in_past', 'cancelling and moving a past appointment in one statement cannot sneak the move through');
+select lives_ok($$
+  update public.appointments set status = 'no_show' where id = '60000000-0000-0000-0000-0000000000e2'
+$$, 'another past appointment is marked as a no-show');
+select throws_ok($$
+  update public.appointments
+  set status = 'scheduled',
+    starts_at = '2099-06-06 10:00 Europe/Madrid', ends_at = '2099-06-06 10:45 Europe/Madrid'
+  where id = '60000000-0000-0000-0000-0000000000e2'
+$$, '23514', 'appointment_in_past', 'undoing a no-show and moving it in one statement cannot sneak the move through');
 
 select lives_ok($$
   update public.appointments
@@ -229,6 +285,20 @@ $$, '23514', 'appointment_immutable_fields', 'the patient of an appointment cann
 select throws_ok($$
   update public.appointments set price_cents = 1 where id = '60000000-0000-0000-0000-0000000000d1'
 $$, '23514', 'appointment_immutable_fields', 'the agreed price cannot be changed after booking');
+select throws_ok($$
+  update public.appointments set vat = 'exempt' where id = '60000000-0000-0000-0000-0000000000d1'
+$$, '23514', 'appointment_immutable_fields', 'the agreed vat treatment cannot be changed after booking');
+select throws_ok($$
+  update public.appointments set service_id = '60000000-0000-0000-0000-0000000000b2'
+  where id = '60000000-0000-0000-0000-0000000000d1'
+$$, '23514', 'appointment_immutable_fields', 'the service cannot be swapped, it would no longer match the agreed price');
+select throws_ok($$
+  update public.appointments set created_by = '60000000-0000-0000-0000-000000000001'
+  where id = '60000000-0000-0000-0000-0000000000d1'
+$$, '23514', 'appointment_immutable_fields', 'the author of a booking cannot be reassigned afterwards');
+select throws_ok($$
+  update public.appointments set created_at = '2000-01-01' where id = '60000000-0000-0000-0000-0000000000d1'
+$$, '23514', 'appointment_immutable_fields', 'the creation time cannot be backdated afterwards');
 
 select throws_ok($$
   insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
