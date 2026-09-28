@@ -266,7 +266,11 @@ export async function loadAgenda({
       (row) => row.profile_id === column.id,
     );
   }
-  const { firstHour, lastHour } = visibleHours(scheduleRows, weekday);
+  const { firstHour, lastHour } = visibleHours(scheduleRows, weekday, [
+    ...appointments,
+    ...busy,
+    ...timeOff,
+  ]);
 
   return {
     ok: true,
@@ -361,7 +365,10 @@ async function loadWeekAgenda(
     schedule: scheduleRows.filter((row) => row.weekday === weekdayOf(day)),
   }));
 
-  const { firstHour, lastHour } = visibleWeekHours(scheduleRows);
+  const { firstHour, lastHour } = visibleWeekHours(scheduleRows, [
+    ...appointments,
+    ...timeOff,
+  ]);
 
   return {
     ok: true,

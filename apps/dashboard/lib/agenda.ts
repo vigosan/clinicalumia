@@ -70,38 +70,49 @@ export type ScheduleBlock = {
   ends_at: string;
 };
 
-function hoursSpan(blocks: ScheduleBlock[]): {
+export type TimeSpan = { startsAt: string; endsAt: string };
+
+function minutesOfDay(time: string): number {
+  return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+}
+
+function scheduleSpan(block: ScheduleBlock): [number, number] {
+  return [minutesOfDay(block.starts_at), minutesOfDay(block.ends_at)];
+}
+
+function blockSpan(block: TimeSpan): [number, number] {
+  return [
+    minutesOfDay(madridDateTime(block.startsAt).time),
+    minutesOfDay(madridDateTime(block.endsAt).time),
+  ];
+}
+
+function hoursSpan(spans: [number, number][]): {
   firstHour: number;
   lastHour: number;
 } {
-  if (blocks.length === 0) return { firstHour: 8, lastHour: 20 };
-  const firstHour = Math.min(
-    ...blocks.map((block) => Number(block.starts_at.slice(0, 2))),
-  );
-  const lastHour = Math.max(
-    ...blocks.map((block) => {
-      const hour = Number(block.ends_at.slice(0, 2));
-      const minute = Number(block.ends_at.slice(3, 5));
-      return minute > 0 ? hour + 1 : hour;
-    }),
-  );
+  if (spans.length === 0) return { firstHour: 8, lastHour: 20 };
+  const firstHour = Math.floor(Math.min(...spans.map(([start]) => start)) / 60);
+  const lastHour = Math.ceil(Math.max(...spans.map(([, end]) => end)) / 60);
   return { firstHour, lastHour };
 }
 
 export function visibleHours(
   schedules: ScheduleBlock[],
   weekday: number,
+  blocks: TimeSpan[] = [],
 ): { firstHour: number; lastHour: number } {
-  return hoursSpan(
-    schedules.filter((schedule) => schedule.weekday === weekday),
-  );
+  const scheduleSpans = schedules
+    .filter((schedule) => schedule.weekday === weekday)
+    .map(scheduleSpan);
+  return hoursSpan([...scheduleSpans, ...blocks.map(blockSpan)]);
 }
 
-export function visibleWeekHours(schedules: ScheduleBlock[]): {
-  firstHour: number;
-  lastHour: number;
-} {
-  return hoursSpan(schedules);
+export function visibleWeekHours(
+  schedules: ScheduleBlock[],
+  blocks: TimeSpan[] = [],
+): { firstHour: number; lastHour: number } {
+  return hoursSpan([...schedules.map(scheduleSpan), ...blocks.map(blockSpan)]);
 }
 
 export type TimeOff = { starts_at: string; ends_at: string; reason: string };

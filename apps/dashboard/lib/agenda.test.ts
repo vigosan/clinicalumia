@@ -106,6 +106,30 @@ describe("visibleHours", () => {
     ];
     expect(visibleHours(schedules, 6)).toEqual({ firstHour: 8, lastHour: 20 });
   });
+
+  it("widens the window to cover an appointment booked outside the schedule, rounded outward", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "13:00:00" },
+    ];
+    const blocks = [
+      {
+        startsAt: "2026-07-13T07:00:00+02:00",
+        endsAt: "2026-07-13T07:30:00+02:00",
+      },
+      {
+        startsAt: "2026-07-13T21:00:00+02:00",
+        endsAt: "2026-07-13T21:30:00+02:00",
+      },
+    ];
+    expect(visibleHours(schedules, 1, blocks)).toEqual({
+      firstHour: 7,
+      lastHour: 22,
+    });
+  });
+
+  it("still falls back to 8-20 when neither the schedule nor any block is shown", () => {
+    expect(visibleHours([], 1, [])).toEqual({ firstHour: 8, lastHour: 20 });
+  });
 });
 
 describe("visibleWeekHours", () => {
@@ -119,6 +143,26 @@ describe("visibleWeekHours", () => {
 
   it("falls back to 8-20 when the person has no schedule at all that week", () => {
     expect(visibleWeekHours([])).toEqual({ firstHour: 8, lastHour: 20 });
+  });
+
+  it("widens the window to cover an appointment booked outside the week's schedules", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "13:00:00" },
+    ];
+    const blocks = [
+      {
+        startsAt: "2026-07-13T07:00:00+02:00",
+        endsAt: "2026-07-13T07:30:00+02:00",
+      },
+      {
+        startsAt: "2026-07-17T21:00:00+02:00",
+        endsAt: "2026-07-17T21:30:00+02:00",
+      },
+    ];
+    expect(visibleWeekHours(schedules, blocks)).toEqual({
+      firstHour: 7,
+      lastHour: 22,
+    });
   });
 });
 

@@ -405,3 +405,34 @@ test("la propietaria elige a Marc y ve su semana", async ({ page }) => {
     weekDayFor(page, date).getByTestId("appointment-block"),
   ).toContainText("Elena Gómez Díaz");
 });
+
+test("una cita a las 21:00, fuera del horario por defecto, se ve en Día y en Semana", async ({
+  page,
+}) => {
+  const date = futureDate(52);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Fuera De Horario",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "21:00",
+    endTime: "22:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+
+  await page.goto(`${DASHBOARD}/?date=${date}&view=day`);
+  await expect(
+    columnFor(page, employee.id).getByTestId("appointment-block"),
+  ).toContainText("Jorge Ruiz Pérez");
+
+  await page.goto(`${DASHBOARD}/?date=${date}&view=week`);
+  await expect(
+    weekDayFor(page, date).getByTestId("appointment-block"),
+  ).toContainText("Jorge Ruiz Pérez");
+});
