@@ -45,11 +45,20 @@ const overlapResult: {
 } = { data: null };
 const overlapMaybeSingle = vi.fn(async () => overlapResult);
 const overlapLimit = vi.fn(() => ({ maybeSingle: overlapMaybeSingle }));
-const overlapGt = vi.fn(() => ({ limit: overlapLimit }));
+const overlapNeqId = vi.fn(() => ({ limit: overlapLimit }));
+const overlapGt = vi.fn(() => ({ limit: overlapLimit, neq: overlapNeqId }));
 const overlapLt = vi.fn(() => ({ gt: overlapGt }));
 const overlapNeq = vi.fn(() => ({ lt: overlapLt }));
 const overlapEq = vi.fn(() => ({ neq: overlapNeq }));
 const appointmentsSelect = vi.fn(() => ({ eq: overlapEq }));
+
+const updateResult: {
+  data: { id: string }[] | null;
+  error: { code?: string; message?: string } | null;
+} = { data: null, error: null };
+const updateSelect = vi.fn(async () => updateResult);
+const updateEq = vi.fn(() => ({ select: updateSelect }));
+const appointmentsUpdate = vi.fn(() => ({ eq: updateEq }));
 
 const peopleResult: { data: unknown; error: { message: string } | null } = {
   data: [],
@@ -75,14 +84,25 @@ vi.mock("@clinicalumia/api/server", () => ({
       if (table === "employee_schedules") return { select: schedulesSelect };
       if (table === "employee_time_off") return { select: timeOffSelect };
       if (table === "appointments")
-        return { insert: appointmentsInsert, select: appointmentsSelect };
+        return {
+          insert: appointmentsInsert,
+          select: appointmentsSelect,
+          update: appointmentsUpdate,
+        };
       if (table === "people") return { select: peopleSelect };
       return {};
     },
   }),
 }));
 
-const { createAppointment, searchPatients } = await import("./actions");
+const {
+  createAppointment,
+  moveAppointment,
+  cancelAppointment,
+  markNoShow,
+  restoreFromNoShow,
+  searchPatients,
+} = await import("./actions");
 
 function appointmentForm(overrides: Record<string, string> = {}) {
   const data = new FormData();
@@ -130,6 +150,11 @@ describe("createAppointment", () => {
     insertSingle.mockClear();
     overlapResult.data = null;
     appointmentsSelect.mockClear();
+    updateResult.data = [{ id: "appt-1" }];
+    updateResult.error = null;
+    appointmentsUpdate.mockClear();
+    updateEq.mockClear();
+    updateSelect.mockClear();
   });
 
   it("returns the parser's error for an invalid form without touching the database", async () => {
@@ -201,6 +226,216 @@ describe("createAppointment", () => {
     });
     expect(schedulesSelect).not.toHaveBeenCalled();
     expect(appointmentsInsert).not.toHaveBeenCalled();
+  });
+});
+
+function moveForm(overrides: Record<string, string> = {}) {
+  const data = new FormData();
+  const defaults: Record<string, string> = {
+    id: "appt-1",
+    patient_id: "patient-1",
+    service_id: "service-1",
+    professional_id: "prof-1",
+    date: "2026-10-06",
+    time: "11:00",
+    duration_minutes: "60",
+    notes: "",
+  };
+  for (const [key, value] of Object.entries({ ...defaults, ...overrides })) {
+    data.set(key, value);
+  }
+  return data;
+}
+
+describe("moveAppointment", () => {
+  beforeEach(() => {
+    rpc.mockClear();
+    rpcResults.staff_directory = {
+      data: [
+        {
+          id: "prof-1",
+          full_name: "Marc Ejemplo",
+          role: "employee",
+          specialty_id: "spec-1",
+        },
+      ],
+      error: null,
+    };
+    rpcResults.agenda_busy = { data: [], error: null };
+    schedulesResult.data = [];
+    schedulesResult.error = null;
+    timeOffResult.data = [];
+    timeOffResult.error = null;
+    updateResult.data = [{ id: "appt-1" }];
+    updateResult.error = null;
+    appointmentsUpdate.mockClear();
+    updateEq.mockClear();
+    updateSelect.mockClear();
+    overlapResult.data = null;
+  });
+
+  it("returns the parser's error for an invalid form without touching the database", async () => {
+    expect(await moveAppointment(undefined, moveForm({ date: "" }))).toEqual({
+      error: "Indica fecha y hora.",
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it("returns the schedule warnings without moving when confirm is missing", async () => {
+    schedulesResult.data = [];
+
+    expect(await moveAppointment(undefined, moveForm())).toEqual({
+      warnings: ["Queda fuera del horario de Marc Ejemplo."],
+    });
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it("moves and redirects when the caller confirms", async () => {
+    await expect(
+      moveAppointment(undefined, moveForm({ confirm: "1" })),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-06&appointment=appt-1");
+
+    expect(appointmentsUpdate).toHaveBeenCalledWith({
+      starts_at: expect.any(String),
+      ends_at: expect.any(String),
+    });
+    expect(updateEq).toHaveBeenCalledWith("id", "appt-1");
+    expect(schedulesResult.data).toEqual([]);
+  });
+
+  it("names who and when for a 23P01 overlap, excluding the appointment being moved", async () => {
+    updateResult.data = null;
+    updateResult.error = { code: "23P01" };
+    overlapResult.data = {
+      starts_at: "2026-10-06T14:10:00.000Z",
+      ends_at: "2026-10-06T14:55:00.000Z",
+    };
+
+    expect(
+      await moveAppointment(undefined, moveForm({ confirm: "1" })),
+    ).toEqual({
+      error: "Marc Ejemplo ya tiene una cita de 16:10 a 16:55.",
+    });
+    expect(overlapNeqId).toHaveBeenCalledWith("id", "appt-1");
+  });
+
+  it("maps a past-appointment error", async () => {
+    updateResult.data = null;
+    updateResult.error = { code: "23514", message: "appointment_in_past" };
+
+    expect(
+      await moveAppointment(undefined, moveForm({ confirm: "1" })),
+    ).toEqual({ error: "No se puede mover una cita que ya ha pasado." });
+  });
+
+  it("reports it could not move the appointment when 0 rows matched", async () => {
+    updateResult.data = [];
+    updateResult.error = null;
+
+    expect(
+      await moveAppointment(undefined, moveForm({ confirm: "1" })),
+    ).toEqual({ error: "No se ha podido mover la cita." });
+  });
+});
+
+describe("cancelAppointment", () => {
+  beforeEach(() => {
+    updateResult.data = [{ id: "appt-1" }];
+    updateResult.error = null;
+    appointmentsUpdate.mockClear();
+    updateEq.mockClear();
+    updateSelect.mockClear();
+  });
+
+  it("cancels with the reason and who cancelled", async () => {
+    expect(
+      await cancelAppointment("appt-1", "patient", "Se puso enfermo"),
+    ).toEqual({ ok: true });
+    expect(appointmentsUpdate).toHaveBeenCalledWith({
+      status: "cancelled",
+      cancelled_by: "patient",
+      cancel_reason: "Se puso enfermo",
+    });
+    expect(updateEq).toHaveBeenCalledWith("id", "appt-1");
+  });
+
+  it("reports it could not cancel when 0 rows matched", async () => {
+    updateResult.data = [];
+
+    expect(await cancelAppointment("appt-1", "clinic", "")).toEqual({
+      error: "No se ha podido cancelar la cita.",
+    });
+  });
+
+  it("maps an invalid-transition error", async () => {
+    updateResult.data = null;
+    updateResult.error = {
+      code: "23514",
+      message: "appointment_invalid_transition",
+    };
+
+    expect(await cancelAppointment("appt-1", "clinic", "")).toEqual({
+      error: "No se puede cancelar una cita marcada como no presentada.",
+    });
+  });
+});
+
+describe("markNoShow", () => {
+  beforeEach(() => {
+    updateResult.data = [{ id: "appt-1" }];
+    updateResult.error = null;
+    appointmentsUpdate.mockClear();
+    updateEq.mockClear();
+    updateSelect.mockClear();
+  });
+
+  it("marks the appointment as no_show", async () => {
+    expect(await markNoShow("appt-1")).toEqual({ ok: true });
+    expect(appointmentsUpdate).toHaveBeenCalledWith({ status: "no_show" });
+    expect(updateEq).toHaveBeenCalledWith("id", "appt-1");
+  });
+
+  it("reports it could not mark no-show when 0 rows matched", async () => {
+    updateResult.data = [];
+
+    expect(await markNoShow("appt-1")).toEqual({
+      error: "No se ha podido marcar como no presentada.",
+    });
+  });
+
+  it("maps a not-started error", async () => {
+    updateResult.data = null;
+    updateResult.error = { code: "23514", message: "appointment_not_started" };
+
+    expect(await markNoShow("appt-1")).toEqual({
+      error:
+        "Solo se puede marcar «no se presentó» cuando la cita ya ha empezado.",
+    });
+  });
+});
+
+describe("restoreFromNoShow", () => {
+  beforeEach(() => {
+    updateResult.data = [{ id: "appt-1" }];
+    updateResult.error = null;
+    appointmentsUpdate.mockClear();
+    updateEq.mockClear();
+    updateSelect.mockClear();
+  });
+
+  it("restores the appointment to scheduled", async () => {
+    expect(await restoreFromNoShow("appt-1")).toEqual({ ok: true });
+    expect(appointmentsUpdate).toHaveBeenCalledWith({ status: "scheduled" });
+    expect(updateEq).toHaveBeenCalledWith("id", "appt-1");
+  });
+
+  it("reports it could not restore when 0 rows matched", async () => {
+    updateResult.data = [];
+
+    expect(await restoreFromNoShow("appt-1")).toEqual({
+      error: "No se ha podido restaurar la cita.",
+    });
   });
 });
 
