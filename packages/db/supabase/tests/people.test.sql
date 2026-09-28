@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(59);
+select plan(61);
 
 insert into auth.users (id, email) values
   ('50000000-0000-0000-0000-000000000001', 'owner-people@test.local'),
@@ -160,6 +160,12 @@ select throws_ok($$
   values ('50000000-0000-0000-0000-0000000000f2', 'Nombre', 'Apellido', current_date + 1)
 $$, '23514', null, 'a birth date in the future is rejected, since nobody can be born tomorrow');
 
+select lives_ok($$
+  insert into public.people (id, first_name, last_name, birth_date)
+  values ('50000000-0000-0000-0000-0000000000f4', 'Nombre', 'Madrid',
+    (now() at time zone 'Europe/Madrid')::date)
+$$, 'a birth date equal to today in Madrid is accepted, since the future-date check compares against the Madrid date, not the server''s date');
+
 select throws_ok($$
   insert into public.people (id, first_name, last_name, is_patient)
   values ('50000000-0000-0000-0000-0000000000f3', 'Nombre', 'Apellido', true)
@@ -270,6 +276,12 @@ insert into public.people (id, first_name, last_name, birth_date) values
 insert into public.guardianships (minor_id, guardian_id, relationship, is_primary) values
   ('50000000-0000-0000-0000-0000000000e8', '50000000-0000-0000-0000-0000000000e7', 'madre', true);
 
+insert into public.people (id, first_name, last_name, birth_date, archived_at) values
+  ('50000000-0000-0000-0000-0000000000e9', 'MenorArchivado', 'DeTutora', '2019-01-01', now());
+
+insert into public.guardianships (minor_id, guardian_id, relationship) values
+  ('50000000-0000-0000-0000-0000000000e9', '50000000-0000-0000-0000-0000000000e7', 'madre');
+
 select is(
   (select matched from public.find_possible_duplicates(null, null, '+34 614 55 28 08') where id = '50000000-0000-0000-0000-0000000000d1'),
   array['phone'],
@@ -303,7 +315,13 @@ select is((select count(*) from public.find_possible_duplicates(null, null, '600
 select is(
   (select wards from public.find_possible_duplicates(null, null, '600444777') where id = '50000000-0000-0000-0000-0000000000e7'),
   '[{"name": "Menor DeTutora", "relationship": "madre"}]'::jsonb,
-  'a guardian''s duplicate row lists the full name and relationship of the minor she is responsible for'
+  'a guardian''s duplicate row lists the full name and relationship of the minor she is responsible for, excluding an archived ward of hers'
+);
+
+select is(
+  (select jsonb_array_length((select wards from public.find_possible_duplicates(null, null, '600444777') where id = '50000000-0000-0000-0000-0000000000e7'))),
+  1,
+  'an archived minor is excluded from wards even though her guardianship row still exists'
 );
 
 select pg_temp.act_as('50000000-0000-0000-0000-000000000003');

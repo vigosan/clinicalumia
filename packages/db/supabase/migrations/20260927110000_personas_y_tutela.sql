@@ -72,7 +72,8 @@ begin
   new.tax_id := nullif(upper(regexp_replace(coalesce(new.tax_id, ''), '[\s.\-]', '', 'g')), '');
   new.email := nullif(lower(trim(coalesce(new.email, ''))), '');
   new.phone := public.normalize_phone(new.phone);
-  if new.birth_date is not null and new.birth_date > current_date then
+  if new.birth_date is not null
+    and new.birth_date > (now() at time zone 'Europe/Madrid')::date then
     raise exception 'birth_date must not be in the future' using errcode = '23514';
   end if;
   if tg_op = 'INSERT' then

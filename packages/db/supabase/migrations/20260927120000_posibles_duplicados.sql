@@ -33,6 +33,7 @@ as $$
       from public.guardianships g
       join public.people m on m.id = g.minor_id
       where g.guardian_id = p.id
+        and m.archived_at is null
     ), '[]'::jsonb) as wards
   from public.people p, input i
   where p.archived_at is null
