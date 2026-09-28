@@ -35,6 +35,7 @@ export function AgendaHeader({
   view,
   withParam,
   personParam,
+  dayToWeekPerson,
   isOwner,
   selfId,
 }: {
@@ -42,11 +43,13 @@ export function AgendaHeader({
   view: string;
   withParam: string;
   personParam: string;
+  dayToWeekPerson: string;
   isOwner: boolean;
   selfId: string;
 }) {
   const today = todayInMadrid();
   const step = view === "week" ? 7 : 1;
+  const weekToDayWith = isOwner && personParam ? personParam : undefined;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -103,7 +106,7 @@ export function AgendaHeader({
             href={buildHref("/", {
               date,
               view: "day",
-              with: view === "day" ? withParam : undefined,
+              with: view === "day" ? withParam : weekToDayWith,
             })}
             data-testid="agenda-view-day"
             aria-current={view === "day" ? "page" : undefined}
@@ -115,7 +118,8 @@ export function AgendaHeader({
             href={buildHref("/", {
               date,
               view: "week",
-              person: view === "week" ? personParam : undefined,
+              person:
+                view === "week" ? personParam : dayToWeekPerson || undefined,
             })}
             data-testid="agenda-view-week"
             aria-current={view === "week" ? "page" : undefined}

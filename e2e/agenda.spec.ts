@@ -436,3 +436,21 @@ test("una cita a las 21:00, fuera del horario por defecto, se ve en Día y en Se
     weekDayFor(page, date).getByTestId("appointment-block"),
   ).toContainText("Jorge Ruiz Pérez");
 });
+
+test("la propietaria pasa de la semana de Marc a Día con with=Marc, y de un solo compañero en Día a Semana con person=ese compañero", async ({
+  page,
+}) => {
+  await loginAsThrowawayOwner(page, "Propietaria Alterna");
+
+  await page.goto(`${DASHBOARD}/?view=week&person=${MARC_ID}`);
+  await expect(page.getByTestId("agenda-view-day")).toHaveAttribute(
+    "href",
+    new RegExp(`with=${MARC_ID}`),
+  );
+
+  await page.goto(`${DASHBOARD}/?view=day&with=${MARC_ID}`);
+  await expect(page.getByTestId("agenda-view-week")).toHaveAttribute(
+    "href",
+    new RegExp(`person=${MARC_ID}`),
+  );
+});

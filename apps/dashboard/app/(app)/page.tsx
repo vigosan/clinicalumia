@@ -53,6 +53,7 @@ export default async function DashboardHome({
           view={view}
           withParam=""
           personParam={personParam}
+          dayToWeekPerson=""
           isOwner={data.isOwner}
           selfId={data.selfId}
         />
@@ -72,6 +73,13 @@ export default async function DashboardHome({
   }
 
   const withParam = data.selectedColleagueIds.join(",");
+  const ownerSelectedIds = withIds.filter((id) =>
+    data.candidates.some((candidate) => candidate.id === id),
+  );
+  const dayToWeekPerson =
+    data.isOwner && ownerSelectedIds.length === 1
+      ? (ownerSelectedIds[0] ?? "")
+      : "";
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,6 +88,7 @@ export default async function DashboardHome({
         view={view}
         withParam={withParam}
         personParam=""
+        dayToWeekPerson={dayToWeekPerson}
         isOwner={data.isOwner}
         selfId={data.selfId}
       />
