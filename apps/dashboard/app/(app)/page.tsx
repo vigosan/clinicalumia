@@ -6,6 +6,10 @@ import {
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { canMarkNoShow, canMove, isUuid } from "@/lib/agenda";
+import {
+  type AppointmentEventRow,
+  historyLine,
+} from "@/lib/appointment-history";
 import { AgendaHeader } from "./agenda/AgendaHeader";
 import {
   type AppointmentDetail,
@@ -25,71 +29,15 @@ function buildHref(base: string, params: Record<string, string | undefined>) {
   return query ? `${base}?${query}` : base;
 }
 
-function timeOf(instant: string): string {
-  return madridDateTime(instant).time.slice(0, 5);
-}
-
-function formatHistoryMoment(instant: string): string {
-  const { date, time } = madridDateTime(instant);
-  return `${date.slice(8, 10)}/${date.slice(5, 7)} a las ${time.slice(0, 5)}`;
-}
-
-type AppointmentEventRow = {
-  id: string;
-  kind: "created" | "moved" | "cancelled" | "no_show" | "restored";
-  previous_starts_at: string | null;
-  previous_ends_at: string | null;
-  actor_id: string | null;
-  created_at: string;
-};
-
-function historyLine(
-  event: AppointmentEventRow,
-  index: number,
-  events: AppointmentEventRow[],
-  appointment: {
-    starts_at: string;
-    cancelled_by: "patient" | "clinic" | null;
-    cancel_reason: string;
-  },
-  nameById: Map<string, string>,
-): string {
-  const actorName = event.actor_id
-    ? (nameById.get(event.actor_id) ?? "Alguien")
-    : "Alguien";
-  const moment = formatHistoryMoment(event.created_at);
-
-  if (event.kind === "created") return `Creada por ${actorName} el ${moment}`;
-
-  if (event.kind === "moved") {
-    const nextMove = events
-      .slice(index + 1)
-      .find((candidate) => candidate.kind === "moved");
-    const toStart = nextMove
-      ? (nextMove.previous_starts_at ?? appointment.starts_at)
-      : appointment.starts_at;
-    return `Movida de ${timeOf(event.previous_starts_at ?? toStart)} a ${timeOf(toStart)} por ${actorName} el ${moment}`;
-  }
-
-  if (event.kind === "cancelled") {
-    const who =
-      appointment.cancelled_by === "patient" ? "el paciente" : "la clínica";
-    const reasonSuffix = appointment.cancel_reason
-      ? ` (${appointment.cancel_reason})`
-      : "";
-    return `Cancelada por ${who}${reasonSuffix} el ${moment}`;
-  }
-
-  if (event.kind === "no_show")
-    return `Marcada como no presentada el ${moment}`;
-
-  return `Restaurada el ${moment}`;
-}
+type AppointmentDetailResult =
+  | { status: "none" }
+  | { status: "error" }
+  | { status: "ok"; detail: AppointmentDetail };
 
 async function loadAppointmentDetail(
   appointmentId: string | null,
-): Promise<AppointmentDetail | null> {
-  if (!appointmentId) return null;
+): Promise<AppointmentDetailResult> {
+  if (!appointmentId) return { status: "none" };
   const supabase = await createClient();
 
   const { data: appt, error } = await supabase
@@ -99,9 +47,18 @@ async function loadAppointmentDetail(
     )
     .eq("id", appointmentId)
     .maybeSingle();
-  if (error || !appt || !appt.patient || !appt.service) return null;
+  if (error) return { status: "error" };
+  if (!appt?.patient || !appt.service) return { status: "none" };
 
-  const [{ data: events }, { data: directory }] = await Promise.all([
+  const durationMinutes = Math.round(
+    (new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime()) /
+      60_000,
+  );
+
+  const [
+    { data: events, error: eventsError },
+    { data: directory, error: directoryError },
+  ] = await Promise.all([
     supabase
       .from("appointment_events")
       .select(
@@ -111,6 +68,7 @@ async function loadAppointmentDetail(
       .order("created_at", { ascending: true }),
     supabase.rpc("staff_directory"),
   ]);
+  if (eventsError || directoryError) return { status: "error" };
 
   const nameById = new Map(
     (directory ?? []).map((profile) => [profile.id, profile.full_name]),
@@ -127,29 +85,32 @@ async function loadAppointmentDetail(
   const initial = madridDateTime(appt.starts_at);
 
   return {
-    id: appt.id,
-    patientId: appt.patient.id,
-    patientName: `${appt.patient.first_name} ${appt.patient.last_name}`,
-    professionalId: appt.professional_id,
-    professionalName,
-    serviceId: appt.service.id,
-    serviceName: appt.service.name,
-    durationMinutes: appt.service.duration_minutes,
-    startsAt: appt.starts_at,
-    endsAt: appt.ends_at,
-    status: appt.status,
-    notes: appt.notes,
-    priceCents: appt.price_cents,
-    canMove: canMove({ status: appt.status, starts_at: appt.starts_at }, now),
-    canMarkNoShow: canMarkNoShow(
-      { status: appt.status, starts_at: appt.starts_at },
-      now,
-    ),
-    canCancel: appt.status === "scheduled",
-    canRestore: appt.status === "no_show",
-    initialDate: initial.date,
-    initialTime: initial.time.slice(0, 5),
-    history,
+    status: "ok",
+    detail: {
+      id: appt.id,
+      patientId: appt.patient.id,
+      patientName: `${appt.patient.first_name} ${appt.patient.last_name}`,
+      professionalId: appt.professional_id,
+      professionalName,
+      serviceId: appt.service.id,
+      serviceName: appt.service.name,
+      durationMinutes,
+      startsAt: appt.starts_at,
+      endsAt: appt.ends_at,
+      status: appt.status,
+      notes: appt.notes,
+      priceCents: appt.price_cents,
+      canMove: canMove({ status: appt.status, starts_at: appt.starts_at }, now),
+      canMarkNoShow: canMarkNoShow(
+        { status: appt.status, starts_at: appt.starts_at },
+        now,
+      ),
+      canCancel: appt.status === "scheduled",
+      canRestore: appt.status === "no_show",
+      initialDate: initial.date,
+      initialTime: initial.time.slice(0, 5),
+      history,
+    },
   };
 }
 
@@ -222,9 +183,18 @@ export default async function DashboardHome({
           firstHour={data.firstHour}
           lastHour={data.lastHour}
         />
-        {appointment && (
+        {appointment.status === "error" && (
+          <Card
+            role="alert"
+            className="text-center text-danger-600 text-sm"
+            data-testid="appointment-panel-error"
+          >
+            No se ha podido cargar la cita.
+          </Card>
+        )}
+        {appointment.status === "ok" && (
           <AppointmentPanel
-            appointment={appointment}
+            appointment={appointment.detail}
             closeHref={buildHref("/", {
               date: data.date,
               view,
@@ -277,9 +247,18 @@ export default async function DashboardHome({
         firstHour={data.firstHour}
         lastHour={data.lastHour}
       />
-      {appointment && (
+      {appointment.status === "error" && (
+        <Card
+          role="alert"
+          className="text-center text-danger-600 text-sm"
+          data-testid="appointment-panel-error"
+        >
+          No se ha podido cargar la cita.
+        </Card>
+      )}
+      {appointment.status === "ok" && (
         <AppointmentPanel
-          appointment={appointment}
+          appointment={appointment.detail}
           closeHref={buildHref("/", { date: data.date, view, with: withParam })}
         />
       )}

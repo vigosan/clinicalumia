@@ -3,7 +3,13 @@
 import { Button } from "@clinicalumia/ui/button";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
-import { startTransition, useActionState, useEffect, useRef } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { moveAppointment } from "../appointments/actions";
 
@@ -28,6 +34,7 @@ export function MoveForm({
     moveAppointment,
     undefined,
   );
+  const [duration, setDuration] = useState(String(durationMinutes));
   const formRef = useRef<HTMLFormElement>(null);
   const submitGateRef = useRef(createSubmitGate());
   const dismissedStateRef = useRef(state);
@@ -74,8 +81,7 @@ export function MoveForm({
       <input type="hidden" name="patient_id" value={patientId} />
       <input type="hidden" name="service_id" value={serviceId} />
       <input type="hidden" name="professional_id" value={professionalId} />
-      <input type="hidden" name="duration_minutes" value={durationMinutes} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Fecha">
           <Input
             name="date"
@@ -92,6 +98,21 @@ export function MoveForm({
             data-testid="appointment-move-time"
             defaultValue={initialTime}
             onChange={resetConfirmation}
+          />
+        </Field>
+        <Field label="Duración (minutos)">
+          <Input
+            name="duration_minutes"
+            type="number"
+            step={5}
+            min={5}
+            max={480}
+            data-testid="appointment-move-duration"
+            value={duration}
+            onChange={(event) => {
+              setDuration(event.target.value);
+              resetConfirmation();
+            }}
           />
         </Field>
       </div>
