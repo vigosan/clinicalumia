@@ -131,10 +131,8 @@ db.push.prod: ## Aplica en producción (solo si dev ya las tiene; pide confirmac
 
 db.config.dev: ## Aplica la configuración de login (config.toml) a lumia-db-dev
 	@ref="$$(grep '^SUPABASE_PROJECT_REF=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
-	 key="$$(grep '^RESEND_API_KEY=' $(DEV_ENV) 2>/dev/null | cut -d= -f2- | tr -d '"')"; \
 	 if [ -z "$$ref" ]; then echo "Falta SUPABASE_PROJECT_REF en packages/db/.env.dev"; exit 1; fi; \
-	 if [ -z "$$key" ]; then echo "Falta RESEND_API_KEY en packages/db/.env.dev"; exit 1; fi; \
-	 cd $(DB) && RESEND_API_KEY="$$key" supabase config push --project-ref "$$ref"
+	 cd $(DB) && supabase config push --project-ref "$$ref"
 
 db.config.prod: ## Aplica la configuración de login a producción (pide confirmación)
 	@read -p "¿Aplicar config.toml en PRODUCCIÓN? Escribe 'produccion': " answer; \

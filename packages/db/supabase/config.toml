@@ -419,15 +419,6 @@ project_id = "cbyarpxrhgvmllneodoz"
 site_url = "http://localhost:3001"
 additional_redirect_urls = ["http://localhost:3001", "http://127.0.0.1:3001"]
 
-[remotes.dev.auth.email.smtp]
-enabled = true
-host = "smtp.resend.com"
-port = 465
-user = "resend"
-pass = "env(RESEND_API_KEY)"
-admin_email = "no-responder@notifications.clinicalumia.es"
-sender_name = "Clínica LUMIA"
-
 [remotes.prod]
 project_id = "xdcyltzvqaqppdguexkj"
 
