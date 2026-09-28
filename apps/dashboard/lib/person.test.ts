@@ -6,6 +6,7 @@ import {
   normalizeSearch,
   parsePersonForm,
   todayInMadrid,
+  toIlikePattern,
 } from "./person";
 
 function form(values: Record<string, string>) {
@@ -58,6 +59,25 @@ describe("normalizeSearch", () => {
 
   it("trims surrounding spaces from a plain name", () => {
     expect(normalizeSearch("  Ana  ")).toBe("ana");
+  });
+});
+
+describe("toIlikePattern", () => {
+  it("wraps a normal query with wildcards", () => {
+    expect(toIlikePattern("martinez")).toBe("%martinez%");
+  });
+
+  it("escapes a literal % so it isn't treated as a wildcard", () => {
+    expect(toIlikePattern("100%")).toBe("%100\\%%");
+  });
+
+  it("escapes a literal _ so it isn't treated as a single-character wildcard", () => {
+    expect(toIlikePattern("a_b")).toBe("%a\\_b%");
+  });
+
+  it("escapes a literal backslash before escaping % and _, so a query ending in \\ can't unescape the wildcards it's followed by", () => {
+    expect(toIlikePattern("a\\b")).toBe("%a\\\\b%");
+    expect(toIlikePattern("\\%")).toBe(`%${"\\".repeat(3)}%%`);
   });
 });
 

@@ -36,6 +36,11 @@ export function normalizeSearch(input: string): string {
   return base;
 }
 
+export function toIlikePattern(query: string): string {
+  const escaped = query.replace(/\\/g, "\\\\").replace(/[%_]/g, "\\$&");
+  return `%${escaped}%`;
+}
+
 function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }

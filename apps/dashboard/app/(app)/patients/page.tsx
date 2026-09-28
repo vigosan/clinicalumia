@@ -12,7 +12,14 @@ import {
   TableRow,
 } from "@clinicalumia/ui/table";
 import Link from "next/link";
-import { ageOn, isMinor, normalizeSearch, todayInMadrid } from "@/lib/person";
+import { patientsListState } from "@/lib/patients-list-state";
+import {
+  ageOn,
+  isMinor,
+  normalizeSearch,
+  todayInMadrid,
+  toIlikePattern,
+} from "@/lib/person";
 import { SearchBox } from "./SearchBox";
 
 export default async function PatientsPage({
@@ -36,13 +43,13 @@ export default async function PatientsPage({
     : query.is("archived_at", null);
 
   if (q) {
-    const escaped = normalizeSearch(q).replace(/[%_]/g, "\\$&");
-    query = query.ilike("search_text", `%${escaped}%`);
+    query = query.ilike("search_text", toIlikePattern(normalizeSearch(q)));
   }
 
-  const { data: people } = await query;
+  const { data: people, error } = await query;
   const patients = people ?? [];
   const today = todayInMadrid();
+  const state = patientsListState(Boolean(error), patients.length);
 
   return (
     <>
@@ -57,55 +64,75 @@ export default async function PatientsPage({
       <Card>
         <SearchBox defaultQuery={q ?? ""} defaultArchived={showArchived} />
       </Card>
-      {patients.length === 0 ? (
+      {state === "error" && (
+        <Card
+          role="alert"
+          className="text-center text-sm text-danger-600"
+          data-testid="patients-error"
+        >
+          No se ha podido cargar el listado. Recarga la página.
+        </Card>
+      )}
+      {state === "empty" && (
         <Card
           className="text-center text-sm text-ink-800"
           data-testid="patients-empty"
         >
           No se ha encontrado a nadie con esos datos.
         </Card>
-      ) : (
-        <Table aria-label="Pacientes">
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>Nombre</TableHeaderCell>
-              <TableHeaderCell>Edad</TableHeaderCell>
-              <TableHeaderCell>Teléfono</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {patients.map((person) => {
-              const minor = person.birth_date
-                ? isMinor(person.birth_date, today)
-                : false;
-              return (
-                <TableRow key={person.id} data-testid="patient-row">
-                  <TableCell className="font-medium">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span>
-                        {person.first_name} {person.last_name}
-                      </span>
-                      {minor && (
-                        <Badge tone="warning" data-testid="patient-minor">
-                          Menor
-                        </Badge>
-                      )}
-                      {!person.is_patient && (
-                        <Badge tone="outline">Tutora/Tutor</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {person.birth_date
-                      ? `${ageOn(person.birth_date, today)} años`
-                      : "—"}
-                  </TableCell>
-                  <TableCell>{person.phone ?? "—"}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+      )}
+      {state === "list" && (
+        <>
+          <Table aria-label="Pacientes">
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Nombre</TableHeaderCell>
+                <TableHeaderCell>Edad</TableHeaderCell>
+                <TableHeaderCell>Teléfono</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {patients.map((person) => {
+                const minor = person.birth_date
+                  ? isMinor(person.birth_date, today)
+                  : false;
+                return (
+                  <TableRow key={person.id} data-testid="patient-row">
+                    <TableCell className="font-medium">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>
+                          {person.first_name} {person.last_name}
+                        </span>
+                        {minor && (
+                          <Badge tone="warning" data-testid="patient-minor">
+                            Menor
+                          </Badge>
+                        )}
+                        {!person.is_patient && (
+                          <Badge tone="outline">Tutora/Tutor</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {person.birth_date
+                        ? `${ageOn(person.birth_date, today)} años`
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{person.phone ?? "—"}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          {patients.length === 50 && (
+            <p
+              className="text-sm text-ink-800"
+              data-testid="patients-truncated"
+            >
+              Se muestran los 50 primeros. Afina la búsqueda para ver más.
+            </p>
+          )}
+        </>
       )}
     </>
   );
