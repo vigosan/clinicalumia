@@ -148,7 +148,9 @@ test("double-clicking Guardar on a new unique person creates exactly one row, no
   await page.getByLabel("Nombre").fill("Persona");
   await page.getByLabel("Apellidos").fill(lastName);
   await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
-  await page.getByLabel("Teléfono").fill(`6${Date.now() % 100000000}`);
+  await page
+    .getByLabel("Teléfono")
+    .fill(`6${String(Date.now() % 1e8).padStart(8, "0")}`);
   await page.getByTestId("person-submit").dblclick();
 
   await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
