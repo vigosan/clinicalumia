@@ -404,7 +404,7 @@ export type Database = {
           id: string
           last_name: string
           matched: string[]
-          minors: string[]
+          wards: Json
         }[]
       }
       is_active_staff: { Args: never; Returns: boolean }

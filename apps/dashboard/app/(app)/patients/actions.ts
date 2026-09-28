@@ -4,6 +4,7 @@ import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parsePersonForm, todayInMadrid } from "@/lib/person";
+import type { Ward } from "@/lib/ward-label";
 
 export type PersonFormState = { error: string } | undefined;
 
@@ -12,7 +13,7 @@ export type Duplicate = {
   first_name: string;
   last_name: string;
   matched: string[];
-  minors: string[];
+  wards: Ward[];
 };
 
 function mapPersonError(error: { code?: string } | null): string | null {
@@ -76,5 +77,5 @@ export async function checkDuplicates(input: {
     p_exclude: input.exclude,
   });
   if (error) return [];
-  return data ?? [];
+  return (data as Duplicate[] | null) ?? [];
 }

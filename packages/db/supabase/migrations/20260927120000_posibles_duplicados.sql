@@ -4,7 +4,7 @@ create or replace function public.find_possible_duplicates(
   p_phone text,
   p_exclude uuid default null
 )
-returns table (id uuid, first_name text, last_name text, matched text[], minors text[])
+returns table (id uuid, first_name text, last_name text, matched text[], wards jsonb)
 language sql
 stable
 security invoker
@@ -26,11 +26,14 @@ as $$
       case when p.phone = i.phone then 'phone' end
     ], null) as matched,
     coalesce((
-      select array_agg(m.first_name || ' ' || m.last_name order by m.first_name)
+      select jsonb_agg(jsonb_build_object(
+        'name', m.first_name || ' ' || m.last_name,
+        'relationship', g.relationship::text
+      ) order by m.first_name)
       from public.guardianships g
       join public.people m on m.id = g.minor_id
       where g.guardian_id = p.id
-    ), '{}') as minors
+    ), '[]'::jsonb) as wards
   from public.people p, input i
   where p.archived_at is null
     and (p_exclude is null or p.id <> p_exclude)

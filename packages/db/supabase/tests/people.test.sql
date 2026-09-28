@@ -301,9 +301,9 @@ select is((select count(*) from public.find_possible_duplicates(null, null, '600
   'p_exclude removes the person''s own record from her own duplicate search');
 
 select is(
-  (select minors from public.find_possible_duplicates(null, null, '600444777') where id = '50000000-0000-0000-0000-0000000000e7'),
-  array['Menor DeTutora'],
-  'a guardian''s duplicate row lists the full name of the minor she is responsible for'
+  (select wards from public.find_possible_duplicates(null, null, '600444777') where id = '50000000-0000-0000-0000-0000000000e7'),
+  '[{"name": "Menor DeTutora", "relationship": "madre"}]'::jsonb,
+  'a guardian''s duplicate row lists the full name and relationship of the minor she is responsible for'
 );
 
 select pg_temp.act_as('50000000-0000-0000-0000-000000000003');

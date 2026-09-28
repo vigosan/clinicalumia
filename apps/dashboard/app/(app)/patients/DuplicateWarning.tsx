@@ -1,4 +1,5 @@
 import { Button } from "@clinicalumia/ui/button";
+import { wardsLabel } from "@/lib/ward-label";
 import type { Duplicate } from "./actions";
 
 export function DuplicateWarning({
@@ -27,8 +28,8 @@ export function DuplicateWarning({
           >
             <span className="text-[15px] text-ink-900">
               {duplicate.first_name} {duplicate.last_name}
-              {duplicate.minors.length > 0 &&
-                ` · madre de ${duplicate.minors.join(", ")}`}
+              {duplicate.wards.length > 0 &&
+                ` · ${wardsLabel(duplicate.wards)}`}
             </span>
             <Button
               type="button"
