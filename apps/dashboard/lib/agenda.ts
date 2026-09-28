@@ -1,4 +1,5 @@
 import {
+  addDays,
   isValidDate,
   isValidTime,
   madridDateTime,
@@ -224,6 +225,12 @@ export function parseAppointmentForm(
   const endWall = madridDateTime(endInstant);
   const endsAt = madridInstant(endWall.date, endWall.time);
 
+  if (
+    endWall.date !== date &&
+    !(endWall.date === addDays(date, 1) && endWall.time === "00:00")
+  )
+    return { error: "La cita tiene que empezar y terminar el mismo día." };
+
   return {
     ok: true,
     appointment: {
@@ -274,6 +281,8 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   cancelled_by_required: "Indica quién cancela la cita.",
   appointment_invalid_transition:
     "No se puede cancelar una cita marcada como no presentada.",
+  appointment_crosses_midnight:
+    "La cita tiene que empezar y terminar el mismo día.",
 };
 
 export function appointmentError(error: DbError): string {

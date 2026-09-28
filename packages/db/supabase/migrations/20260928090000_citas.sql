@@ -86,6 +86,13 @@ begin
   ) then
     raise exception 'professional_inactive' using errcode = '23514';
   end if;
+  if (new.starts_at at time zone 'Europe/Madrid')::date <> (new.ends_at at time zone 'Europe/Madrid')::date
+    and not (
+      (new.ends_at at time zone 'Europe/Madrid')::date = (new.starts_at at time zone 'Europe/Madrid')::date + 1
+      and (new.ends_at at time zone 'Europe/Madrid')::time = '00:00:00'
+    ) then
+    raise exception 'appointment_crosses_midnight' using errcode = '23514';
+  end if;
   new.price_cents := service.price_cents;
   new.vat := service.vat;
   new.status := 'scheduled';
@@ -123,6 +130,15 @@ begin
 
   if moved and (old.status <> 'scheduled' or old.starts_at <= now()) then
     raise exception 'appointment_in_past' using errcode = '23514';
+  end if;
+
+  if moved
+    and (new.starts_at at time zone 'Europe/Madrid')::date <> (new.ends_at at time zone 'Europe/Madrid')::date
+    and not (
+      (new.ends_at at time zone 'Europe/Madrid')::date = (new.starts_at at time zone 'Europe/Madrid')::date + 1
+      and (new.ends_at at time zone 'Europe/Madrid')::time = '00:00:00'
+    ) then
+    raise exception 'appointment_crosses_midnight' using errcode = '23514';
   end if;
 
   if new.status is distinct from old.status then

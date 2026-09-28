@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(81);
+select plan(86);
 
 insert into auth.users (id, email) values
   ('60000000-0000-0000-0000-000000000001', 'owner-appointments@test.local'),
@@ -203,6 +203,35 @@ select throws_ok($$
   values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
     '60000000-0000-0000-0000-0000000000b1', '2099-06-05 10:00 Europe/Madrid', '2099-06-05 18:05 Europe/Madrid')
 $$, '23514', null, 'an appointment longer than 8 hours is rejected');
+
+select throws_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-10 23:00 Europe/Madrid', '2099-06-11 00:30 Europe/Madrid')
+$$, '23514', 'appointment_crosses_midnight', 'a clinic never books across midnight; 23:00 to 00:30 the next day is refused');
+select lives_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2099-06-12 23:15 Europe/Madrid', '2099-06-13 00:00 Europe/Madrid')
+$$, 'ending exactly at the following midnight is allowed, since it does not spill into the next calendar day');
+
+select lives_ok($$
+  insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-0000000000d8', '60000000-0000-0000-0000-000000000002',
+    '60000000-0000-0000-0000-0000000000c1', '60000000-0000-0000-0000-0000000000b1',
+    '2099-06-14 10:00 Europe/Madrid', '2099-06-14 10:45 Europe/Madrid')
+$$, 'booking a future appointment to test moving it across midnight');
+select throws_ok($$
+  update public.appointments
+  set starts_at = '2099-06-14 23:30 Europe/Madrid', ends_at = '2099-06-15 00:15 Europe/Madrid'
+  where id = '60000000-0000-0000-0000-0000000000d8'
+$$, '23514', 'appointment_crosses_midnight', 'moving an appointment so it would cross midnight is refused too');
+
+select lives_ok($$
+  insert into public.appointments (professional_id, patient_id, service_id, starts_at, ends_at)
+  values ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000c1',
+    '60000000-0000-0000-0000-0000000000b1', '2026-10-25 23:30 Europe/Madrid', '2026-10-26 00:00 Europe/Madrid')
+$$, 'on the DST fall-back night, ending exactly at the following midnight is still allowed');
 
 select lives_ok($$
   insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at)

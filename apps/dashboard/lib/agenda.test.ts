@@ -532,6 +532,25 @@ describe("parseAppointmentForm", () => {
     expect(result).toHaveProperty("appointment.professional_id", "pro-9");
     expect(result).toHaveProperty("appointment.notes", "Primera visita");
   });
+
+  it("rejects a duration that would push ends_at into the next day, a clinic never books across midnight", () => {
+    expect(
+      parseAppointmentForm(
+        form({ date: "2026-07-15", time: "23:00", duration_minutes: "90" }),
+      ),
+    ).toEqual({ error: "La cita tiene que empezar y terminar el mismo día." });
+  });
+
+  it("allows a duration that ends exactly at the following midnight", () => {
+    const result = parseAppointmentForm(
+      form({ date: "2026-07-15", time: "23:15", duration_minutes: "45" }),
+    );
+    expect(result).toHaveProperty("ok", true);
+    expect(result).toHaveProperty(
+      "appointment.ends_at",
+      "2026-07-16T00:00:00+02:00",
+    );
+  });
 });
 
 describe("canMarkNoShow", () => {
@@ -636,6 +655,15 @@ describe("appointmentError", () => {
         message: "appointment_invalid_transition",
       }),
     ).toBe("No se puede cancelar una cita marcada como no presentada.");
+  });
+
+  it("maps appointment_crosses_midnight to the same-day message parseAppointmentForm uses", () => {
+    expect(
+      appointmentError({
+        code: "23514",
+        message: "appointment_crosses_midnight",
+      }),
+    ).toBe("La cita tiene que empezar y terminar el mismo día.");
   });
 
   it("maps 42501 to the forbidden-professional message", () => {
