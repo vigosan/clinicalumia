@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 
@@ -10,10 +10,35 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 const createdPersonIds: string[] = [];
+const createdUserIds: string[] = [];
+
+async function loginAsOwner(page: Page) {
+  const email = `owner-patients-${Date.now()}@test.local`;
+  const password = "lumia-segura-2026";
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  expect(error).toBeNull();
+  createdUserIds.push(data.user!.id);
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: data.user!.id,
+    email,
+    full_name: "Propietaria de prueba",
+    role: "owner",
+    is_active: true,
+  });
+  expect(profileError).toBeNull();
+  await signIn(page, DASHBOARD, email, password);
+}
 
 test.afterEach(async () => {
   if (createdPersonIds.length > 0) {
     await admin.from("people").delete().in("id", createdPersonIds.splice(0));
+  }
+  for (const id of createdUserIds.splice(0)) {
+    await admin.auth.admin.deleteUser(id);
   }
 });
 
@@ -263,4 +288,219 @@ test("editing the address of a person created by the test saves it", async ({
     .eq("id", id)
     .single();
   expect(updated?.address).toBe("Calle Nueva 22");
+});
+
+test('creating a minor patient shows "Menor sin tutor", and adding their mother through guardianOf links them both ways', async ({
+  page,
+}) => {
+  const minorLastName = `Menor${Date.now()}`;
+  const motherLastName = `Madre${Date.now()}`;
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+  await page.getByLabel("Nombre").fill("Hijo");
+  await page.getByLabel("Apellidos").fill(minorLastName);
+  await page.getByLabel("Fecha de nacimiento").fill("2015-01-01");
+  await page.getByTestId("person-submit").click();
+
+  await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
+  const minorId = page.url().split("/").pop() ?? "";
+  createdPersonIds.push(minorId);
+  await expect(page.getByTestId("patient-no-guardian")).toBeVisible();
+
+  await page.getByTestId("guardian-add").click();
+  await page.getByRole("link", { name: "Nueva persona" }).click();
+  await expect(page).toHaveURL(
+    `${DASHBOARD}/patients/new?guardianOf=${minorId}`,
+  );
+
+  await page.getByLabel("Nombre").fill("Madre");
+  await page.getByLabel("Apellidos").fill(motherLastName);
+  await page.getByTestId("guardian-relationship").selectOption("madre");
+  await page.getByTestId("guardian-primary").check();
+  await page.getByTestId("person-submit").click();
+
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);
+  await expect(page.getByTestId("patient-no-guardian")).toBeHidden();
+  const guardianRow = page
+    .getByTestId("guardian-row")
+    .filter({ hasText: motherLastName });
+  await expect(guardianRow).toBeVisible();
+  await expect(guardianRow).toContainText("Madre");
+  await expect(guardianRow).toContainText("Principal");
+
+  const { data: mother } = await admin
+    .from("people")
+    .select("id")
+    .eq("last_name", motherLastName)
+    .single();
+  const motherId = mother?.id ?? "";
+  createdPersonIds.push(motherId);
+
+  await page.goto(`${DASHBOARD}/patients/${motherId}`);
+  const wardRow = page
+    .getByTestId("ward-row")
+    .filter({ hasText: minorLastName });
+  await expect(wardRow).toBeVisible();
+});
+
+test("trying to add the minor as their own guardian shows the error", async ({
+  page,
+}) => {
+  const lastName = `Autotutor${Date.now()}`;
+  const { data, error } = await admin
+    .from("people")
+    .insert({
+      first_name: "Solo",
+      last_name: lastName,
+      is_patient: true,
+      birth_date: "2015-01-01",
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  const minorId = data!.id;
+  createdPersonIds.push(minorId);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${minorId}`);
+
+  await page.getByTestId("guardian-add").click();
+  await page.getByTestId("guardian-search").fill(lastName);
+  const option = page
+    .getByTestId("guardian-option")
+    .filter({ hasText: lastName });
+  await expect(option).toBeVisible();
+  await option.click();
+  await page.getByTestId("guardian-save").click();
+
+  await expect(page.getByTestId("person-action-error")).toHaveText(
+    "Una persona no puede ser su propio tutor.",
+  );
+});
+
+test('archiving a minor patient hides them from the list, "Ver archivados" shows them, and Recuperar brings them back', async ({
+  page,
+}) => {
+  const lastName = `ParaArchivar${Date.now()}`;
+  const { data, error } = await admin
+    .from("people")
+    .insert({
+      first_name: "Persona",
+      last_name: lastName,
+      is_patient: true,
+      birth_date: "2015-01-01",
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  const id = data!.id;
+  createdPersonIds.push(id);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${id}`);
+
+  await page.getByTestId("person-archive").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("person-archive")).toHaveText("Recuperar");
+
+  await page.goto(`${DASHBOARD}/patients`);
+  await page.getByTestId("patients-search").fill(lastName);
+  await expect(page.getByTestId("patients-empty")).toBeVisible();
+  await page.getByTestId("patients-archived").check();
+  await expect(
+    page.getByTestId("patient-row").filter({ hasText: lastName }),
+  ).toBeVisible();
+
+  await page.goto(`${DASHBOARD}/patients/${id}`);
+  await page.getByTestId("person-archive").click();
+  await expect(page.getByTestId("person-archive")).toHaveText("Archivar");
+
+  await page.goto(`${DASHBOARD}/patients`);
+  await page.getByTestId("patients-search").fill(lastName);
+  await expect(
+    page.getByTestId("patient-row").filter({ hasText: lastName }),
+  ).toBeVisible();
+});
+
+test("an employee cannot see the Eliminar button on a patient's record", async ({
+  page,
+}) => {
+  const lastName = `SinEliminar${Date.now()}`;
+  const { data, error } = await admin
+    .from("people")
+    .insert({ first_name: "Persona", last_name: lastName, is_patient: false })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdPersonIds.push(data!.id);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${data!.id}`);
+  await expect(page.getByTestId("person-delete")).toHaveCount(0);
+});
+
+test("a throwaway owner cannot delete a guardian who still has wards, but can delete the minor", async ({
+  page,
+}) => {
+  const motherLastName = `Tutora${Date.now()}`;
+  const minorLastName = `Tutelado${Date.now()}`;
+
+  const { data: mother, error: motherError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Madre",
+      last_name: motherLastName,
+      is_patient: false,
+    })
+    .select("id")
+    .single();
+  expect(motherError).toBeNull();
+  const motherId = mother!.id;
+  createdPersonIds.push(motherId);
+
+  const { data: minor, error: minorError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Hijo",
+      last_name: minorLastName,
+      is_patient: true,
+      birth_date: "2015-01-01",
+    })
+    .select("id")
+    .single();
+  expect(minorError).toBeNull();
+  const minorId = minor!.id;
+  createdPersonIds.push(minorId);
+
+  const { error: guardianshipError } = await admin
+    .from("guardianships")
+    .insert({
+      minor_id: minorId,
+      guardian_id: motherId,
+      relationship: "madre",
+      is_primary: true,
+    });
+  expect(guardianshipError).toBeNull();
+
+  await loginAsOwner(page);
+
+  await page.goto(`${DASHBOARD}/patients/${motherId}`);
+  await page.getByTestId("person-delete").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("person-action-error")).toHaveText(
+    "No se puede eliminar: tiene menores a su cargo.",
+  );
+
+  await page.goto(`${DASHBOARD}/patients/${minorId}`);
+  await page.getByTestId("person-delete").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients`);
+
+  const { data: stillThere } = await admin
+    .from("people")
+    .select("id")
+    .eq("id", minorId)
+    .maybeSingle();
+  expect(stillThere).toBeNull();
 });

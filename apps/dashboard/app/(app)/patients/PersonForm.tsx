@@ -4,6 +4,7 @@ import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
+import { Select } from "@clinicalumia/ui/select";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,6 +22,7 @@ import {
 import { createSubmitGate } from "@/lib/submit-gate";
 import { checkDuplicates, type Duplicate, savePerson } from "./actions";
 import { DuplicateWarning } from "./DuplicateWarning";
+import { RELATIONSHIP_OPTIONS } from "./relationship-options";
 
 type Person = {
   id: string;
@@ -35,7 +37,15 @@ type Person = {
   is_patient: boolean;
 };
 
-export function PersonForm({ person }: { person?: Person }) {
+type GuardianOf = { id: string; minorName: string };
+
+export function PersonForm({
+  person,
+  guardianOf,
+}: {
+  person?: Person;
+  guardianOf?: GuardianOf;
+}) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(savePerson, undefined);
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
@@ -113,6 +123,9 @@ export function PersonForm({ person }: { person?: Person }) {
       className="flex flex-col gap-5"
     >
       {person && <input type="hidden" name="id" value={person.id} />}
+      {guardianOf && (
+        <input type="hidden" name="guardian_of" value={guardianOf.id} />
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre">
           <Input name="first_name" defaultValue={person?.first_name} required />
@@ -154,8 +167,31 @@ export function PersonForm({ person }: { person?: Person }) {
       <CheckboxField
         name="is_patient"
         label="Es paciente"
-        defaultChecked={person?.is_patient ?? true}
+        defaultChecked={person?.is_patient ?? !guardianOf}
       />
+
+      {guardianOf && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Parentesco">
+            <Select
+              name="relationship"
+              defaultValue="madre"
+              data-testid="guardian-relationship"
+            >
+              {RELATIONSHIP_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <CheckboxField
+            name="is_primary"
+            label="Tutor/a principal"
+            data-testid="guardian-primary"
+          />
+        </div>
+      )}
 
       <Field label="Dirección">
         <Input name="address" defaultValue={person?.address ?? ""} />
