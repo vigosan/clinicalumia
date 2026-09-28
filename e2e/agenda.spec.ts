@@ -48,6 +48,12 @@ function futureDate(offsetDays: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+function pastDate(daysAgo: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - daysAgo);
+  return date.toISOString().slice(0, 10);
+}
+
 function isoWeekday(date: string): number {
   const jsDay = new Date(`${date}T00:00:00Z`).getUTCDay();
   return jsDay === 0 ? 7 : jsDay;
@@ -776,4 +782,199 @@ test("la propietaria elige profesional y ve los servicios de su especialidad", a
 
   await page.waitForURL(/\/\?date=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
+});
+
+test("abrir una cita del test, moverla a otra hora, la agenda la muestra en su sitio y el historial dice «Movida de…»", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(100, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Mover Panel",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await admin.from("employee_schedules").insert({
+    profile_id: employee.id,
+    weekday: isoWeekday(date),
+    starts_at: "09:00",
+    ends_at: "20:00",
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await expect(page.getByTestId("appointment-panel")).toBeVisible();
+  await page.getByTestId("appointment-move-time").fill("14:00");
+  await page.getByTestId("appointment-move").click();
+
+  await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
+  await expect(
+    columnFor(page, employee.id).getByTestId("appointment-block"),
+  ).toContainText("14:00");
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Movida de",
+  );
+});
+
+test("cancelar como «paciente» con motivo la quita de la agenda y el historial dice «Cancelada por el paciente»", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(101, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Cancelar Panel",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await page.getByTestId("appointment-cancel").click();
+  await page.getByTestId("cancel-by").selectOption("patient");
+  await page.getByTestId("cancel-reason").fill("Se encontraba mal");
+  await page.getByTestId("cancel-confirm").click();
+
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Cancelada por el paciente",
+  );
+  await expect(
+    columnFor(page, employee.id).getByTestId("appointment-block"),
+  ).toHaveCount(0);
+});
+
+test("en una cita pasada, «No se presentó» la atenúa y «Deshacer» la devuelve", async ({
+  page,
+}) => {
+  const date = pastDate(120);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional No Presentado Panel",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await page.getByTestId("appointment-no-show").click();
+  await page.getByTestId("confirm-action").click();
+
+  await expect(
+    columnFor(page, employee.id).getByTestId("appointment-block"),
+  ).toHaveClass(/opacity-60/);
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Marcada como no presentada",
+  );
+
+  await page.getByTestId("appointment-restore").click();
+
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Restaurada",
+  );
+  await expect(
+    columnFor(page, employee.id).getByTestId("appointment-block"),
+  ).not.toHaveClass(/opacity-60/);
+});
+
+test("en una cita futura no aparece «No se presentó»", async ({ page }) => {
+  const date = futureDate(112);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Futura Panel",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await expect(page.getByTestId("appointment-panel")).toBeVisible();
+  await expect(page.getByTestId("appointment-no-show")).toHaveCount(0);
+});
+
+test("hacer doble clic en confirmar cancelación crea un solo evento", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(102, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Doble Clic Cancelar",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await page.getByTestId("appointment-cancel").click();
+  await page.getByTestId("cancel-by").selectOption("clinic");
+  await page.getByTestId("cancel-confirm").dblclick();
+
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Cancelada por la clínica",
+  );
+
+  const { data, error } = await admin
+    .from("appointment_events")
+    .select("id")
+    .eq("appointment_id", appointmentId)
+    .eq("kind", "cancelled");
+  expect(error).toBeNull();
+  expect(data).toHaveLength(1);
+});
+
+test("un empleado no ve el panel de una cita de otro profesional", async ({
+  page,
+}) => {
+  const date = futureDate(113);
+  const appointmentId = await createAppointment({
+    professionalId: MARC_ID,
+    patientId: ELENA_ID,
+    serviceId: FISIOTERAPIA_SERVICE_ID,
+    date,
+    time: "16:00",
+    endTime: "17:00",
+  });
+
+  await loginAsThrowawayEmployee(page, "Profesional Sin Acceso Panel");
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await expect(page.getByTestId("appointment-panel")).toHaveCount(0);
 });
