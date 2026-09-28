@@ -35,7 +35,17 @@ async function loginAsOwner(page: Page) {
 
 test.afterEach(async () => {
   if (createdPersonIds.length > 0) {
-    await admin.from("people").delete().in("id", createdPersonIds.splice(0));
+    const ids = [...createdPersonIds];
+    const { error: guardianshipsError } = await admin
+      .from("guardianships")
+      .delete()
+      .or(`minor_id.in.(${ids.join(",")}),guardian_id.in.(${ids.join(",")})`);
+    expect(guardianshipsError).toBeNull();
+    const { error: peopleError } = await admin
+      .from("people")
+      .delete()
+      .in("id", createdPersonIds.splice(0));
+    expect(peopleError).toBeNull();
   }
   for (const id of createdUserIds.splice(0)) {
     await admin.auth.admin.deleteUser(id);
