@@ -15,6 +15,7 @@ const MARC_ID = "a0000000-0000-0000-0000-000000000003";
 const LAURA_ID = "a0000000-0000-0000-0000-000000000002";
 const JORGE_ID = "a0000000-0000-0000-0000-000000000604";
 const ELENA_ID = "a0000000-0000-0000-0000-000000000605";
+const NORA_ID = "a0000000-0000-0000-0000-000000000603";
 const PSICOLOGIA_SPECIALTY_ID = "a0000000-0000-0000-0000-00000000001b";
 const PSICOLOGIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005b1";
 const FISIOTERAPIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005c1";
@@ -45,6 +46,19 @@ function futureDate(offsetDays: number): string {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + offsetDays);
   return date.toISOString().slice(0, 10);
+}
+
+function isoWeekday(date: string): number {
+  const jsDay = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return jsDay === 0 ? 7 : jsDay;
+}
+
+function dateWithWeekday(minOffsetDays: number, weekdays: number[]): string {
+  let offset = minOffsetDays;
+  while (!weekdays.includes(isoWeekday(futureDate(offset)))) {
+    offset += 1;
+  }
+  return futureDate(offset);
 }
 
 async function createAppointment({
@@ -540,4 +554,226 @@ test("una ausencia de varios días no impide ver una cita normal ese mismo día"
   await expect(
     weekDayFor(page, middleDate).getByTestId("appointment-block"),
   ).toContainText("Jorge Ruiz Pérez");
+});
+
+async function selectNora(page: Page) {
+  await page.getByTestId("patient-search").fill("nora");
+  await page.getByTestId("patient-option").filter({ hasText: "Nora" }).click();
+  await expect(page.getByTestId("patient-selected")).toContainText("Nora");
+}
+
+function appointmentIdFrom(page: Page): string {
+  const id = new URL(page.url()).searchParams.get("appointment");
+  expect(id).toBeTruthy();
+  return id ?? "";
+}
+
+test("desde un hueco de mañana, buscar «nora», elegir servicio y guardar crea la cita y aparece en la agenda", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(60, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Cita Mañana",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const { error: scheduleError } = await admin
+    .from("employee_schedules")
+    .insert({
+      profile_id: employee.id,
+      weekday: isoWeekday(date),
+      starts_at: "09:00",
+      ends_at: "14:00",
+    });
+  expect(scheduleError).toBeNull();
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=10:00&professional=${employee.id}`,
+  );
+
+  await selectNora(page);
+  await page
+    .getByTestId("appointment-service")
+    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await page.getByTestId("appointment-submit").click();
+
+  await page.waitForURL(/\/\?date=/);
+  createdAppointmentIds.push(appointmentIdFrom(page));
+
+  await expect(
+    columnFor(page, employee.id).getByTestId("appointment-block"),
+  ).toContainText("Nora");
+});
+
+test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(61, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Límite",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await admin.from("employee_schedules").insert({
+    profile_id: employee.id,
+    weekday: isoWeekday(date),
+    starts_at: "15:00",
+    ends_at: "21:00",
+  });
+  await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "16:10",
+    endTime: "16:55",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=16:55&professional=${employee.id}`,
+  );
+  await selectNora(page);
+  await page
+    .getByTestId("appointment-service")
+    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await page.getByTestId("appointment-submit").click();
+
+  await page.waitForURL(/\/\?date=/);
+  createdAppointmentIds.push(appointmentIdFrom(page));
+});
+
+test("una cita a las 16:50 contra una de 16:10 a 16:55 da el error de solape y conserva lo escrito", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(62, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Solape",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await admin.from("employee_schedules").insert({
+    profile_id: employee.id,
+    weekday: isoWeekday(date),
+    starts_at: "15:00",
+    ends_at: "21:00",
+  });
+  await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "16:10",
+    endTime: "16:55",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=16:50&professional=${employee.id}`,
+  );
+  await selectNora(page);
+  await page
+    .getByTestId("appointment-service")
+    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await page.getByTestId("appointment-notes").fill("Nota de prueba de solape");
+  await page.getByTestId("appointment-submit").click();
+
+  await expect(page.getByTestId("appointment-error")).toContainText(
+    "Profesional Solape ya tiene una cita de 16:10 a 16:55.",
+  );
+  await expect(page.getByTestId("patient-selected")).toContainText("Nora");
+  await expect(page.getByTestId("appointment-notes")).toHaveValue(
+    "Nota de prueba de solape",
+  );
+});
+
+test("un sábado da el aviso «Queda fuera del horario» y, tras «Dar la cita igualmente», se guarda", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(60, [6]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Sábado",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=11:00&professional=${employee.id}`,
+  );
+  await selectNora(page);
+  await page
+    .getByTestId("appointment-service")
+    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await page.getByTestId("appointment-submit").click();
+
+  await expect(page.getByTestId("appointment-warnings")).toContainText(
+    "Queda fuera del horario",
+  );
+  await expect(page).toHaveURL(/\/appointments\/new\?/);
+
+  await page.getByTestId("appointment-confirm").click();
+
+  await page.waitForURL(/\/\?date=/);
+  createdAppointmentIds.push(appointmentIdFrom(page));
+});
+
+test("hacer doble clic en Guardar crea una sola cita", async ({ page }) => {
+  const date = dateWithWeekday(63, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Doble Clic",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await admin.from("employee_schedules").insert({
+    profile_id: employee.id,
+    weekday: isoWeekday(date),
+    starts_at: "09:00",
+    ends_at: "14:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=10:00&professional=${employee.id}`,
+  );
+  await selectNora(page);
+  await page
+    .getByTestId("appointment-service")
+    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await page.getByTestId("appointment-submit").dblclick();
+
+  await page.waitForURL(/\/\?date=/);
+  createdAppointmentIds.push(appointmentIdFrom(page));
+
+  const { data, error } = await admin
+    .from("appointments")
+    .select("id")
+    .eq("professional_id", employee.id)
+    .eq("patient_id", NORA_ID)
+    .neq("status", "cancelled");
+  expect(error).toBeNull();
+  expect(data).toHaveLength(1);
+});
+
+test("la propietaria elige profesional y ve los servicios de su especialidad", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(90, [1, 2, 3, 4, 5]);
+  await loginAsThrowawayOwner(page, "Propietaria Cita");
+  await page.goto(`${DASHBOARD}/appointments/new?date=${date}&time=16:00`);
+
+  await page.getByTestId("appointment-professional").selectOption(MARC_ID);
+  await expect(page.getByTestId("appointment-service")).toContainText(
+    "Sesión individual de fisioterapia",
+  );
+
+  await selectNora(page);
+  await page
+    .getByTestId("appointment-service")
+    .selectOption(FISIOTERAPIA_SERVICE_ID);
+  await page.getByTestId("appointment-submit").click();
+
+  await page.waitForURL(/\/\?date=/);
+  createdAppointmentIds.push(appointmentIdFrom(page));
 });
