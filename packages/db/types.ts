@@ -34,9 +34,31 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          ip_hash: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          ip_hash: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          ip_hash?: string
+        }
+        Relationships: []
+      }
       appointment_events: {
         Row: {
           actor_id: string | null
+          actor_kind: Database["public"]["Enums"]["actor_kind"]
           appointment_id: string
           created_at: string
           id: string
@@ -46,6 +68,7 @@ export type Database = {
         }
         Insert: {
           actor_id?: string | null
+          actor_kind?: Database["public"]["Enums"]["actor_kind"]
           appointment_id: string
           created_at?: string
           id?: string
@@ -55,6 +78,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string | null
+          actor_kind?: Database["public"]["Enums"]["actor_kind"]
           appointment_id?: string
           created_at?: string
           id?: string
@@ -81,6 +105,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          booked_by_account: string | null
           cancel_reason: string
           cancelled_at: string | null
           cancelled_by:
@@ -92,7 +117,11 @@ export type Database = {
           id: string
           modality: Database["public"]["Enums"]["appointment_modality"]
           notes: string
+          origin: Database["public"]["Enums"]["appointment_origin"]
           patient_id: string
+          payment_amount_cents: number
+          payment_required: Database["public"]["Enums"]["booking_payment"]
+          payment_status: Database["public"]["Enums"]["payment_status"]
           price_cents: number
           professional_id: string
           service_id: string
@@ -102,6 +131,7 @@ export type Database = {
           vat: Database["public"]["Enums"]["vat_treatment"]
         }
         Insert: {
+          booked_by_account?: string | null
           cancel_reason?: string
           cancelled_at?: string | null
           cancelled_by?:
@@ -113,7 +143,11 @@ export type Database = {
           id?: string
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string
+          origin?: Database["public"]["Enums"]["appointment_origin"]
           patient_id: string
+          payment_amount_cents?: number
+          payment_required?: Database["public"]["Enums"]["booking_payment"]
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           price_cents?: number
           professional_id: string
           service_id: string
@@ -123,6 +157,7 @@ export type Database = {
           vat?: Database["public"]["Enums"]["vat_treatment"]
         }
         Update: {
+          booked_by_account?: string | null
           cancel_reason?: string
           cancelled_at?: string | null
           cancelled_by?:
@@ -134,7 +169,11 @@ export type Database = {
           id?: string
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string
+          origin?: Database["public"]["Enums"]["appointment_origin"]
           patient_id?: string
+          payment_amount_cents?: number
+          payment_required?: Database["public"]["Enums"]["booking_payment"]
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           price_cents?: number
           professional_id?: string
           service_id?: string
@@ -177,6 +216,8 @@ export type Database = {
       clinic_settings: {
         Row: {
           address_line: string
+          booking_horizon_days: number
+          booking_min_notice_hours: number
           cancellation_hours: number
           city: string
           email: string
@@ -185,6 +226,7 @@ export type Database = {
           invoice_prefix: string
           legal_name: string
           logo_path: string | null
+          online_payments_enabled: boolean
           phone: string
           postal_code: string
           province: string
@@ -197,6 +239,8 @@ export type Database = {
         }
         Insert: {
           address_line?: string
+          booking_horizon_days?: number
+          booking_min_notice_hours?: number
           cancellation_hours?: number
           city?: string
           email?: string
@@ -205,6 +249,7 @@ export type Database = {
           invoice_prefix?: string
           legal_name?: string
           logo_path?: string | null
+          online_payments_enabled?: boolean
           phone?: string
           postal_code?: string
           province?: string
@@ -217,6 +262,8 @@ export type Database = {
         }
         Update: {
           address_line?: string
+          booking_horizon_days?: number
+          booking_min_notice_hours?: number
           cancellation_hours?: number
           city?: string
           email?: string
@@ -225,6 +272,7 @@ export type Database = {
           invoice_prefix?: string
           legal_name?: string
           logo_path?: string | null
+          online_payments_enabled?: boolean
           phone?: string
           postal_code?: string
           province?: string
@@ -339,6 +387,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      patient_accounts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          privacy_accepted_at: string | null
+          privacy_version: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
+        }
+        Relationships: []
       }
       people: {
         Row: {
@@ -574,6 +646,7 @@ export type Database = {
       }
     }
     Enums: {
+      actor_kind: "staff" | "patient"
       appointment_canceller: "patient" | "clinic"
       appointment_event_kind:
         | "created"
@@ -582,9 +655,11 @@ export type Database = {
         | "no_show"
         | "restored"
       appointment_modality: "in_person" | "online"
+      appointment_origin: "staff" | "web"
       appointment_status: "scheduled" | "cancelled" | "no_show"
       booking_payment: "none" | "fixed" | "percent" | "full"
       guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
+      payment_status: "not_required" | "pending" | "paid" | "refunded"
       user_role: "owner" | "employee"
       vat_treatment: "exempt" | "standard_21"
     }
@@ -717,6 +792,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      actor_kind: ["staff", "patient"],
       appointment_canceller: ["patient", "clinic"],
       appointment_event_kind: [
         "created",
@@ -726,9 +802,11 @@ export const Constants = {
         "restored",
       ],
       appointment_modality: ["in_person", "online"],
+      appointment_origin: ["staff", "web"],
       appointment_status: ["scheduled", "cancelled", "no_show"],
       booking_payment: ["none", "fixed", "percent", "full"],
       guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
+      payment_status: ["not_required", "pending", "paid", "refunded"],
       user_role: ["owner", "employee"],
       vat_treatment: ["exempt", "standard_21"],
     },
