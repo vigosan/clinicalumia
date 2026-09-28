@@ -356,6 +356,83 @@ test('creating a minor patient shows "Menor sin tutor", and adding their mother 
   await expect(wardRow).toBeVisible();
 });
 
+test('in the guardianOf flow, "Usar esta persona" links the existing person as guardian instead of creating a new one', async ({
+  page,
+}) => {
+  const minorLastName = `MenorUsar${Date.now()}`;
+  const existingLastName = `ExistenteUsar${Date.now()}`;
+  const phone = `6${String(Date.now() % 1e8).padStart(8, "0")}`;
+
+  const { data: minor, error: minorError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Hijo",
+      last_name: minorLastName,
+      is_patient: true,
+      birth_date: "2015-01-01",
+    })
+    .select("id")
+    .single();
+  expect(minorError).toBeNull();
+  const minorId = minor!.id;
+  createdPersonIds.push(minorId);
+
+  const { data: existing, error: existingError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Existente",
+      last_name: existingLastName,
+      is_patient: false,
+      phone,
+    })
+    .select("id")
+    .single();
+  expect(existingError).toBeNull();
+  const existingId = existing!.id;
+  createdPersonIds.push(existingId);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new?guardianOf=${minorId}`);
+
+  await page.getByLabel("Nombre").fill("Otra");
+  await page.getByLabel("Apellidos").fill(`NoCreada${Date.now()}`);
+  await page.getByTestId("guardian-relationship").selectOption("madre");
+  await page.getByTestId("guardian-primary").check();
+  const phoneField = page.getByLabel("Teléfono");
+  await phoneField.fill(phone);
+  await phoneField.blur();
+
+  const warning = page.getByTestId("duplicate-warning");
+  await expect(warning).toBeVisible();
+  await warning
+    .locator("li")
+    .filter({ hasText: existingLastName })
+    .getByTestId("duplicate-use")
+    .click();
+
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);
+  const guardianRow = page
+    .getByTestId("guardian-row")
+    .filter({ hasText: existingLastName });
+  await expect(guardianRow).toBeVisible();
+  await expect(guardianRow).toContainText("Madre");
+  await expect(guardianRow).toContainText("Principal");
+
+  const { data: guardianship } = await admin
+    .from("guardianships")
+    .select("guardian_id, is_primary")
+    .eq("minor_id", minorId)
+    .single();
+  expect(guardianship).toEqual({ guardian_id: existingId, is_primary: true });
+
+  const { data: notCreated } = await admin
+    .from("people")
+    .select("id")
+    .eq("phone", phone)
+    .neq("id", existingId);
+  expect(notCreated).toEqual([]);
+});
+
 test("the guardian picker excludes the ficha's own person and people already added as guardians", async ({
   page,
 }) => {

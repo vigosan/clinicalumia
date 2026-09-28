@@ -14,13 +14,20 @@ import {
   useEffect,
   useRef,
   useState,
+  useTransition,
 } from "react";
 import {
   createDuplicateChecker,
   type DuplicateFields,
 } from "@/lib/duplicate-checker";
 import { createSubmitGate } from "@/lib/submit-gate";
-import { checkDuplicates, type Duplicate, savePerson } from "./actions";
+import type { Ward } from "@/lib/ward-label";
+import {
+  addGuardian,
+  checkDuplicates,
+  type Duplicate,
+  savePerson,
+} from "./actions";
 import { DuplicateWarning } from "./DuplicateWarning";
 import { RELATIONSHIP_OPTIONS } from "./relationship-options";
 
@@ -50,6 +57,8 @@ export function PersonForm({
   const [state, formAction, pending] = useActionState(savePerson, undefined);
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
   const [checking, setChecking] = useState(false);
+  const [useExistingError, setUseExistingError] = useState<string | null>(null);
+  const [usingExisting, startUsingExisting] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkerRef = useRef(
@@ -93,6 +102,38 @@ export function PersonForm({
       void resolveDuplicates().catch(() => {});
     }, 300);
   }
+
+  function handleUseExisting(id: string) {
+    if (!guardianOf) {
+      router.push(`/patients/${id}`);
+      return;
+    }
+    setUseExistingError(null);
+    const relationship = String(
+      new FormData(formRef.current ?? undefined).get("relationship") ?? "otro",
+    ) as Ward["relationship"];
+    const isPrimary =
+      new FormData(formRef.current ?? undefined).get("is_primary") === "on";
+    startUsingExisting(async () => {
+      const result = await addGuardian(
+        guardianOf.id,
+        id,
+        relationship,
+        isPrimary,
+      );
+      if ("error" in result) {
+        setUseExistingError(result.error);
+        return;
+      }
+      router.push(`/patients/${guardianOf.id}`);
+    });
+  }
+
+  const cancelHref = person
+    ? `/patients/${person.id}`
+    : guardianOf
+      ? `/patients/${guardianOf.id}`
+      : "/patients";
 
   return (
     <form
@@ -204,7 +245,7 @@ export function PersonForm({
       {duplicates.length > 0 && (
         <DuplicateWarning
           duplicates={duplicates}
-          onUseExisting={(id) => router.push(`/patients/${id}`)}
+          onUseExisting={handleUseExisting}
           onContinue={() => {
             checkerRef.current.markResolved(currentFields(), []);
             setDuplicates([]);
@@ -212,26 +253,26 @@ export function PersonForm({
         />
       )}
 
-      {state?.error && (
+      {(state?.error || useExistingError) && (
         <p
           role="alert"
           data-testid="person-error"
           className="text-[13px] text-danger-600"
         >
-          {state.error}
+          {state?.error ?? useExistingError}
         </p>
       )}
 
       <div className="flex flex-wrap gap-2.5">
         <Button
           type="submit"
-          disabled={pending || checking}
+          disabled={pending || checking || usingExisting}
           data-testid="person-submit"
         >
           {pending ? "Guardando…" : "Guardar"}
         </Button>
         <Button asChild variant="secondary">
-          <Link href="/patients">Cancelar</Link>
+          <Link href={cancelHref}>Cancelar</Link>
         </Button>
       </div>
     </form>
