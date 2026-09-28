@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const insertResult: {
   data: { id: string } | null;
-  error: { code: string } | null;
+  error: { code: string; message?: string } | null;
 } = { data: null, error: null };
 const updateResult: {
   data: { id: string }[] | null;
@@ -73,11 +73,26 @@ describe("savePerson", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("reports the DNI message when the tax id already belongs to someone else", async () => {
-    insertResult.error = { code: "23505" };
+  it("reports the DNI message when the 23505 error names the people_tax_id_key constraint", async () => {
+    insertResult.error = {
+      code: "23505",
+      message:
+        'duplicate key value violates unique constraint "people_tax_id_key"',
+    };
     expect(
       await savePerson(undefined, personForm({ tax_id: "12345678Z" })),
     ).toEqual({ error: "Ya existe una persona con ese DNI/NIE." });
+  });
+
+  it("reports the generic message for a 23505 error that names a different constraint", async () => {
+    insertResult.error = {
+      code: "23505",
+      message:
+        'duplicate key value violates unique constraint "some_other_key"',
+    };
+    expect(
+      await savePerson(undefined, personForm({ tax_id: "12345678Z" })),
+    ).toEqual({ error: "No se ha podido guardar." });
   });
 
   it("reports the permission message when an edit does not affect any row", async () => {

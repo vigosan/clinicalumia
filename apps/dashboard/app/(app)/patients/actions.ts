@@ -16,9 +16,16 @@ export type Duplicate = {
   wards: Ward[];
 };
 
-function mapPersonError(error: { code?: string } | null): string | null {
+function mapPersonError(
+  error: { code?: string; message?: string; details?: string } | null,
+): string | null {
   if (!error) return null;
-  if (error.code === "23505") return "Ya existe una persona con ese DNI/NIE.";
+  if (error.code === "23505") {
+    const text = `${error.message ?? ""} ${error.details ?? ""}`;
+    if (text.includes("people_tax_id_key"))
+      return "Ya existe una persona con ese DNI/NIE.";
+    return "No se ha podido guardar.";
+  }
   if (error.code === "23514")
     return "Revisa los datos: hay un campo no válido.";
   if (error.code === "42501") return "No tienes permiso para hacer esto.";
