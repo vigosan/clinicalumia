@@ -2,7 +2,6 @@ import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import {
-  DEV_TOTP_SECRET,
   signIn,
   submitTotpCode,
   totpCode,
@@ -109,24 +108,32 @@ test("recovering a password with a factor already active asks for the code befor
 test("an open redirect on the challenge's next lands you at this app's home", async ({
   page,
 }) => {
-  await loginToChallenge(
-    page,
-    "psicologia@lumia.test",
-    "lumia-desarrollo-2026",
-  );
+  const { email, password } = await createEmployee();
+  const secret = await signIn(page, "http://localhost:3001", email, password);
+  expect(secret).toBeTruthy();
+  await page.getByTestId("logout").click();
+
+  await loginToChallenge(page, email, password);
   await page.goto("/auth/dos-pasos?next=//evil.com");
-  await submitTotpCode(page, DEV_TOTP_SECRET);
+  await submitTotpCode(page, secret!);
 
   await expect(page).toHaveURL("http://localhost:3001/");
   await expect(page.getByTestId("logout")).toBeVisible();
 });
 
-test("a session that only passed the password sees no specialties until it passes the code", async () => {
+test("a session that only passed the password sees no specialties until it passes the code", async ({
+  page,
+}) => {
+  const { email, password } = await createEmployee();
+  const secret = await signIn(page, "http://localhost:3001", email, password);
+  expect(secret).toBeTruthy();
+  await page.getByTestId("logout").click();
+
   const supabase = createClient(API_URL, anonKey);
   const { data: signInData, error: signInError } =
     await supabase.auth.signInWithPassword({
-      email: "psicologia@lumia.test",
-      password: "lumia-desarrollo-2026",
+      email,
+      password,
     });
   expect(signInError).toBeNull();
   const aal1Token = signInData.session!.access_token;
@@ -141,13 +148,13 @@ test("a session that only passed the password sees no specialties until it passe
   expect(factor).toBeTruthy();
   let { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
     factorId: factor!.id,
-    code: totpCode(DEV_TOTP_SECRET),
+    code: totpCode(secret!),
   });
   if (verifyError) {
-    await waitForNextTotpWindow(DEV_TOTP_SECRET);
+    await waitForNextTotpWindow(secret!);
     ({ error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
       factorId: factor!.id,
-      code: totpCode(DEV_TOTP_SECRET),
+      code: totpCode(secret!),
     }));
   }
   expect(verifyError).toBeNull();
