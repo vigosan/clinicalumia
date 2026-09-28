@@ -43,7 +43,7 @@ export default async function DashboardLayout({
       }
       section="Clínica"
       nav={[
-        { href: "/", label: "Inicio" },
+        { href: "/", label: "Agenda" },
         { href: "/patients", label: "Pacientes" },
       ]}
       user={{
