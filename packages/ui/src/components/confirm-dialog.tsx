@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertDialog } from "radix-ui";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Button } from "./button";
 
 export function ConfirmDialog({
@@ -10,6 +10,11 @@ export function ConfirmDialog({
   description,
   confirmLabel,
   cancelLabel = "Cancelar",
+  confirmTestId = "confirm-action",
+  open,
+  onOpenChange,
+  closeOnConfirm = true,
+  children,
   onConfirm,
 }: {
   trigger: ReactElement;
@@ -17,10 +22,15 @@ export function ConfirmDialog({
   description: string;
   confirmLabel: string;
   cancelLabel?: string;
+  confirmTestId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  closeOnConfirm?: boolean;
+  children?: ReactNode;
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog.Root>
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-50 bg-ink-900/30" />
@@ -31,22 +41,35 @@ export function ConfirmDialog({
           <AlertDialog.Description className="text-[15px] text-ink-800">
             {description}
           </AlertDialog.Description>
+          {children}
           <div className="flex justify-end gap-2">
             <AlertDialog.Cancel asChild>
               <Button variant="secondary" size="sm">
                 {cancelLabel}
               </Button>
             </AlertDialog.Cancel>
-            <AlertDialog.Action asChild>
+            {closeOnConfirm ? (
+              <AlertDialog.Action asChild>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  data-testid={confirmTestId}
+                  onClick={onConfirm}
+                >
+                  {confirmLabel}
+                </Button>
+              </AlertDialog.Action>
+            ) : (
               <Button
+                type="button"
                 variant="danger"
                 size="sm"
-                data-testid="confirm-action"
+                data-testid={confirmTestId}
                 onClick={onConfirm}
               >
                 {confirmLabel}
               </Button>
-            </AlertDialog.Action>
+            )}
           </div>
         </AlertDialog.Content>
       </AlertDialog.Portal>
