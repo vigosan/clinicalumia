@@ -192,3 +192,19 @@ $$;
 
 revoke all on function public.calendar_feed(text) from public;
 grant execute on function public.calendar_feed(text) to anon, authenticated;
+
+create or replace function public.calendar_owner(p_token text)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select full_name
+  from public.profiles
+  where calendar_token = p_token
+    and is_active;
+$$;
+
+revoke all on function public.calendar_owner(text) from public;
+grant execute on function public.calendar_owner(text) to anon, authenticated;

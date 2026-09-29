@@ -728,6 +728,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      calendar_owner: { Args: { p_token: string }; Returns: string }
       cancel_my_appointment: {
         Args: { p_appointment_id: string }
         Returns: undefined

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(57);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -197,6 +197,8 @@ where id = '88000000-0000-0000-0000-0000000000e3';
 select is(pg_get_function_result('public.calendar_feed(text)'::regprocedure),
   'TABLE(appointment_id uuid, starts_at timestamp with time zone, ends_at timestamp with time zone, updated_at timestamp with time zone, summary text)',
   'calendar_feed gives the calendar only the time and a short summary of each appointment');
+select is(pg_get_function_result('public.calendar_owner(text)'::regprocedure), 'text',
+  'calendar_owner reveals nothing about the professional but her name, to title the calendar');
 
 select pg_temp.act_as('88000000-0000-0000-0000-000000000021');
 select set_config('lumia_test.token_a', public.regenerate_my_calendar_token(), true);
@@ -241,7 +243,17 @@ select is((select count(*) from public.calendar_feed(null)), 0::bigint,
   'a missing token never matches the employees who have no token');
 select is((select count(*) from public.calendar_feed('token-de-una-inactiva-token-de-una-inactiva')), 0::bigint,
   'the token of a deactivated employee shows nothing even if it is still stored');
+select is(public.calendar_owner(current_setting('lumia_test.token_a')), 'Empleada A Calendario',
+  'a valid link names its owner, so the calendar app titles it with her name');
+select is(public.calendar_owner('estoNoEsUnTokenDeVerdadEstoNoEsUnTokenDeVer'), null,
+  'a made-up token has no owner, so the link answers not found instead of an empty calendar');
+select is(public.calendar_owner(null), null,
+  'a missing token never matches the employees who have no token');
+select is(public.calendar_owner('token-de-una-inactiva-token-de-una-inactiva'), null,
+  'the link of a deactivated employee is not found even if the token is still stored');
 reset role;
+select is(has_function_privilege('anon', 'public.calendar_owner(text)', 'execute'), true,
+  'calendar apps check the link without a session, so anon can execute calendar_owner');
 select is(has_function_privilege('anon', 'public.calendar_feed(text)', 'execute'), true,
   'calendar apps fetch the feed without a session, so anon can execute calendar_feed');
 select is(has_function_privilege('anon', 'public.my_calendar_token()', 'execute'), false,
@@ -254,6 +266,16 @@ select is((select count(*) from public.calendar_feed(current_setting('lumia_test
   'after regenerating, a leaked old link stops showing appointments at once');
 select is((select count(*) from public.calendar_feed(current_setting('lumia_test.token_b'))), 2::bigint,
   'the new link shows her appointments');
+select is(public.calendar_owner(current_setting('lumia_test.token_a')), null,
+  'after regenerating, the old link is not found at all');
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000020');
+select set_config('lumia_test.token_owner', public.regenerate_my_calendar_token(), true);
+reset role;
+set local role anon;
+select is(public.calendar_owner(current_setting('lumia_test.token_owner')), 'Propietaria Calendario',
+  'a valid link with no appointments still has an owner, so it serves an empty calendar rather than not found');
+reset role;
 
 select pg_temp.act_as('88000000-0000-0000-0000-000000000022');
 select throws_ok($$ select public.revoke_calendar_token('88000000-0000-0000-0000-000000000021') $$, '42501', null,
