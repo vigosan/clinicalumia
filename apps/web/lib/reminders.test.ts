@@ -2,12 +2,16 @@ import { madridInstant } from "@clinicalumia/api/madrid-time";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendEmail = vi.fn();
-vi.mock("@clinicalumia/api/email", () => ({ sendEmail }));
+vi.mock("@clinicalumia/api/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@clinicalumia/api/email")>()),
+  sendEmail,
+}));
 
 const { patientIcs, reminderEmail, sendDailyReminders } = await import(
   "./reminders"
 );
 const { site } = await import("./site");
+const { EmailRateLimitError } = await import("@clinicalumia/api/email");
 
 type Candidate = Parameters<typeof reminderEmail>[0];
 type Row = Record<string, unknown>;
@@ -30,6 +34,7 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
 let candidates: Candidate[];
 let reminders: Row[];
 const rpc = vi.fn();
+const wait = vi.fn(async (_ms: number) => {});
 
 function matches(row: Row, conditions: ((row: Row) => boolean)[]) {
   return conditions.every((condition) => condition(row));
@@ -107,6 +112,7 @@ beforeEach(() => {
   candidates = [];
   reminders = [];
   rpc.mockReset();
+  wait.mockClear();
   sendEmail.mockReset();
   sendEmail.mockResolvedValue(undefined);
 });
@@ -181,6 +187,7 @@ describe("sendDailyReminders", () => {
     await sendDailyReminders({
       admin: fakeAdmin(),
       now: new Date("2026-10-24T22:30:00Z"),
+      wait,
     });
 
     expect(rpc).toHaveBeenCalledWith("reminder_candidates", {
@@ -193,7 +200,7 @@ describe("sendDailyReminders", () => {
       candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
     ];
 
-    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
     expect(sendEmail).toHaveBeenCalledTimes(2);
     expect(sendEmail.mock.calls.map(([email]) => email.to)).toEqual([
@@ -230,7 +237,7 @@ describe("sendDailyReminders", () => {
     ];
     sendEmail.mockRejectedValueOnce(new Error("buzón inexistente"));
 
-    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
     expect(sendEmail.mock.calls.map(([email]) => email.to)).toEqual([
       "madre@example.com",
@@ -255,7 +262,7 @@ describe("sendDailyReminders", () => {
       atSend.push(logged().map((row) => ({ ...row })));
     });
 
-    await sendDailyReminders({ admin: fakeAdmin(), now });
+    await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
     expect(atSend).toEqual([
       [
@@ -281,7 +288,7 @@ describe("sendDailyReminders", () => {
       },
     ];
 
-    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
     expect(sendEmail).not.toHaveBeenCalled();
     expect(result).toEqual({ sent: 0, failed: 0, skipped: 1 });
@@ -308,7 +315,7 @@ describe("sendDailyReminders", () => {
       },
     ];
 
-    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
     expect(reminders.find((row) => row.id === "colgada")?.status).toBe(
       "failed",
@@ -330,7 +337,7 @@ describe("sendDailyReminders", () => {
     ];
     sendEmail.mockRejectedValueOnce(new Error("buzón inexistente"));
 
-    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
     expect(sendEmail).toHaveBeenCalledTimes(2);
     expect(logged()).toEqual([
@@ -355,8 +362,8 @@ describe("sendDailyReminders", () => {
   it("logs an appointment nobody can be emailed about as failed without sending anything, and only once, so the team can see it without the log filling up", async () => {
     candidates = [candidate({ appointment_id: "a-sin", recipients: [] })];
 
-    const first = await sendDailyReminders({ admin: fakeAdmin(), now });
-    const second = await sendDailyReminders({ admin: fakeAdmin(), now });
+    const first = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+    const second = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
     expect(sendEmail).not.toHaveBeenCalled();
     expect(logged()).toEqual([
@@ -370,5 +377,68 @@ describe("sendDailyReminders", () => {
     ]);
     expect(first).toEqual({ sent: 0, failed: 0, skipped: 1 });
     expect(second).toEqual({ sent: 0, failed: 0, skipped: 1 });
+  });
+
+  it("waits at least 600 ms between emails, so a busy day never goes over Resend's rate limit", async () => {
+    const events: string[] = [];
+    candidates = [
+      candidate({
+        appointment_id: "a-uno",
+        recipients: ["madre@example.com", "padre@example.com"],
+      }),
+      candidate({ appointment_id: "a-dos", recipients: ["otra@example.com"] }),
+    ];
+    sendEmail.mockImplementation(async ({ to }) => {
+      events.push(`envía ${to}`);
+    });
+    wait.mockImplementation(async (ms) => {
+      events.push(`espera ${ms}`);
+    });
+
+    await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(events).toEqual([
+      "envía madre@example.com",
+      "espera 600",
+      "envía padre@example.com",
+      "espera 600",
+      "envía otra@example.com",
+    ]);
+  });
+
+  it("tries once more after 2 seconds when Resend says it is rate limited, so a momentary limit does not cost a patient the reminder", async () => {
+    candidates = [candidate()];
+    sendEmail.mockRejectedValueOnce(new EmailRateLimitError("Too many"));
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(sendEmail).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenCalledWith(2000);
+    expect(logged()[0]?.status).toBe("sent");
+    expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
+  });
+
+  it("gives up after a single retry when Resend is still rate limited, so one run never loops forever against the limit", async () => {
+    candidates = [candidate()];
+    sendEmail.mockRejectedValue(new EmailRateLimitError("Too many"));
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(sendEmail).toHaveBeenCalledTimes(2);
+    expect(logged()[0]).toMatchObject({
+      status: "failed",
+      error: "lucia@example.com: Too many",
+    });
+    expect(result).toEqual({ sent: 0, failed: 1, skipped: 0 });
+  });
+
+  it("does not retry an ordinary failure, so a bad address is not emailed twice", async () => {
+    candidates = [candidate()];
+    sendEmail.mockRejectedValueOnce(new Error("buzón inexistente"));
+
+    await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(wait).not.toHaveBeenCalledWith(2000);
   });
 });

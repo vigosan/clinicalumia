@@ -12,7 +12,7 @@ vi.mock("resend", () => ({
   },
 }));
 
-const { sendEmail } = await import("./email");
+const { EmailRateLimitError, sendEmail } = await import("./email");
 
 const fetchMock = vi.fn();
 
@@ -75,6 +75,40 @@ describe("sendEmail", () => {
     });
 
     await expect(sendEmail(message)).rejects.toThrow("domain not verified");
+  });
+
+  it("tells a rate limit apart from other Resend failures, so a batch of reminders can wait and try again instead of giving up", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    resendSend.mockResolvedValue({
+      data: null,
+      error: {
+        message: "Too many requests",
+        name: "rate_limit_exceeded",
+        statusCode: 429,
+      },
+    });
+
+    await expect(sendEmail(message)).rejects.toBeInstanceOf(
+      EmailRateLimitError,
+    );
+  });
+
+  it("does not treat other Resend failures as a rate limit, so a bad address is not retried pointlessly", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    resendSend.mockResolvedValue({
+      data: null,
+      error: {
+        message: "domain not verified",
+        name: "validation_error",
+        statusCode: 403,
+      },
+    });
+
+    await expect(sendEmail(message)).rejects.not.toBeInstanceOf(
+      EmailRateLimitError,
+    );
   });
 
   it("delivers to local Mailpit when there is no API key, so development never emails real people", async () => {

@@ -4,6 +4,8 @@ const DEFAULT_FROM =
   "Clínica LUMIA <no-responder@notifications.clinicalumia.es>";
 const MAILPIT_SEND = "http://127.0.0.1:54324/api/v1/send";
 
+export class EmailRateLimitError extends Error {}
+
 type Attachment = { filename: string; content: string; contentType: string };
 type Email = {
   to: string | string[];
@@ -45,6 +47,9 @@ export async function sendEmail({
         })),
       }),
     });
+    if (error?.name === "rate_limit_exceeded" || error?.statusCode === 429) {
+      throw new EmailRateLimitError(error.message);
+    }
     if (error) {
       throw new Error(
         `No se ha podido enviar el email por Resend: ${error.message}`,

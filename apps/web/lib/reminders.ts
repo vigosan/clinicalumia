@@ -1,5 +1,5 @@
 import type { createAdminClient } from "@clinicalumia/api/admin";
-import { sendEmail } from "@clinicalumia/api/email";
+import { EmailRateLimitError, sendEmail } from "@clinicalumia/api/email";
 import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { changeWindowText } from "./account";
 import { appointmentIcs } from "./appointment-ics";
@@ -57,6 +57,25 @@ export function patientIcs(candidate: ReminderCandidate, now: Date): string {
 }
 
 const STALE_CLAIM_MS = 60 * 60 * 1000;
+const PAUSE_BETWEEN_EMAILS_MS = 600;
+const RATE_LIMIT_RETRY_MS = 2000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function sendWithRetry(
+  email: Parameters<typeof sendEmail>[0],
+  wait: (ms: number) => Promise<void>,
+) {
+  try {
+    await sendEmail(email);
+  } catch (error) {
+    if (!(error instanceof EmailRateLimitError)) throw error;
+    await wait(RATE_LIMIT_RETRY_MS);
+    await sendEmail(email);
+  }
+}
 
 async function logMissingEmail(admin: AdminClient, appointmentId: string) {
   const { data, error } = await admin
@@ -125,11 +144,14 @@ async function settle(
 export async function sendDailyReminders({
   admin,
   now,
+  wait = sleep,
 }: {
   admin: AdminClient;
   now: Date;
+  wait?: (ms: number) => Promise<void>;
 }): Promise<{ sent: number; failed: number; skipped: number }> {
   const result = { sent: 0, failed: 0, skipped: 0 };
+  let emailed = false;
   await releaseStaleClaims(admin, now);
   const { data: candidates, error } = await admin.rpc("reminder_candidates", {
     p_day: addDays(todayInMadrid(now), 1),
@@ -155,18 +177,23 @@ export async function sendDailyReminders({
 
     const errors: string[] = [];
     for (const recipient of candidate.recipients) {
+      if (emailed) await wait(PAUSE_BETWEEN_EMAILS_MS);
+      emailed = true;
       try {
-        await sendEmail({
-          to: recipient,
-          ...reminderEmail(candidate),
-          attachments: [
-            {
-              filename: "cita.ics",
-              content: patientIcs(candidate, now),
-              contentType: "text/calendar",
-            },
-          ],
-        });
+        await sendWithRetry(
+          {
+            to: recipient,
+            ...reminderEmail(candidate),
+            attachments: [
+              {
+                filename: "cita.ics",
+                content: patientIcs(candidate, now),
+                contentType: "text/calendar",
+              },
+            ],
+          },
+          wait,
+        );
       } catch (sendError) {
         errors.push(
           `${recipient}: ${sendError instanceof Error ? sendError.message : String(sendError)}`,
