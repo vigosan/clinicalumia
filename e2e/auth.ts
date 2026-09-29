@@ -51,21 +51,27 @@ export async function submitTotpCode(page: Page, secret: string) {
   await page.getByTestId("totp-code").fill(totpCode(secret));
   await submitButton.click();
 
-  const rejected = await page
-    .getByTestId("totp-error")
-    .waitFor({ state: "visible", timeout: 3000 })
-    .then(() => true)
-    .catch(() => false);
+  const outcome = await Promise.race([
+    page
+      .getByTestId("totp-error")
+      .waitFor({ state: "visible", timeout: 15000 })
+      .then(() => "rejected" as const)
+      .catch(() => null),
+    submitButton
+      .waitFor({ state: "detached", timeout: 15000 })
+      .then(() => "accepted" as const)
+      .catch(() => null),
+  ]);
+  if (!outcome) {
+    throw new Error("El código TOTP no se ha aceptado ni rechazado en 15 s.");
+  }
 
-  if (rejected) {
+  if (outcome === "rejected") {
     await waitForNextTotpWindow(secret);
     await page.getByTestId("totp-code").fill(totpCode(secret));
     await page.getByTestId("totp-submit").click();
     await submitButton.waitFor({ state: "detached", timeout: 15000 });
-    return;
   }
-
-  await submitButton.waitFor({ state: "detached", timeout: 15000 });
 }
 
 export async function completeTwoFactorStep(

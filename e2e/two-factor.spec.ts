@@ -71,6 +71,7 @@ test("a wrong six-digit code shows the error and keeps you at the challenge", as
 test("recovering a password with a factor already active asks for the code before the new password, and the new password works", async ({
   page,
 }) => {
+  test.slow();
   const { email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
@@ -108,6 +109,7 @@ test("recovering a password with a factor already active asks for the code befor
 test("an open redirect on the challenge's next lands you at this app's home", async ({
   page,
 }) => {
+  test.slow();
   const { email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
@@ -124,6 +126,7 @@ test("an open redirect on the challenge's next lands you at this app's home", as
 test("a session that only passed the password sees no specialties until it passes the code", async ({
   page,
 }) => {
+  test.slow();
   const { email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
@@ -171,6 +174,7 @@ test("a session that only passed the password sees no specialties until it passe
 test("a password-only (aal1) session on a factored account can't change the password, enroll a new factor, or drop the existing one", async ({
   page,
 }) => {
+  test.slow();
   const { id, email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
