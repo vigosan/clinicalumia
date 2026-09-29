@@ -153,23 +153,31 @@ export async function sendDailyReminders({
       continue;
     }
 
-    try {
-      await sendEmail({
-        to: candidate.recipients,
-        ...reminderEmail(candidate),
-        attachments: [
-          {
-            filename: "cita.ics",
-            content: patientIcs(candidate, now),
-            contentType: "text/calendar",
-          },
-        ],
-      });
-    } catch (sendError) {
+    const errors: string[] = [];
+    for (const recipient of candidate.recipients) {
+      try {
+        await sendEmail({
+          to: recipient,
+          ...reminderEmail(candidate),
+          attachments: [
+            {
+              filename: "cita.ics",
+              content: patientIcs(candidate, now),
+              contentType: "text/calendar",
+            },
+          ],
+        });
+      } catch (sendError) {
+        errors.push(
+          `${recipient}: ${sendError instanceof Error ? sendError.message : String(sendError)}`,
+        );
+      }
+    }
+
+    if (errors.length > 0) {
       await settle(admin, claimId, {
         status: "failed",
-        error:
-          sendError instanceof Error ? sendError.message : String(sendError),
+        error: errors.join("; "),
       });
       result.failed++;
       continue;

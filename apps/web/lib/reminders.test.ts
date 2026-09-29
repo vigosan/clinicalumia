@@ -188,26 +188,30 @@ describe("sendDailyReminders", () => {
     });
   });
 
-  it("sends a single email with the calendar file to all recipients of an appointment and marks its claim as sent, so guardians are reminded once and a second run skips it", async () => {
+  it("sends each guardian their own email with the calendar file and marks one claim as sent, so separated parents never see each other's address and a second run skips it", async () => {
     candidates = [
       candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
     ];
 
     const result = await sendDailyReminders({ admin: fakeAdmin(), now });
 
-    expect(sendEmail).toHaveBeenCalledTimes(1);
-    const email = sendEmail.mock.calls[0]?.[0];
-    expect(email.to).toEqual(["madre@example.com", "padre@example.com"]);
-    expect(email.subject).toBe("Recordatorio de tu cita");
-    expect(email.attachments).toEqual([
-      {
-        filename: "cita.ics",
-        content: expect.stringContaining(
-          "UID:11111111-1111-4111-8111-111111111111@clinicalumia.es",
-        ),
-        contentType: "text/calendar",
-      },
+    expect(sendEmail).toHaveBeenCalledTimes(2);
+    expect(sendEmail.mock.calls.map(([email]) => email.to)).toEqual([
+      "madre@example.com",
+      "padre@example.com",
     ]);
+    for (const [email] of sendEmail.mock.calls) {
+      expect(email.subject).toBe("Recordatorio de tu cita");
+      expect(email.attachments).toEqual([
+        {
+          filename: "cita.ics",
+          content: expect.stringContaining(
+            "UID:11111111-1111-4111-8111-111111111111@clinicalumia.es",
+          ),
+          contentType: "text/calendar",
+        },
+      ]);
+    }
     expect(logged()).toEqual([
       {
         appointment_id: "11111111-1111-4111-8111-111111111111",
@@ -218,6 +222,30 @@ describe("sendDailyReminders", () => {
       },
     ]);
     expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
+  });
+
+  it("still emails the other guardian when one address fails, and marks the claim as failed with that address's error, so the team sees who was not reminded", async () => {
+    candidates = [
+      candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
+    ];
+    sendEmail.mockRejectedValueOnce(new Error("buzón inexistente"));
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+
+    expect(sendEmail.mock.calls.map(([email]) => email.to)).toEqual([
+      "madre@example.com",
+      "padre@example.com",
+    ]);
+    expect(logged()).toEqual([
+      {
+        appointment_id: "11111111-1111-4111-8111-111111111111",
+        channel: "email",
+        recipient: "madre@example.com, padre@example.com",
+        status: "failed",
+        error: "madre@example.com: buzón inexistente",
+      },
+    ]);
+    expect(result).toEqual({ sent: 0, failed: 1, skipped: 0 });
   });
 
   it("claims the reminder as pending before sending it, so a run that overlaps with this one finds it taken instead of emailing the patient again", async () => {
@@ -311,7 +339,7 @@ describe("sendDailyReminders", () => {
         channel: "email",
         recipient: "rebota@example.com",
         status: "failed",
-        error: "buzón inexistente",
+        error: "rebota@example.com: buzón inexistente",
       },
       {
         appointment_id: "a-bien",
