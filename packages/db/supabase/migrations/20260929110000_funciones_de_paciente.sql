@@ -14,10 +14,13 @@ begin
     raise exception 'birth_date must not be in the future' using errcode = '23514';
   end if;
   if tg_op = 'INSERT' then
-    if coalesce(current_setting('lumia.booking_account', true) = auth.uid()::text, false) then
-      new.created_by := null;
-    elsif auth.uid() is not null then
+    if auth.uid() is not null then
       new.created_by := auth.uid();
+      if coalesce(current_setting('lumia.booking_account', true) = auth.uid()::text, false) then
+        if exists (select 1 from public.patient_accounts where id = auth.uid()) then
+          new.created_by := null;
+        end if;
+      end if;
     end if;
   else
     new.created_by := old.created_by;
@@ -148,6 +151,7 @@ declare
   guardian record;
   today_madrid date := (now() at time zone 'Europe/Madrid')::date;
   new_minor boolean := p_birth_date is not null and extract(year from age(today_madrid, p_birth_date)) < 18;
+  accepted_version text := nullif(trim(p_privacy_version), '');
   person_id uuid;
 begin
   select pa.email, pa.privacy_accepted_at into account
@@ -160,11 +164,18 @@ begin
     raise exception 'privacy_required' using errcode = 'P0001';
   end if;
 
+  if coalesce(p_accept_privacy, false) and accepted_version is null then
+    raise exception 'privacy_required' using errcode = 'P0001';
+  end if;
+
   if p_guardian_id is null then
     if new_minor then
       raise exception 'person_not_adult' using errcode = 'P0001';
     end if;
   else
+    if p_relationship is null then
+      raise exception 'relationship_required' using errcode = 'P0001';
+    end if;
     select mp.is_minor, mp.relation into guardian
     from public.my_people() mp where mp.id = p_guardian_id;
     if not found or guardian.relation <> 'self' then
@@ -180,7 +191,7 @@ begin
 
   if coalesce(p_accept_privacy, false) then
     update public.patient_accounts
-    set privacy_accepted_at = now(), privacy_version = p_privacy_version
+    set privacy_accepted_at = now(), privacy_version = accepted_version
     where id = auth.uid();
   end if;
 

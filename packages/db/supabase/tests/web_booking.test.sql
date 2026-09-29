@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(184);
+select plan(193);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
@@ -779,8 +779,8 @@ select throws_ok($$
 $$, 'P0001', 'slot_not_available', 'a start off the 15-minute grid is not a slot');
 select throws_ok($$
   select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b1',
-    '85000000-0000-0000-0000-000000000001', (pg_temp.today_madrid()::timestamp + '10:00'::time) at time zone 'Europe/Madrid')
-$$, 'P0001', 'slot_not_available', 'a slot inside the minimum notice is refused, like the slot list hides it');
+    '84000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '15:15'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'slot_not_available', 'a professional of another specialty is never booked, even when her schedule is free');
 select throws_ok($$
   select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b2',
     '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
@@ -821,8 +821,14 @@ select results_eq(
 select throws_ok($$
   select public.add_my_person('Nueva', 'Familia', '1990-05-05', '600000003', null, null, true, false, null)
 $$, 'P0001', 'privacy_required', 'the first person added from the web needs the privacy policy accepted');
+select throws_ok($$
+  select public.add_my_person('Nueva', 'Familia', '1990-05-05', '600000003', null, null, true, true, null)
+$$, 'P0001', 'privacy_required', 'accepting the policy without saying which version leaves no proof of what was accepted');
+select throws_ok($$
+  select public.add_my_person('Nueva', 'Familia', '1990-05-05', '600000003', null, null, true, true, '  ')
+$$, 'P0001', 'privacy_required', 'a blank policy version is no proof either');
 select lives_ok($$
-  select public.add_my_person('Nueva', 'Familia', '1990-05-05', '600000003', null, null, true, true, '2026-09')
+  select public.add_my_person('Nueva', 'Familia', '1990-05-05', '600000003', null, null, true, true, ' 2026-09 ')
 $$, 'with the policy accepted, an adult is added to the account');
 select is((select relation from public.my_people() where first_name = 'Nueva'), 'self',
   'the new adult carries the account email, so she belongs to the account');
@@ -855,6 +861,17 @@ select throws_ok($$
   select public.add_my_person('Pequena', 'Familia', (pg_temp.today_madrid() - interval '3 years')::date, null,
     null, null, true, false, null)
 $$, 'P0001', 'person_not_adult', 'a minor cannot be added as an adult of the account');
+select throws_ok($$
+  select public.add_my_person('Bebe', 'Familia', (pg_temp.today_madrid() - interval '1 years')::date, null,
+    '85000000-0000-0000-0000-0000000000c1', null, true, false, null)
+$$, 'P0001', 'relationship_required', 'a minor added under a guardian needs the relation, so the clinic knows who signs for her');
+select throws_ok($$
+  select public.add_my_person('Otra', 'Familia', '1993-05-05', null, null, null, true, true, '')
+$$, 'P0001', 'privacy_required', 'an already accepted policy cannot be overwritten with an empty version');
+reset role;
+select is((select privacy_version from public.patient_accounts where id = '85000000-0000-0000-0000-000000000010'), '2026-09',
+  'the stored privacy record survives a later blank acceptance');
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
 select lives_ok($$
   select public.add_my_person('Bebe', 'Familia', (pg_temp.today_madrid() - interval '1 years')::date, null,
     '85000000-0000-0000-0000-0000000000c1', 'madre', true, false, null)
@@ -865,6 +882,34 @@ reset role;
 select is((select g.relationship::text || ':' || g.is_primary::text || ':' || coalesce(p.email, 'sin email')
   from public.guardianships g join public.people p on p.id = g.minor_id where p.first_name = 'Bebe'),
   'madre:true:sin email', 'the guardianship records the relation and the minor gets no email of her own');
+
+reset role;
+select set_config('request.jwt.claims', '', true);
+update public.clinic_settings set booking_min_notice_hours = 0;
+select set_config('test.inside_notice', (select min(starts_at)::text from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004',
+    pg_temp.today_madrid(), pg_temp.today_madrid() + 1)
+  where starts_at > now() + interval '1 hour' and starts_at < now() + interval '23 hours'), true);
+update public.clinic_settings set booking_min_notice_hours = 24;
+select set_config('test.after_notice', (select min(starts_at)::text from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004',
+    pg_temp.today_madrid() + 1, pg_temp.today_madrid() + 2)), true);
+select isnt(current_setting('test.inside_notice', true), null,
+  'the all-week professional has a free slot inside the next 24 hours to try, whatever the hour');
+insert into public.people (id, first_name, last_name, birth_date, email, is_patient) values
+  ('85000000-0000-0000-0000-0000000000c8', 'Semana', 'Familia', '1988-03-03', 'familia-a@test.local', true);
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c8', '84000000-0000-0000-0000-0000000000b7',
+    '84000000-0000-0000-0000-000000000004', current_setting('test.inside_notice')::timestamptz)
+$$, 'P0001', 'slot_not_available', 'a scheduled, free slot less than 24 hours away is refused: the notice protects the clinic from last-minute bookings');
+select lives_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c8', '84000000-0000-0000-0000-0000000000b7',
+    '84000000-0000-0000-0000-000000000004', current_setting('test.after_notice')::timestamptz)
+$$, 'the first slot past the 24-hour notice on a scheduled day is booked, so the refusal above was the notice and nothing else');
+reset role;
+select cmp_ok(current_setting('test.after_notice')::timestamptz, '>=', now() + interval '24 hours',
+  'the slot that was booked is indeed at least 24 hours away');
 
 select * from finish();
 rollback;
