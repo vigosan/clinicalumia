@@ -6,7 +6,7 @@ import {
   madridInstant,
   todayInMadrid,
 } from "@clinicalumia/api/madrid-time";
-import { expect, type Page, test } from "@playwright/test";
+import { type Browser, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { latestCodeFor, latestEmailFor } from "./mail";
 import { removePatients } from "./users";
@@ -763,6 +763,86 @@ test("a patient changes their phone and address from Mi cuenta: an invalid phone
     .single();
   expect(error).toBeNull();
   expect(row).toEqual({ phone: "611222333", address: newAddress });
+});
+
+async function withoutJavaScript(browser: Browser, page: Page) {
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    storageState: await page.context().storageState(),
+  });
+  return { context, noScript: await context.newPage() };
+}
+
+test("a contact form sent before the page has loaded its scripts still reaches the server instead of putting the phone and address in the URL", async ({
+  browser,
+  page,
+}) => {
+  const { email, person } = await patientAccount("contacto-sin-js");
+  const newAddress = `Calle Sin Script ${unique()}, Xàtiva`;
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+
+  const { context, noScript } = await withoutJavaScript(browser, page);
+  try {
+    await noScript.goto(`${WEB}/mi-cuenta/contacto/${person.id}`);
+    await noScript.getByTestId("contact-phone").fill("123");
+    await noScript.getByTestId("contact-submit").click();
+    await expect(noScript.getByTestId("account-error")).toHaveText(
+      "Escribe un teléfono válido.",
+    );
+    expect(noScript.url()).toBe(`${WEB}/mi-cuenta/contacto/${person.id}`);
+
+    await noScript.getByTestId("contact-phone").fill("611 222 333");
+    await noScript.getByTestId("contact-address").fill(newAddress);
+    await noScript.getByTestId("contact-submit").click();
+    await expect(noScript).toHaveURL(`${WEB}/mi-cuenta?aviso=contacto`);
+  } finally {
+    await context.close();
+  }
+
+  const { data: row, error } = await admin
+    .from("people")
+    .select("phone, address")
+    .eq("id", person.id)
+    .single();
+  expect(error).toBeNull();
+  expect(row).toEqual({ phone: "611222333", address: newAddress });
+});
+
+test("a new minor form sent before the page has loaded its scripts still reaches the server instead of putting the family's details in the URL", async ({
+  browser,
+  page,
+}) => {
+  const email = uniqueEmail("menor-sin-js");
+  const lastName = `Sin script ${unique()}`;
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+
+  const { context, noScript } = await withoutJavaScript(browser, page);
+  try {
+    await noScript.goto(`${WEB}/mi-cuenta/menores/nuevo`);
+    await noScript.getByTestId("new-person-guardian_first_name").fill("Marta");
+    await noScript.getByTestId("new-person-guardian_last_name").fill(lastName);
+    await noScript
+      .getByTestId("new-person-guardian_birth_date")
+      .fill("1988-03-14");
+    await noScript.getByTestId("new-person-guardian_phone").fill("600 111 222");
+    await noScript.getByTestId("new-person-first_name").fill("Leo");
+    await noScript.getByTestId("new-person-last_name").fill(lastName);
+    await noScript.getByTestId("new-person-birth_date").fill("2019-06-10");
+    await noScript.getByTestId("new-person-relationship").selectOption("padre");
+    await noScript.getByTestId("privacy-accept").check();
+    await noScript.getByTestId("new-person-submit").click();
+
+    await expect(noScript).toHaveURL(`${WEB}/mi-cuenta?aviso=menor`);
+    await expect(noScript.getByTestId("account-people")).toContainText(
+      `Leo ${lastName}`,
+    );
+  } finally {
+    await context.close();
+  }
 });
 
 test("the contact page of a person of another account does not exist for this account", async ({

@@ -27,6 +27,7 @@ export function ContactForm({
 
   return (
     <form
+      action={formAction}
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);

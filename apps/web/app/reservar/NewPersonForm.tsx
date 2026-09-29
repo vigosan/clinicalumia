@@ -128,6 +128,7 @@ export function NewPersonForm({
 
   return (
     <form
+      action={formAction}
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
