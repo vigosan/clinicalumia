@@ -1,7 +1,5 @@
-import { createClient } from "@clinicalumia/api/server";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { PageHero } from "@/components/PageHero";
 import {
@@ -16,6 +14,7 @@ import { pageMetadata } from "@/lib/metadata";
 import { TeamSession } from "../reservar/TeamSession";
 import { signOutOfAccount } from "./actions";
 import { loadAccount } from "./load";
+import { requirePatientPage } from "./session";
 
 export const metadata: Metadata = {
   ...pageMetadata({
@@ -48,6 +47,7 @@ function Section({
 }
 
 function Upcoming({ appointment }: { appointment: AppointmentRow }) {
+  const when = formatWhen(appointment.starts_at).toLowerCase();
   return (
     <li
       data-testid="account-appointment"
@@ -68,6 +68,7 @@ function Upcoming({ appointment }: { appointment: AppointmentRow }) {
             <Link
               href={`/mi-cuenta/citas/${appointment.id}/cambiar`}
               data-testid="account-reschedule"
+              aria-label={`Cambiar la cita del ${when}`}
               className={pillClass}
             >
               Cambiar
@@ -76,6 +77,7 @@ function Upcoming({ appointment }: { appointment: AppointmentRow }) {
           <Link
             href={`/mi-cuenta/citas/${appointment.id}/cancelar`}
             data-testid="account-cancel"
+            aria-label={`Cancelar la cita del ${when}`}
             className={pillClass}
           >
             Cancelar
@@ -92,11 +94,7 @@ export default async function MiCuentaPage({
   searchParams: Promise<{ aviso?: string | string[] }>;
 }) {
   const { aviso } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/acceder?next=${encodeURIComponent("/mi-cuenta")}`);
+  const user = await requirePatientPage("/mi-cuenta");
 
   const account = await loadAccount().catch((error) => {
     if (isTeamSession(error)) return null;
@@ -122,7 +120,7 @@ export default async function MiCuentaPage({
             <p
               role="status"
               data-testid="account-notice"
-              className="mt-8 rounded-2xl bg-cream-100 px-4 py-3 text-ink-600"
+              className="mt-8 rounded-2xl border border-cream-200 bg-cream-100 px-4 py-3 text-ink-600"
             >
               {notice}
             </p>
@@ -216,6 +214,7 @@ export default async function MiCuentaPage({
                     <Link
                       href={`/mi-cuenta/contacto/${contact.personId}`}
                       data-testid="account-edit-contact"
+                      aria-label={`Cambiar los datos de ${contact.name}`}
                       className={`mt-4 ${pillClass}`}
                     >
                       Cambiar

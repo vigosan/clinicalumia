@@ -8,7 +8,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { latestCodeFor } from "./mail";
+import { latestCodeFor, latestEmailFor } from "./mail";
 import { removePatients } from "./users";
 
 const WEB = "http://localhost:3000";
@@ -319,5 +319,82 @@ test("someone who enters from /acceder lands on Mi cuenta and, with another emai
       .getByRole("link", { name: /Reservar/ }),
   ).toHaveAttribute("href", "/reservar");
   await expect(page.getByText(owner.person.last_name)).toHaveCount(0);
+  await expect(page.getByText(owner.place.serviceName)).toHaveCount(0);
+});
+
+test("a patient cancels an appointment within the window: it moves to the history as cancelled by them, the account gets the email and the clinic sees it cancelled by the patient", async ({
+  page,
+}) => {
+  const { email, place, web } = await patientWithAppointments("cancelar");
+  const cancelPath = `/mi-cuenta/citas/${web.id}/cancelar`;
+
+  await page.goto(`${WEB}${cancelPath}`);
+  await expect(page).toHaveURL(
+    `${WEB}/acceder?next=${encodeURIComponent(cancelPath)}`,
+  );
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}${cancelPath}`);
+
+  const summary = page.getByTestId("cancel-summary");
+  await expect(summary).toContainText(madridDateTime(web.startsAt).time);
+  await expect(summary).toContainText(place.serviceName);
+  await expect(summary).toContainText("Puedes cambiarla o cancelarla hasta");
+  await page.getByTestId("cancel-confirm").click();
+
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta?aviso=cancelada`);
+  await expect(page.getByTestId("account-notice")).toHaveText("Cita cancelada");
+  await expect(page.locator(`[data-appointment-id="${web.id}"]`)).toHaveCount(
+    0,
+  );
+  await expect(page.getByTestId("account-history")).toContainText(
+    "Cancelada por ti",
+  );
+
+  const html = await latestEmailFor(email, "Cita cancelada");
+  expect(html).toContain(place.serviceName);
+
+  const { data: row, error } = await admin
+    .from("appointments")
+    .select("status, cancelled_by, cancel_reason")
+    .eq("id", web.id)
+    .single();
+  expect(error).toBeNull();
+  expect(row).toEqual({
+    status: "cancelled",
+    cancelled_by: "patient",
+    cancel_reason: "",
+  });
+});
+
+test("the cancel page of an appointment outside the window only gives the phone, because the web can no longer cancel it", async ({
+  page,
+}) => {
+  const { email, teamId } = await patientWithAppointments("cancelar-fuera");
+  const cancelPath = `/mi-cuenta/citas/${teamId}/cancelar`;
+
+  await page.goto(`${WEB}${cancelPath}`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}${cancelPath}`);
+
+  await expect(page.getByTestId("cancel-summary")).toContainText(
+    "Fuera de plazo: llama al 614 552 808",
+  );
+  await expect(page.getByTestId("cancel-confirm")).toHaveCount(0);
+});
+
+test("the cancel page of another account's appointment does not exist for this account", async ({
+  page,
+}) => {
+  const owner = await patientWithAppointments("cancelar-ajena");
+
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, uniqueEmail("cancelar-otra"));
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+
+  const response = await page.goto(
+    `${WEB}/mi-cuenta/citas/${owner.web.id}/cancelar`,
+  );
+  expect(response?.status()).toBe(404);
+  await expect(page.getByTestId("cancel-confirm")).toHaveCount(0);
   await expect(page.getByText(owner.place.serviceName)).toHaveCount(0);
 });
