@@ -603,6 +603,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_my_person: {
+        Args: {
+          p_accept_privacy: boolean
+          p_birth_date: string
+          p_first_name: string
+          p_guardian_id: string
+          p_is_patient: boolean
+          p_last_name: string
+          p_phone: string
+          p_privacy_version: string
+          p_relationship: Database["public"]["Enums"]["guardian_relationship"]
+        }
+        Returns: string
+      }
       agenda_busy: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -622,6 +636,15 @@ export type Database = {
           professional_id: string
           starts_at: string
         }[]
+      }
+      book_appointment: {
+        Args: {
+          p_person_id: string
+          p_professional_id: string
+          p_service_id: string
+          p_starts_at: string
+        }
+        Returns: string
       }
       booking_catalog: {
         Args: never
@@ -655,6 +678,32 @@ export type Database = {
       }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      my_appointments: {
+        Args: never
+        Returns: {
+          ends_at: string
+          id: string
+          origin: Database["public"]["Enums"]["appointment_origin"]
+          person_id: string
+          person_name: string
+          professional_name: string
+          service_name: string
+          starts_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+        }[]
+      }
+      my_people: {
+        Args: never
+        Returns: {
+          birth_date: string
+          first_name: string
+          id: string
+          is_minor: boolean
+          is_patient: boolean
+          last_name: string
+          relation: string
+        }[]
+      }
       normalize_phone: { Args: { value: string }; Returns: string }
       revoke_user_sessions: { Args: { target: string }; Returns: undefined }
       set_employee_schedule: {

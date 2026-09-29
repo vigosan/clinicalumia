@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(133);
+select plan(184);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
@@ -640,6 +640,231 @@ select lives_ok($$
     pg_temp.day3(), pg_temp.day3())
 $$, 'an anonymous visitor can read available slots');
 reset role;
+
+reset role;
+select set_config('request.jwt.claims', '', true);
+select set_config('lumia.booking_account', '', true);
+
+insert into auth.users (id, email) values
+  ('85000000-0000-0000-0000-000000000001', 'p1-cuenta@test.local'),
+  ('85000000-0000-0000-0000-000000000002', 'p2-cuenta@test.local'),
+  ('85000000-0000-0000-0000-000000000010', 'familia-a@test.local'),
+  ('85000000-0000-0000-0000-000000000011', 'paciente-b@test.local');
+insert into public.specialties (id, name, slug) values
+  ('85000000-0000-0000-0000-0000000000aa', 'Cuenta test', 'cuenta-test');
+insert into public.profiles (id, email, full_name, role, is_active, specialty_id) values
+  ('85000000-0000-0000-0000-000000000001', 'p1-cuenta@test.local', 'Profesional Uno', 'employee', true, '85000000-0000-0000-0000-0000000000aa'),
+  ('85000000-0000-0000-0000-000000000002', 'p2-cuenta@test.local', 'Profesional Dos', 'employee', true, '85000000-0000-0000-0000-0000000000aa');
+insert into public.patient_accounts (id, email) values
+  ('85000000-0000-0000-0000-000000000010', 'familia-a@test.local'),
+  ('85000000-0000-0000-0000-000000000011', 'paciente-b@test.local');
+insert into public.services (id, specialty_id, name, duration_minutes, price_cents, bookable_online, is_active, booking_payment, booking_payment_value) values
+  ('85000000-0000-0000-0000-0000000000b1', '85000000-0000-0000-0000-0000000000aa', 'Cuenta 30', 30, 3000, true, true, 'none', 0),
+  ('85000000-0000-0000-0000-0000000000b2', '85000000-0000-0000-0000-0000000000aa', 'Cuenta con senal', 30, 3000, true, true, 'fixed', 1000),
+  ('85000000-0000-0000-0000-0000000000b3', '85000000-0000-0000-0000-0000000000aa', 'Cuenta solo clinica', 30, 3000, false, true, 'none', 0);
+insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
+  ('85000000-0000-0000-0000-000000000001', extract(isodow from pg_temp.day3())::smallint, '10:00', '12:00'),
+  ('85000000-0000-0000-0000-000000000002', extract(isodow from pg_temp.day3())::smallint, '10:00', '12:00');
+insert into public.people (id, first_name, last_name, birth_date, email, phone, is_patient, archived_at) values
+  ('85000000-0000-0000-0000-0000000000c1', 'Madre', 'Familia', '1985-04-10', 'Familia-A@test.local', '600000001', true, null),
+  ('85000000-0000-0000-0000-0000000000c2', 'Hijo', 'Familia', pg_temp.today_madrid() - interval '10 years', null, null, true, null),
+  ('85000000-0000-0000-0000-0000000000c3', 'Archivada', 'Familia', '1980-01-01', 'familia-a@test.local', null, true, now()),
+  ('85000000-0000-0000-0000-0000000000c4', 'Acompanante', 'Familia', null, 'familia-a@test.local', null, false, null),
+  ('85000000-0000-0000-0000-0000000000c5', 'Paciente', 'Otra', '1970-02-02', 'paciente-b@test.local', '600000002', true, null),
+  ('85000000-0000-0000-0000-0000000000c6', 'Menor', 'Otra', pg_temp.today_madrid() - interval '8 years', null, null, true, null),
+  ('85000000-0000-0000-0000-0000000000c7', 'Hija', 'Familia', pg_temp.today_madrid() - interval '12 years', 'familia-a@test.local', null, true, null);
+insert into public.guardianships (minor_id, guardian_id, relationship, is_primary) values
+  ('85000000-0000-0000-0000-0000000000c2', '85000000-0000-0000-0000-0000000000c1', 'madre', true),
+  ('85000000-0000-0000-0000-0000000000c7', '85000000-0000-0000-0000-0000000000c1', 'madre', true),
+  ('85000000-0000-0000-0000-0000000000c6', '85000000-0000-0000-0000-0000000000c5', 'padre', true);
+
+select is(pg_get_function_result('public.my_people()'::regprocedure),
+  'TABLE(id uuid, first_name text, last_name text, birth_date date, is_minor boolean, is_patient boolean, relation text)',
+  'my_people never exposes an email or a phone, so a shared email does not leak contact data');
+select is(pg_get_function_result('public.my_appointments()'::regprocedure),
+  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_name text, professional_name text, origin appointment_origin)',
+  'my_appointments never exposes notes or payment data');
+select is(has_function_privilege('anon', 'public.my_people()', 'execute'), false,
+  'an anonymous visitor cannot list anybody''s people');
+select is(has_function_privilege('anon', 'public.my_appointments()', 'execute'), false,
+  'an anonymous visitor cannot list anybody''s appointments');
+select is(has_function_privilege('anon', 'public.book_appointment(uuid, uuid, uuid, timestamptz)', 'execute'), false,
+  'an anonymous visitor cannot book: a booking always belongs to a verified email');
+select is(has_function_privilege('anon', 'public.add_my_person(text, text, date, text, uuid, public.guardian_relationship, boolean, boolean, text)', 'execute'), false,
+  'an anonymous visitor cannot create people');
+select is(has_function_privilege('authenticated', 'public.book_appointment(uuid, uuid, uuid, timestamptz)', 'execute'), true,
+  'a signed-in patient can book');
+select is(has_function_privilege('authenticated', 'public.add_my_person(text, text, date, text, uuid, public.guardian_relationship, boolean, boolean, text)', 'execute'), true,
+  'a signed-in patient can add people to her account');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select results_eq(
+  $$ select id, relation from public.my_people() order by first_name $$,
+  $$ values ('85000000-0000-0000-0000-0000000000c4'::uuid, 'self'::text),
+            ('85000000-0000-0000-0000-0000000000c7'::uuid, 'self'::text),
+            ('85000000-0000-0000-0000-0000000000c2'::uuid, 'ward'::text),
+            ('85000000-0000-0000-0000-0000000000c1'::uuid, 'self'::text) $$,
+  'account A sees the people with its email plus the minors they guard, each once, and never the archived one');
+select is((select is_minor from public.my_people() where id = '85000000-0000-0000-0000-0000000000c2'), true,
+  'a ten-year-old ward is flagged as a minor so the web asks for a guardian');
+select is((select is_minor from public.my_people() where id = '85000000-0000-0000-0000-0000000000c1'), false,
+  'the mother is an adult');
+select is((select is_patient from public.my_people() where id = '85000000-0000-0000-0000-0000000000c4'), false,
+  'a companion who is not a patient is listed as such, so the web does not offer to book for her');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000011');
+select results_eq(
+  $$ select id from public.my_people() order by first_name $$,
+  $$ values ('85000000-0000-0000-0000-0000000000c6'::uuid), ('85000000-0000-0000-0000-0000000000c5'::uuid) $$,
+  'account B sees only its own person and her ward, never family A');
+
+select pg_temp.act_as('80000000-0000-0000-0000-000000000002');
+select throws_ok($$ select * from public.my_people() $$, '42501', null,
+  'a team member without a patient account cannot use the patient functions');
+select throws_ok($$ select * from public.my_appointments() $$, '42501', null,
+  'a team member cannot list appointments through the patient door');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '10:00'::time) at time zone 'Europe/Madrid')
+$$, '42501', null, 'a team member cannot book through the patient door');
+select throws_ok($$
+  select public.add_my_person('Nadie', 'Nadie', '1990-01-01', null, null, null, true, true, '2026-09')
+$$, '42501', null, 'a team member cannot create people through the patient door');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select lives_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c2', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '10:00'::time) at time zone 'Europe/Madrid')
+$$, 'the mother books a free slot for her minor');
+reset role;
+select is((select origin::text || ':' || booked_by_account::text || ':' || status::text from public.appointments
+  where patient_id = '85000000-0000-0000-0000-0000000000c2'),
+  'web:85000000-0000-0000-0000-000000000010:scheduled',
+  'the booking is a web booking tied to the account that made it');
+select is((select ends_at - starts_at from public.appointments where patient_id = '85000000-0000-0000-0000-0000000000c2'),
+  interval '30 minutes', 'the booking lasts exactly the service duration');
+select is((select actor_kind::text from public.appointment_events e
+  join public.appointments a on a.id = e.appointment_id
+  where a.patient_id = '85000000-0000-0000-0000-0000000000c2' and e.kind = 'created'),
+  'patient', 'the history says the patient booked it');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c5', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'person_not_in_account', 'account A cannot book for account B''s person, even knowing her id');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c6', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'person_not_in_account', 'account A cannot book for a minor guarded by account B');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c3', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'person_not_in_account', 'an archived person is no longer part of the account');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c4', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'person_not_in_account', 'a non-patient companion cannot be booked for');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '10:15'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'slot_not_available', 'a slot overlapping an existing appointment is refused with a clear code');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '13:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'slot_not_available', 'a time outside the professional''s schedule is never bookable');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '10:40'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'slot_not_available', 'a start off the 15-minute grid is not a slot');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.today_madrid()::timestamp + '10:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'slot_not_available', 'a slot inside the minimum notice is refused, like the slot list hides it');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b2',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'service_not_bookable', 'a service with a deposit is never booked online while payments are off');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b3',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'service_not_bookable', 'a service the clinic does not offer online cannot be booked by id');
+select throws_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000ff',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'service_not_bookable', 'an unknown service is not bookable');
+select lives_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c1', '85000000-0000-0000-0000-0000000000b1',
+    null, (pg_temp.day3()::timestamp + '10:00'::time) at time zone 'Europe/Madrid')
+$$, 'with no professional chosen, the first free one of the specialty gets the booking');
+reset role;
+select is((select professional_id from public.appointments where patient_id = '85000000-0000-0000-0000-0000000000c1'),
+  '85000000-0000-0000-0000-000000000002'::uuid,
+  'professional one is busy at 10:00, so the free professional two gets it');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000011');
+select lives_ok($$
+  select public.book_appointment('85000000-0000-0000-0000-0000000000c5', '85000000-0000-0000-0000-0000000000b1',
+    '85000000-0000-0000-0000-000000000001', (pg_temp.day3()::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, 'account B books for its own person');
+select results_eq(
+  $$ select person_id, person_name, service_name, professional_name, origin::text from public.my_appointments() $$,
+  $$ values ('85000000-0000-0000-0000-0000000000c5'::uuid, 'Paciente Otra'::text, 'Cuenta 30'::text, 'Profesional Uno'::text, 'web'::text) $$,
+  'account B sees only its own appointment, never family A''s');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select results_eq(
+  $$ select person_id from public.my_appointments() order by person_id $$,
+  $$ values ('85000000-0000-0000-0000-0000000000c1'::uuid), ('85000000-0000-0000-0000-0000000000c2'::uuid) $$,
+  'account A sees the appointments of the mother and her minor, and not B''s');
+
+select throws_ok($$
+  select public.add_my_person('Nueva', 'Familia', '1990-05-05', '600000003', null, null, true, false, null)
+$$, 'P0001', 'privacy_required', 'the first person added from the web needs the privacy policy accepted');
+select lives_ok($$
+  select public.add_my_person('Nueva', 'Familia', '1990-05-05', '600000003', null, null, true, true, '2026-09')
+$$, 'with the policy accepted, an adult is added to the account');
+select is((select relation from public.my_people() where first_name = 'Nueva'), 'self',
+  'the new adult carries the account email, so she belongs to the account');
+reset role;
+select is((select privacy_version || ':' || (privacy_accepted_at is not null)::text from public.patient_accounts
+  where id = '85000000-0000-0000-0000-000000000010'), '2026-09:true',
+  'the account records when and which privacy version it accepted');
+select is((select created_by from public.people where first_name = 'Nueva'), null,
+  'a person added by a patient has no team author, since created_by points at team profiles');
+select is((select email || ':' || phone from public.people where first_name = 'Nueva'),
+  'familia-a@test.local:600000003', 'the new adult is stored with the account email and her phone');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select lives_ok($$
+  select public.add_my_person('Otro', 'Familia', '1992-05-05', '600000004', null, null, false, false, null)
+$$, 'once the policy is accepted, later people do not ask again');
+select throws_ok($$
+  select public.add_my_person('Menor', 'Ajeno', (pg_temp.today_madrid() - interval '5 years')::date, null,
+    '85000000-0000-0000-0000-0000000000c5', 'madre', true, false, null)
+$$, 'P0001', 'guardian_not_in_account', 'a minor cannot be hung from another account''s person');
+select throws_ok($$
+  select public.add_my_person('Menor', 'Nieto', (pg_temp.today_madrid() - interval '1 years')::date, null,
+    '85000000-0000-0000-0000-0000000000c7', 'otro', true, false, null)
+$$, 'P0001', 'guardian_not_adult', 'a minor of the account cannot be the guardian of another minor');
+select throws_ok($$
+  select public.add_my_person('Mayor', 'Familia', '1990-01-01', null,
+    '85000000-0000-0000-0000-0000000000c1', 'madre', true, false, null)
+$$, 'P0001', 'person_not_minor', 'only minors are added under a guardian');
+select throws_ok($$
+  select public.add_my_person('Pequena', 'Familia', (pg_temp.today_madrid() - interval '3 years')::date, null,
+    null, null, true, false, null)
+$$, 'P0001', 'person_not_adult', 'a minor cannot be added as an adult of the account');
+select lives_ok($$
+  select public.add_my_person('Bebe', 'Familia', (pg_temp.today_madrid() - interval '1 years')::date, null,
+    '85000000-0000-0000-0000-0000000000c1', 'madre', true, false, null)
+$$, 'the mother adds her baby as a minor she guards');
+select is((select relation || ':' || is_minor::text from public.my_people() where first_name = 'Bebe'), 'ward:true',
+  'the baby appears as a ward of the account');
+reset role;
+select is((select g.relationship::text || ':' || g.is_primary::text || ':' || coalesce(p.email, 'sin email')
+  from public.guardianships g join public.people p on p.id = g.minor_id where p.first_name = 'Bebe'),
+  'madre:true:sin email', 'the guardianship records the relation and the minor gets no email of her own');
 
 select * from finish();
 rollback;
