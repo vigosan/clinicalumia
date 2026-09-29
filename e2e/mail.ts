@@ -1,15 +1,17 @@
 const MAILPIT = "http://127.0.0.1:54324/api/v1";
+const ACCESS_SUBJECT = "Tu acceso a Clínica LUMIA";
 
 export async function latestLinkFor(
   email: string,
   path: string,
 ): Promise<string> {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const { messages } = await (await fetch(`${MAILPIT}/messages`)).json();
-    const message = messages.find((m: { To: { Address: string }[] }) =>
-      m.To.some((to) => to.Address === email),
-    );
-    if (message) {
+    const { messages } = await (
+      await fetch(
+        `${MAILPIT}/search?query=${encodeURIComponent(`to:"${email}"`)}`,
+      )
+    ).json();
+    for (const message of messages) {
       const { HTML } = await (
         await fetch(`${MAILPIT}/message/${message.ID}`)
       ).json();
@@ -22,11 +24,10 @@ export async function latestLinkFor(
 }
 
 export async function latestCodeFor(email: string): Promise<string> {
+  const query = `to:"${email}" subject:"${ACCESS_SUBJECT}"`;
   for (let attempt = 0; attempt < 20; attempt++) {
     const { messages } = await (
-      await fetch(
-        `${MAILPIT}/search?query=${encodeURIComponent(`to:"${email}"`)}`,
-      )
+      await fetch(`${MAILPIT}/search?query=${encodeURIComponent(query)}`)
     ).json();
     if (messages.length > 0) {
       const { HTML } = await (
