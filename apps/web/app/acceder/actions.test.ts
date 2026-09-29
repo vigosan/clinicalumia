@@ -13,11 +13,15 @@ const verifyOtp = vi.fn();
 const redirectMock = vi.fn();
 
 function table(name: string) {
-  const filters: [string, "eq" | "gte", string][] = [];
+  const filters: [string, "eq" | "gte" | "lte", string][] = [];
   const rows = () =>
     (tables[name] ?? []).filter((row) =>
       filters.every(([column, op, value]) =>
-        op === "eq" ? row[column] === value : (row[column] ?? "") >= value,
+        op === "eq"
+          ? row[column] === value
+          : op === "gte"
+            ? (row[column] ?? "") >= value
+            : (row[column] ?? "") <= value,
       ),
     );
   const builder = {
@@ -27,8 +31,15 @@ function table(name: string) {
       filters.push([column, "eq", value]);
       return builder;
     },
-    gte: async (column: string, value: string) => {
+    gte: (column: string, value: string) => {
       filters.push([column, "gte", value]);
+      return Object.assign(
+        Promise.resolve({ count: rows().length, error: null }),
+        builder,
+      );
+    },
+    lte: async (column: string, value: string) => {
+      filters.push([column, "lte", value]);
       return { count: rows().length, error: null };
     },
     maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
@@ -46,6 +57,12 @@ function table(name: string) {
       };
     },
     delete: () => ({
+      eq: async (column: string, value: string) => {
+        tables[name] = (tables[name] ?? []).filter(
+          (row) => row[column] !== value,
+        );
+        return { error: null };
+      },
       lt: async (column: string, value: string) => {
         tables[name] = (tables[name] ?? []).filter(
           (row) => (row[column] ?? "") >= value,
@@ -505,6 +522,43 @@ describe("verifyCode", () => {
         kind: "failed_code",
       }),
     ]);
+  });
+
+  it("records the attempt before checking the code, so parallel guesses cannot all slip under the limit", async () => {
+    let recordedBeforeVerify = false;
+    verifyOtp.mockImplementation(async () => {
+      recordedBeforeVerify = (tables.access_requests ?? []).some(
+        (row) =>
+          row.email === "lucia@example.com" && row.kind === "failed_code",
+      );
+      return { error: null };
+    });
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(recordedBeforeVerify).toBe(true);
+  });
+
+  it("lets at most five of many simultaneous wrong codes reach Supabase", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+
+    await Promise.all(
+      Array.from({ length: 8 }, () =>
+        verifyCode(undefined, codeForm("lucia@example.com", "000000")),
+      ),
+    );
+
+    expect(verifyOtp.mock.calls.length).toBeLessThanOrEqual(5);
+  });
+
+  it("keeps blocked attempts on record so hammering never reopens the limit", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 7; attempt++) {
+      await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+    }
+
+    expect(tables.access_requests).toHaveLength(7);
+    expect(verifyOtp).toHaveBeenCalledTimes(5);
   });
 
   it("does not record anything when the code is right", async () => {

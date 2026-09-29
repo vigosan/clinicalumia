@@ -49,44 +49,54 @@ function hashIp(requestHeaders: Headers) {
     .digest("hex");
 }
 
-async function recentAttempts(
+async function attemptsInHour(
   admin: AdminClient,
   kind: AttemptKind,
   column: "email" | "ip_hash",
   value: string,
-  since: string,
+  until: string,
 ) {
+  const since = new Date(new Date(until).getTime() - HOUR_MS).toISOString();
   const { count, error } = await admin
     .from("access_requests")
     .select("id", { count: "exact", head: true })
     .eq("kind", kind)
     .eq(column, value)
-    .gte("created_at", since);
+    .gte("created_at", since)
+    .lte("created_at", until);
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
 
-async function overLimit(admin: AdminClient, email: string, ipHash: string) {
+async function recordAttempt(
+  admin: AdminClient,
+  kind: AttemptKind,
+  email: string,
+  ipHash: string,
+) {
   const { data, error } = await admin
     .from("access_requests")
-    .insert({ email, ip_hash: ipHash, kind: "request" })
-    .select("created_at")
+    .insert({ email, ip_hash: ipHash, kind })
+    .select("id, created_at")
     .single();
   if (error) throw new Error(error.message);
 
-  const insertedAt = new Date(data.created_at).getTime();
-  const { error: purgeError } = await admin
+  const [byEmail, byIp] = await Promise.all([
+    attemptsInHour(admin, kind, "email", email, data.created_at),
+    attemptsInHour(admin, kind, "ip_hash", ipHash, data.created_at),
+  ]);
+  return { ...data, byEmail, byIp };
+}
+
+async function purgeOldAttempts(admin: AdminClient, until: string) {
+  const { error } = await admin
     .from("access_requests")
     .delete()
-    .lt("created_at", new Date(insertedAt - DAY_MS).toISOString());
-  if (purgeError) throw new Error(purgeError.message);
-
-  const since = new Date(insertedAt - HOUR_MS).toISOString();
-  const [byEmail, byIp] = await Promise.all([
-    recentAttempts(admin, "request", "email", email, since),
-    recentAttempts(admin, "request", "ip_hash", ipHash, since),
-  ]);
-  return byEmail > MAX_PER_EMAIL || byIp > MAX_PER_IP;
+    .lt(
+      "created_at",
+      new Date(new Date(until).getTime() - DAY_MS).toISOString(),
+    );
+  if (error) throw new Error(error.message);
 }
 
 async function findUserId(admin: AdminClient, email: string) {
@@ -156,7 +166,14 @@ export async function requestAccess(
 
   const requestHeaders = await headers();
   const admin = createAdminClient();
-  if (await overLimit(admin, email, hashIp(requestHeaders))) {
+  const attempt = await recordAttempt(
+    admin,
+    "request",
+    email,
+    hashIp(requestHeaders),
+  );
+  await purgeOldAttempts(admin, attempt.created_at);
+  if (attempt.byEmail > MAX_PER_EMAIL || attempt.byIp > MAX_PER_IP) {
     return { error: TOO_MANY };
   }
 
@@ -191,29 +208,22 @@ export async function requestAccess(
   redirect(`/acceder/codigo?${new URLSearchParams({ email, next })}`);
 }
 
-async function tooManyFailedCodes(
-  admin: AdminClient,
-  email: string,
-  ipHash: string,
-) {
-  const since = new Date(Date.now() - HOUR_MS).toISOString();
-  const [byEmail, byIp] = await Promise.all([
-    recentAttempts(admin, "failed_code", "email", email, since),
-    recentAttempts(admin, "failed_code", "ip_hash", ipHash, since),
-  ]);
-  return (
-    byEmail >= MAX_FAILED_CODES_PER_EMAIL || byIp >= MAX_FAILED_CODES_PER_IP
-  );
-}
-
 export async function verifyCode(
   _prev: AccessState,
   formData: FormData,
 ): Promise<AccessState> {
   const email = field(formData, "email").toLowerCase();
-  const ipHash = hashIp(await headers());
   const admin = createAdminClient();
-  if (await tooManyFailedCodes(admin, email, ipHash)) {
+  const attempt = await recordAttempt(
+    admin,
+    "failed_code",
+    email,
+    hashIp(await headers()),
+  );
+  if (
+    attempt.byEmail > MAX_FAILED_CODES_PER_EMAIL ||
+    attempt.byIp > MAX_FAILED_CODES_PER_IP
+  ) {
     return { error: TOO_MANY };
   }
 
@@ -223,13 +233,13 @@ export async function verifyCode(
     token: field(formData, "code"),
     type: "email",
   });
-  if (error) {
-    const { error: logError } = await admin
-      .from("access_requests")
-      .insert({ email, ip_hash: ipHash, kind: "failed_code" });
-    if (logError) throw new Error(logError.message);
-    return { error: "El código no es correcto o ha caducado." };
-  }
+  if (error) return { error: "El código no es correcto o ha caducado." };
+
+  const { error: deleteError } = await admin
+    .from("access_requests")
+    .delete()
+    .eq("id", attempt.id);
+  if (deleteError) throw new Error(deleteError.message);
 
   redirect(nextFrom(formData));
 }
