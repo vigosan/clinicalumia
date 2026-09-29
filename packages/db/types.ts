@@ -606,6 +606,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _free_slots: {
+        Args: {
+          p_from: string
+          p_ignore_appointment: string
+          p_professional_id: string
+          p_service_id: string
+          p_to: string
+        }
+        Returns: {
+          professional_id: string
+          starts_at: string
+        }[]
+      }
       add_my_person: {
         Args: {
           p_accept_privacy: boolean
@@ -664,6 +677,10 @@ export type Database = {
         }[]
       }
       booking_horizon_days: { Args: never; Returns: number }
+      cancel_my_appointment: {
+        Args: { p_appointment_id: string }
+        Returns: undefined
+      }
       complete_my_birth_date: {
         Args: { p_birth_date: string; p_person_id: string }
         Returns: undefined
@@ -689,12 +706,17 @@ export type Database = {
       my_appointments: {
         Args: never
         Returns: {
+          can_change: boolean
+          cancelled_by: Database["public"]["Enums"]["appointment_canceller"]
+          change_deadline: string
           ends_at: string
           id: string
           origin: Database["public"]["Enums"]["appointment_origin"]
           person_id: string
           person_name: string
+          professional_id: string
           professional_name: string
+          service_id: string
           service_name: string
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
@@ -714,6 +736,10 @@ export type Database = {
       }
       my_privacy_accepted: { Args: never; Returns: boolean }
       normalize_phone: { Args: { value: string }; Returns: string }
+      reschedule_my_appointment: {
+        Args: { p_appointment_id: string; p_starts_at: string }
+        Returns: string
+      }
       revoke_user_sessions: { Args: { target: string }; Returns: undefined }
       set_employee_schedule: {
         Args: { blocks: Json; target: string }
