@@ -10,6 +10,7 @@ import {
   parseEmail,
   parseNewPersonForm,
   personError,
+  personWarning,
 } from "./booking";
 
 function form(values: Record<string, string>) {
@@ -288,6 +289,20 @@ describe("personError", () => {
   });
 });
 
+describe("personWarning", () => {
+  it("keeps a known refusal code so the form can explain it after the redirect", () => {
+    expect(personWarning({ message: "guardian_not_adult" })).toBe(
+      "guardian_not_adult",
+    );
+  });
+
+  it("uses a generic code for anything else, so the URL never carries a raw database message", () => {
+    expect(personWarning({ message: "duplicate key value" })).toBe(
+      "no_guardada",
+    );
+  });
+});
+
 describe("bookingState", () => {
   const servicio = "11111111-1111-1111-1111-111111111111";
   const profesional = "22222222-2222-2222-2222-222222222222";
@@ -380,6 +395,15 @@ describe("bookingState", () => {
       bookingState.decode({ aviso: params.get("aviso") ?? undefined }).aviso,
     ).toBe("ocupado");
     expect(bookingState.decode({ aviso: "otro" }).aviso).toBeUndefined();
+  });
+
+  it("keeps a person refusal as warning, so the new-person form can say why it came back", () => {
+    expect(bookingState.decode({ aviso: "person_not_minor" }).aviso).toBe(
+      "person_not_minor",
+    );
+    expect(bookingState.decode({ aviso: "no_guardada" }).aviso).toBe(
+      "no_guardada",
+    );
   });
 
   it("drops a window start that is not a real calendar date", () => {

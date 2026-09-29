@@ -1,5 +1,11 @@
 import { addDays } from "@clinicalumia/api/madrid-time";
-import { ANY_PROFESSIONAL, type BookingState, NEW_PERSON } from "@/lib/booking";
+import {
+  ANY_PROFESSIONAL,
+  type BookingState,
+  NEW_PERSON,
+  personError,
+  SLOT_TAKEN,
+} from "@/lib/booking";
 
 export const WINDOW_DAYS = 14;
 
@@ -65,6 +71,7 @@ export type BookingStep =
       firstTime: boolean;
       needsPrivacy: boolean;
       guardians: AccountPerson[];
+      warning: string | null;
     } & Chosen)
   | ({
       kind: "birthDate";
@@ -147,6 +154,10 @@ export function bookingStep({
         guardians: people.filter(
           (candidate) => candidate.relation === "self" && !candidate.is_minor,
         ),
+        warning:
+          state.aviso && state.aviso !== SLOT_TAKEN
+            ? personError({ message: state.aviso })
+            : null,
       };
     return { kind: "who", ...chosen, people };
   }

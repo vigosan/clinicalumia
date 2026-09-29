@@ -152,6 +152,18 @@ export function personError(error: DbError): string {
   return mapped || "No se han podido guardar los datos. Inténtalo de nuevo.";
 }
 
+export const PERSON_NOT_SAVED = "no_guardada";
+
+function isPersonCode(value: string): boolean {
+  return Object.hasOwn(PERSON_MESSAGE_BY_CODE, value);
+}
+
+export function personWarning(error: DbError): string {
+  return error.message && isPersonCode(error.message)
+    ? error.message
+    : PERSON_NOT_SAVED;
+}
+
 export const ANY_PROFESSIONAL = "cualquiera";
 export const NEW_PERSON = "nueva";
 export const SLOT_TAKEN = "ocupado";
@@ -187,7 +199,9 @@ function isPersona(value: string): boolean {
 }
 
 function isWarning(value: string): boolean {
-  return value === SLOT_TAKEN;
+  return (
+    value === SLOT_TAKEN || value === PERSON_NOT_SAVED || isPersonCode(value)
+  );
 }
 
 function isInstant(value: string): boolean {

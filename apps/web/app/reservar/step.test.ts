@@ -239,6 +239,31 @@ describe("bookingStep", () => {
       });
     });
 
+    it("explains on the new-person form why it came back after the adult was saved but the minor was refused", () => {
+      const step = bookingStep({
+        ...session,
+        state: {
+          ...chosenState,
+          persona: "nueva",
+          aviso: "guardian_not_adult",
+        },
+        people: [mother],
+      });
+      expect(step).toMatchObject({
+        kind: "details",
+        warning: "La persona responsable tiene que ser mayor de edad.",
+      });
+    });
+
+    it("shows no warning on the new-person form when nothing was refused", () => {
+      const step = bookingStep({
+        ...session,
+        state: { ...chosenState, persona: "nueva" },
+        people: [mother],
+      });
+      expect(step).toMatchObject({ kind: "details", warning: null });
+    });
+
     it("shows the summary for a person of the account, also for an adult who is not a patient yet", () => {
       expect(
         bookingStep({

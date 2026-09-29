@@ -343,7 +343,7 @@ describe("savePerson", () => {
     answer({
       add_my_person: [
         { data: GUARDIAN, error: null },
-        { data: null, error: { message: "boom" } },
+        { data: null, error: { message: "guardian_not_adult" } },
       ],
     });
 
@@ -359,7 +359,9 @@ describe("savePerson", () => {
           privacy: "on",
         }),
       ),
-    ).rejects.toThrow(/redirect:\/reservar\?.*persona=nueva/);
+    ).rejects.toThrow(
+      /redirect:\/reservar\?.*persona=nueva&aviso=guardian_not_adult/,
+    );
   });
 
   it("requires the phone of the adult, so the clinic can call whoever booked", async () => {

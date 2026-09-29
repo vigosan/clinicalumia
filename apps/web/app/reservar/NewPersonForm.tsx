@@ -103,13 +103,16 @@ export function NewPersonForm({
   needsPrivacy,
   guardians,
   today,
+  warning,
 }: {
   estado: string;
   needsPrivacy: boolean;
   guardians: Guardian[];
   today: string;
+  warning: string | null;
 }) {
   const [state, formAction, pending] = useActionState(savePerson, initialState);
+  const error = state?.error ?? warning;
   const [forMinor, setForMinor] = useState(guardians.length > 0);
 
   return (
@@ -241,13 +244,13 @@ export function NewPersonForm({
         </label>
       )}
 
-      {state?.error && (
+      {error && (
         <p
           role="alert"
           data-testid="booking-error"
           className="text-red-700 text-sm"
         >
-          {state.error}
+          {error}
         </p>
       )}
 

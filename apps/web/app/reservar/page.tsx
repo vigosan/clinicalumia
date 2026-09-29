@@ -411,6 +411,7 @@ function DetailsView(
     firstTime: boolean;
     needsPrivacy: boolean;
     guardians: AccountPerson[];
+    warning: string | null;
     today: string;
   },
 ) {
@@ -429,6 +430,7 @@ function DetailsView(
           name: `${guardian.first_name} ${guardian.last_name}`,
         }))}
         today={props.today}
+        warning={props.warning}
       />
     </Step>
   );

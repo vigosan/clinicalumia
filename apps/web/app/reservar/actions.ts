@@ -16,6 +16,7 @@ import {
   PRIVACY_VERSION,
   parseNewPersonForm,
   personError,
+  personWarning,
   SLOT_TAKEN,
 } from "@/lib/booking";
 
@@ -130,7 +131,14 @@ export async function savePerson(
     isPatient: true,
     acceptPrivacy: acceptPrivacy && !guardian,
   });
-  if (error && guardian) redirect(reservar({ ...state, persona: NEW_PERSON }));
+  if (error && guardian)
+    redirect(
+      reservar({
+        ...state,
+        persona: NEW_PERSON,
+        aviso: personWarning(error),
+      }),
+    );
   if (error) return { error: personError(error) };
   redirect(reservar({ ...state, persona: data }));
 }
