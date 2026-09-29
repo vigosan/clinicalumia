@@ -21,10 +21,10 @@ function unique() {
 
 async function createSpecialty() {
   const suffix = unique();
-  const name = `Especialidad e2e ${suffix}`;
+  const name = `Reserva web e2e ${suffix}`;
   const { data, error } = await admin
     .from("specialties")
-    .insert({ name, slug: `especialidad-e2e-${suffix}` })
+    .insert({ name, slug: `reserva-web-e2e-${suffix}` })
     .select("id")
     .single();
   expect(error).toBeNull();
