@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-const signOut = vi.fn(async () => ({ error: null }));
+const signOut = vi.fn(async (_options?: { scope: string }) => ({
+  error: null,
+}));
 const redirectMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -21,5 +23,13 @@ describe("signOutOfAccount", () => {
     expect(signOut.mock.invocationCallOrder[0]).toBeLessThan(
       redirectMock.mock.invocationCallOrder[0] ?? 0,
     );
+  });
+
+  it("only closes this device, so leaving on a shared computer does not sign the patient out of their phone", async () => {
+    signOut.mockClear();
+
+    await signOutOfAccount();
+
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });
