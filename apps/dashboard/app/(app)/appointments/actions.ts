@@ -1,6 +1,7 @@
 "use server";
 
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
+import { normalizeSearch, toIlikePattern } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -11,7 +12,6 @@ import {
   parseAppointmentForm,
   scheduleWarnings,
 } from "@/lib/agenda";
-import { normalizeSearch, toIlikePattern } from "@/lib/person";
 
 export type AppointmentFormState =
   | { error: string }

@@ -1,4 +1,5 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { ageOn, isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Card } from "@clinicalumia/ui/card";
@@ -7,7 +8,6 @@ import { notFound } from "next/navigation";
 import { guardianErrorMessage } from "@/lib/guardian-error";
 import type { PatientAppointmentSource } from "@/lib/patient-appointments";
 import { splitPatientAppointments } from "@/lib/patient-appointments";
-import { ageOn, isMinor } from "@/lib/person";
 import { GuardiansSection } from "./GuardiansSection";
 import { PatientAppointments } from "./PatientAppointments";
 import { PersonActions } from "./PersonActions";

@@ -1,4 +1,10 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import {
+  ageOn,
+  isMinor,
+  normalizeSearch,
+  toIlikePattern,
+} from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
@@ -14,7 +20,6 @@ import {
 } from "@clinicalumia/ui/table";
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
-import { ageOn, isMinor, normalizeSearch, toIlikePattern } from "@/lib/person";
 import { SearchBox } from "./SearchBox";
 
 export default async function PatientsPage({

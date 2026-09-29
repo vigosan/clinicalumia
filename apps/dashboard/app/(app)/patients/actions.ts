@@ -1,18 +1,18 @@
 "use server";
 
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import {
+  isMinor,
+  normalizeSearch,
+  parsePersonForm,
+  toIlikePattern,
+} from "@clinicalumia/api/person";
 import { safeNext } from "@clinicalumia/api/route";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionResult } from "@/lib/action-result";
 import { guardianErrorCode } from "@/lib/guardian-error";
-import {
-  isMinor,
-  normalizeSearch,
-  parsePersonForm,
-  toIlikePattern,
-} from "@/lib/person";
 import type { Ward } from "@/lib/ward-label";
 
 export type PersonFormState = { error: string } | undefined;

@@ -11,6 +11,7 @@
     "./auth": "./auth.ts",
     "./route": "./route.ts",
     "./mfa": "./mfa.ts",
+    "./person": "./person.ts",
     "./tax-id": "./tax-id.ts",
     "./madrid-time": "./madrid-time.ts",
     "./email": "./email.ts"
@@ -28,6 +29,7 @@
     "auth.ts",
     "route.ts",
     "mfa.ts",
+    "person.ts",
     "tax-id.ts",
     "madrid-time.ts",
     "email.ts"

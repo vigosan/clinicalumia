@@ -1,4 +1,4 @@
-import { isValidPersonalId, normalizeTaxId } from "@clinicalumia/api/tax-id";
+import { isValidPersonalId, normalizeTaxId } from "./tax-id";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,7 +22,7 @@ export function normalizePhone(input: string): string | null {
   return cleaned;
 }
 
-function isValidPhone(phone: string | null): boolean {
+export function isValidPhone(phone: string | null): boolean {
   if (!phone) return false;
   const isInternational = phone.startsWith("+");
   const digits = isInternational ? phone.slice(1) : phone;
