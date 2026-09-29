@@ -3,6 +3,7 @@ import { randomInt } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { latestCodeFor, latestEmailFor, latestLinkFor } from "./mail";
+import { userIdsWithEmails } from "./users";
 
 const WEB = "http://localhost:3000";
 const MAILPIT = "http://127.0.0.1:54324/api/v1";
@@ -29,11 +30,8 @@ test.beforeEach(async ({ page }) => {
 
 test.afterEach(async () => {
   const emails = usedEmails.splice(0);
-  const { data } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  for (const user of data.users) {
-    if (user.email && emails.includes(user.email)) {
-      await admin.auth.admin.deleteUser(user.id);
-    }
+  for (const id of await userIdsWithEmails(admin, emails)) {
+    await admin.auth.admin.deleteUser(id);
   }
   for (const email of emails) {
     await admin.from("access_requests").delete().eq("email", email);

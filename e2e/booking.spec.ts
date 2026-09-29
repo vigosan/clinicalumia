@@ -9,6 +9,7 @@ import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 import { latestCodeFor, latestEmailFor } from "./mail";
+import { userIdsWithEmails } from "./users";
 
 const WEB = "http://localhost:3000";
 const MAILPIT = "http://127.0.0.1:54324/api/v1";
@@ -167,15 +168,9 @@ async function removePatients(emails: string[]) {
       .in("id", ids);
     if (peopleError) throw peopleError;
   }
-  const { data: users, error: usersError } = await admin.auth.admin.listUsers({
-    perPage: 1000,
-  });
-  if (usersError) throw usersError;
-  for (const user of users.users) {
-    if (user.email && emails.includes(user.email)) {
-      const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
-      if (deleteError) throw deleteError;
-    }
+  for (const id of await userIdsWithEmails(admin, emails)) {
+    const { error: deleteError } = await admin.auth.admin.deleteUser(id);
+    if (deleteError) throw deleteError;
   }
   const { error: requestsError } = await admin
     .from("access_requests")
