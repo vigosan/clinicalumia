@@ -106,6 +106,44 @@ export type Database = {
           },
         ]
       }
+      appointment_reminders: {
+        Row: {
+          appointment_id: string
+          channel: Database["public"]["Enums"]["reminder_channel"]
+          created_at: string
+          error: string
+          id: string
+          recipient: string
+          sent_at: string | null
+        }
+        Insert: {
+          appointment_id: string
+          channel: Database["public"]["Enums"]["reminder_channel"]
+          created_at?: string
+          error?: string
+          id?: string
+          recipient: string
+          sent_at?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          channel?: Database["public"]["Enums"]["reminder_channel"]
+          created_at?: string
+          error?: string
+          id?: string
+          recipient?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_reminders_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           booked_by_account: string | null
@@ -751,6 +789,20 @@ export type Database = {
         }[]
       }
       normalize_phone: { Args: { value: string }; Returns: string }
+      reminder_candidates: {
+        Args: { p_day: string }
+        Returns: {
+          appointment_id: string
+          can_change: boolean
+          change_deadline: string
+          ends_at: string
+          person_name: string
+          professional_name: string
+          recipients: string[]
+          service_name: string
+          starts_at: string
+        }[]
+      }
       reschedule_my_appointment: {
         Args: { p_appointment_id: string; p_starts_at: string }
         Returns: string
@@ -789,6 +841,7 @@ export type Database = {
       booking_payment: "none" | "fixed" | "percent" | "full"
       guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
       payment_status: "not_required" | "pending" | "paid" | "refunded"
+      reminder_channel: "email" | "sms"
       user_role: "owner" | "employee"
       vat_treatment: "exempt" | "standard_21"
     }
@@ -936,6 +989,7 @@ export const Constants = {
       booking_payment: ["none", "fixed", "percent", "full"],
       guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
       payment_status: ["not_required", "pending", "paid", "refunded"],
+      reminder_channel: ["email", "sms"],
       user_role: ["owner", "employee"],
       vat_treatment: ["exempt", "standard_21"],
     },
