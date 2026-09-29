@@ -318,4 +318,65 @@ describe("savePerson", () => {
       error: "Tienes que aceptar la política de privacidad.",
     });
   });
+
+  it("saves nobody when the child is not a minor, so the mother is not left behind in the account", async () => {
+    expect(
+      await savePerson(
+        undefined,
+        personForm({
+          ...minor,
+          birth_date: "2000-01-01",
+          guardian_first_name: "Marta",
+          guardian_last_name: "Ruiz",
+          guardian_birth_date: "1970-04-02",
+          guardian_phone: "600111222",
+          privacy: "on",
+        }),
+      ),
+    ).toEqual({ error: "Solo puedes añadir a un menor a tu cargo." });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("offers the saved mother as guardian when the child is still refused, instead of asking for her again and duplicating her", async () => {
+    answer({
+      add_my_person: [
+        { data: GUARDIAN, error: null },
+        { data: null, error: { message: "boom" } },
+      ],
+    });
+
+    await expect(
+      savePerson(
+        undefined,
+        personForm({
+          ...minor,
+          guardian_first_name: "Marta",
+          guardian_last_name: "Ruiz",
+          guardian_birth_date: "1990-04-02",
+          guardian_phone: "600111222",
+          privacy: "on",
+        }),
+      ),
+    ).rejects.toThrow(/redirect:\/reservar\?.*persona=nueva/);
+  });
+
+  it("requires the phone of the adult, so the clinic can call whoever booked", async () => {
+    expect(
+      await savePerson(undefined, personForm({ ...self, phone: "" })),
+    ).toEqual({ error: "El teléfono es obligatorio." });
+    expect(
+      await savePerson(
+        undefined,
+        personForm({
+          ...minor,
+          guardian_first_name: "Marta",
+          guardian_last_name: "Ruiz",
+          guardian_birth_date: "1990-04-02",
+          guardian_phone: "",
+          privacy: "on",
+        }),
+      ),
+    ).toEqual({ error: "El teléfono es obligatorio." });
+    expect(rpc).not.toHaveBeenCalled();
+  });
 });

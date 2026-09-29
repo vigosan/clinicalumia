@@ -10,6 +10,7 @@ import {
   bookingConfirmationEmail,
   bookingError,
   bookingState,
+  NEW_PERSON,
   type NewPersonInput,
   PRIVACY_VERSION,
   parseNewPersonForm,
@@ -43,6 +44,13 @@ function prefixed(formData: FormData, prefix: string) {
     fields.set(key, String(formData.get(`${prefix}${key}`) ?? ""));
   }
   return fields;
+}
+
+const PHONE_REQUIRED = "El teléfono es obligatorio.";
+
+function isMinorOn(birthDate: string, today: string) {
+  const adultOn = `${Number(birthDate.slice(0, 4)) + 18}${birthDate.slice(4)}`;
+  return adultOn > today;
 }
 
 async function addPerson(
@@ -82,6 +90,7 @@ export async function savePerson(
 
   if (formData.get("para") !== "menor") {
     if ("error" in parsed) return { error: parsed.error };
+    if (!parsed.person.phone) return { error: PHONE_REQUIRED };
     const { data, error } = await addPerson(supabase, parsed.person, {
       guardianId: null,
       relationship: null,
@@ -102,7 +111,10 @@ export async function savePerson(
     ? null
     : parseNewPersonForm(prefixed(formData, "guardian_"), today);
   if (guardian && "error" in guardian) return { error: guardian.error };
+  if (guardian && !guardian.person.phone) return { error: PHONE_REQUIRED };
   if ("error" in parsed) return { error: parsed.error };
+  if (!isMinorOn(parsed.person.birth_date, today))
+    return { error: personError({ message: "person_not_minor" }) };
 
   let guardianId = existingGuardian;
   if (guardian) {
@@ -122,6 +134,7 @@ export async function savePerson(
     isPatient: true,
     acceptPrivacy: acceptPrivacy && !guardian,
   });
+  if (error && guardian) redirect(reservar({ ...state, persona: NEW_PERSON }));
   if (error) return { error: personError(error) };
   redirect(reservar({ ...state, persona: data }));
 }
