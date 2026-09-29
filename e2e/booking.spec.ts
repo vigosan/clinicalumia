@@ -7,7 +7,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { latestCodeFor } from "./mail";
+import { latestCodeFor, latestEmailFor } from "./mail";
 
 const WEB = "http://localhost:3000";
 const MAILPIT = "http://127.0.0.1:54324/api/v1";
@@ -450,7 +450,7 @@ async function seedPerson(email: string, firstName: string) {
   return data!;
 }
 
-test("a new patient picks a time, identifies with the emailed code, gives their details accepting privacy and gets the appointment confirmed", async ({
+test("a new patient picks a time, identifies with the emailed code, gives their details accepting privacy and gets the appointment confirmed on screen and by email", async ({
   page,
 }) => {
   const { specialty, service, withHours, withHoursId } =
@@ -503,6 +503,12 @@ test("a new patient picks a time, identifies with the emailed code, gives their 
     .single();
   expect(account!.privacy_version).toBe("2026-09");
   expect(account!.privacy_accepted_at).not.toBeNull();
+
+  const html = await latestEmailFor(email, "Cita confirmada");
+  expect(html).toContain(service.name);
+  expect(html).toContain(withHours);
+  expect(html).toContain("Marta Reserva");
+  expect(html).toContain("Puedes verla o cambiarla en Mi cuenta");
 });
 
 test("a mother books for her new child: she is saved as guardian without being a patient and the appointment is for the child", async ({

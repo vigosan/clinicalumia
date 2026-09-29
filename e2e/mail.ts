@@ -39,3 +39,23 @@ export async function latestCodeFor(email: string): Promise<string> {
   }
   throw new Error(`No ha llegado el código a ${email}`);
 }
+
+export async function latestEmailFor(
+  email: string,
+  subject: string,
+): Promise<string> {
+  const query = `to:"${email}" subject:"${subject}"`;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const { messages } = await (
+      await fetch(`${MAILPIT}/search?query=${encodeURIComponent(query)}`)
+    ).json();
+    if (messages.length > 0) {
+      const { HTML } = await (
+        await fetch(`${MAILPIT}/message/${messages[0].ID}`)
+      ).json();
+      return HTML;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`No ha llegado "${subject}" a ${email}`);
+}

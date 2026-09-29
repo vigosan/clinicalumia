@@ -1,11 +1,13 @@
 "use server";
 
+import { sendEmail } from "@clinicalumia/api/email";
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { redirect } from "next/navigation";
 import {
   ANY_PROFESSIONAL,
   type BookingState,
+  bookingConfirmationEmail,
   bookingError,
   bookingState,
   type NewPersonInput,
@@ -138,6 +140,31 @@ async function findAppointment(
   return data.find(match);
 }
 
+async function emailConfirmation(supabase: Client, appointmentId: string) {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const appointment = await findAppointment(
+      supabase,
+      (candidate) => candidate.id === appointmentId,
+    );
+    if (!user?.email || !appointment)
+      throw new Error(`No se encuentra la cita ${appointmentId} o el email`);
+    await sendEmail({
+      to: user.email,
+      ...bookingConfirmationEmail({
+        startsAt: appointment.starts_at,
+        serviceName: appointment.service_name,
+        professionalName: appointment.professional_name,
+        personName: appointment.person_name,
+      }),
+    });
+  } catch (error) {
+    console.error("No se ha podido enviar el email de la cita", error);
+  }
+}
+
 export async function confirmBooking(
   _prev: BookingFormState,
   formData: FormData,
@@ -177,5 +204,6 @@ export async function confirmBooking(
   }
   if (error) return { error: bookingError(error) };
 
+  await emailConfirmation(supabase, data);
   redirect(confirmed(data));
 }

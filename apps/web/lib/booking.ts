@@ -229,3 +229,37 @@ export function formatWhen(instant: string): string {
   }).format(new Date(instant));
   return `${capitalize(formatted)} a las ${madridDateTime(instant).time}`;
 }
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+export type ConfirmedAppointment = {
+  startsAt: string;
+  serviceName: string;
+  professionalName: string;
+  personName: string;
+};
+
+export function bookingConfirmationEmail(appointment: ConfirmedAppointment): {
+  subject: string;
+  html: string;
+} {
+  return {
+    subject: "Cita confirmada",
+    html: `
+      <h2>Cita confirmada</h2>
+      <p><strong>Cuándo:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}</p>
+      <p><strong>Servicio:</strong> ${escapeHtml(appointment.serviceName)}</p>
+      <p><strong>Profesional:</strong> ${escapeHtml(appointment.professionalName)}</p>
+      <p><strong>Para:</strong> ${escapeHtml(appointment.personName)}</p>
+      <p>Puedes verla o cambiarla en Mi cuenta.</p>
+      <p>Clínica LUMIA</p>
+    `,
+  };
+}

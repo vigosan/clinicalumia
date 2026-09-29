@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type RpcResult = { data: unknown; error: { message: string } | null };
 
 const rpc = vi.fn<(name: string, args?: unknown) => Promise<RpcResult>>();
+const sendEmail = vi.fn();
 
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
@@ -19,6 +20,7 @@ vi.mock("@clinicalumia/api/server", () => ({
     },
   }),
 }));
+vi.mock("@clinicalumia/api/email", () => ({ sendEmail }));
 
 const { confirmBooking, savePerson } = await import("./actions");
 const { PRIVACY_VERSION } = await import("@/lib/booking");
@@ -71,10 +73,11 @@ function answer(results: Record<string, RpcResult | RpcResult[]>) {
 
 beforeEach(() => {
   rpc.mockReset();
+  sendEmail.mockReset();
 });
 
 describe("confirmBooking", () => {
-  it("books the slot and shows the confirmation, asking for any free professional when the patient chose 'El primer hueco libre'", async () => {
+  it("books the slot, emails the account and shows the confirmation, asking for any free professional when the patient chose 'El primer hueco libre'", async () => {
     answer({
       book_appointment: { data: APPOINTMENT, error: null },
       my_appointments: { data: [appointmentRow()], error: null },
@@ -90,6 +93,11 @@ describe("confirmBooking", () => {
       p_professional_id: null,
       p_starts_at: STARTS_AT,
     });
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    const email = sendEmail.mock.calls[0]?.[0];
+    expect(email.to).toBe("marta@test.local");
+    expect(email.subject).toBe("Cita confirmada");
+    expect(email.html).toContain("Ana García");
   });
 
   it("sends the patient back to the slots with a warning and without the taken time when someone else got it first", async () => {
@@ -110,9 +118,10 @@ describe("confirmBooking", () => {
     expect(url.searchParams.get("aviso")).toBe("ocupado");
     expect(url.searchParams.get("inicio")).toBeNull();
     expect(url.searchParams.get("servicio")).toBe(SERVICE);
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  it("treats a second submit of the same booking as the confirmation, because the first one already booked it", async () => {
+  it("treats a second submit of the same booking as the confirmation and does not email twice, because the first one already booked it", async () => {
     answer({
       book_appointment: {
         data: null,
@@ -124,6 +133,7 @@ describe("confirmBooking", () => {
     await expect(confirmBooking(undefined, confirmForm())).rejects.toThrow(
       `redirect:/reservar/confirmada?cita=${APPOINTMENT}`,
     );
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it("does not take a cancelled appointment at that time as a previous submit", async () => {
@@ -143,7 +153,7 @@ describe("confirmBooking", () => {
     );
   });
 
-  it("explains other refusals in plain words", async () => {
+  it("explains other refusals in plain words and sends no email", async () => {
     answer({
       book_appointment: {
         data: null,
@@ -154,6 +164,24 @@ describe("confirmBooking", () => {
     expect(await confirmBooking(undefined, confirmForm())).toEqual({
       error: "Este servicio se reserva por teléfono.",
     });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("still confirms when the email fails, because the appointment is already booked", async () => {
+    answer({
+      book_appointment: { data: APPOINTMENT, error: null },
+      my_appointments: { data: [appointmentRow()], error: null },
+    });
+    sendEmail.mockRejectedValue(new Error("Resend caído"));
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    await expect(confirmBooking(undefined, confirmForm())).rejects.toThrow(
+      `redirect:/reservar/confirmada?cita=${APPOINTMENT}`,
+    );
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });
 
