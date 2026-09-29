@@ -340,3 +340,75 @@ $$;
 
 revoke all on function public.cancel_my_appointment(uuid) from public, anon;
 grant execute on function public.cancel_my_appointment(uuid) to authenticated;
+
+create or replace function public.my_contact(p_person_id uuid)
+returns table (phone text, address text)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (select 1 from public.patient_accounts pa where pa.id = auth.uid()) then
+    raise exception 'patient_account_required' using errcode = '42501';
+  end if;
+
+  if not exists (select 1 from public.my_people() mp where mp.id = p_person_id) then
+    raise exception 'person_not_in_account' using errcode = 'P0001';
+  end if;
+
+  return query
+    select p.phone, p.address from public.people p where p.id = p_person_id;
+end;
+$$;
+
+revoke all on function public.my_contact(uuid) from public, anon;
+grant execute on function public.my_contact(uuid) to authenticated;
+
+create or replace function public.update_my_contact(p_person_id uuid, p_phone text, p_address text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  person_is_minor boolean;
+  normalized_phone text := public.normalize_phone(p_phone);
+  trimmed_address text := trim(coalesce(p_address, ''));
+begin
+  if not exists (select 1 from public.patient_accounts pa where pa.id = auth.uid()) then
+    raise exception 'patient_account_required' using errcode = '42501';
+  end if;
+
+  select mp.is_minor into person_is_minor from public.my_people() mp where mp.id = p_person_id;
+  if not found then
+    raise exception 'person_not_in_account' using errcode = 'P0001';
+  end if;
+
+  if normalized_phone is null then
+    if not person_is_minor then
+      raise exception 'invalid_phone' using errcode = 'P0001';
+    end if;
+  elsif not (
+    case when left(normalized_phone, 1) = '+'
+      then length(normalized_phone) - 1 >= 8
+      else length(normalized_phone) >= 9
+    end
+  ) then
+    raise exception 'invalid_phone' using errcode = 'P0001';
+  end if;
+
+  if length(trimmed_address) > 300 then
+    raise exception 'address_too_long' using errcode = 'P0001';
+  end if;
+
+  perform set_config('lumia.booking_account', auth.uid()::text, true);
+
+  update public.people
+  set phone = normalized_phone, address = trimmed_address
+  where id = p_person_id;
+end;
+$$;
+
+revoke all on function public.update_my_contact(uuid, text, text) from public, anon;
+grant execute on function public.update_my_contact(uuid, text, text) to authenticated;

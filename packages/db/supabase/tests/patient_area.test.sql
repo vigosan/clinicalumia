@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(61);
+select plan(78);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -62,6 +62,10 @@ insert into public.services (id, specialty_id, name, duration_minutes, price_cen
 insert into public.people (id, first_name, last_name, birth_date, email, is_patient) values
   ('87000000-0000-0000-0000-0000000000c1', 'Ana', 'Cuenta', '1980-01-01', 'cuenta-a-area@test.local', true),
   ('87000000-0000-0000-0000-0000000000c2', 'Bea', 'Otra', '1981-01-01', 'cuenta-b-area@test.local', true);
+insert into public.people (id, first_name, last_name, birth_date, is_patient) values
+  ('87000000-0000-0000-0000-0000000000c3', 'Cati', 'Menor', ((now() at time zone 'Europe/Madrid')::date - interval '10 years')::date, true);
+insert into public.guardianships (minor_id, guardian_id, relationship, is_primary) values
+  ('87000000-0000-0000-0000-0000000000c3', '87000000-0000-0000-0000-0000000000c1', 'madre', true);
 insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
   ('87000000-0000-0000-0000-000000000001', extract(isodow from pg_temp.day3())::smallint, '10:00', '14:00'),
   ('87000000-0000-0000-0000-000000000002', extract(isodow from pg_temp.day3())::smallint, '10:00', '14:00');
@@ -277,6 +281,58 @@ select is((select status::text from public.appointments where id = '87000000-000
   'account B''s appointment is untouched by everyone else''s attempts');
 select is((select count(*) from public.appointment_events where appointment_id = '87000000-0000-0000-0000-0000000000d2'),
   1::bigint, 'and its history only has its creation');
+
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
+select results_eq(
+  $$ select phone, address from public.my_contact('87000000-0000-0000-0000-0000000000c1') $$,
+  $$ values (null::text, ''::text) $$,
+  'account A starts with no phone and an empty address for her adult');
+select lives_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '611223344', '  Calle Mayor 1  ') $$,
+  'account A sets her adult''s contact details');
+select results_eq(
+  $$ select phone, address from public.my_contact('87000000-0000-0000-0000-0000000000c1') $$,
+  $$ values ('611223344'::text, 'Calle Mayor 1'::text) $$,
+  'the phone is stored normalised and the address is trimmed');
+select lives_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c3', '', '') $$,
+  'account A can leave her minor without a phone');
+select results_eq(
+  $$ select phone, address from public.my_contact('87000000-0000-0000-0000-0000000000c3') $$,
+  $$ values (null::text, ''::text) $$,
+  'the minor keeps an empty phone and address');
+select throws_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '', 'Calle Mayor 1') $$,
+  'P0001', 'invalid_phone', 'an adult cannot be left without a phone');
+select throws_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '123', 'Calle Mayor 1') $$,
+  'P0001', 'invalid_phone', 'a phone that is too short is refused');
+select throws_ok(format($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '611223344', %L) $$, repeat('a', 301)),
+  'P0001', 'address_too_long', 'an address over 300 characters is refused');
+
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000011');
+select throws_ok($$ select * from public.my_contact('87000000-0000-0000-0000-0000000000c1') $$,
+  'P0001', 'person_not_in_account', 'account B cannot read account A''s contact details even knowing the person''s id');
+select throws_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '611223344', '') $$,
+  'P0001', 'person_not_in_account', 'account B cannot change account A''s contact details even knowing the person''s id');
+
+select pg_temp.act_as('87000000-0000-0000-0000-000000000001');
+select throws_ok($$ select * from public.my_contact('87000000-0000-0000-0000-0000000000c1') $$,
+  '42501', null, 'a team member without a patient account cannot read contact details through the patient door');
+select throws_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '611223344', '') $$,
+  '42501', null, 'a team member without a patient account cannot change contact details through the patient door');
+reset role;
+
+select set_config('request.jwt.claims', '', true);
+select set_config('lumia.booking_account', '', true);
+set local role anon;
+select throws_ok($$ select * from public.my_contact('87000000-0000-0000-0000-0000000000c1') $$,
+  '42501', null, 'an anonymous caller is stopped by grants before reaching any contact detail');
+reset role;
+select is(has_function_privilege('anon', 'public.my_contact(uuid)', 'execute'), false,
+  'an anonymous visitor cannot read anybody''s contact details');
+select is(has_function_privilege('anon', 'public.update_my_contact(uuid, text, text)', 'execute'), false,
+  'an anonymous visitor cannot change anybody''s contact details');
+select is(has_function_privilege('authenticated', 'public.my_contact(uuid)', 'execute'), true,
+  'a signed-in patient can read contact details');
+select is(has_function_privilege('authenticated', 'public.update_my_contact(uuid, text, text)', 'execute'), true,
+  'a signed-in patient can change contact details');
 
 select * from finish();
 rollback;

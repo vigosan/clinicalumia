@@ -723,6 +723,13 @@ export type Database = {
           status: Database["public"]["Enums"]["appointment_status"]
         }[]
       }
+      my_contact: {
+        Args: { p_person_id: string }
+        Returns: {
+          address: string
+          phone: string
+        }[]
+      }
       my_people: {
         Args: never
         Returns: {
@@ -754,6 +761,10 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           specialty_id: string
         }[]
+      }
+      update_my_contact: {
+        Args: { p_address: string; p_person_id: string; p_phone: string }
+        Returns: undefined
       }
     }
     Enums: {
