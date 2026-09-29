@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(95);
+select plan(96);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -365,6 +365,8 @@ select results_eq(
   $$ select phone, address from public.my_contact('87000000-0000-0000-0000-0000000000c3') $$,
   $$ values (null::text, ''::text) $$,
   'the minor keeps an empty phone and address');
+select throws_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c3', 'sin numero', '') $$,
+  'P0001', 'invalid_phone', 'a minor''s phone with no digits is refused instead of silently clearing it');
 select throws_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '', 'Calle Mayor 1') $$,
   'P0001', 'invalid_phone', 'an adult cannot be left without a phone');
 select throws_ok($$ select public.update_my_contact('87000000-0000-0000-0000-0000000000c1', '123', 'Calle Mayor 1') $$,

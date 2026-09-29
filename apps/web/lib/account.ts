@@ -90,7 +90,7 @@ export function parseContactForm(
   const address = String(formData.get("address") ?? "").trim();
   const phone = phoneRaw ? normalizePhone(phoneRaw) : null;
 
-  if (phone ? !isValidPhone(phone) : !isMinor)
+  if (phone ? !isValidPhone(phone) : phoneRaw || !isMinor)
     return { error: "Escribe un teléfono válido." };
 
   if (address.length > 300)

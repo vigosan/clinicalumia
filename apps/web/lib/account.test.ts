@@ -244,6 +244,12 @@ describe("parseContactForm", () => {
     });
   });
 
+  it("rejects a minor's phone with no digits instead of silently clearing the one on file", () => {
+    expect(parseContactForm(form({ phone: "abc", address: "" }), true)).toEqual(
+      { error: "Escribe un teléfono válido." },
+    );
+  });
+
   it("rejects an address longer than 300 characters", () => {
     const result = parseContactForm(
       form({ phone: "614552808", address: "a".repeat(301) }),

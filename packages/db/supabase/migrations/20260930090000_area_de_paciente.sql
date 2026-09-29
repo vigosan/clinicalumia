@@ -434,7 +434,7 @@ begin
   end if;
 
   if normalized_phone is null then
-    if not person_is_minor then
+    if not person_is_minor or trim(coalesce(p_phone, '')) <> '' then
       raise exception 'invalid_phone' using errcode = 'P0001';
     end if;
   elsif not (
