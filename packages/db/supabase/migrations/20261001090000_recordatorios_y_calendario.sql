@@ -133,11 +133,12 @@ security definer
 set search_path = ''
 as $$
 declare
-  token text := rtrim(translate(encode(extensions.gen_random_bytes(32), 'base64'), '+/', '-_'), '=');
+  token text;
 begin
   if not public.is_active_staff() then
     raise exception 'calendar_token_forbidden' using errcode = '42501';
   end if;
+  token := rtrim(translate(encode(extensions.gen_random_bytes(32), 'base64'), '+/', '-_'), '=');
   update public.profiles set calendar_token = token where id = auth.uid();
   return token;
 end;

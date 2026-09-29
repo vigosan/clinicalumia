@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(63);
+select plan(68);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -22,6 +22,10 @@ $$;
 
 create or replace function pg_temp.day_x() returns date language sql stable as $$
   select (now() at time zone 'Europe/Madrid')::date + 5
+$$;
+
+create or replace function pg_temp.at_madrid(days_from_today int, wall time) returns timestamptz language sql stable as $$
+  select (((now() at time zone 'Europe/Madrid')::date + days_from_today)::timestamp + wall) at time zone 'Europe/Madrid'
 $$;
 
 create or replace function pg_temp.at_day_x(wall time) returns timestamptz language sql stable as $$
@@ -320,6 +324,39 @@ update public.profiles set is_active = false where id = '88000000-0000-0000-0000
 reset role;
 select is((select calendar_token from public.profiles where id = '88000000-0000-0000-0000-000000000021'), null,
   'deactivating an employee wipes her calendar token, so reactivating her never revives an old link');
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('88000000-0000-0000-0000-0000000000e6', '88000000-0000-0000-0000-000000000022', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-30, '00:00'), pg_temp.at_madrid(-30, '00:30')),
+  ('88000000-0000-0000-0000-0000000000e7', '88000000-0000-0000-0000-000000000022', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(90, '23:30'), pg_temp.at_madrid(91, '00:00')),
+  ('88000000-0000-0000-0000-0000000000e8', '88000000-0000-0000-0000-000000000022', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(91, '00:00'), pg_temp.at_madrid(91, '00:30'));
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000022');
+select set_config('lumia_test.token_edges', public.regenerate_my_calendar_token(), true);
+reset role;
+
+set local role anon;
+select is((select count(*) from public.calendar_feed(current_setting('lumia_test.token_edges')) where appointment_id = '88000000-0000-0000-0000-0000000000e6'), 1::bigint,
+  'an appointment at midnight exactly 30 days ago in Madrid is still in the calendar, so the last month stays visible');
+select is((select count(*) from public.calendar_feed(current_setting('lumia_test.token_edges')) where appointment_id = '88000000-0000-0000-0000-0000000000e7'), 1::bigint,
+  'an appointment at 23:30 on day 90 in Madrid is in the calendar, so the whole last day of the window shows');
+select is((select count(*) from public.calendar_feed(current_setting('lumia_test.token_edges')) where appointment_id = '88000000-0000-0000-0000-0000000000e8'), 0::bigint,
+  'an appointment at midnight on day 91 in Madrid is outside the calendar, so the feed stays bounded');
+reset role;
+
+insert into auth.users (id, email) values
+  ('88000000-0000-0000-0000-000000000024', 'otra-calendario@test.local');
+select pg_temp.act_as('88000000-0000-0000-0000-000000000020');
+select throws_ok(
+  $$ insert into public.profiles (id, email, full_name, role, is_active, calendar_token)
+     values ('88000000-0000-0000-0000-000000000024', 'otra-calendario@test.local', 'Otra', 'employee', true, 'token-plantado') $$,
+  '42501', null, 'not even the owner can create a team member with a calendar token she knows');
+update public.profiles set full_name = 'Empleada B Renombrada' where id = '88000000-0000-0000-0000-000000000022';
+reset role;
+select is((select calendar_token from public.profiles where id = '88000000-0000-0000-0000-000000000022'), current_setting('lumia_test.token_edges'),
+  'the owner renaming an employee keeps her calendar link working, since only deactivation wipes it');
 
 select * from finish();
 rollback;
