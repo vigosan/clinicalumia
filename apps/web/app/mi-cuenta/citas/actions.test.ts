@@ -41,6 +41,18 @@ const cancelledRow = {
   professional_name: "Ana García",
 };
 
+const closedRow = {
+  ...cancelledRow,
+  status: "scheduled",
+  can_change: false,
+};
+
+const changeableRow = {
+  ...cancelledRow,
+  status: "scheduled",
+  can_change: true,
+};
+
 function answer(results: Record<string, RpcResult>) {
   rpc.mockImplementation(
     async (name) => results[name] ?? { data: null, error: null },
@@ -80,11 +92,27 @@ describe("cancelAppointment", () => {
         data: null,
         error: { message: "outside_change_window" },
       },
+      my_appointments: { data: [closedRow], error: null },
     });
 
     expect(await cancelAppointment(undefined, cancelForm())).toEqual({
       error: "Ya no se puede cambiar desde la web. Llama al 614 552 808.",
     });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("goes back to Mi cuenta with the cancelled notice and sends nothing again when the appointment was already cancelled, from another tab or a second click", async () => {
+    answer({
+      cancel_my_appointment: {
+        data: null,
+        error: { message: "outside_change_window" },
+      },
+      my_appointments: { data: [cancelledRow], error: null },
+    });
+
+    await expect(cancelAppointment(undefined, cancelForm())).rejects.toThrow(
+      "redirect:/mi-cuenta?aviso=cancelada",
+    );
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
@@ -175,12 +203,30 @@ describe("rescheduleAppointment", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
+  it("goes back to the slots with the warning when only the chosen time is too close to change to, since the appointment itself can still be changed", async () => {
+    answer({
+      reschedule_my_appointment: {
+        data: null,
+        error: { message: "outside_change_window" },
+      },
+      my_appointments: { data: [changeableRow], error: null },
+    });
+
+    await expect(
+      rescheduleAppointment(undefined, rescheduleForm()),
+    ).rejects.toThrow(
+      `redirect:/mi-cuenta/citas/${APPOINTMENT}/cambiar?fecha=2026-10-01&aviso=ocupado`,
+    );
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
   it("explains that the window closed and sends nothing, because the appointment keeps its time", async () => {
     answer({
       reschedule_my_appointment: {
         data: null,
         error: { message: "outside_change_window" },
       },
+      my_appointments: { data: [closedRow], error: null },
     });
 
     expect(await rescheduleAppointment(undefined, rescheduleForm())).toEqual({

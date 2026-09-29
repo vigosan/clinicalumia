@@ -54,6 +54,11 @@ async function emailAccount(
   }
 }
 
+async function myAppointment(supabase: Client, appointmentId: string) {
+  const { data } = await supabase.rpc("my_appointments");
+  return data?.find((candidate) => candidate.id === appointmentId);
+}
+
 export async function cancelAppointment(
   _prev: AccountFormState,
   formData: FormData,
@@ -63,6 +68,11 @@ export async function cancelAppointment(
   const { error } = await supabase.rpc("cancel_my_appointment", {
     p_appointment_id: appointmentId,
   });
+  if (
+    error?.message === "outside_change_window" &&
+    (await myAppointment(supabase, appointmentId))?.status === "cancelled"
+  )
+    redirect("/mi-cuenta?aviso=cancelada");
   if (error) return { error: accountError(error) };
 
   await emailAccount(supabase, appointmentId, cancelledEmail);
@@ -85,7 +95,11 @@ export async function rescheduleAppointment(
     p_appointment_id: appointmentId,
     p_starts_at: inicio,
   });
-  if (error?.message === "slot_not_available")
+  if (
+    error?.message === "slot_not_available" ||
+    (error?.message === "outside_change_window" &&
+      (await myAppointment(supabase, appointmentId))?.can_change)
+  )
     redirect(
       `/mi-cuenta/citas/${appointmentId}/cambiar?${bookingState.encode({ fecha, aviso: SLOT_TAKEN })}`,
     );
