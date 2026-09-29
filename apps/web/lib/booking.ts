@@ -259,7 +259,7 @@ export function formatWhen(instant: string): string {
   return `${capitalize(formatted)} a las ${madridDateTime(instant).time}`;
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

@@ -179,4 +179,37 @@ describe("sendEmail", () => {
       },
     ]);
   });
+
+  it("sends one email to every guardian through Resend, so a reminder reaches all of them without being sent twice", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    resendSend.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await sendEmail({
+      ...message,
+      to: ["ana@example.com", "luis@example.com"],
+    });
+
+    expect(resendSend).toHaveBeenCalledTimes(1);
+    expect(resendSend).toHaveBeenCalledWith(
+      expect.objectContaining({ to: ["ana@example.com", "luis@example.com"] }),
+    );
+  });
+
+  it("sends one email to every guardian through Mailpit, so development shows the same single reminder", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await sendEmail({
+      ...message,
+      to: ["ana@example.com", "luis@example.com"],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.lastCall ?? [];
+    expect(JSON.parse(init.body).To).toEqual([
+      { Email: "ana@example.com" },
+      { Email: "luis@example.com" },
+    ]);
+  });
 });

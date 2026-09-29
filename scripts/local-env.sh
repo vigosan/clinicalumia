@@ -23,6 +23,7 @@ for app in web admin dashboard; do
     if [ "$app" = "web" ]; then
       echo "ACCESS_IP_SALT=\"lumia-desarrollo-local\""
       echo "NEXT_PUBLIC_SITE_URL=\"http://localhost:3000\""
+      echo "CRON_SECRET=\"lumia-cron-local\""
     fi
   } > "$file"
   echo "  escrito apps/$app/.env.development.local"

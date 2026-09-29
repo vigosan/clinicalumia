@@ -6,7 +6,7 @@ const MAILPIT_SEND = "http://127.0.0.1:54324/api/v1/send";
 
 type Attachment = { filename: string; content: string; contentType: string };
 type Email = {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   attachments?: Attachment[];
@@ -58,7 +58,7 @@ export async function sendEmail({
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       From: parseSender(from),
-      To: [{ Email: to }],
+      To: [to].flat().map((email) => ({ Email: email })),
       Subject: subject,
       HTML: html,
       ...(attachments && {
