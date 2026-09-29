@@ -21,6 +21,7 @@ export type AppointmentDetail = {
   startsAt: string;
   endsAt: string;
   status: "scheduled" | "cancelled" | "no_show";
+  origin: "staff" | "web";
   notes: string;
   priceCents: number;
   canMove: boolean;
@@ -139,6 +140,11 @@ export function AppointmentPanel({
         <Badge tone={STATUS_TONE[appointment.status]}>
           {STATUS_LABEL[appointment.status]}
         </Badge>
+        {appointment.origin === "web" && (
+          <Badge tone="neutral" data-testid="web-booking-badge">
+            Reserva web
+          </Badge>
+        )}
       </div>
 
       {appointment.notes && (

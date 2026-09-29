@@ -1,14 +1,18 @@
 import { execSync } from "node:child_process";
-import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import {
+  addDays,
+  madridDateTime,
+  todayInMadrid,
+} from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 
 const DASHBOARD = "http://localhost:3001";
 
-const serviceKey = execSync("cd ../packages/db && supabase status -o env")
-  .toString()
-  .match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
+const env = execSync("cd ../packages/db && supabase status -o env").toString();
+const serviceKey = env.match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
+const anonKey = env.match(/^ANON_KEY="?([^"\n]+)/m)?.[1];
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 
 const PATRICIA_ID = "a0000000-0000-0000-0000-000000000001";
@@ -25,6 +29,8 @@ const createdAppointmentIds: string[] = [];
 const createdTimeOffIds: string[] = [];
 const createdUserIds: string[] = [];
 const createdPersonIds: string[] = [];
+const createdServiceIds: string[] = [];
+const createdSpecialtyIds: string[] = [];
 
 function visibleColumns(page: Page) {
   return page.locator('[data-testid="agenda-column"]:visible');
@@ -174,6 +180,20 @@ test.afterEach(async () => {
   }
   for (const id of userIds) {
     const { error } = await admin.auth.admin.deleteUser(id);
+    expect(error).toBeNull();
+  }
+  if (createdServiceIds.length > 0) {
+    const { error } = await admin
+      .from("services")
+      .delete()
+      .in("id", createdServiceIds.splice(0));
+    expect(error).toBeNull();
+  }
+  if (createdSpecialtyIds.length > 0) {
+    const { error } = await admin
+      .from("specialties")
+      .delete()
+      .in("id", createdSpecialtyIds.splice(0));
     expect(error).toBeNull();
   }
 });
@@ -1209,4 +1229,131 @@ test("una cita de Nora aparece en «Próximas» en su ficha para la empleada que
     await contextB.close();
     await contextOwner.close();
   }
+});
+
+test("una cita reservada desde la web muestra «Reserva web» en el bloque y en el panel, y el historial dice que se reservó desde la web", async ({
+  page,
+}) => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const { data: specialty, error: specialtyError } = await admin
+    .from("specialties")
+    .insert({
+      name: `Agenda web e2e ${suffix}`,
+      slug: `agenda-web-e2e-${suffix}`,
+    })
+    .select("id")
+    .single();
+  expect(specialtyError).toBeNull();
+  createdSpecialtyIds.push(specialty!.id);
+
+  const { data: service, error: serviceError } = await admin
+    .from("services")
+    .insert({
+      specialty_id: specialty!.id,
+      name: `Servicio web e2e ${suffix}`,
+      duration_minutes: 45,
+      price_cents: 4000,
+      bookable_online: true,
+      booking_payment: "none",
+    })
+    .select("id")
+    .single();
+  expect(serviceError).toBeNull();
+  createdServiceIds.push(service!.id);
+
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Reserva Web",
+    role: "employee",
+    specialtyId: specialty!.id,
+  });
+  const { error: scheduleError } = await admin
+    .from("employee_schedules")
+    .insert(
+      [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
+        profile_id: employee.id,
+        weekday,
+        starts_at: "09:00",
+        ends_at: "20:00",
+      })),
+    );
+  expect(scheduleError).toBeNull();
+
+  const patientEmail = `agenda-web-paciente-${suffix}@test.local`;
+  const patientPassword = "lumia-segura-2026";
+  const { data: patientUser, error: patientUserError } =
+    await admin.auth.admin.createUser({
+      email: patientEmail,
+      password: patientPassword,
+      email_confirm: true,
+    });
+  expect(patientUserError).toBeNull();
+  createdUserIds.push(patientUser!.user!.id);
+  const { error: patientAccountError } = await admin
+    .from("patient_accounts")
+    .insert({ id: patientUser!.user!.id, email: patientEmail });
+  expect(patientAccountError).toBeNull();
+
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: "Web",
+      email: patientEmail,
+      is_patient: true,
+      birth_date: "1990-01-01",
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  createdPersonIds.push(person!.id);
+
+  const patientClient = createClient("http://127.0.0.1:54321", anonKey ?? "");
+  const { error: signInError } = await patientClient.auth.signInWithPassword({
+    email: patientEmail,
+    password: patientPassword,
+  });
+  expect(signInError).toBeNull();
+
+  const { data: slots, error: slotsError } = await patientClient.rpc(
+    "available_slots",
+    {
+      p_service_id: service!.id,
+      p_professional_id: employee.id,
+      p_from: futureDate(2),
+      p_to: futureDate(6),
+    },
+  );
+  expect(slotsError).toBeNull();
+  const chosen = slots?.[0];
+  expect(chosen).toBeTruthy();
+
+  const { data: appointmentId, error: bookError } = await patientClient.rpc(
+    "book_appointment",
+    {
+      p_person_id: person!.id,
+      p_service_id: service!.id,
+      p_professional_id: employee.id,
+      p_starts_at: chosen!.starts_at,
+    },
+  );
+  expect(bookError).toBeNull();
+  createdAppointmentIds.push(appointmentId as unknown as string);
+
+  const date = madridDateTime(chosen!.starts_at).date;
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}`);
+
+  const appointmentBlock = columnFor(page, employee.id).getByTestId(
+    "appointment-block",
+  );
+  await expect(appointmentBlock.getByTestId("web-booking-badge")).toBeVisible();
+
+  await appointmentBlock.click();
+  await expect(
+    page.getByTestId("appointment-panel").getByTestId("web-booking-badge"),
+  ).toBeVisible();
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Reservada desde la web el",
+  );
 });

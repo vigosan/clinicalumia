@@ -1,4 +1,5 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
+import { Badge } from "@clinicalumia/ui/badge";
 import Link from "next/link";
 import type { Block, ScheduleBlock, SpecialtyTone } from "@/lib/agenda";
 
@@ -81,6 +82,7 @@ export type BlockContent = {
   href?: string;
   dimmed: boolean;
   toneClass: string;
+  webBooking?: boolean;
 };
 
 export type PositionedBlock = {
@@ -147,6 +149,15 @@ export function AgendaColumnGrid({
               className={className}
               style={blockStyle}
             >
+              {content.webBooking && (
+                <Badge
+                  tone="neutral"
+                  data-testid="web-booking-badge"
+                  className="px-1.5 py-0.5 text-[10px]"
+                >
+                  Reserva web
+                </Badge>
+              )}
               <p className="truncate font-medium">{content.title}</p>
               <p className="truncate">{content.subtitle}</p>
             </Link>
@@ -159,6 +170,15 @@ export function AgendaColumnGrid({
             className={className}
             style={blockStyle}
           >
+            {content.webBooking && (
+              <Badge
+                tone="neutral"
+                data-testid="web-booking-badge"
+                className="px-1.5 py-0.5 text-[10px]"
+              >
+                Reserva web
+              </Badge>
+            )}
             <p className="truncate font-medium">{content.title}</p>
             <p className="truncate">{content.subtitle}</p>
           </div>
@@ -181,6 +201,11 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
             data-appointment={content.block.id}
             className={`rounded-field border px-3 py-2 text-sm ${content.toneClass} ${content.dimmed ? "opacity-60" : ""}`}
           >
+            {content.webBooking && (
+              <Badge tone="neutral" data-testid="web-booking-badge">
+                Reserva web
+              </Badge>
+            )}
             <p className="font-medium">{content.title}</p>
             <p className="text-xs">{content.subtitle}</p>
           </Link>
@@ -190,6 +215,11 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
             data-testid={content.testId}
             className={`rounded-field border px-3 py-2 text-sm ${content.toneClass}`}
           >
+            {content.webBooking && (
+              <Badge tone="neutral" data-testid="web-booking-badge">
+                Reserva web
+              </Badge>
+            )}
             <p className="font-medium">{content.title}</p>
             <p className="text-xs">{content.subtitle}</p>
           </div>

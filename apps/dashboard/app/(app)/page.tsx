@@ -43,7 +43,7 @@ async function loadAppointmentDetail(
   const { data: appt, error } = await supabase
     .from("appointments")
     .select(
-      "id, professional_id, starts_at, ends_at, status, notes, price_cents, cancelled_by, cancel_reason, patient:people(id, first_name, last_name), service:services(id, name, duration_minutes)",
+      "id, professional_id, starts_at, ends_at, status, notes, price_cents, cancelled_by, cancel_reason, origin, patient:people(id, first_name, last_name), service:services(id, name, duration_minutes)",
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -62,7 +62,7 @@ async function loadAppointmentDetail(
     supabase
       .from("appointment_events")
       .select(
-        "id, kind, previous_starts_at, previous_ends_at, actor_id, created_at",
+        "id, kind, previous_starts_at, previous_ends_at, actor_id, actor_kind, created_at",
       )
       .eq("appointment_id", appointmentId)
       .order("created_at", { ascending: true }),
@@ -98,6 +98,7 @@ async function loadAppointmentDetail(
       startsAt: appt.starts_at,
       endsAt: appt.ends_at,
       status: appt.status,
+      origin: appt.origin,
       notes: appt.notes,
       priceCents: appt.price_cents,
       canMove: canMove({ status: appt.status, starts_at: appt.starts_at }, now),

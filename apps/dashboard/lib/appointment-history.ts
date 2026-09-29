@@ -6,6 +6,7 @@ export type AppointmentEventRow = {
   previous_starts_at: string | null;
   previous_ends_at: string | null;
   actor_id: string | null;
+  actor_kind: "staff" | "patient";
   created_at: string;
 };
 
@@ -40,7 +41,11 @@ export function historyLine(
     : "Alguien";
   const moment = formatHistoryMoment(event.created_at);
 
-  if (event.kind === "created") return `Creada por ${actorName} el ${moment}`;
+  if (event.kind === "created") {
+    if (event.actor_kind === "patient")
+      return `Reservada desde la web el ${moment}`;
+    return `Creada por ${actorName} el ${moment}`;
+  }
 
   if (event.kind === "moved") {
     const nextMove = events

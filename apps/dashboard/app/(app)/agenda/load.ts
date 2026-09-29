@@ -23,6 +23,7 @@ export type AgendaAppointment = {
   startsAt: string;
   endsAt: string;
   status: "scheduled" | "no_show";
+  origin: "staff" | "web";
   patientName: string;
   serviceName: string;
 };
@@ -95,6 +96,7 @@ function toAppointment(row: {
   starts_at: string;
   ends_at: string;
   status: string;
+  origin: string;
   patient: { first_name: string; last_name: string } | null;
   service: { name: string } | null;
 }): AgendaAppointment {
@@ -104,6 +106,7 @@ function toAppointment(row: {
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     status: row.status as "scheduled" | "no_show",
+    origin: row.origin as "staff" | "web",
     patientName: row.patient
       ? `${row.patient.first_name} ${row.patient.last_name}`
       : "",
@@ -226,7 +229,7 @@ export async function loadAgenda({
     supabase
       .from("appointments")
       .select(
-        "id, professional_id, starts_at, ends_at, status, patient:people(first_name, last_name), service:services(name)",
+        "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name)",
       )
       .in("professional_id", columnIds)
       .neq("status", "cancelled")
@@ -341,7 +344,7 @@ async function loadWeekAgenda(
     supabase
       .from("appointments")
       .select(
-        "id, professional_id, starts_at, ends_at, status, patient:people(first_name, last_name), service:services(name)",
+        "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name)",
       )
       .eq("professional_id", targetPersonId)
       .neq("status", "cancelled")

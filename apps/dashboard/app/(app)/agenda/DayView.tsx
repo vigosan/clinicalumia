@@ -70,6 +70,7 @@ function buildBlockContents(
       dimmed: appointment.status === "no_show",
       toneClass:
         toneByColumn.get(appointment.professionalId) ?? TONE_CLASSES.neutral,
+      webBooking: appointment.origin === "web",
     });
   }
 

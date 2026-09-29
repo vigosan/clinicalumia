@@ -15,6 +15,7 @@ function event(
     previous_starts_at: null,
     previous_ends_at: null,
     actor_id: "actor-1",
+    actor_kind: "staff",
     created_at: "2026-09-28T08:12:00Z",
     ...overrides,
   };
@@ -27,6 +28,17 @@ const appointment = {
 };
 
 describe("historyLine", () => {
+  it("says the appointment was booked from the web instead of naming an actor, since the patient who booked it isn't in the staff directory", () => {
+    const created = event({
+      kind: "created",
+      actor_id: null,
+      actor_kind: "patient",
+      created_at: "2026-09-28T08:12:00Z",
+    });
+    const line = historyLine(created, 0, [created], appointment, nameById);
+    expect(line).toBe("Reservada desde la web el 28/09 a las 10:12");
+  });
+
   it("names the actor for cancelled, with a short who-cancelled tag and the reason after a middle dot", () => {
     const cancelled = event({
       kind: "cancelled",
