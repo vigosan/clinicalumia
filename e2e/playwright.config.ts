@@ -2,6 +2,8 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: ".",
+  snapshotPathTemplate:
+    "{testDir}/{testFilePath}-snapshots/{arg}{-snapshotSuffix}{ext}",
   use: { baseURL: "http://localhost:3001", trace: "retain-on-failure" },
   projects: [
     { name: "main", testIgnore: "admin-config.spec.ts" },
