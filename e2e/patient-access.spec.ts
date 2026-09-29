@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { randomInt } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { latestCodeFor, latestLinkFor } from "./mail";
+import { latestCodeFor, latestEmailFor, latestLinkFor } from "./mail";
 
 const WEB = "http://localhost:3000";
 const MAILPIT = "http://127.0.0.1:54324/api/v1";
@@ -77,6 +77,19 @@ test("a new patient gets a code by email that opens a session and returns to boo
 
   await expect(page).toHaveURL(`${WEB}/reservar`);
   await expect(page.getByTestId("reservar-email")).toHaveText(email);
+});
+
+test("the access email tells the person the link and code only last 15 minutes, so they don't try a stale one", async ({
+  page,
+}) => {
+  const email = uniqueEmail("paciente-caducidad");
+
+  await requestAccess(page, email);
+  await expect(page.getByTestId("access-sent")).toBeVisible();
+
+  expect(await latestEmailFor(email, "Tu acceso a Clínica LUMIA")).toContain(
+    "Caduca en 15 minutos.",
+  );
 });
 
 test("the link in the same email also opens the session, for someone reading mail on this device", async ({
