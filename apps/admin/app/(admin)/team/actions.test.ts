@@ -109,6 +109,67 @@ describe("team actions", () => {
     );
   });
 
+  it("tells the owner the email belongs to a patient account instead of promoting that patient to staff", async () => {
+    const insertFn = vi.fn();
+    const maybeSingle = vi.fn(async () => ({
+      data: { id: "patient-1" },
+      error: null,
+    }));
+    const eq = vi.fn(() => ({ maybeSingle }));
+    const from = vi.fn((table: string) =>
+      table === "patient_accounts"
+        ? { select: () => ({ eq }) }
+        : { insert: insertFn },
+    );
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: {
+        admin: {
+          inviteUserByEmail: vi.fn(async () => ({
+            data: { user: null },
+            error: {
+              message:
+                "A user with this email address has already been registered",
+            },
+          })),
+        },
+      },
+      from,
+    } as unknown as ReturnType<typeof createAdminClient>);
+    const data = new FormData();
+    data.set("email", " Paciente@Lumia.test ");
+    data.set("full_name", "Paciente Persona");
+    expect(await createMember(undefined, data)).toEqual({
+      error:
+        "Ese email ya tiene una cuenta de paciente. Usa otro email para el equipo.",
+    });
+    expect(eq).toHaveBeenCalledWith("email", "paciente@lumia.test");
+    expect(insertFn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the generic duplicate message when the existing account is not a patient", async () => {
+    const maybeSingle = vi.fn(async () => ({ data: null, error: null }));
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: {
+        admin: {
+          inviteUserByEmail: vi.fn(async () => ({
+            data: { user: null },
+            error: {
+              message:
+                "A user with this email address has already been registered",
+            },
+          })),
+        },
+      },
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }),
+    } as unknown as ReturnType<typeof createAdminClient>);
+    const data = new FormData();
+    data.set("email", "equipo@lumia.test");
+    data.set("full_name", "Equipo Persona");
+    expect(await createMember(undefined, data)).toEqual({
+      error: "Ya hay una cuenta con ese email.",
+    });
+  });
+
   it("refuses createMember for a non-owner and never touches the admin client", async () => {
     ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
     const data = new FormData();

@@ -34,6 +34,17 @@ export async function createMember(
 
   if (inviteError || !invited?.user) {
     if (inviteError?.message?.toLowerCase().includes("already")) {
+      const { data: patient } = await admin
+        .from("patient_accounts")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      if (patient) {
+        return {
+          error:
+            "Ese email ya tiene una cuenta de paciente. Usa otro email para el equipo.",
+        };
+      }
       return { error: "Ya hay una cuenta con ese email." };
     }
     return { error: "No se ha podido invitar al miembro." };
