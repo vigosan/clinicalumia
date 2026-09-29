@@ -97,6 +97,14 @@ describe("sendEmail", () => {
     });
   });
 
+  it("refuses to send in production without an API key, so a missing secret never silently drops patients' emails into a local Mailpit", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    await expect(sendEmail(message)).rejects.toThrow("RESEND_API_KEY");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("fails loudly when Mailpit does not accept the email", async () => {
     vi.stubEnv("RESEND_API_KEY", "");
     fetchMock.mockResolvedValue(new Response("bad", { status: 400 }));
