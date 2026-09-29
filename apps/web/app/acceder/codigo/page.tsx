@@ -32,7 +32,7 @@ export default function CodigoPage({
 
           <form action={formAction} className="flex flex-col gap-4">
             <input type="hidden" name="email" value={email ?? ""} />
-            <input type="hidden" name="next" value={next ?? "/"} />
+            <input type="hidden" name="next" value={next ?? ""} />
             <label className="flex flex-col gap-1.5">
               <span className="text-ink-600 text-sm">Código</span>
               <input

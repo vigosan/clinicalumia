@@ -381,6 +381,22 @@ describe("requestAccess", () => {
     );
   });
 
+  it("sends someone who came straight to /acceder to their account, since there is nothing else to return to", async () => {
+    await requestAccess(undefined, accessForm("lucia@example.com", ""));
+
+    expect(signInWithOtp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          emailRedirectTo:
+            "https://web.clinicalumia.test/acceder/confirmar?next=%2Fmi-cuenta",
+        }),
+      }),
+    );
+    expect(redirectMock).toHaveBeenCalledWith(
+      "/acceder/codigo?email=lucia%40example.com&next=%2Fmi-cuenta",
+    );
+  });
+
   it("builds the emailed link from the web's own address, never from a header the visitor controls", async () => {
     await requestAccess(undefined, accessForm("lucia@example.com"));
 
@@ -654,6 +670,12 @@ describe("verifyCode", () => {
 
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
+
+  it("opens the account when the code arrives without a place to return to", async () => {
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456", ""));
+
+    expect(redirectMock).toHaveBeenCalledWith("/mi-cuenta");
+  });
 });
 
 describe("confirmLink", () => {
@@ -687,6 +709,12 @@ describe("confirmLink", () => {
     await confirmLink(linkForm("usado", "/reservar"));
 
     expect(redirectMock).toHaveBeenCalledWith("/acceder?caducado=1");
+  });
+
+  it("opens the account when the link carries no place to return to", async () => {
+    await confirmLink(linkForm("hash-1", ""));
+
+    expect(redirectMock).toHaveBeenCalledWith("/mi-cuenta");
   });
 
   it("never follows an external next", async () => {

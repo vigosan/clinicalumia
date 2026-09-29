@@ -67,7 +67,14 @@ export default async function ConfirmadaPage({
             </div>
           </dl>
           <p className="mt-8 text-ink-500">
-            Puedes verla o cambiarla en Mi cuenta.
+            Puedes verla o cambiarla en{" "}
+            <Link
+              href="/mi-cuenta"
+              className="font-medium text-sage-600 underline-offset-2 hover:underline"
+            >
+              Mi cuenta
+            </Link>
+            .
           </p>
           <Link
             href="/"

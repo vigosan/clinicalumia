@@ -102,6 +102,19 @@ export function accountError(error: DbError): string {
   return mapped || "No se ha podido guardar. Inténtalo de nuevo.";
 }
 
+const ACCOUNT_NOTICES: Record<string, string> = {
+  cancelada: "Cita cancelada",
+  cambiada: "Cita cambiada",
+  menor: "Menor añadido",
+  contacto: "Datos guardados",
+};
+
+export function accountNotice(code: string | undefined): string | undefined {
+  return code && Object.hasOwn(ACCOUNT_NOTICES, code)
+    ? ACCOUNT_NOTICES[code]
+    : undefined;
+}
+
 export function rescheduledEmail(appointment: ConfirmedAppointment): {
   subject: string;
   html: string;

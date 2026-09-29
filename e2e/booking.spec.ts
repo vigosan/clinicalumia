@@ -9,10 +9,9 @@ import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 import { latestCodeFor, latestEmailFor } from "./mail";
-import { userIdsWithEmails } from "./users";
+import { removePatients } from "./users";
 
 const WEB = "http://localhost:3000";
-const MAILPIT = "http://127.0.0.1:54324/api/v1";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -142,51 +141,8 @@ test.beforeEach(async ({ page }) => {
   await page.setExtraHTTPHeaders({ "x-forwarded-for": randomIp() });
 });
 
-async function removePatients(emails: string[]) {
-  if (emails.length === 0) return;
-  const { data: adults, error } = await admin
-    .from("people")
-    .select("id")
-    .in("email", emails);
-  if (error) throw error;
-  const adultIds = adults.map((person) => person.id);
-  const { data: wards, error: wardsError } = await admin
-    .from("guardianships")
-    .select("minor_id")
-    .in("guardian_id", adultIds);
-  if (wardsError) throw wardsError;
-  for (const ids of [wards.map((ward) => ward.minor_id), adultIds]) {
-    if (ids.length === 0) continue;
-    const { error: appointmentsError } = await admin
-      .from("appointments")
-      .delete()
-      .in("patient_id", ids);
-    if (appointmentsError) throw appointmentsError;
-    const { error: peopleError } = await admin
-      .from("people")
-      .delete()
-      .in("id", ids);
-    if (peopleError) throw peopleError;
-  }
-  for (const id of await userIdsWithEmails(admin, emails)) {
-    const { error: deleteError } = await admin.auth.admin.deleteUser(id);
-    if (deleteError) throw deleteError;
-  }
-  const { error: requestsError } = await admin
-    .from("access_requests")
-    .delete()
-    .in("email", emails);
-  if (requestsError) throw requestsError;
-  for (const email of emails) {
-    await fetch(
-      `${MAILPIT}/search?query=${encodeURIComponent(`to:"${email}"`)}`,
-      { method: "DELETE" },
-    );
-  }
-}
-
 test.afterEach(async () => {
-  await removePatients(usedEmails.splice(0));
+  await removePatients(admin, usedEmails.splice(0));
   if (createdUserIds.length > 0) {
     const { error } = await admin
       .from("appointments")
@@ -479,6 +435,10 @@ test("a new patient picks a time, identifies with the emailed code, gives their 
   const confirmed = page.getByTestId("booking-confirmed");
   await expect(confirmed).toContainText(withHours);
   await expect(confirmed).toContainText("Marta Reserva");
+  await expect(page.getByRole("link", { name: "Mi cuenta" })).toHaveAttribute(
+    "href",
+    "/mi-cuenta",
+  );
 
   const appointmentId = new URL(page.url()).searchParams.get("cita") ?? "";
   const { data: appointment, error } = await admin
@@ -504,7 +464,9 @@ test("a new patient picks a time, identifies with the emailed code, gives their 
   expect(html).toContain(service.name);
   expect(html).toContain(withHours);
   expect(html).toContain("Marta Reserva");
-  expect(html).toContain("Puedes verla o cambiarla en Mi cuenta");
+  expect(html).toMatch(
+    /Puedes verla o cambiarla en <a href="[^"]*\/mi-cuenta">Mi cuenta<\/a>\./,
+  );
 });
 
 test("a mother books for her new child: she is saved as guardian without being a patient and the appointment is for the child", async ({

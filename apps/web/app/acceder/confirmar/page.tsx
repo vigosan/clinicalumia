@@ -22,7 +22,7 @@ export default async function ConfirmarPage({
 
           <form action={confirmLink}>
             <input type="hidden" name="token_hash" value={token_hash ?? ""} />
-            <input type="hidden" name="next" value={next ?? "/"} />
+            <input type="hidden" name="next" value={next ?? ""} />
             <button
               type="submit"
               data-testid="access-confirm"

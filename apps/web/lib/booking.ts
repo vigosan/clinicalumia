@@ -4,6 +4,7 @@ import {
   madridDateTime,
 } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
+import { site } from "./site";
 
 export type Slot = { starts_at: string; professional_id: string };
 
@@ -281,7 +282,7 @@ export function appointmentEmailHtml(
 ): string {
   const footer = accountLink
     ? `<p><a href="${accountLink}">Ver Mi cuenta</a></p>`
-    : "<p>Puedes verla o cambiarla en Mi cuenta.</p>";
+    : `<p>Puedes verla o cambiarla en <a href="${site.url}/mi-cuenta">Mi cuenta</a>.</p>`;
   return `
       <h2>${heading}</h2>
       <p><strong>Cuándo:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}</p>

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AppointmentRow,
   accountError,
+  accountNotice,
   cancelledEmail,
   changeWindowText,
   parseContactForm,
@@ -307,5 +308,20 @@ describe("cancelledEmail", () => {
     const email = cancelledEmail({ ...details, personName: "<b>Lucía</b>" });
     expect(email.html).toContain("&lt;b&gt;Lucía&lt;/b&gt;");
     expect(email.html).not.toContain("<b>Lucía</b>");
+  });
+});
+
+describe("accountNotice", () => {
+  it("confirms each change the patient just made when they land back on Mi cuenta", () => {
+    expect(accountNotice("cancelada")).toBe("Cita cancelada");
+    expect(accountNotice("cambiada")).toBe("Cita cambiada");
+    expect(accountNotice("menor")).toBe("Menor añadido");
+    expect(accountNotice("contacto")).toBe("Datos guardados");
+  });
+
+  it("shows nothing for a code typed into the URL, so the page never displays made-up text", () => {
+    expect(accountNotice("inventado")).toBeUndefined();
+    expect(accountNotice("toString")).toBeUndefined();
+    expect(accountNotice(undefined)).toBeUndefined();
   });
 });

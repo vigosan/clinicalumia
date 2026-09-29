@@ -31,7 +31,7 @@ function field(formData: FormData, name: string) {
 }
 
 function nextFrom(formData: FormData) {
-  return safeNext(field(formData, "next") || null);
+  return safeNext(field(formData, "next") || "/mi-cuenta");
 }
 
 function hashIp(requestHeaders: Headers) {

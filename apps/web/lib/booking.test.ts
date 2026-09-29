@@ -13,6 +13,7 @@ import {
   personError,
   personWarning,
 } from "./booking";
+import { site } from "./site";
 
 function form(values: Record<string, string>) {
   const data = new FormData();
@@ -461,7 +462,9 @@ describe("bookingConfirmationEmail", () => {
     expect(email.html).toContain("Sesión de logopedia");
     expect(email.html).toContain("Ana García");
     expect(email.html).toContain("Lucía Pérez");
-    expect(email.html).toContain("Puedes verla o cambiarla en Mi cuenta");
+    expect(email.html).toContain(
+      `Puedes verla o cambiarla en <a href="${site.url}/mi-cuenta">Mi cuenta</a>.`,
+    );
   });
 
   it("escapes names typed by patients so they cannot inject markup into the email", () => {
