@@ -46,7 +46,7 @@ export function SiteHeader() {
 
           <div className="ml-[7.083vw] flex items-center gap-[1.354vw]">
             <Link
-              href="/contacto"
+              href="/reservar"
               className={pillClassName(
                 "cream",
                 "w-[7.917vw] whitespace-nowrap",
@@ -109,7 +109,7 @@ export function SiteHeader() {
           ))}
           <div className="mt-2 flex flex-col gap-2">
             <Link
-              href="/contacto"
+              href="/reservar"
               onClick={() => setOpen(false)}
               className={pillClassName("sage")}
             >

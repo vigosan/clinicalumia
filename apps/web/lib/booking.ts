@@ -1,4 +1,8 @@
-import { addDays, madridDateTime } from "@clinicalumia/api/madrid-time";
+import {
+  addDays,
+  isValidDate,
+  madridDateTime,
+} from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
 
 export type Slot = { starts_at: string; professional_id: string };
@@ -52,6 +56,15 @@ export function groupSlotsByDay(slots: Slot[], today: string): DayGroup[] {
       (slot) => madridDateTime(slot.starts_at).time >= "14:00",
     );
     return { date, label: dayLabel(date, today), morning, afternoon };
+  });
+}
+
+export function firstFreeSlots(slots: Slot[]): Slot[] {
+  const seen = new Set<string>();
+  return slots.filter((slot) => {
+    if (seen.has(slot.starts_at)) return false;
+    seen.add(slot.starts_at);
+    return true;
   });
 }
 
@@ -133,9 +146,13 @@ export function personError(error: DbError): string {
   return mapped || "No se han podido guardar los datos. Inténtalo de nuevo.";
 }
 
+export const ANY_PROFESSIONAL = "cualquiera";
+
 export type BookingState = {
+  especialidad?: string;
   servicio?: string;
   profesional?: string;
+  fecha?: string;
   inicio?: string;
   persona?: string;
 };
@@ -149,6 +166,10 @@ const INSTANT_RE =
 
 function isUuid(value: string): boolean {
   return UUID_RE.test(value);
+}
+
+function isProfessional(value: string): boolean {
+  return value === ANY_PROFESSIONAL || isUuid(value);
 }
 
 function isInstant(value: string): boolean {
@@ -165,16 +186,20 @@ function validated(
 export const bookingState = {
   encode(state: BookingState): string {
     const params = new URLSearchParams();
+    if (state.especialidad) params.set("especialidad", state.especialidad);
     if (state.servicio) params.set("servicio", state.servicio);
     if (state.profesional) params.set("profesional", state.profesional);
+    if (state.fecha) params.set("fecha", state.fecha);
     if (state.inicio) params.set("inicio", state.inicio);
     if (state.persona) params.set("persona", state.persona);
     return params.toString();
   },
   decode(searchParams: BookingSearchParams): BookingState {
     return {
+      especialidad: validated(searchParams.especialidad, isUuid),
       servicio: validated(searchParams.servicio, isUuid),
-      profesional: validated(searchParams.profesional, isUuid),
+      profesional: validated(searchParams.profesional, isProfessional),
+      fecha: validated(searchParams.fecha, isValidDate),
       inicio: validated(searchParams.inicio, isInstant),
       persona: validated(searchParams.persona, isUuid),
     };

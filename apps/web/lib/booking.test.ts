@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   bookingError,
   bookingState,
+  firstFreeSlots,
   groupSlotsByDay,
   parseEmail,
   parseNewPersonForm,
@@ -328,5 +329,47 @@ describe("bookingState", () => {
       inicio: undefined,
       persona: undefined,
     });
+  });
+
+  it("keeps the specialty and the 14-day window start so each step can be reloaded from its URL", () => {
+    const especialidad = "44444444-4444-4444-4444-444444444444";
+    const params = new URLSearchParams(
+      bookingState.encode({ especialidad, servicio, fecha: "2026-10-05" }),
+    );
+    expect(
+      bookingState.decode({
+        especialidad: params.get("especialidad") ?? undefined,
+        servicio: params.get("servicio") ?? undefined,
+        fecha: params.get("fecha") ?? undefined,
+      }),
+    ).toMatchObject({ especialidad, servicio, fecha: "2026-10-05" });
+  });
+
+  it("keeps 'cualquiera' as professional because it means the first free slot", () => {
+    expect(bookingState.decode({ profesional: "cualquiera" }).profesional).toBe(
+      "cualquiera",
+    );
+  });
+
+  it("drops a window start that is not a real calendar date", () => {
+    expect(bookingState.decode({ fecha: "2026-02-30" }).fecha).toBeUndefined();
+    expect(bookingState.decode({ fecha: "mañana" }).fecha).toBeUndefined();
+  });
+});
+
+describe("firstFreeSlots", () => {
+  it("offers each start time once when several professionals are free, so 'El primer hueco libre' does not repeat hours", () => {
+    const nine = madridInstant("2026-10-02", "09:00");
+    const quarter = madridInstant("2026-10-02", "09:15");
+    expect(
+      firstFreeSlots([
+        { starts_at: nine, professional_id: "p1" },
+        { starts_at: nine, professional_id: "p2" },
+        { starts_at: quarter, professional_id: "p2" },
+      ]),
+    ).toEqual([
+      { starts_at: nine, professional_id: "p1" },
+      { starts_at: quarter, professional_id: "p2" },
+    ]);
   });
 });

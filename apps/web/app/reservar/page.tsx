@@ -1,16 +1,443 @@
+import {
+  addDays,
+  madridDateTime,
+  todayInMadrid,
+} from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
+import type { Metadata } from "next";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { PageHero } from "@/components/PageHero";
+import {
+  ANY_PROFESSIONAL,
+  type BookingState,
+  bookingState,
+  groupSlotsByDay,
+  type Slot,
+} from "@/lib/booking";
+import { pageMetadata } from "@/lib/metadata";
+import { site } from "@/lib/site";
+import {
+  type CatalogService,
+  type CatalogSpecialty,
+  loadCatalog,
+  loadSlots,
+  WINDOW_DAYS,
+} from "./load";
+import { type PickerDay, SlotPicker } from "./SlotPicker";
 
-export default async function ReservarPage() {
+export const metadata: Metadata = {
+  ...pageMetadata({
+    title: "Reservar cita · Clínica LUMIA en Xàtiva",
+    description:
+      "Reserva tu cita en LUMIA: elige especialidad, servicio, profesional y el hueco que mejor te venga.",
+    path: "/reservar",
+  }),
+};
+
+const MAX_HORIZON_DAYS = 365;
+
+const optionClass =
+  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-600 transition-colors hover:bg-sage-500/15";
+
+function reservar(state: BookingState) {
+  const query = bookingState.encode(state);
+  return query ? `/reservar?${query}` : "/reservar";
+}
+
+function formatPrice(cents: number): string {
+  return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
+}
+
+function formatChosen(instant: string): string {
+  const formatted = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(instant));
+  const { time } = madridDateTime(instant);
+  return `${formatted.charAt(0).toUpperCase()}${formatted.slice(1)} a las ${time}`;
+}
+
+function Step({
+  number,
+  title,
+  back,
+  children,
+}: {
+  number: number;
+  title: string;
+  back?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      {back && (
+        <Link
+          href={back}
+          className="text-sage-600 text-sm underline-offset-2 hover:underline"
+        >
+          ← Volver
+        </Link>
+      )}
+      <p className="mt-4 text-ink-500 text-sm">Paso {number} de 4</p>
+      <h1 className="mt-1 font-bold text-ink-600 text-section">{title}</h1>
+      <div className="mt-8">{children}</div>
+    </div>
+  );
+}
+
+function PhoneLink({ children }: { children: ReactNode }) {
+  return (
+    <a
+      href={site.phone.href}
+      className="font-medium text-sage-600 underline-offset-2 hover:underline"
+    >
+      {children}
+    </a>
+  );
+}
+
+function SpecialtyStep({ catalog }: { catalog: CatalogSpecialty[] }) {
+  return (
+    <Step number={1} title="¿Qué especialidad necesitas?">
+      <ul className="flex flex-col gap-3">
+        {catalog.map((specialty) => (
+          <li key={specialty.id}>
+            <Link
+              href={reservar({ especialidad: specialty.id })}
+              data-testid="booking-specialty"
+              className={optionClass}
+            >
+              <span className="font-bold text-lg">{specialty.name}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Step>
+  );
+}
+
+function ServiceSummary({ service }: { service: CatalogService }) {
+  return (
+    <>
+      <span className="font-bold text-lg">{service.name}</span>
+      <span className="text-ink-500 text-sm">
+        {service.durationMinutes} min · {formatPrice(service.priceCents)}
+      </span>
+    </>
+  );
+}
+
+function ServiceStep({ specialty }: { specialty: CatalogSpecialty }) {
+  return (
+    <Step number={2} title={specialty.name} back={reservar({})}>
+      <p className="-mt-4 mb-6 text-ink-500">Elige el servicio.</p>
+      <ul className="flex flex-col gap-3">
+        {specialty.services.map((service) => (
+          <li key={service.id}>
+            {service.phoneOnly ? (
+              <div
+                data-testid="booking-phone-only"
+                className="flex flex-col gap-1 rounded-3xl border-2 border-sage-400/60 px-6 py-5 text-ink-600"
+              >
+                <ServiceSummary service={service} />
+                <span className="mt-2 text-sm">
+                  Reserva por teléfono:{" "}
+                  <PhoneLink>{site.phone.display}</PhoneLink>
+                </span>
+              </div>
+            ) : (
+              <Link
+                href={reservar({
+                  especialidad: specialty.id,
+                  servicio: service.id,
+                })}
+                data-testid="booking-service"
+                className={optionClass}
+              >
+                <ServiceSummary service={service} />
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Step>
+  );
+}
+
+function PhoneOnlyStep({
+  specialty,
+  service,
+}: {
+  specialty: CatalogSpecialty;
+  service: CatalogService;
+}) {
+  return (
+    <Step
+      number={2}
+      title={service.name}
+      back={reservar({ especialidad: specialty.id })}
+    >
+      <p data-testid="booking-phone-only" className="text-ink-500">
+        Reserva por teléfono: <PhoneLink>{site.phone.display}</PhoneLink>
+      </p>
+    </Step>
+  );
+}
+
+function ProfessionalStep({
+  specialty,
+  service,
+}: {
+  specialty: CatalogSpecialty;
+  service: CatalogService;
+}) {
+  const base = { especialidad: specialty.id, servicio: service.id };
+  const options = [
+    { id: ANY_PROFESSIONAL, label: "El primer hueco libre" },
+    ...specialty.professionals.map((professional) => ({
+      id: professional.id,
+      label: professional.full_name,
+    })),
+  ];
+  return (
+    <Step
+      number={3}
+      title="¿Con quién?"
+      back={reservar({ especialidad: specialty.id })}
+    >
+      <ul className="flex flex-col gap-3">
+        {options.map((option) => (
+          <li key={option.id}>
+            <Link
+              href={reservar({ ...base, profesional: option.id })}
+              data-testid="booking-professional"
+              className={optionClass}
+            >
+              <span className="font-bold text-lg">{option.label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Step>
+  );
+}
+
+async function SlotStep({
+  specialty,
+  service,
+  professional,
+  from,
+  today,
+  signedIn,
+}: {
+  specialty: CatalogSpecialty;
+  service: CatalogService;
+  professional: string;
+  from: string;
+  today: string;
+  signedIn: boolean;
+}) {
+  const base = {
+    especialidad: specialty.id,
+    servicio: service.id,
+    profesional: professional,
+  };
+  const slots = await loadSlots(service.id, professional, from);
+  const hrefFor = (slot: Slot) => {
+    const chosen = reservar({ ...base, fecha: from, inicio: slot.starts_at });
+    return signedIn ? chosen : `/acceder?next=${encodeURIComponent(chosen)}`;
+  };
+  const toPicker = (slot: Slot) => ({
+    startsAt: slot.starts_at,
+    time: madridDateTime(slot.starts_at).time,
+    href: hrefFor(slot),
+  });
+  const days: PickerDay[] = groupSlotsByDay(slots, today).map((day) => ({
+    date: day.date,
+    label: day.label,
+    morning: day.morning.map(toPicker),
+    afternoon: day.afternoon.map(toPicker),
+  }));
+  const nextFrom = addDays(from, WINDOW_DAYS);
+
+  return (
+    <Step
+      number={4}
+      title="Elige día y hora"
+      back={reservar({ especialidad: specialty.id, servicio: service.id })}
+    >
+      <p className="-mt-4 mb-6 text-ink-500">
+        {service.name} · {service.durationMinutes} min
+      </p>
+      {days.length > 0 ? (
+        <SlotPicker key={from} days={days} />
+      ) : (
+        <p
+          data-testid="booking-no-slots"
+          className="rounded-2xl bg-cream-50 px-5 py-4 text-ink-600"
+        >
+          No hay huecos estos días. Llámanos al{" "}
+          <PhoneLink>{site.phone.display}</PhoneLink> y te buscamos uno.
+        </p>
+      )}
+      {nextFrom <= addDays(today, MAX_HORIZON_DAYS) && (
+        <Link
+          href={reservar({ ...base, fecha: nextFrom })}
+          data-testid="booking-next-days"
+          className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-600 transition-colors hover:bg-sage-500 hover:text-cream-50"
+        >
+          Siguientes días
+        </Link>
+      )}
+    </Step>
+  );
+}
+
+function ChosenStep({
+  specialty,
+  service,
+  professional,
+  from,
+  startsAt,
+  signedIn,
+}: {
+  specialty: CatalogSpecialty;
+  service: CatalogService;
+  professional: string;
+  from: string;
+  startsAt: string;
+  signedIn: boolean;
+}) {
+  const base = {
+    especialidad: specialty.id,
+    servicio: service.id,
+    profesional: professional,
+    fecha: from,
+  };
+  const professionalName =
+    specialty.professionals.find((candidate) => candidate.id === professional)
+      ?.full_name ?? "El primer hueco libre";
+  const next = reservar({ ...base, inicio: startsAt });
+
+  return (
+    <div>
+      <Link
+        href={reservar(base)}
+        className="text-sage-600 text-sm underline-offset-2 hover:underline"
+      >
+        ← Cambiar la hora
+      </Link>
+      <h1 className="mt-4 font-bold text-ink-600 text-section">Tu cita</h1>
+      <dl
+        data-testid="booking-chosen"
+        className="mt-8 flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
+      >
+        <div>
+          <dt className="text-ink-500 text-sm">Cuándo</dt>
+          <dd className="font-bold">{formatChosen(startsAt)}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-500 text-sm">Servicio</dt>
+          <dd>
+            {service.name} · {service.durationMinutes} min ·{" "}
+            {formatPrice(service.priceCents)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-ink-500 text-sm">Profesional</dt>
+          <dd>{professionalName}</dd>
+        </div>
+      </dl>
+      {!signedIn && (
+        <Link
+          href={`/acceder?next=${encodeURIComponent(next)}`}
+          className="mt-8 inline-flex h-11 items-center rounded-full bg-sage-600 px-8 text-cream-50 transition-colors hover:bg-sage-700"
+        >
+          Continuar
+        </Link>
+      )}
+    </div>
+  );
+}
+
+export default async function ReservarPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const state = bookingState.decode(await searchParams);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const signedIn = Boolean(user);
+  const catalog = await loadCatalog();
+  const today = todayInMadrid();
+
+  const specialty = state.servicio
+    ? catalog.find((candidate) =>
+        candidate.services.some((service) => service.id === state.servicio),
+      )
+    : catalog.find((candidate) => candidate.id === state.especialidad);
+  const service = specialty?.services.find(
+    (candidate) => candidate.id === state.servicio,
+  );
+  const professional =
+    state.profesional === ANY_PROFESSIONAL ||
+    specialty?.professionals.some(
+      (candidate) => candidate.id === state.profesional,
+    )
+      ? state.profesional
+      : undefined;
+  const from = state.fecha && state.fecha > today ? state.fecha : today;
+
+  let step: ReactNode;
+  if (!specialty) step = <SpecialtyStep catalog={catalog} />;
+  else if (!service) step = <ServiceStep specialty={specialty} />;
+  else if (service.phoneOnly)
+    step = <PhoneOnlyStep specialty={specialty} service={service} />;
+  else if (!professional)
+    step = <ProfessionalStep specialty={specialty} service={service} />;
+  else if (!state.inicio)
+    step = (
+      <SlotStep
+        specialty={specialty}
+        service={service}
+        professional={professional}
+        from={from}
+        today={today}
+        signedIn={signedIn}
+      />
+    );
+  else
+    step = (
+      <ChosenStep
+        specialty={specialty}
+        service={service}
+        professional={professional}
+        from={from}
+        startsAt={state.inicio}
+        signedIn={signedIn}
+      />
+    );
 
   return (
-    <section className="px-6 py-14 md:px-12 md:py-20">
-      <p data-testid="reservar-email" className="mx-auto max-w-md text-ink-600">
-        {user?.email}
-      </p>
-    </section>
+    <>
+      <PageHero />
+      <section className="px-6 py-14 md:px-12 md:py-20">
+        <div className="mx-auto max-w-2xl">
+          {user?.email && (
+            <p className="mb-8 text-ink-500 text-sm">
+              Has entrado como{" "}
+              <span data-testid="reservar-email">{user.email}</span>
+            </p>
+          )}
+          {step}
+        </div>
+      </section>
+    </>
   );
 }
