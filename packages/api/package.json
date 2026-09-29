@@ -12,7 +12,8 @@
     "./route": "./route.ts",
     "./mfa": "./mfa.ts",
     "./tax-id": "./tax-id.ts",
-    "./madrid-time": "./madrid-time.ts"
+    "./madrid-time": "./madrid-time.ts",
+    "./email": "./email.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -28,12 +29,14 @@
     "route.ts",
     "mfa.ts",
     "tax-id.ts",
-    "madrid-time.ts"
+    "madrid-time.ts",
+    "email.ts"
   ],
   "dependencies": {
     "@clinicalumia/db": "workspace:*",
     "@supabase/ssr": "^0.10.0",
-    "@supabase/supabase-js": "^2.117.1"
+    "@supabase/supabase-js": "^2.117.1",
+    "resend": "^6.12.4"
   },
   "devDependencies": {
     "@clinicalumia/config": "workspace:*",

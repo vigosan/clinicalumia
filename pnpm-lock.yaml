@@ -188,6 +188,9 @@ importers:
       react:
         specifier: ^19
         version: 19.2.4
+      resend:
+        specifier: ^6.12.4
+        version: 6.12.4
     devDependencies:
       '@clinicalumia/config':
         specifier: workspace:*
