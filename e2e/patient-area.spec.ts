@@ -605,3 +605,179 @@ test("an appointment the clinic booked for a service not offered online can be c
   await expect(page.getByTestId("booking-slot")).toHaveCount(0);
   await expect(page.getByTestId("reschedule-confirm")).toHaveCount(0);
 });
+
+async function firstSlot(
+  patient: Awaited<ReturnType<typeof patientAccount>>["patient"],
+  place: Awaited<ReturnType<typeof clinic>>,
+) {
+  const { data: slots, error } = await patient.rpc("available_slots", {
+    p_service_id: place.serviceId,
+    p_professional_id: place.professionalId,
+    p_from: addDays(todayInMadrid(), 5),
+    p_to: addDays(todayInMadrid(), 6),
+  });
+  expect(error).toBeNull();
+  return slots![0].starts_at as string;
+}
+
+test("a patient adds a minor under their own adult from Mi cuenta: the minor shows in Personas and can then be chosen when booking", async ({
+  page,
+}) => {
+  const { email, person, patient } = await patientAccount("menor");
+  const place = await clinic();
+  const startsAt = await firstSlot(patient, place);
+  const newMinorPath = "/mi-cuenta/menores/nuevo";
+  const minorLastName = `Menor ${unique()}`;
+
+  await page.goto(`${WEB}${newMinorPath}`);
+  await expect(page).toHaveURL(
+    `${WEB}/acceder?next=${encodeURIComponent(newMinorPath)}`,
+  );
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}${newMinorPath}`);
+
+  await expect(page.getByTestId("new-person-for-me")).toHaveCount(0);
+  await expect(page.getByTestId("new-person-guardian_id")).toHaveValue(
+    person.id,
+  );
+  await page.getByTestId("new-person-first_name").fill("Leo");
+  await page.getByTestId("new-person-last_name").fill(minorLastName);
+  await page.getByTestId("new-person-birth_date").fill("2019-06-10");
+  await page.getByTestId("new-person-relationship").selectOption("madre");
+  await page.getByTestId("privacy-accept").check();
+  await page.getByTestId("new-person-submit").click();
+
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta?aviso=menor`);
+  await expect(page.getByTestId("account-notice")).toHaveText("Menor añadido");
+  await expect(page.getByTestId("account-people")).toContainText(
+    `Leo ${minorLastName}`,
+  );
+
+  const { data: minor, error } = await admin
+    .from("people")
+    .select("id, email")
+    .eq("last_name", minorLastName)
+    .single();
+  expect(error).toBeNull();
+  expect(minor!.email).toBeNull();
+  const { data: guardianships, error: guardianshipsError } = await admin
+    .from("guardianships")
+    .select("guardian_id, relationship")
+    .eq("minor_id", minor!.id);
+  expect(guardianshipsError).toBeNull();
+  expect(guardianships).toEqual([
+    { guardian_id: person.id, relationship: "madre" },
+  ]);
+
+  await page.goto(
+    `${WEB}/reservar?servicio=${place.serviceId}&profesional=${place.professionalId}&inicio=${encodeURIComponent(startsAt)}`,
+  );
+  await page
+    .getByTestId("booking-person")
+    .filter({ hasText: `Leo ${minorLastName}` })
+    .click();
+  await expect(page.getByTestId("booking-summary")).toContainText(
+    `Leo ${minorLastName}`,
+  );
+});
+
+test("an account without any adult yet gives the adult's details first and then the minor's, and both show in Personas", async ({
+  page,
+}) => {
+  const email = uniqueEmail("menor-sin-adulto");
+  const lastName = `Sin adulto ${unique()}`;
+
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+  await page.getByTestId("account-add-minor").click();
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta/menores/nuevo`);
+
+  await expect(page.getByTestId("new-person-guardian_id")).toHaveCount(0);
+  await page.getByTestId("new-person-guardian_first_name").fill("Marta");
+  await page.getByTestId("new-person-guardian_last_name").fill(lastName);
+  await page.getByTestId("new-person-guardian_birth_date").fill("1988-03-14");
+  await page.getByTestId("new-person-guardian_phone").fill("600 111 222");
+  await page.getByTestId("new-person-first_name").fill("Leo");
+  await page.getByTestId("new-person-last_name").fill(lastName);
+  await page.getByTestId("new-person-birth_date").fill("2019-06-10");
+  await page.getByTestId("new-person-relationship").selectOption("padre");
+  await page.getByTestId("privacy-accept").check();
+  await page.getByTestId("new-person-submit").click();
+
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta?aviso=menor`);
+  const people = page.getByTestId("account-people");
+  await expect(people).toContainText(`Marta ${lastName}`);
+  await expect(people).toContainText(`Leo ${lastName}`);
+  await expect(page.getByTestId("account-contact")).toContainText("600111222");
+
+  const { data: adult, error } = await admin
+    .from("people")
+    .select("is_patient")
+    .eq("email", email)
+    .single();
+  expect(error).toBeNull();
+  expect(adult!.is_patient).toBe(false);
+});
+
+test("a patient changes their phone and address from Mi cuenta: an invalid phone is refused and the new details show in Mi cuenta and reach the clinic", async ({
+  page,
+}) => {
+  const { email, person } = await patientAccount("contacto");
+  const newAddress = `Calle Nueva ${unique()}, Xàtiva`;
+
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+  await page.getByTestId("account-edit-contact").click();
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta/contacto/${person.id}`);
+
+  await expect(page.getByTestId("contact-phone")).toHaveValue("600111222");
+  await expect(page.getByTestId("contact-address")).toHaveValue(
+    "Calle Montesa 9, Xàtiva",
+  );
+
+  await page.getByTestId("contact-phone").fill("123");
+  await page.getByTestId("contact-address").fill(newAddress);
+  await page.getByTestId("contact-submit").click();
+  await expect(page.getByTestId("account-error")).toHaveText(
+    "Escribe un teléfono válido.",
+  );
+  await expect(page.getByTestId("contact-address")).toHaveValue(newAddress);
+
+  await page.getByTestId("contact-phone").fill("611 222 333");
+  await page.getByTestId("contact-submit").click();
+
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta?aviso=contacto`);
+  await expect(page.getByTestId("account-notice")).toHaveText(
+    "Datos guardados",
+  );
+  const contact = page.getByTestId("account-contact");
+  await expect(contact).toContainText("611222333");
+  await expect(contact).toContainText(newAddress);
+
+  const { data: row, error } = await admin
+    .from("people")
+    .select("phone, address")
+    .eq("id", person.id)
+    .single();
+  expect(error).toBeNull();
+  expect(row).toEqual({ phone: "611222333", address: newAddress });
+});
+
+test("the contact page of a person of another account does not exist for this account", async ({
+  page,
+}) => {
+  const owner = await patientAccount("contacto-ajeno");
+
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, uniqueEmail("contacto-otra"));
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+
+  const response = await page.goto(
+    `${WEB}/mi-cuenta/contacto/${owner.person.id}`,
+  );
+  expect(response?.status()).toBe(404);
+  await expect(page.getByTestId("contact-phone")).toHaveCount(0);
+  await expect(page.getByText("Calle Montesa 9")).toHaveCount(0);
+});

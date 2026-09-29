@@ -10,21 +10,15 @@ import {
   bookingConfirmationEmail,
   bookingError,
   bookingState,
-  isMinorOn,
   NEW_PERSON,
-  type NewPersonInput,
-  PRIVACY_VERSION,
   parseNewPersonForm,
   personError,
-  personWarning,
   SLOT_TAKEN,
 } from "@/lib/booking";
+import { addPerson, PHONE_REQUIRED, saveMinor } from "./people";
 
 export type BookingFormState = { error: string } | undefined;
 
-const RELATIONSHIPS = ["madre", "padre", "tutor_legal", "otro"] as const;
-
-type Relationship = (typeof RELATIONSHIPS)[number];
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 function stateFrom(formData: FormData): BookingState {
@@ -40,107 +34,39 @@ function confirmed(appointmentId: string) {
   return `/reservar/confirmada?cita=${appointmentId}`;
 }
 
-function prefixed(formData: FormData, prefix: string) {
-  const fields = new FormData();
-  for (const key of ["first_name", "last_name", "birth_date", "phone"]) {
-    fields.set(key, String(formData.get(`${prefix}${key}`) ?? ""));
-  }
-  return fields;
-}
-
-const PHONE_REQUIRED = "El teléfono es obligatorio.";
-
-async function addPerson(
-  supabase: Client,
-  person: NewPersonInput,
-  options: {
-    guardianId: string | null;
-    relationship: Relationship | null;
-    isPatient: boolean;
-    acceptPrivacy: boolean;
-  },
-) {
-  return supabase.rpc("add_my_person", {
-    p_first_name: person.first_name,
-    p_last_name: person.last_name,
-    p_birth_date: person.birth_date,
-    p_phone: person.phone as string,
-    p_guardian_id: options.guardianId as string,
-    p_relationship: options.relationship as Relationship,
-    p_is_patient: options.isPatient,
-    p_accept_privacy: options.acceptPrivacy,
-    p_privacy_version: (options.acceptPrivacy
-      ? PRIVACY_VERSION
-      : null) as string,
-  });
-}
-
 export async function savePerson(
   _prev: BookingFormState,
   formData: FormData,
 ): Promise<BookingFormState> {
   const state = stateFrom(formData);
   const today = todayInMadrid();
-  const acceptPrivacy = formData.get("privacy") === "on";
-  const parsed = parseNewPersonForm(formData, today);
   const supabase = await createClient();
 
   if (formData.get("para") !== "menor") {
+    const parsed = parseNewPersonForm(formData, today);
     if ("error" in parsed) return { error: parsed.error };
     if (!parsed.person.phone) return { error: PHONE_REQUIRED };
     const { data, error } = await addPerson(supabase, parsed.person, {
       guardianId: null,
       relationship: null,
       isPatient: true,
-      acceptPrivacy,
+      acceptPrivacy: formData.get("privacy") === "on",
     });
     if (error) return { error: personError(error) };
     redirect(reservar({ ...state, persona: data }));
   }
 
-  const relationship = RELATIONSHIPS.find(
-    (value) => value === formData.get("relationship"),
-  );
-  if (!relationship)
-    return { error: personError({ message: "relationship_required" }) };
-  const existingGuardian = String(formData.get("guardian_id") ?? "");
-  const guardian = existingGuardian
-    ? null
-    : parseNewPersonForm(prefixed(formData, "guardian_"), today);
-  if (guardian && "error" in guardian) return { error: guardian.error };
-  if (guardian && !guardian.person.phone) return { error: PHONE_REQUIRED };
-  if ("error" in parsed) return { error: parsed.error };
-  if (!isMinorOn(parsed.person.birth_date, today))
-    return { error: personError({ message: "person_not_minor" }) };
-
-  let guardianId = existingGuardian;
-  if (guardian) {
-    const { data, error } = await addPerson(supabase, guardian.person, {
-      guardianId: null,
-      relationship: null,
-      isPatient: false,
-      acceptPrivacy,
-    });
-    if (error) return { error: personError(error) };
-    guardianId = data;
-  }
-
-  const { data, error } = await addPerson(supabase, parsed.person, {
-    guardianId,
-    relationship,
-    isPatient: true,
-    acceptPrivacy: acceptPrivacy && !guardian,
-  });
-  if (error && guardian)
+  const minor = await saveMinor(supabase, formData, today);
+  if ("error" in minor) return minor;
+  if ("warning" in minor)
     redirect(
       reservar({
         ...state,
         persona: NEW_PERSON,
-        aviso: personWarning(error),
+        aviso: minor.warning,
       }),
     );
-  if (error) return { error: personError(error) };
-  redirect(reservar({ ...state, persona: data }));
+  redirect(reservar({ ...state, persona: minor.minorId }));
 }
 
 export async function completeBirthDate(

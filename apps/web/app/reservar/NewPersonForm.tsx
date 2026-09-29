@@ -4,6 +4,11 @@ import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { type BookingFormState, savePerson } from "./actions";
 
+type PersonAction = (
+  prev: BookingFormState,
+  formData: FormData,
+) => Promise<BookingFormState>;
+
 const fieldClass =
   "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600";
 
@@ -104,16 +109,22 @@ export function NewPersonForm({
   guardians,
   today,
   warning,
+  action = savePerson,
+  minorOnly = false,
+  errorTestId = "booking-error",
 }: {
   estado: string;
   needsPrivacy: boolean;
   guardians: Guardian[];
   today: string;
   warning: string | null;
+  action?: PersonAction;
+  minorOnly?: boolean;
+  errorTestId?: string;
 }) {
-  const [state, formAction, pending] = useActionState(savePerson, initialState);
+  const [state, formAction, pending] = useActionState(action, initialState);
   const error = state?.error ?? warning;
-  const [forMinor, setForMinor] = useState(guardians.length > 0);
+  const [forMinor, setForMinor] = useState(minorOnly || guardians.length > 0);
 
   return (
     <form
@@ -127,33 +138,37 @@ export function NewPersonForm({
     >
       <input type="hidden" name="estado" value={estado} />
 
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-2 font-bold text-ink-600">¿Para quién es?</legend>
-        <label className="flex items-center gap-3 text-ink-600">
-          <input
-            type="radio"
-            name="para"
-            value="yo"
-            checked={!forMinor}
-            onChange={() => setForMinor(false)}
-            data-testid="new-person-for-me"
-            className="size-4 accent-sage-600"
-          />
-          Es para mí
-        </label>
-        <label className="flex items-center gap-3 text-ink-600">
-          <input
-            type="radio"
-            name="para"
-            value="menor"
-            checked={forMinor}
-            onChange={() => setForMinor(true)}
-            data-testid="new-person-for-minor"
-            className="size-4 accent-sage-600"
-          />
-          Soy su madre/padre/tutor
-        </label>
-      </fieldset>
+      {!minorOnly && (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 font-bold text-ink-600">
+            ¿Para quién es?
+          </legend>
+          <label className="flex items-center gap-3 text-ink-600">
+            <input
+              type="radio"
+              name="para"
+              value="yo"
+              checked={!forMinor}
+              onChange={() => setForMinor(false)}
+              data-testid="new-person-for-me"
+              className="size-4 accent-sage-600"
+            />
+            Es para mí
+          </label>
+          <label className="flex items-center gap-3 text-ink-600">
+            <input
+              type="radio"
+              name="para"
+              value="menor"
+              checked={forMinor}
+              onChange={() => setForMinor(true)}
+              data-testid="new-person-for-minor"
+              className="size-4 accent-sage-600"
+            />
+            Soy su madre/padre/tutor
+          </label>
+        </fieldset>
+      )}
 
       {!forMinor && (
         <PersonFields
@@ -247,7 +262,7 @@ export function NewPersonForm({
       {error && (
         <p
           role="alert"
-          data-testid="booking-error"
+          data-testid={errorTestId}
           className="text-red-700 text-sm"
         >
           {error}

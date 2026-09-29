@@ -91,6 +91,15 @@ export type BookingStep =
       person: AccountPerson;
     } & Chosen);
 
+export function possibleGuardians(people: AccountPerson[]): AccountPerson[] {
+  return people.filter(
+    (candidate) =>
+      candidate.relation === "self" &&
+      !candidate.is_minor &&
+      candidate.birth_date !== null,
+  );
+}
+
 export function pickerDays(
   slots: Slot[],
   today: string,
@@ -187,12 +196,7 @@ export function bookingStep({
         ...chosen,
         firstTime: people.length === 0,
         needsPrivacy: !privacyAccepted,
-        guardians: people.filter(
-          (candidate) =>
-            candidate.relation === "self" &&
-            !candidate.is_minor &&
-            candidate.birth_date !== null,
-        ),
+        guardians: possibleGuardians(people),
         warning:
           state.aviso && state.aviso !== SLOT_TAKEN
             ? personError({ message: state.aviso })
