@@ -208,7 +208,7 @@ describe("sendDailyReminders", () => {
     });
   });
 
-  it("sends each guardian their own email with the calendar file and marks one claim as sent, so separated parents never see each other's address and a second run skips it", async () => {
+  it("sends each guardian their own email with the calendar file and marks one claim as sent, so separated parents never see each other's address and the appointment is logged as reminded once", async () => {
     candidates = [
       candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
     ];
@@ -340,7 +340,7 @@ describe("sendDailyReminders", () => {
     expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
   });
 
-  it("logs a failed send and keeps reminding the other patients, so one bad address never leaves the rest of the day without reminders and the failure is retried next run", async () => {
+  it("logs a failed send and keeps reminding the other patients, so one bad address never leaves the rest of the day without reminders and the appointment stays a candidate if the cron runs again that same day", async () => {
     candidates = [
       candidate({
         appointment_id: "a-falla",

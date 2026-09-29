@@ -32,7 +32,7 @@
   3. si la persona no tiene email, los emails de sus tutores, sin repetir.
 
   Si no hay ninguno: se registra `error = 'sin_email'` y no se envía.
-- **Idempotencia:** como máximo un envío correcto por cita y canal. Se garantiza con el índice único parcial `(appointment_id, channel) where sent_at is not null`, y la selección excluye las citas que ya lo tienen.
+- **Idempotencia:** como máximo un envío por cita y canal. Antes de enviar se reserva la cita con una fila `pending`; el índice único parcial `(appointment_id, channel) where status <> 'failed'` impide una segunda reserva, y la selección excluye las citas con una fila `sent` o `pending` de menos de una hora.
 - **Evento del calendario del equipo:** `SUMMARY` "Nombre Apellidos · Servicio", nada más del paciente. Solo citas no canceladas, desde Madrid hoy − 30 días hasta hoy + 90 días.
 - **`.ics` del paciente:** `SUMMARY` "Cita en Clínica LUMIA · <servicio>"; `LOCATION` es la dirección de `site.address` de la web; `UID` `<appointment_id>@clinicalumia.es`.
 - **Funciones:** `security definer`, `set search_path = ''`, nombres cualificados y `revoke execute ... from public, anon`, salvo `calendar_feed`, que se concede a `anon` y a `authenticated`. `reminder_candidates` solo es para `service_role`.
@@ -54,11 +54,11 @@
 
 ## Review Focus
 
-1. **Una segunda ejecución del cron no reenvía nada.** Tampoco dos ejecuciones a la vez: el índice único lo impide y el segundo insert choca y se ignora. Tests en las Tareas 1 y 4.
+1. **Una segunda ejecución del cron no reenvía nada.** Tampoco dos ejecuciones a la vez: cada cita se reserva con una fila `pending` antes de enviar, el índice único hace que la segunda reserva choque (`23505`) y esa ejecución la salta sin enviar. Una reserva `pending` de más de una hora cuenta como fallida. Tests en las Tareas 1 y 4 y en la ronda final.
 2. **Cambios de hora:** una cita a las 00:30 del día siguiente, o en un día de cambio de hora, entra en "mañana" correctamente, y el `.ics` lleva la hora UTC correcta. Tests en las Tareas 1 y 3.
 3. **Tokens de calendario:** un token cambiado o invalidado, o el de un miembro desactivado, deja de servir al instante (`404`), y nadie puede leer tokens ajenos. Tests en las Tareas 2, 6 y 7.
 4. **Nombres con comas, punto y coma, saltos de línea o acentos** no rompen el `.ics`: se escapan y las líneas largas se pliegan. Tests en la Tarea 3.
-5. **Un fallo de envío a un destinatario** queda registrado sin impedir los demás, y se reintenta en la siguiente ejecución. Tests en la Tarea 4.
+5. **Un fallo de envío a un destinatario** queda registrado sin impedir los demás. Solo se reintenta si el cron vuelve a ejecutarse el mismo día de Madrid (mientras la cita sigue siendo "mañana"); con un cron diario, en la práctica no se reintenta. Tests en la Tarea 4.
 
 ---
 
