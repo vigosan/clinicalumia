@@ -3,6 +3,14 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: ".",
   use: { baseURL: "http://localhost:3001" },
+  projects: [
+    { name: "main", testIgnore: "admin-config.spec.ts" },
+    {
+      name: "clinic-settings",
+      testMatch: "admin-config.spec.ts",
+      dependencies: ["main"],
+    },
+  ],
   webServer: [
     {
       command: "pnpm --filter web dev",
