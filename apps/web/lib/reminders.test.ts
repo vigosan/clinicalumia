@@ -33,6 +33,7 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
 
 let candidates: Candidate[];
 let reminders: Row[];
+let unreachableAppointment: string | null;
 const rpc = vi.fn();
 const wait = vi.fn(async (_ms: number) => {});
 
@@ -64,6 +65,16 @@ function fakeAdmin() {
           error: null,
         }),
         insert: (row: Row) => {
+          if (row.appointment_id === unreachableAppointment) {
+            const failure = {
+              data: null,
+              error: { code: "08006", message: "conexión perdida" },
+            };
+            return {
+              select: () => ({ single: async () => failure }),
+              error: failure.error,
+            };
+          }
           const taken = reminders.some(
             (other) =>
               other.appointment_id === row.appointment_id &&
@@ -111,8 +122,10 @@ const now = new Date("2026-10-05T06:00:00Z");
 beforeEach(() => {
   candidates = [];
   reminders = [];
+  unreachableAppointment = null;
   rpc.mockReset();
   wait.mockClear();
+  vi.spyOn(console, "error").mockImplementation(() => {});
   sendEmail.mockReset();
   sendEmail.mockResolvedValue(undefined);
 });
@@ -440,5 +453,53 @@ describe("sendDailyReminders", () => {
 
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(wait).not.toHaveBeenCalledWith(2000);
+  });
+
+  it("keeps reminding the rest of the day when claiming one appointment fails unexpectedly, so a single database hiccup does not leave every later patient without a reminder", async () => {
+    candidates = [
+      candidate({ appointment_id: "a-rota" }),
+      candidate({ appointment_id: "a-bien", recipients: ["bien@example.com"] }),
+    ];
+    unreachableAppointment = "a-rota";
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(sendEmail.mock.calls.map(([email]) => email.to)).toEqual([
+      "bien@example.com",
+    ]);
+    expect(result).toEqual({ sent: 1, failed: 1, skipped: 0 });
+  });
+
+  it("keeps going when logging an appointment without email fails, so one missing address never stops the run", async () => {
+    candidates = [
+      candidate({ appointment_id: "a-sin", recipients: [] }),
+      candidate({ appointment_id: "a-bien", recipients: ["bien@example.com"] }),
+    ];
+    unreachableAppointment = "a-sin";
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ sent: 1, failed: 1, skipped: 0 });
+  });
+
+  it("records an unexpected error on the appointment's claim and moves on, so the team can see what went wrong and the claim is not left pending", async () => {
+    candidates = [
+      candidate({ appointment_id: "a-rara", starts_at: "no es una fecha" }),
+      candidate({ appointment_id: "a-bien", recipients: ["bien@example.com"] }),
+    ];
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(logged()[0]).toMatchObject({
+      appointment_id: "a-rara",
+      status: "failed",
+      error: expect.stringMatching(/.+/),
+    });
+    expect(logged()[1]).toMatchObject({
+      appointment_id: "a-bien",
+      status: "sent",
+    });
+    expect(result).toEqual({ sent: 1, failed: 1, skipped: 0 });
   });
 });

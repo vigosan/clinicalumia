@@ -77,6 +77,10 @@ async function sendWithRetry(
   }
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function logMissingEmail(admin: AdminClient, appointmentId: string) {
   const { data, error } = await admin
     .from("appointment_reminders")
@@ -159,62 +163,69 @@ export async function sendDailyReminders({
   if (error) throw error;
 
   for (const candidate of candidates) {
-    if (candidate.recipients.length === 0) {
-      await logMissingEmail(admin, candidate.appointment_id);
-      result.skipped++;
-      continue;
-    }
+    let claimId: string | null = null;
+    try {
+      if (candidate.recipients.length === 0) {
+        await logMissingEmail(admin, candidate.appointment_id);
+        result.skipped++;
+        continue;
+      }
 
-    const claimId = await claim(
-      admin,
-      candidate.appointment_id,
-      candidate.recipients.join(", "),
-    );
-    if (!claimId) {
-      result.skipped++;
-      continue;
-    }
+      claimId = await claim(
+        admin,
+        candidate.appointment_id,
+        candidate.recipients.join(", "),
+      );
+      if (!claimId) {
+        result.skipped++;
+        continue;
+      }
 
-    const errors: string[] = [];
-    for (const recipient of candidate.recipients) {
-      if (emailed) await wait(PAUSE_BETWEEN_EMAILS_MS);
-      emailed = true;
-      try {
-        await sendWithRetry(
+      const message = {
+        ...reminderEmail(candidate),
+        attachments: [
           {
-            to: recipient,
-            ...reminderEmail(candidate),
-            attachments: [
-              {
-                filename: "cita.ics",
-                content: patientIcs(candidate, now),
-                contentType: "text/calendar",
-              },
-            ],
+            filename: "cita.ics",
+            content: patientIcs(candidate, now),
+            contentType: "text/calendar",
           },
-          wait,
-        );
-      } catch (sendError) {
-        errors.push(
-          `${recipient}: ${sendError instanceof Error ? sendError.message : String(sendError)}`,
-        );
+        ],
+      };
+      const errors: string[] = [];
+      for (const recipient of candidate.recipients) {
+        if (emailed) await wait(PAUSE_BETWEEN_EMAILS_MS);
+        emailed = true;
+        try {
+          await sendWithRetry({ to: recipient, ...message }, wait);
+        } catch (sendError) {
+          errors.push(`${recipient}: ${errorMessage(sendError)}`);
+        }
+      }
+
+      if (errors.length > 0) {
+        await settle(admin, claimId, {
+          status: "failed",
+          error: errors.join("; "),
+        });
+        result.failed++;
+        continue;
+      }
+
+      await settle(admin, claimId, {
+        status: "sent",
+        sent_at: now.toISOString(),
+      });
+      result.sent++;
+    } catch (unexpected) {
+      console.error("No se ha podido enviar el recordatorio", unexpected);
+      result.failed++;
+      if (claimId) {
+        await settle(admin, claimId, {
+          status: "failed",
+          error: errorMessage(unexpected),
+        }).catch(() => {});
       }
     }
-
-    if (errors.length > 0) {
-      await settle(admin, claimId, {
-        status: "failed",
-        error: errors.join("; "),
-      });
-      result.failed++;
-      continue;
-    }
-
-    await settle(admin, claimId, {
-      status: "sent",
-      sent_at: now.toISOString(),
-    });
-    result.sent++;
   }
 
   return result;
