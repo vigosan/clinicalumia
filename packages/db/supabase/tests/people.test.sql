@@ -157,7 +157,7 @@ $$, '23514', null, 'a blank first name is rejected, even though it is technicall
 
 select throws_ok($$
   insert into public.people (id, first_name, last_name, birth_date)
-  values ('50000000-0000-0000-0000-0000000000f2', 'Nombre', 'Apellido', current_date + 1)
+  values ('50000000-0000-0000-0000-0000000000f2', 'Nombre', 'Apellido', (now() at time zone 'Europe/Madrid')::date + 1)
 $$, '23514', null, 'a birth date in the future is rejected, since nobody can be born tomorrow');
 
 select lives_ok($$
