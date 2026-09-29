@@ -11,6 +11,7 @@ import {
   bookingState,
   formatWhen,
   groupSlotsByDay,
+  isTeamSession,
   NEW_PERSON,
   SLOT_TAKEN,
   type Slot,
@@ -35,6 +36,7 @@ import {
   type CatalogService,
   type CatalogSpecialty,
 } from "./step";
+import { TeamSession } from "./TeamSession";
 import { WhoStep } from "./WhoStep";
 
 export const metadata: Metadata = {
@@ -546,12 +548,17 @@ export default async function ReservarPage({
   const signedIn = Boolean(user);
   const today = todayInMadrid();
   const choosingPerson = Boolean(user && state.inicio);
-  const [catalog, horizonDays, people, privacyAccepted] = await Promise.all([
+  const loaded = await Promise.all([
     loadCatalog(),
     loadHorizonDays(),
     choosingPerson ? loadPeople() : null,
     choosingPerson ? loadPrivacyAccepted() : false,
-  ]);
+  ]).catch((error) => {
+    if (isTeamSession(error)) return null;
+    throw error;
+  });
+  if (!loaded) return <TeamSession />;
+  const [catalog, horizonDays, people, privacyAccepted] = loaded;
   const step = bookingStep({
     catalog,
     state,

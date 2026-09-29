@@ -7,6 +7,7 @@ import {
   firstFreeSlots,
   groupSlotsByDay,
   isMinorOn,
+  isTeamSession,
   parseEmail,
   parseNewPersonForm,
   personError,
@@ -286,6 +287,22 @@ describe("personError", () => {
     expect(personError({ message: "unexpected" })).toBe(
       "No se han podido guardar los datos. Inténtalo de nuevo.",
     );
+  });
+});
+
+describe("isTeamSession", () => {
+  it("recognises the refusal a team session gets from the patient functions, so the page can send it to the panel", () => {
+    expect(
+      isTeamSession({ code: "42501", message: "patient_account_required" }),
+    ).toBe(true);
+  });
+
+  it("does not hide any other failure behind the team message", () => {
+    expect(isTeamSession({ code: "42501", message: "permission denied" })).toBe(
+      false,
+    );
+    expect(isTeamSession(new Error("boom"))).toBe(false);
+    expect(isTeamSession(null)).toBe(false);
   });
 });
 

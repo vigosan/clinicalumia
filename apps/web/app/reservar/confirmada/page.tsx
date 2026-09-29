@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
-import { formatWhen } from "@/lib/booking";
+import { formatWhen, isTeamSession } from "@/lib/booking";
 import { pageMetadata } from "@/lib/metadata";
+import { TeamSession } from "../TeamSession";
 
 export const metadata: Metadata = {
   ...pageMetadata({
@@ -28,6 +29,7 @@ export default async function ConfirmadaPage({
   if (typeof cita !== "string" || !user) notFound();
 
   const { data, error } = await supabase.rpc("my_appointments");
+  if (isTeamSession(error)) return <TeamSession />;
   if (error) throw error;
   const appointment = data.find((candidate) => candidate.id === cita);
   if (!appointment) notFound();

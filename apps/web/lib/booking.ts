@@ -164,6 +164,14 @@ export function personWarning(error: DbError): string {
     : PERSON_NOT_SAVED;
 }
 
+export const STAFF_EMAIL =
+  "Esta dirección es del equipo de la clínica; entra desde el panel.";
+
+export function isTeamSession(error: unknown): boolean {
+  const { code, message } = (error ?? {}) as DbError & { code?: string };
+  return code === "42501" && message === "patient_account_required";
+}
+
 export const ANY_PROFESSIONAL = "cualquiera";
 export const NEW_PERSON = "nueva";
 export const SLOT_TAKEN = "ocupado";

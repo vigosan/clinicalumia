@@ -7,6 +7,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { signIn } from "./auth";
 import { latestCodeFor, latestEmailFor } from "./mail";
 
 const WEB = "http://localhost:3000";
@@ -765,6 +766,45 @@ test("a companion the clinic saved without birth date is offered, completes only
   expect(people).toEqual([
     { id: companion!.id, birth_date: "1960-03-01", is_patient: true },
   ]);
+});
+
+test("a team member signed in on the panel who opens the web booking is sent to the panel instead of an error page", async ({
+  page,
+}) => {
+  test.slow();
+  const { specialty, service, withHoursId } =
+    await clinicWithTwoProfessionals();
+  const email = `reserva-equipo-${unique()}@test.local`;
+  const password = "lumia-segura-2026";
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  expect(error).toBeNull();
+  createdUserIds.push(data.user!.id);
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: data.user!.id,
+    email,
+    full_name: "Equipo en la web",
+    role: "employee",
+    is_active: true,
+  });
+  expect(profileError).toBeNull();
+  await signIn(page, "http://localhost:3001", email, password);
+
+  await openChosenSlot(
+    page,
+    slotStepUrl(specialty.id, service.id, withHoursId, ""),
+  );
+  await expect(page.getByTestId("booking-team-session")).toHaveText(
+    "Esta dirección es del equipo de la clínica; entra desde el panel.",
+  );
+
+  await page.goto(`${WEB}/reservar/confirmada?cita=${crypto.randomUUID()}`);
+  await expect(page.getByTestId("booking-team-session")).toHaveText(
+    "Esta dirección es del equipo de la clínica; entra desde el panel.",
+  );
 });
 
 test("another email does not see the people or appointments of an account", async ({

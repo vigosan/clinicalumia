@@ -6,6 +6,7 @@ import { safeNext } from "@clinicalumia/api/route";
 import { createClient } from "@clinicalumia/api/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { STAFF_EMAIL } from "@/lib/booking";
 import { site } from "@/lib/site";
 
 export type AccessState = { error: string } | undefined;
@@ -23,8 +24,6 @@ const MAX_FAILED_CODES_PER_IP = 30;
 const USERS_PAGE = 1000;
 const TOO_MANY = "Demasiados intentos. Espera unos minutos.";
 const TOO_SOON = "For security purposes, you can only request this after";
-const STAFF_EMAIL =
-  "Esta dirección es del equipo de la clínica; entra desde el panel.";
 
 function field(formData: FormData, name: string) {
   const value = formData.get(name);
