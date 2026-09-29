@@ -1,0 +1,127 @@
+import { describe, expect, it } from "vitest";
+import { bookingStep, type CatalogSpecialty } from "./step";
+
+const SPECIALTY = "11111111-1111-1111-1111-111111111111";
+const SERVICE = "22222222-2222-2222-2222-222222222222";
+const PHONE_SERVICE = "33333333-3333-3333-3333-333333333333";
+const PROFESSIONAL = "44444444-4444-4444-4444-444444444444";
+const UNKNOWN = "99999999-9999-9999-9999-999999999999";
+
+const catalog: CatalogSpecialty[] = [
+  {
+    id: SPECIALTY,
+    name: "Logopedia",
+    professionals: [{ id: PROFESSIONAL, full_name: "Ana" }],
+    services: [
+      {
+        id: SERVICE,
+        name: "Sesión",
+        durationMinutes: 45,
+        priceCents: 4500,
+        phoneOnly: false,
+      },
+      {
+        id: PHONE_SERVICE,
+        name: "Valoración",
+        durationMinutes: 60,
+        priceCents: 6000,
+        phoneOnly: true,
+      },
+    ],
+  },
+];
+
+const today = "2026-09-29";
+const now = new Date("2026-09-29T08:00:00Z");
+const base = { catalog, today, horizonDays: 60, now };
+const slotState = {
+  especialidad: SPECIALTY,
+  servicio: SERVICE,
+  profesional: PROFESSIONAL,
+};
+
+describe("bookingStep", () => {
+  it("shows an empty state when nothing can be booked online, so the page still offers the phone", () => {
+    expect(bookingStep({ ...base, catalog: [], state: {} }).kind).toBe("empty");
+  });
+
+  it("starts at the specialty list without any choice", () => {
+    expect(bookingStep({ ...base, state: {} }).kind).toBe("specialty");
+  });
+
+  it("falls back to the services of the chosen specialty when the service is unknown or no longer bookable", () => {
+    const step = bookingStep({
+      ...base,
+      state: { especialidad: SPECIALTY, servicio: UNKNOWN },
+    });
+    expect(step.kind).toBe("service");
+  });
+
+  it("stops at the phone for a service that cannot be booked online", () => {
+    const step = bookingStep({
+      ...base,
+      state: { especialidad: SPECIALTY, servicio: PHONE_SERVICE },
+    });
+    expect(step.kind).toBe("phoneOnly");
+  });
+
+  it("asks for the professional when the one in the URL is not of the specialty", () => {
+    const step = bookingStep({
+      ...base,
+      state: { ...slotState, profesional: UNKNOWN },
+    });
+    expect(step.kind).toBe("professional");
+  });
+
+  it("starts the slot window at the requested date inside the horizon", () => {
+    const step = bookingStep({
+      ...base,
+      state: { ...slotState, fecha: "2026-10-13" },
+    });
+    expect(step).toMatchObject({ kind: "slots", from: "2026-10-13" });
+  });
+
+  it("starts the slot window today for a date past the horizon, so a crafted far-future date never breaks the page", () => {
+    const step = bookingStep({
+      ...base,
+      state: { ...slotState, fecha: "9999-12-25" },
+    });
+    expect(step).toMatchObject({ kind: "slots", from: today });
+  });
+
+  it("starts the slot window today for a date in the past", () => {
+    const step = bookingStep({
+      ...base,
+      state: { ...slotState, fecha: "2026-09-01" },
+    });
+    expect(step).toMatchObject({ kind: "slots", from: today });
+  });
+
+  it("offers the next days only while they start within the horizon, because later there can be no slots", () => {
+    expect(
+      bookingStep({ ...base, state: { ...slotState, fecha: "2026-11-14" } }),
+    ).toMatchObject({ kind: "slots", nextFrom: "2026-11-28" });
+    expect(
+      bookingStep({ ...base, state: { ...slotState, fecha: "2026-11-15" } }),
+    ).toMatchObject({ kind: "slots", nextFrom: null });
+  });
+
+  it("shows the chosen slot when its start is still ahead", () => {
+    const step = bookingStep({
+      ...base,
+      state: { ...slotState, inicio: "2026-10-02T07:00:00.000Z" },
+    });
+    expect(step).toMatchObject({
+      kind: "chosen",
+      startsAt: "2026-10-02T07:00:00.000Z",
+    });
+  });
+
+  it("goes back to the slots when the chosen start has already passed, so nobody confirms a time in the past", () => {
+    const step = bookingStep({
+      ...base,
+      state: { ...slotState, inicio: "2026-09-28T07:00:00.000Z" },
+    });
+    expect(step.kind).toBe("slots");
+  });
+});

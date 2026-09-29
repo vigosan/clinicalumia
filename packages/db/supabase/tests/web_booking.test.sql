@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(193);
+select plan(197);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
@@ -632,6 +632,15 @@ select is(has_function_privilege('anon', 'public.available_slots(uuid, uuid, dat
 select is(has_function_privilege('authenticated', 'public.available_slots(uuid, uuid, date, date)', 'execute'), true,
   'a signed-in visitor can look up available slots too');
 
+update public.clinic_settings set booking_horizon_days = 45;
+select is(public.booking_horizon_days(), 45,
+  'the web reads the configured booking horizon, so paging stops where booking stops');
+update public.clinic_settings set booking_horizon_days = 60;
+select is(has_function_privilege('anon', 'public.booking_horizon_days()', 'execute'), true,
+  'anon can read how far ahead the clinic takes bookings');
+select is(has_function_privilege('authenticated', 'public.booking_horizon_days()', 'execute'), true,
+  'a signed-in visitor can read how far ahead the clinic takes bookings too');
+
 set local role anon;
 select lives_ok($$ select * from public.booking_catalog() $$,
   'an anonymous visitor can read the booking catalog');
@@ -639,6 +648,8 @@ select lives_ok($$
   select * from public.available_slots('84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000001',
     pg_temp.day3(), pg_temp.day3())
 $$, 'an anonymous visitor can read available slots');
+select is(public.booking_horizon_days(), 60,
+  'an anonymous visitor reads the horizon without any access to clinic_settings');
 reset role;
 
 reset role;

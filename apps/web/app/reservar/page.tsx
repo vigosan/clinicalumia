@@ -1,8 +1,4 @@
-import {
-  addDays,
-  madridDateTime,
-  todayInMadrid,
-} from "@clinicalumia/api/madrid-time";
+import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -17,14 +13,14 @@ import {
 } from "@/lib/booking";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
+import { loadCatalog, loadHorizonDays, loadSlots } from "./load";
+import { type PickerDay, SlotPicker } from "./SlotPicker";
 import {
+  type BookingStep,
+  bookingStep,
   type CatalogService,
   type CatalogSpecialty,
-  loadCatalog,
-  loadSlots,
-  WINDOW_DAYS,
-} from "./load";
-import { type PickerDay, SlotPicker } from "./SlotPicker";
+} from "./step";
 
 export const metadata: Metadata = {
   ...pageMetadata({
@@ -34,8 +30,6 @@ export const metadata: Metadata = {
     path: "/reservar",
   }),
 };
-
-const MAX_HORIZON_DAYS = 365;
 
 const optionClass =
   "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-600 transition-colors hover:bg-sage-500/15";
@@ -230,6 +224,7 @@ async function SlotStep({
   service,
   professional,
   from,
+  nextFrom,
   today,
   signedIn,
 }: {
@@ -237,6 +232,7 @@ async function SlotStep({
   service: CatalogService;
   professional: string;
   from: string;
+  nextFrom: string | null;
   today: string;
   signedIn: boolean;
 }) {
@@ -261,8 +257,6 @@ async function SlotStep({
     morning: day.morning.map(toPicker),
     afternoon: day.afternoon.map(toPicker),
   }));
-  const nextFrom = addDays(from, WINDOW_DAYS);
-
   return (
     <Step
       number={4}
@@ -283,7 +277,7 @@ async function SlotStep({
           <PhoneLink>{site.phone.display}</PhoneLink> y te buscamos uno.
         </p>
       )}
-      {nextFrom <= addDays(today, MAX_HORIZON_DAYS) && (
+      {nextFrom && (
         <Link
           href={reservar({ ...base, fecha: nextFrom })}
           data-testid="booking-next-days"
@@ -363,6 +357,68 @@ function ChosenStep({
   );
 }
 
+function EmptyStep() {
+  return (
+    <div>
+      <h1 className="font-bold text-ink-600 text-section">Reservar cita</h1>
+      <p data-testid="booking-empty" className="mt-6 text-ink-500">
+        Ahora mismo no hay citas para reservar online. Llámanos al{" "}
+        <PhoneLink>{site.phone.display}</PhoneLink> y te buscamos una.
+      </p>
+    </div>
+  );
+}
+
+function StepView({
+  step,
+  today,
+  signedIn,
+}: {
+  step: BookingStep;
+  today: string;
+  signedIn: boolean;
+}) {
+  switch (step.kind) {
+    case "empty":
+      return <EmptyStep />;
+    case "specialty":
+      return <SpecialtyStep catalog={step.catalog} />;
+    case "service":
+      return <ServiceStep specialty={step.specialty} />;
+    case "phoneOnly":
+      return (
+        <PhoneOnlyStep specialty={step.specialty} service={step.service} />
+      );
+    case "professional":
+      return (
+        <ProfessionalStep specialty={step.specialty} service={step.service} />
+      );
+    case "slots":
+      return (
+        <SlotStep
+          specialty={step.specialty}
+          service={step.service}
+          professional={step.professional}
+          from={step.from}
+          nextFrom={step.nextFrom}
+          today={today}
+          signedIn={signedIn}
+        />
+      );
+    case "chosen":
+      return (
+        <ChosenStep
+          specialty={step.specialty}
+          service={step.service}
+          professional={step.professional}
+          from={step.from}
+          startsAt={step.startsAt}
+          signedIn={signedIn}
+        />
+      );
+  }
+}
+
 export default async function ReservarPage({
   searchParams,
 }: {
@@ -374,55 +430,18 @@ export default async function ReservarPage({
     data: { user },
   } = await supabase.auth.getUser();
   const signedIn = Boolean(user);
-  const catalog = await loadCatalog();
   const today = todayInMadrid();
-
-  const specialty = state.servicio
-    ? catalog.find((candidate) =>
-        candidate.services.some((service) => service.id === state.servicio),
-      )
-    : catalog.find((candidate) => candidate.id === state.especialidad);
-  const service = specialty?.services.find(
-    (candidate) => candidate.id === state.servicio,
-  );
-  const professional =
-    state.profesional === ANY_PROFESSIONAL ||
-    specialty?.professionals.some(
-      (candidate) => candidate.id === state.profesional,
-    )
-      ? state.profesional
-      : undefined;
-  const from = state.fecha && state.fecha > today ? state.fecha : today;
-
-  let step: ReactNode;
-  if (!specialty) step = <SpecialtyStep catalog={catalog} />;
-  else if (!service) step = <ServiceStep specialty={specialty} />;
-  else if (service.phoneOnly)
-    step = <PhoneOnlyStep specialty={specialty} service={service} />;
-  else if (!professional)
-    step = <ProfessionalStep specialty={specialty} service={service} />;
-  else if (!state.inicio)
-    step = (
-      <SlotStep
-        specialty={specialty}
-        service={service}
-        professional={professional}
-        from={from}
-        today={today}
-        signedIn={signedIn}
-      />
-    );
-  else
-    step = (
-      <ChosenStep
-        specialty={specialty}
-        service={service}
-        professional={professional}
-        from={from}
-        startsAt={state.inicio}
-        signedIn={signedIn}
-      />
-    );
+  const [catalog, horizonDays] = await Promise.all([
+    loadCatalog(),
+    loadHorizonDays(),
+  ]);
+  const step = bookingStep({
+    catalog,
+    state,
+    today,
+    horizonDays,
+    now: new Date(),
+  });
 
   return (
     <>
@@ -435,7 +454,7 @@ export default async function ReservarPage({
               <span data-testid="reservar-email">{user.email}</span>
             </p>
           )}
-          {step}
+          <StepView step={step} today={today} signedIn={signedIn} />
         </div>
       </section>
     </>

@@ -1,25 +1,7 @@
 import { addDays } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { ANY_PROFESSIONAL, firstFreeSlots, type Slot } from "@/lib/booking";
-
-export const WINDOW_DAYS = 14;
-
-export type Professional = { id: string; full_name: string };
-
-export type CatalogService = {
-  id: string;
-  name: string;
-  durationMinutes: number;
-  priceCents: number;
-  phoneOnly: boolean;
-};
-
-export type CatalogSpecialty = {
-  id: string;
-  name: string;
-  services: CatalogService[];
-  professionals: Professional[];
-};
+import { type CatalogSpecialty, type Professional, WINDOW_DAYS } from "./step";
 
 export async function loadCatalog(): Promise<CatalogSpecialty[]> {
   const supabase = await createClient();
@@ -53,6 +35,13 @@ export async function loadCatalog(): Promise<CatalogSpecialty[]> {
       ),
     }))
     .sort((a, b) => collator.compare(a.name, b.name));
+}
+
+export async function loadHorizonDays(): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("booking_horizon_days");
+  if (error) throw error;
+  return data;
 }
 
 export async function loadSlots(

@@ -663,6 +663,7 @@ export type Database = {
           specialty_name: string
         }[]
       }
+      booking_horizon_days: { Args: never; Returns: number }
       f_unaccent: { Args: { value: string }; Returns: string }
       find_possible_duplicates: {
         Args: {
