@@ -55,7 +55,9 @@ test("the owner creates a service with a deposit and sees it listed with its pri
   createdServiceNames.push(name);
   await page.goto(`${ADMIN}/services`);
   await page.getByTestId("service-new").click();
-  await page.getByLabel("Especialidad").selectOption({ label: "Fisioterapia" });
+  await page
+    .getByLabel("Especialidad", { exact: true })
+    .selectOption({ label: "Fisioterapia" });
   await page.getByLabel("Nombre").fill(name);
   await page.getByLabel("Duración (minutos)").fill("45");
   await page.getByLabel("Precio").fill("50");
@@ -169,6 +171,54 @@ test("the owner fixes an invalid tax id, saves the clinic details and uploads th
       .update({ ...before, updated_at: undefined })
       .eq("id", true);
   }
+});
+
+test("the owner saves the minimum notice and the booking horizon, and they survive a reload", async ({
+  page,
+}) => {
+  const { data: before } = await admin
+    .from("clinic_settings")
+    .select("*")
+    .single();
+  try {
+    await loginAsOwner(page);
+    await page.goto(`${ADMIN}/clinic`);
+    await page.getByLabel("Antelación mínima (horas)").fill("48");
+    await page.getByLabel("Hasta cuántos días se puede reservar").fill("90");
+    await page.getByTestId("clinic-submit").click();
+    await expect(page.getByTestId("clinic-saved")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Antelación mínima (horas)")).toHaveValue(
+      "48",
+    );
+    await expect(
+      page.getByLabel("Hasta cuántos días se puede reservar"),
+    ).toHaveValue("90");
+  } finally {
+    await admin
+      .from("clinic_settings")
+      .update({ ...before, updated_at: undefined })
+      .eq("id", true);
+  }
+});
+
+test("a service that can be booked online with a deposit warns it can't take online bookings until payments are enabled", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  await page.goto(`${ADMIN}/services`);
+  await page.getByTestId("service-new").click();
+  await page
+    .getByLabel("Especialidad", { exact: true })
+    .selectOption({ label: "Fisioterapia" });
+  await page.getByLabel("Se puede reservar desde la web").check();
+  await expect(page.getByTestId("service-phone-only-note")).toHaveCount(0);
+  await page.getByLabel("Qué se paga al reservar").selectOption("fixed");
+  await expect(page.getByTestId("service-phone-only-note")).toContainText(
+    "No se podrá reservar online hasta activar los cobros.",
+  );
+  await page.getByLabel("Qué se paga al reservar").selectOption("none");
+  await expect(page.getByTestId("service-phone-only-note")).toHaveCount(0);
 });
 
 test("uploading a logo over 2 MB shows a clear error instead of crashing", async ({

@@ -18,6 +18,8 @@ export type ClinicSettingsInput = {
   invoice_prefix: string;
   rectifying_prefix: string;
   cancellation_hours: number;
+  booking_min_notice_hours: number;
+  booking_horizon_days: number;
 };
 
 function text(formData: FormData, key: string) {
@@ -42,6 +44,10 @@ export function parseClinicSettings(
   const rectifyingPrefix = text(formData, "rectifying_prefix");
   const cancellationHoursText = text(formData, "cancellation_hours");
   const cancellationHours = Number(cancellationHoursText);
+  const bookingMinNoticeHoursText = text(formData, "booking_min_notice_hours");
+  const bookingMinNoticeHours = Number(bookingMinNoticeHoursText);
+  const bookingHorizonDaysText = text(formData, "booking_horizon_days");
+  const bookingHorizonDays = Number(bookingHorizonDaysText);
 
   if (!legalName)
     return { error: "La razón social o nombre del titular es obligatorio." };
@@ -61,6 +67,26 @@ export function parseClinicSettings(
   )
     return {
       error: "El plazo de cancelación debe estar entre 0 y 720 horas.",
+    };
+  if (!bookingMinNoticeHoursText)
+    return { error: "Indica la antelación mínima." };
+  if (
+    !Number.isInteger(bookingMinNoticeHours) ||
+    bookingMinNoticeHours < 0 ||
+    bookingMinNoticeHours > 168
+  )
+    return {
+      error: "La antelación mínima debe estar entre 0 y 168 horas.",
+    };
+  if (!bookingHorizonDaysText)
+    return { error: "Indica el horizonte de reserva." };
+  if (
+    !Number.isInteger(bookingHorizonDays) ||
+    bookingHorizonDays < 1 ||
+    bookingHorizonDays > 365
+  )
+    return {
+      error: "El horizonte de reserva debe estar entre 1 y 365 días.",
     };
 
   return {
@@ -83,6 +109,8 @@ export function parseClinicSettings(
       invoice_prefix: invoicePrefix,
       rectifying_prefix: rectifyingPrefix,
       cancellation_hours: cancellationHours,
+      booking_min_notice_hours: bookingMinNoticeHours,
+      booking_horizon_days: bookingHorizonDays,
     },
   };
 }

@@ -23,6 +23,8 @@ type ClinicSettings = {
   invoice_prefix: string;
   rectifying_prefix: string;
   cancellation_hours: number;
+  booking_min_notice_hours: number;
+  booking_horizon_days: number;
 };
 
 export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
@@ -144,6 +146,32 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
             required
           />
         </Field>
+      </Card>
+
+      <Card className="flex flex-col gap-4">
+        <h2 className="text-lg font-bold text-ink-900">Reserva web</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Antelación mínima (horas)">
+            <Input
+              name="booking_min_notice_hours"
+              type="number"
+              min={0}
+              max={168}
+              defaultValue={settings.booking_min_notice_hours}
+              required
+            />
+          </Field>
+          <Field label="Hasta cuántos días se puede reservar">
+            <Input
+              name="booking_horizon_days"
+              type="number"
+              min={1}
+              max={365}
+              defaultValue={settings.booking_horizon_days}
+              required
+            />
+          </Field>
+        </div>
       </Card>
 
       {state && "error" in state && (

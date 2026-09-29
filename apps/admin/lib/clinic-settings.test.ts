@@ -19,6 +19,8 @@ function form(values: Record<string, string>) {
     invoice_prefix: "",
     rectifying_prefix: "R",
     cancellation_hours: "24",
+    booking_min_notice_hours: "24",
+    booking_horizon_days: "60",
   };
   for (const [key, value] of Object.entries({ ...defaults, ...values })) {
     data.set(key, value);
@@ -47,6 +49,8 @@ describe("parseClinicSettings", () => {
         invoice_prefix: "",
         rectifying_prefix: "R",
         cancellation_hours: 24,
+        booking_min_notice_hours: 24,
+        booking_horizon_days: 60,
       },
     });
   });
@@ -78,6 +82,34 @@ describe("parseClinicSettings", () => {
   it("requires an explicit cancellation window instead of defaulting an empty field to zero, since zero means no free cancellation", () => {
     expect(parseClinicSettings(form({ cancellation_hours: "" }))).toEqual({
       error: "Indica el plazo de cancelación gratuita.",
+    });
+  });
+
+  it("keeps the minimum notice within 0-168 hours, since patients cannot book further ahead than a week's worth of hours", () => {
+    expect(
+      parseClinicSettings(form({ booking_min_notice_hours: "200" })),
+    ).toEqual({
+      error: "La antelación mínima debe estar entre 0 y 168 horas.",
+    });
+  });
+
+  it("requires an explicit minimum notice instead of defaulting an empty field to zero", () => {
+    expect(parseClinicSettings(form({ booking_min_notice_hours: "" }))).toEqual(
+      {
+        error: "Indica la antelación mínima.",
+      },
+    );
+  });
+
+  it("keeps the booking horizon within 1-365 days", () => {
+    expect(parseClinicSettings(form({ booking_horizon_days: "400" }))).toEqual({
+      error: "El horizonte de reserva debe estar entre 1 y 365 días.",
+    });
+  });
+
+  it("requires an explicit booking horizon instead of defaulting an empty field to zero, since zero would leave nothing to book", () => {
+    expect(parseClinicSettings(form({ booking_horizon_days: "" }))).toEqual({
+      error: "Indica el horizonte de reserva.",
     });
   });
 

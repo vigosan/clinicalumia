@@ -46,6 +46,8 @@ function clinicForm(overrides: Record<string, string> = {}) {
     invoice_prefix: "",
     rectifying_prefix: "R",
     cancellation_hours: "24",
+    booking_min_notice_hours: "24",
+    booking_horizon_days: "60",
   };
   for (const [key, value] of Object.entries({ ...defaults, ...overrides })) {
     data.set(key, value);

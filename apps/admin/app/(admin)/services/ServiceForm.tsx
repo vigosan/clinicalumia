@@ -39,6 +39,9 @@ export function ServiceForm({
     FormData
   >(saveService, undefined);
   const [payment, setPayment] = useState(service?.booking_payment ?? "none");
+  const [bookableOnline, setBookableOnline] = useState(
+    service?.bookable_online ?? false,
+  );
 
   return (
     <form
@@ -113,8 +116,18 @@ export function ServiceForm({
       <CheckboxField
         name="bookable_online"
         label="Se puede reservar desde la web"
-        defaultChecked={service?.bookable_online ?? false}
+        checked={bookableOnline}
+        onChange={(event) => setBookableOnline(event.target.checked)}
       />
+
+      {bookableOnline && payment !== "none" && (
+        <p
+          data-testid="service-phone-only-note"
+          className="text-[13px] text-ink-800"
+        >
+          No se podrá reservar online hasta activar los cobros.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Qué se paga al reservar">
