@@ -59,6 +59,7 @@ test("a wrong six-digit code shows the error and keeps you at the challenge", as
   const { email, password } = await createEmployee();
   await signIn(page, "http://localhost:3001", email, password);
   await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
 
   await loginToChallenge(page, email, password);
   await page.getByTestId("totp-code").fill("000000");
@@ -76,6 +77,7 @@ test("recovering a password with a factor already active asks for the code befor
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
   await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
 
   await page.goto("/login");
   await page
@@ -101,6 +103,7 @@ test("recovering a password with a factor already active asks for the code befor
   await expect(page.getByTestId("logout")).toBeVisible();
 
   await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
   await loginToChallenge(page, email, newPassword);
   await submitTotpCode(page, secret!);
   await expect(page.getByTestId("logout")).toBeVisible();
@@ -114,6 +117,7 @@ test("an open redirect on the challenge's next lands you at this app's home", as
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
   await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
 
   await loginToChallenge(page, email, password);
   await page.goto("/auth/dos-pasos?next=//evil.com");
@@ -131,6 +135,7 @@ test("a session that only passed the password sees no specialties until it passe
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
   await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
 
   const supabase = createClient(API_URL, anonKey);
   const { data: signInData, error: signInError } =
@@ -179,6 +184,7 @@ test("a password-only (aal1) session on a factored account can't change the pass
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
   await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
 
   const attacker = createClient(API_URL, anonKey);
   const { error: signInError } = await attacker.auth.signInWithPassword({
