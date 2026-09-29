@@ -46,6 +46,26 @@ describe("ConfirmDialog", () => {
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
+  it("disables the confirm button while the action is running, so a double click never runs it twice", async () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmDialog
+        trigger={<Button variant="danger">Cambiar</Button>}
+        title="¿Cambiar el enlace?"
+        description="El enlace actual dejará de funcionar."
+        confirmLabel="Cambiando…"
+        closeOnConfirm={false}
+        confirmDisabled
+        onConfirm={onConfirm}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cambiar" }));
+
+    expect(screen.getByTestId("confirm-action")).toBeDisabled();
+    await userEvent.click(screen.getByTestId("confirm-action"));
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it("renders extra content between the description and the action buttons", async () => {
     render(
       <ConfirmDialog

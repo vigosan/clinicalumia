@@ -164,11 +164,22 @@ test("una profesional genera su enlace de calendario, que muestra sus citas solo
     "text/calendar; charset=utf-8",
   );
   expect(response.headers()["cache-control"]).toBe("private, max-age=300");
+  expect(response.headers()["x-robots-tag"]).toBe("noindex");
   const ics = unfolded(await response.text());
   expect(ics).toContain(`X-WR-CALNAME:LUMIA · ${professional.fullName}`);
   expect(ics).toContain(`UID:${professional.appointmentId}@clinicalumia.es`);
   expect(ics).toContain(`SUMMARY:${professional.summary}`);
   expect(ics).not.toContain(professional.notes);
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.clipboard, "writeText", {
+      value: () => Promise.reject(new Error("denied")),
+    });
+  });
+  await page.getByTestId("calendar-copy").click();
+  await expect(page.getByTestId("calendar-error")).toHaveText(
+    "No se ha podido copiar; copia el enlace a mano.",
+  );
 
   await page.getByTestId("calendar-regenerate").click();
   await page.getByTestId("calendar-regenerate-confirm").click();

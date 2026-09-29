@@ -40,6 +40,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Cache-Control": "private, max-age=300",
+      "X-Robots-Tag": "noindex",
     },
   });
 }

@@ -1,7 +1,7 @@
 export function publicOrigin(headers: Headers): string {
   const host =
-    headers.get("x-forwarded-host") ??
-    headers.get("host") ??
+    headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    headers.get("host") ||
     "panel.clinicalumia.es";
   const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0];
   const proto =

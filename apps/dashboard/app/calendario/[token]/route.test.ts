@@ -106,6 +106,17 @@ describe("GET /calendario/[token]", () => {
     expect(body).toContain("SUMMARY:Marta López · Sesión de logopedia");
   });
 
+  it("asks search engines not to index the feed, so a link that leaks onto a web page never lands patient names in search results", async () => {
+    answer("Ana García", [FEED_ROW]);
+
+    const response = await GET(
+      request(`${TOKEN}.ics`),
+      context(`${TOKEN}.ics`),
+    );
+
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex");
+  });
+
   it("stamps each event with its last change, so calendar apps notice a moved appointment", async () => {
     answer("Ana Torres", [FEED_ROW]);
 

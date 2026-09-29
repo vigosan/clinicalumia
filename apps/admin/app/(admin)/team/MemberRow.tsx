@@ -241,6 +241,7 @@ export function MemberRow({
       </div>
       {success && (
         <p
+          role="status"
           data-testid="member-success"
           className="w-full text-[13px] text-sage-900"
         >

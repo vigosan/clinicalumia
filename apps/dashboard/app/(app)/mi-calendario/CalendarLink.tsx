@@ -26,7 +26,13 @@ export function CalendarLink({ url }: { url: string | null }) {
 
   async function handleCopy() {
     if (!url) return;
-    await navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      setError("No se ha podido copiar; copia el enlace a mano.");
+      return;
+    }
+    setError(null);
     setCopied(true);
   }
 
@@ -68,6 +74,7 @@ export function CalendarLink({ url }: { url: string | null }) {
               open={open}
               onOpenChange={setOpen}
               closeOnConfirm={false}
+              confirmDisabled={pending}
               onConfirm={handleRegenerate}
             />
           </div>

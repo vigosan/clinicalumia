@@ -21,6 +21,15 @@ describe("publicOrigin", () => {
     expect(publicOrigin(headers)).toBe("https://panel.clinicalumia.es");
   });
 
+  it("keeps only the first host when the proxy chain lists several, so the link never contains a comma-separated host", () => {
+    const headers = new Headers({
+      "x-forwarded-host": " panel.clinicalumia.es , interno.vercel.app",
+      "x-forwarded-proto": "https",
+    });
+
+    expect(publicOrigin(headers)).toBe("https://panel.clinicalumia.es");
+  });
+
   it("serves plain http on localhost in development", () => {
     const headers = new Headers({ host: "localhost:3001" });
 

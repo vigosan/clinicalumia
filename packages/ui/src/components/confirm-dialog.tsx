@@ -14,6 +14,7 @@ export function ConfirmDialog({
   open,
   onOpenChange,
   closeOnConfirm = true,
+  confirmDisabled = false,
   children,
   onConfirm,
 }: {
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   closeOnConfirm?: boolean;
+  confirmDisabled?: boolean;
   children?: ReactNode;
   onConfirm: () => void;
 }) {
@@ -54,6 +56,7 @@ export function ConfirmDialog({
                   variant="danger"
                   size="sm"
                   data-testid={confirmTestId}
+                  disabled={confirmDisabled}
                   onClick={onConfirm}
                 >
                   {confirmLabel}
@@ -65,6 +68,7 @@ export function ConfirmDialog({
                 variant="danger"
                 size="sm"
                 data-testid={confirmTestId}
+                disabled={confirmDisabled}
                 onClick={onConfirm}
               >
                 {confirmLabel}

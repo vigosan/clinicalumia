@@ -87,6 +87,34 @@ describe("icsCalendar", () => {
     }
   });
 
+  it("folds a line full of emoji without splitting one in half, so a patient name with an emoji never corrupts the calendar", () => {
+    const longSummary = `Sesión 😀 ${"🦷".repeat(40)} fin`;
+    const ics = icsCalendar({
+      name: "Equipo LUMIA",
+      events: [{ ...baseEvent, summary: longSummary }],
+    });
+
+    const lines = ics.split("\r\n");
+    const start = lines.findIndex((line) => line.startsWith("SUMMARY:"));
+    let index = start + 1;
+    while (lines[index]?.startsWith(" ")) index++;
+    const folded = lines.slice(start, index);
+
+    expect(folded.length).toBeGreaterThan(1);
+    expect(
+      folded
+        .map((line, position) => (position === 0 ? line : line.slice(1)))
+        .join("")
+        .slice("SUMMARY:".length),
+    ).toBe(longSummary);
+    const encoder = new TextEncoder();
+    for (const line of folded) {
+      expect(encoder.encode(line).length).toBeLessThanOrEqual(75);
+      expect(line).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+      expect(line).not.toMatch(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/);
+    }
+  });
+
   it("resolves DTSTART to the correct UTC instant across the spring DST change", () => {
     const startsAt = madridInstant("2026-03-29", "10:00");
     const ics = icsCalendar({

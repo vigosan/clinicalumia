@@ -340,6 +340,10 @@ test("the owner invalidates a member's calendar link and it stops serving the fe
     await expect(row.getByTestId("member-success")).toHaveText(
       "Calendario invalidado.",
     );
+    await expect(row.getByTestId("member-success")).toHaveAttribute(
+      "role",
+      "status",
+    );
 
     const afterRevoke = await fetch(url!);
     expect(afterRevoke.status).toBe(404);
