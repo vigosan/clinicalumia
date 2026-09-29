@@ -147,6 +147,9 @@ export function personError(error: DbError): string {
 }
 
 export const ANY_PROFESSIONAL = "cualquiera";
+export const NEW_PERSON = "nueva";
+export const SLOT_TAKEN = "ocupado";
+export const PRIVACY_VERSION = "2026-09";
 
 export type BookingState = {
   especialidad?: string;
@@ -155,6 +158,7 @@ export type BookingState = {
   fecha?: string;
   inicio?: string;
   persona?: string;
+  aviso?: string;
 };
 
 type BookingSearchParams = Record<string, string | string[] | undefined>;
@@ -170,6 +174,14 @@ function isUuid(value: string): boolean {
 
 function isProfessional(value: string): boolean {
   return value === ANY_PROFESSIONAL || isUuid(value);
+}
+
+function isPersona(value: string): boolean {
+  return value === NEW_PERSON || isUuid(value);
+}
+
+function isWarning(value: string): boolean {
+  return value === SLOT_TAKEN;
 }
 
 function isInstant(value: string): boolean {
@@ -192,6 +204,7 @@ export const bookingState = {
     if (state.fecha) params.set("fecha", state.fecha);
     if (state.inicio) params.set("inicio", state.inicio);
     if (state.persona) params.set("persona", state.persona);
+    if (state.aviso) params.set("aviso", state.aviso);
     return params.toString();
   },
   decode(searchParams: BookingSearchParams): BookingState {
@@ -201,7 +214,18 @@ export const bookingState = {
       profesional: validated(searchParams.profesional, isProfessional),
       fecha: validated(searchParams.fecha, isValidDate),
       inicio: validated(searchParams.inicio, isInstant),
-      persona: validated(searchParams.persona, isUuid),
+      persona: validated(searchParams.persona, isPersona),
+      aviso: validated(searchParams.aviso, isWarning),
     };
   },
 };
+
+export function formatWhen(instant: string): string {
+  const formatted = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(instant));
+  return `${capitalize(formatted)} a las ${madridDateTime(instant).time}`;
+}

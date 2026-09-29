@@ -7,20 +7,28 @@ import { PageHero } from "@/components/PageHero";
 import {
   ANY_PROFESSIONAL,
   type BookingState,
+  bookingError,
   bookingState,
+  formatWhen,
   groupSlotsByDay,
+  NEW_PERSON,
+  SLOT_TAKEN,
   type Slot,
 } from "@/lib/booking";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
-import { loadCatalog, loadHorizonDays, loadSlots } from "./load";
+import { ConfirmForm } from "./ConfirmForm";
+import { loadCatalog, loadHorizonDays, loadPeople, loadSlots } from "./load";
+import { NewPersonForm } from "./NewPersonForm";
 import { type PickerDay, SlotPicker } from "./SlotPicker";
 import {
+  type AccountPerson,
   type BookingStep,
   bookingStep,
   type CatalogService,
   type CatalogSpecialty,
 } from "./step";
+import { WhoStep } from "./WhoStep";
 
 export const metadata: Metadata = {
   ...pageMetadata({
@@ -41,17 +49,6 @@ function reservar(state: BookingState) {
 
 function formatPrice(cents: number): string {
   return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
-}
-
-function formatChosen(instant: string): string {
-  const formatted = new Intl.DateTimeFormat("es-ES", {
-    timeZone: "Europe/Madrid",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(new Date(instant));
-  const { time } = madridDateTime(instant);
-  return `${formatted.charAt(0).toUpperCase()}${formatted.slice(1)} a las ${time}`;
 }
 
 function Step({
@@ -75,7 +72,7 @@ function Step({
           ← Volver
         </Link>
       )}
-      <p className="mt-4 text-ink-500 text-sm">Paso {number} de 4</p>
+      <p className="mt-4 text-ink-500 text-sm">Paso {number} de 7</p>
       <h1 className="mt-1 font-bold text-ink-600 text-section">{title}</h1>
       <div className="mt-8">{children}</div>
     </div>
@@ -227,6 +224,7 @@ async function SlotStep({
   nextFrom,
   today,
   signedIn,
+  slotTaken,
 }: {
   specialty: CatalogSpecialty;
   service: CatalogService;
@@ -235,6 +233,7 @@ async function SlotStep({
   nextFrom: string | null;
   today: string;
   signedIn: boolean;
+  slotTaken: boolean;
 }) {
   const base = {
     especialidad: specialty.id,
@@ -266,6 +265,15 @@ async function SlotStep({
       <p className="-mt-4 mb-6 text-ink-500">
         {service.name} · {service.durationMinutes} min
       </p>
+      {slotTaken && (
+        <p
+          role="alert"
+          data-testid="booking-error"
+          className="mb-6 rounded-2xl bg-cream-100 px-4 py-3 text-ink-600 text-sm"
+        >
+          {bookingError({ message: "slot_not_available" })}
+        </p>
+      )}
       {days.length > 0 ? (
         <SlotPicker key={from} days={days} />
       ) : (
@@ -290,31 +298,69 @@ async function SlotStep({
   );
 }
 
-function ChosenStep({
-  specialty,
-  service,
-  professional,
-  from,
-  startsAt,
-  signedIn,
-}: {
+type ChosenProps = {
   specialty: CatalogSpecialty;
   service: CatalogService;
   professional: string;
   from: string;
   startsAt: string;
-  signedIn: boolean;
-}) {
-  const base = {
+};
+
+function chosenBase({ specialty, service, professional, from }: ChosenProps) {
+  return {
     especialidad: specialty.id,
     servicio: service.id,
     profesional: professional,
     fecha: from,
   };
+}
+
+function AppointmentSummary({
+  testId,
+  specialty,
+  service,
+  professional,
+  startsAt,
+  person,
+}: ChosenProps & { testId: string; person?: AccountPerson }) {
   const professionalName =
     specialty.professionals.find((candidate) => candidate.id === professional)
       ?.full_name ?? "El primer hueco libre";
-  const next = reservar({ ...base, inicio: startsAt });
+  return (
+    <dl
+      data-testid={testId}
+      className="flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
+    >
+      <div>
+        <dt className="text-ink-500 text-sm">Cuándo</dt>
+        <dd className="font-bold">{formatWhen(startsAt)}</dd>
+      </div>
+      <div>
+        <dt className="text-ink-500 text-sm">Servicio</dt>
+        <dd>
+          {service.name} · {service.durationMinutes} min ·{" "}
+          {formatPrice(service.priceCents)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-ink-500 text-sm">Profesional</dt>
+        <dd>{professionalName}</dd>
+      </div>
+      {person && (
+        <div>
+          <dt className="text-ink-500 text-sm">Para</dt>
+          <dd>
+            {person.first_name} {person.last_name}
+          </dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
+function ChosenStep(props: ChosenProps) {
+  const base = chosenBase(props);
+  const next = reservar({ ...base, inicio: props.startsAt });
 
   return (
     <div>
@@ -324,36 +370,71 @@ function ChosenStep({
       >
         ← Cambiar la hora
       </Link>
-      <h1 className="mt-4 font-bold text-ink-600 text-section">Tu cita</h1>
-      <dl
-        data-testid="booking-chosen"
-        className="mt-8 flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
+      <h1 className="mt-4 mb-8 font-bold text-ink-600 text-section">Tu cita</h1>
+      <AppointmentSummary testId="booking-chosen" {...props} />
+      <Link
+        href={`/acceder?next=${encodeURIComponent(next)}`}
+        className="mt-8 inline-flex h-11 items-center rounded-full bg-sage-600 px-8 text-cream-50 transition-colors hover:bg-sage-700"
       >
-        <div>
-          <dt className="text-ink-500 text-sm">Cuándo</dt>
-          <dd className="font-bold">{formatChosen(startsAt)}</dd>
-        </div>
-        <div>
-          <dt className="text-ink-500 text-sm">Servicio</dt>
-          <dd>
-            {service.name} · {service.durationMinutes} min ·{" "}
-            {formatPrice(service.priceCents)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-ink-500 text-sm">Profesional</dt>
-          <dd>{professionalName}</dd>
-        </div>
-      </dl>
-      {!signedIn && (
-        <Link
-          href={`/acceder?next=${encodeURIComponent(next)}`}
-          className="mt-8 inline-flex h-11 items-center rounded-full bg-sage-600 px-8 text-cream-50 transition-colors hover:bg-sage-700"
-        >
-          Continuar
-        </Link>
-      )}
+        Continuar
+      </Link>
     </div>
+  );
+}
+
+function WhoView(props: ChosenProps & { people: AccountPerson[] }) {
+  const chosen = { ...chosenBase(props), inicio: props.startsAt };
+  return (
+    <Step
+      number={6}
+      title="¿Para quién es la cita?"
+      back={reservar(chosenBase(props))}
+    >
+      <WhoStep
+        people={props.people}
+        personHref={(personId) => reservar({ ...chosen, persona: personId })}
+        otherHref={reservar({ ...chosen, persona: NEW_PERSON })}
+      />
+    </Step>
+  );
+}
+
+function DetailsView(
+  props: ChosenProps & {
+    firstTime: boolean;
+    guardians: AccountPerson[];
+    today: string;
+  },
+) {
+  const chosen = { ...chosenBase(props), inicio: props.startsAt };
+  return (
+    <Step
+      number={6}
+      title={props.firstTime ? "Tus datos" : "Otra persona"}
+      back={props.firstTime ? reservar(chosenBase(props)) : reservar(chosen)}
+    >
+      <NewPersonForm
+        estado={bookingState.encode(chosen)}
+        firstTime={props.firstTime}
+        guardians={props.guardians.map((guardian) => ({
+          id: guardian.id,
+          name: `${guardian.first_name} ${guardian.last_name}`,
+        }))}
+        today={props.today}
+      />
+    </Step>
+  );
+}
+
+function SummaryView(props: ChosenProps & { person: AccountPerson }) {
+  const chosen = { ...chosenBase(props), inicio: props.startsAt };
+  return (
+    <Step number={7} title="Revisa tu cita" back={reservar(chosen)}>
+      <AppointmentSummary testId="booking-summary" {...props} />
+      <ConfirmForm
+        estado={bookingState.encode({ ...chosen, persona: props.person.id })}
+      />
+    </Step>
   );
 }
 
@@ -373,10 +454,12 @@ function StepView({
   step,
   today,
   signedIn,
+  slotTaken,
 }: {
   step: BookingStep;
   today: string;
   signedIn: boolean;
+  slotTaken: boolean;
 }) {
   switch (step.kind) {
     case "empty":
@@ -403,19 +486,17 @@ function StepView({
           nextFrom={step.nextFrom}
           today={today}
           signedIn={signedIn}
+          slotTaken={slotTaken}
         />
       );
     case "chosen":
-      return (
-        <ChosenStep
-          specialty={step.specialty}
-          service={step.service}
-          professional={step.professional}
-          from={step.from}
-          startsAt={step.startsAt}
-          signedIn={signedIn}
-        />
-      );
+      return <ChosenStep {...step} />;
+    case "who":
+      return <WhoView {...step} />;
+    case "details":
+      return <DetailsView {...step} today={today} />;
+    case "summary":
+      return <SummaryView {...step} />;
   }
 }
 
@@ -431,9 +512,10 @@ export default async function ReservarPage({
   } = await supabase.auth.getUser();
   const signedIn = Boolean(user);
   const today = todayInMadrid();
-  const [catalog, horizonDays] = await Promise.all([
+  const [catalog, horizonDays, people] = await Promise.all([
     loadCatalog(),
     loadHorizonDays(),
+    user && state.inicio ? loadPeople() : null,
   ]);
   const step = bookingStep({
     catalog,
@@ -441,6 +523,7 @@ export default async function ReservarPage({
     today,
     horizonDays,
     now: new Date(),
+    people,
   });
 
   return (
@@ -454,7 +537,12 @@ export default async function ReservarPage({
               <span data-testid="reservar-email">{user.email}</span>
             </p>
           )}
-          <StepView step={step} today={today} signedIn={signedIn} />
+          <StepView
+            step={step}
+            today={today}
+            signedIn={signedIn}
+            slotTaken={state.aviso === SLOT_TAKEN}
+          />
         </div>
       </section>
     </>

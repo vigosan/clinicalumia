@@ -351,6 +351,20 @@ describe("bookingState", () => {
     );
   });
 
+  it("keeps 'nueva' as persona because it opens the form for another person", () => {
+    expect(bookingState.decode({ persona: "nueva" }).persona).toBe("nueva");
+  });
+
+  it("round-trips the taken-slot warning so the slot step can explain why the patient is back", () => {
+    const params = new URLSearchParams(
+      bookingState.encode({ servicio, aviso: "ocupado" }),
+    );
+    expect(
+      bookingState.decode({ aviso: params.get("aviso") ?? undefined }).aviso,
+    ).toBe("ocupado");
+    expect(bookingState.decode({ aviso: "otro" }).aviso).toBeUndefined();
+  });
+
   it("drops a window start that is not a real calendar date", () => {
     expect(bookingState.decode({ fecha: "2026-02-30" }).fecha).toBeUndefined();
     expect(bookingState.decode({ fecha: "mañana" }).fecha).toBeUndefined();

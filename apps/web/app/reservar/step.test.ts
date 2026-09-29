@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { bookingStep, type CatalogSpecialty } from "./step";
+import { type AccountPerson, bookingStep, type CatalogSpecialty } from "./step";
 
 const SPECIALTY = "11111111-1111-1111-1111-111111111111";
 const SERVICE = "22222222-2222-2222-2222-222222222222";
 const PHONE_SERVICE = "33333333-3333-3333-3333-333333333333";
 const PROFESSIONAL = "44444444-4444-4444-4444-444444444444";
 const UNKNOWN = "99999999-9999-9999-9999-999999999999";
+const MOTHER = "55555555-5555-5555-5555-555555555555";
+const CHILD = "66666666-6666-6666-6666-666666666666";
 
 const catalog: CatalogSpecialty[] = [
   {
@@ -123,5 +125,95 @@ describe("bookingStep", () => {
       state: { ...slotState, inicio: "2026-09-28T07:00:00.000Z" },
     });
     expect(step.kind).toBe("slots");
+  });
+
+  describe("with a session and a chosen slot", () => {
+    const chosenState = { ...slotState, inicio: "2026-10-02T07:00:00.000Z" };
+    const mother: AccountPerson = {
+      id: MOTHER,
+      first_name: "Marta",
+      last_name: "Ruiz",
+      is_minor: false,
+      is_patient: false,
+      relation: "self",
+    };
+    const child: AccountPerson = {
+      id: CHILD,
+      first_name: "Leo",
+      last_name: "Ruiz",
+      is_minor: true,
+      is_patient: true,
+      relation: "ward",
+    };
+
+    it("asks for whom the appointment is, offering only people who can be booked", () => {
+      const step = bookingStep({
+        ...base,
+        state: chosenState,
+        people: [mother, child],
+      });
+      expect(step).toMatchObject({ kind: "who", people: [child] });
+    });
+
+    it("goes straight to the person's details the first time, because there is nobody to choose and privacy must be accepted", () => {
+      const step = bookingStep({ ...base, state: chosenState, people: [] });
+      expect(step).toMatchObject({
+        kind: "details",
+        firstTime: true,
+        guardians: [],
+      });
+    });
+
+    it("goes to the details without asking privacy again when the account only has a guardian who is not a patient", () => {
+      const step = bookingStep({
+        ...base,
+        state: chosenState,
+        people: [mother],
+      });
+      expect(step).toMatchObject({
+        kind: "details",
+        firstTime: false,
+        guardians: [mother],
+      });
+    });
+
+    it("opens the details for another person offering the adults of the account as guardians", () => {
+      const step = bookingStep({
+        ...base,
+        state: { ...chosenState, persona: "nueva" },
+        people: [mother, child],
+      });
+      expect(step).toMatchObject({
+        kind: "details",
+        firstTime: false,
+        guardians: [mother],
+      });
+    });
+
+    it("shows the summary for a person of the account", () => {
+      const step = bookingStep({
+        ...base,
+        state: { ...chosenState, persona: CHILD },
+        people: [mother, child],
+      });
+      expect(step).toMatchObject({ kind: "summary", person: child });
+    });
+
+    it("asks again for whom when the person in the URL is not bookable from this account", () => {
+      expect(
+        bookingStep({
+          ...base,
+          state: { ...chosenState, persona: UNKNOWN },
+          people: [mother, child],
+        }).kind,
+      ).toBe("who");
+      expect(
+        bookingStep({
+          ...base,
+          state: { ...chosenState, persona: MOTHER },
+          people: [mother, child],
+        }).kind,
+      ).toBe("who");
+    });
   });
 });

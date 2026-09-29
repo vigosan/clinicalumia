@@ -1,7 +1,12 @@
 import { addDays } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { ANY_PROFESSIONAL, firstFreeSlots, type Slot } from "@/lib/booking";
-import { type CatalogSpecialty, type Professional, WINDOW_DAYS } from "./step";
+import {
+  type AccountPerson,
+  type CatalogSpecialty,
+  type Professional,
+  WINDOW_DAYS,
+} from "./step";
 
 export async function loadCatalog(): Promise<CatalogSpecialty[]> {
   const supabase = await createClient();
@@ -59,4 +64,11 @@ export async function loadSlots(
   });
   if (error) throw error;
   return anyProfessional ? firstFreeSlots(data) : data;
+}
+
+export async function loadPeople(): Promise<AccountPerson[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_people");
+  if (error) throw error;
+  return data;
 }
