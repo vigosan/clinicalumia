@@ -131,4 +131,35 @@ describe("historyLine", () => {
       "Movida de 28/09 16:00 a 29/09 16:00 por Laura Ejemplo el 28/09 a las 10:12",
     );
   });
+
+  it("says a patient's own move was made from the web, with when it happened and the previous time, instead of naming an actor", () => {
+    const moved = event({
+      kind: "moved",
+      actor_id: null,
+      actor_kind: "patient",
+      previous_starts_at: "2026-09-27T12:30:00Z",
+      created_at: "2026-09-28T08:12:00Z",
+    });
+    const line = historyLine(moved, 0, [moved], appointment, nameById);
+    expect(line).toBe(
+      "Cambiada desde la web el 28/09 a las 10:12 (antes: 27/09 14:30)",
+    );
+  });
+
+  it("says a patient's own cancellation was made from the web, without naming an actor or a reason", () => {
+    const cancelled = event({
+      kind: "cancelled",
+      actor_id: null,
+      actor_kind: "patient",
+      created_at: "2026-09-28T08:12:00Z",
+    });
+    const line = historyLine(
+      cancelled,
+      0,
+      [cancelled],
+      { ...appointment, cancelled_by: "patient", cancel_reason: "" },
+      nameById,
+    );
+    expect(line).toBe("Cancelada desde la web el 28/09 a las 10:12");
+  });
 });

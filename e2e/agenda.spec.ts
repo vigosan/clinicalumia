@@ -1357,3 +1357,73 @@ test("una cita reservada desde la web muestra «Reserva web» en el bloque y en 
     "Reservada desde la web el",
   );
 });
+
+test("cancelar desde su sesión una cita que le reservó el equipo hace que el historial de la profesional diga que se canceló desde la web", async ({
+  page,
+}) => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Cancelada Web",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+
+  const patientEmail = `agenda-cancelada-web-paciente-${suffix}@test.local`;
+  const patientPassword = "lumia-segura-2026";
+  const { data: patientUser, error: patientUserError } =
+    await admin.auth.admin.createUser({
+      email: patientEmail,
+      password: patientPassword,
+      email_confirm: true,
+    });
+  expect(patientUserError).toBeNull();
+  createdUserIds.push(patientUser!.user!.id);
+  const { error: patientAccountError } = await admin
+    .from("patient_accounts")
+    .insert({ id: patientUser!.user!.id, email: patientEmail });
+  expect(patientAccountError).toBeNull();
+
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: "Cancelada Web",
+      email: patientEmail,
+      is_patient: true,
+      birth_date: "1990-01-01",
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  createdPersonIds.push(person!.id);
+
+  const date = futureDate(10);
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: person!.id,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  const patientClient = createClient("http://127.0.0.1:54321", anonKey ?? "");
+  const { error: signInError } = await patientClient.auth.signInWithPassword({
+    email: patientEmail,
+    password: patientPassword,
+  });
+  expect(signInError).toBeNull();
+  const { error: cancelError } = await patientClient.rpc(
+    "cancel_my_appointment",
+    { p_appointment_id: appointmentId },
+  );
+  expect(cancelError).toBeNull();
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Cancelada desde la web el",
+  );
+});

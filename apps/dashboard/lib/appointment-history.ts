@@ -48,6 +48,13 @@ export function historyLine(
   }
 
   if (event.kind === "moved") {
+    if (event.actor_kind === "patient") {
+      const before = formatMoveTime(
+        event.previous_starts_at ?? appointment.starts_at,
+        true,
+      );
+      return `Cambiada desde la web el ${moment} (antes: ${before})`;
+    }
     const nextMove = events
       .slice(index + 1)
       .find((candidate) => candidate.kind === "moved");
@@ -61,6 +68,8 @@ export function historyLine(
   }
 
   if (event.kind === "cancelled") {
+    if (event.actor_kind === "patient")
+      return `Cancelada desde la web el ${moment}`;
     const who = appointment.cancelled_by === "patient" ? "paciente" : "clínica";
     const reasonSuffix = appointment.cancel_reason
       ? ` · ${appointment.cancel_reason}`
