@@ -151,3 +151,25 @@ test("a team email cannot become a patient account and is sent to the panel", as
     .maybeSingle();
   expect(account).toBeNull();
 });
+
+for (const path of [
+  "/acceder?next=%2Freservar",
+  "/acceder/codigo?email=alguien%40test.local&next=%2Freservar",
+  "/acceder/confirmar?token_hash=cualquiera&next=%2Freservar",
+]) {
+  test(`on a phone, the web header on ${path.split("?")[0]} sits on its green band above the heading, so it stays readable`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(`${WEB}${path}`);
+
+    const header = await page.getByRole("banner").boundingBox();
+    const heading = await page.getByRole("heading", { level: 1 }).boundingBox();
+    const band = await page.getByTestId("page-hero").boundingBox();
+
+    expect(heading!.y).toBeGreaterThanOrEqual(band!.y + band!.height);
+    expect(band!.y + band!.height).toBeGreaterThanOrEqual(
+      header!.y + header!.height,
+    );
+  });
+}
