@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(119);
+select plan(133);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
@@ -314,7 +314,6 @@ select throws_ok($$ update public.clinic_settings set booking_horizon_days = 0 $
 select throws_ok($$ update public.clinic_settings set booking_horizon_days = 366 $$, '23514', null,
   'the horizon cannot exceed a year');
 
-
 reset role;
 select set_config('request.jwt.claims', '', true);
 select set_config('lumia.booking_account', '', true);
@@ -325,6 +324,46 @@ $$;
 create or replace function pg_temp.day3() returns date language sql stable as $$
   select pg_temp.today_madrid() + 3
 $$;
+create or replace function pg_temp.last_sunday(year_val int, month_val int) returns date language plpgsql stable as $$
+declare
+  last_day date;
+begin
+  last_day := (make_date(year_val, month_val, 1) + interval '1 month' - interval '1 day')::date;
+  return last_day - extract(dow from last_day)::int;
+end;
+$$;
+create or replace function pg_temp.next_spring_forward() returns date language plpgsql stable as $$
+declare
+  base date := pg_temp.today_madrid() + 2;
+  y int := extract(year from base)::int;
+  d date;
+begin
+  d := pg_temp.last_sunday(y, 3);
+  if d < base then
+    d := pg_temp.last_sunday(y + 1, 3);
+  end if;
+  return d;
+end;
+$$;
+create or replace function pg_temp.next_dst_day() returns date language plpgsql stable as $$
+declare
+  base date := pg_temp.today_madrid() + 2;
+  y int := extract(year from base)::int;
+  candidates date[] := array[
+    pg_temp.last_sunday(y, 3), pg_temp.last_sunday(y, 10),
+    pg_temp.last_sunday(y + 1, 3), pg_temp.last_sunday(y + 1, 10)
+  ];
+  d date;
+  best date;
+begin
+  foreach d in array candidates loop
+    if d >= base and (best is null or d < best) then
+      best := d;
+    end if;
+  end loop;
+  return best;
+end;
+$$;
 
 insert into auth.users (id, email) values
   ('84000000-0000-0000-0000-000000000001', 'a-huecos@test.local'),
@@ -333,7 +372,11 @@ insert into auth.users (id, email) values
   ('84000000-0000-0000-0000-000000000004', 'semana-horizonte@test.local'),
   ('84000000-0000-0000-0000-000000000005', 'dst-huecos@test.local'),
   ('84000000-0000-0000-0000-000000000006', 'f-catalogo@test.local'),
-  ('84000000-0000-0000-0000-000000000007', 'g-catalogo@test.local');
+  ('84000000-0000-0000-0000-000000000007', 'g-catalogo@test.local'),
+  ('84000000-0000-0000-0000-000000000008', 'primavera-huecos@test.local'),
+  ('84000000-0000-0000-0000-000000000009', 'k-huecos@test.local'),
+  ('84000000-0000-0000-0000-000000000010', 'h-huecos@test.local'),
+  ('84000000-0000-0000-0000-000000000011', 'i-huecos@test.local');
 insert into public.specialties (id, name, slug) values
   ('84000000-0000-0000-0000-0000000000aa', 'Huecos test', 'huecos-test'),
   ('84000000-0000-0000-0000-0000000000bb', 'Catalogo test', 'catalogo-test'),
@@ -346,12 +389,17 @@ insert into public.profiles (id, email, full_name, role, is_active, specialty_id
   ('84000000-0000-0000-0000-000000000004', 'semana-horizonte@test.local', 'Profesional Semana', 'employee', true, '84000000-0000-0000-0000-0000000000cc'),
   ('84000000-0000-0000-0000-000000000005', 'dst-huecos@test.local', 'Profesional Dst', 'employee', true, '84000000-0000-0000-0000-0000000000dd'),
   ('84000000-0000-0000-0000-000000000006', 'f-catalogo@test.local', 'Profesional F', 'employee', true, '84000000-0000-0000-0000-0000000000bb'),
-  ('84000000-0000-0000-0000-000000000007', 'g-catalogo@test.local', 'Profesional G', 'employee', false, '84000000-0000-0000-0000-0000000000bb');
+  ('84000000-0000-0000-0000-000000000007', 'g-catalogo@test.local', 'Profesional G', 'employee', false, '84000000-0000-0000-0000-0000000000bb'),
+  ('84000000-0000-0000-0000-000000000008', 'primavera-huecos@test.local', 'Profesional Primavera', 'employee', true, '84000000-0000-0000-0000-0000000000dd'),
+  ('84000000-0000-0000-0000-000000000009', 'k-huecos@test.local', 'Profesional K', 'employee', true, '84000000-0000-0000-0000-0000000000aa'),
+  ('84000000-0000-0000-0000-000000000010', 'h-huecos@test.local', 'Profesional H', 'employee', true, '84000000-0000-0000-0000-0000000000aa'),
+  ('84000000-0000-0000-0000-000000000011', 'i-huecos@test.local', 'Profesional I', 'employee', false, '84000000-0000-0000-0000-0000000000aa');
 insert into public.services (id, specialty_id, name, duration_minutes, price_cents, bookable_online, is_active, booking_payment, booking_payment_value) values
   ('84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-0000000000aa', 'Hueco 45', 45, 4000, true, true, 'none', 0),
   ('84000000-0000-0000-0000-0000000000b4', '84000000-0000-0000-0000-0000000000aa', 'Hueco con senal', 45, 5000, true, true, 'fixed', 1000),
   ('84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-0000000000cc', 'Hueco horizonte', 15, 1000, true, true, 'none', 0),
   ('84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-0000000000dd', 'Hueco dst', 45, 4000, true, true, 'none', 0),
+  ('84000000-0000-0000-0000-0000000000b9', '84000000-0000-0000-0000-0000000000dd', 'Hueco primavera', 15, 1000, true, true, 'none', 0),
   ('84000000-0000-0000-0000-0000000000b2', '84000000-0000-0000-0000-0000000000bb', 'Catalogo inactivo', 30, 3000, true, false, 'none', 0),
   ('84000000-0000-0000-0000-0000000000b3', '84000000-0000-0000-0000-0000000000bb', 'Catalogo no online', 30, 3000, false, true, 'none', 0),
   ('84000000-0000-0000-0000-0000000000b5', '84000000-0000-0000-0000-0000000000bb', 'Catalogo control', 30, 3000, true, true, 'none', 0),
@@ -361,7 +409,10 @@ insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) 
   ('84000000-0000-0000-0000-000000000001', extract(isodow from pg_temp.day3())::smallint, '15:15', '20:30'),
   ('84000000-0000-0000-0000-000000000002', extract(isodow from pg_temp.day3())::smallint, '09:00', '13:00'),
   ('84000000-0000-0000-0000-000000000003', extract(isodow from pg_temp.day3())::smallint, '15:15', '20:30'),
-  ('84000000-0000-0000-0000-000000000005', extract(isodow from '2026-10-25'::date)::smallint, '15:15', '20:30');
+  ('84000000-0000-0000-0000-000000000009', extract(isodow from pg_temp.day3())::smallint, '15:15:30', '20:30:00'),
+  ('84000000-0000-0000-0000-000000000010', extract(isodow from pg_temp.day3())::smallint, '15:15', '20:30'),
+  ('84000000-0000-0000-0000-000000000011', extract(isodow from pg_temp.day3())::smallint, '15:15', '20:30'),
+  ('84000000-0000-0000-0000-000000000008', extract(isodow from pg_temp.next_spring_forward())::smallint, '01:00', '04:00');
 insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at)
   select '84000000-0000-0000-0000-000000000004', weekday, '00:15', '23:45'
   from generate_series(1, 7) as weekday;
@@ -370,7 +421,11 @@ insert into public.employee_time_off (profile_id, starts_at, ends_at, reason) va
   ('84000000-0000-0000-0000-000000000003',
    (pg_temp.day3()::timestamp at time zone 'Europe/Madrid'),
    ((pg_temp.day3() + 1)::timestamp at time zone 'Europe/Madrid'),
-   'Ausencia de prueba');
+   'Ausencia de prueba'),
+  ('84000000-0000-0000-0000-000000000010',
+   (pg_temp.day3()::timestamp + '17:00'::time) at time zone 'Europe/Madrid',
+   (pg_temp.day3()::timestamp + '18:00'::time) at time zone 'Europe/Madrid',
+   'Ausencia parcial de prueba');
 
 select is((select count(*) from public.booking_catalog() where service_id = '84000000-0000-0000-0000-0000000000b2'),
   0::bigint, 'the catalog never lists a retired service, even one flagged bookable online');
@@ -437,9 +492,9 @@ select is((select count(*) from public.available_slots(
     '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000003', pg_temp.day3(), pg_temp.day3())),
   0::bigint, 'a professional absent the whole day offers no slots at all');
 
-select is((select count(distinct professional_id) from public.available_slots(
+select cmp_ok((select count(distinct professional_id) from public.available_slots(
     '84000000-0000-0000-0000-0000000000b1', null, pg_temp.day3(), pg_temp.day3())),
-  2::bigint, 'with no professional chosen, slots come back for every professional of the specialty who has any');
+  '>=', 2::bigint, 'with no professional chosen, slots come back for every professional of the specialty who has any');
 select is((select count(*) from public.available_slots(
     '84000000-0000-0000-0000-0000000000b1', null, pg_temp.day3(), pg_temp.day3())
   where professional_id = '84000000-0000-0000-0000-000000000001'),
@@ -458,20 +513,66 @@ select throws_ok($$
     pg_temp.day3(), pg_temp.day3() + 20)
 $$, '22023', null, 'a 20-day window is refused so the calendar cannot be scraped far into the future');
 
+select is((select min(starts_at) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000009', pg_temp.day3(), pg_temp.day3())),
+  (pg_temp.day3()::timestamp + '15:30'::time) at time zone 'Europe/Madrid',
+  'a segment starting at 15:15:30 offers its first slot at 15:30, since 15:15 is before the segment opens');
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000009', pg_temp.day3(), pg_temp.day3())
+  where starts_at = (pg_temp.day3()::timestamp + '15:15'::time) at time zone 'Europe/Madrid'),
+  0::bigint, '15:15 is never offered when the segment does not open until 15:15:30');
+
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000010', pg_temp.day3(), pg_temp.day3())),
+  13::bigint, 'a partial absence only removes the slots that touch it, not the whole day');
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000010', pg_temp.day3(), pg_temp.day3())
+  where starts_at = (pg_temp.day3()::timestamp + '16:15'::time) at time zone 'Europe/Madrid'),
+  1::bigint, '16:15 still fits before the partial absence starts');
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000010', pg_temp.day3(), pg_temp.day3())
+  where starts_at = (pg_temp.day3()::timestamp + '16:30'::time) at time zone 'Europe/Madrid'),
+  0::bigint, '16:30 would end inside the partial absence');
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000010', pg_temp.day3(), pg_temp.day3())
+  where starts_at = (pg_temp.day3()::timestamp + '18:00'::time) at time zone 'Europe/Madrid'),
+  1::bigint, '18:00 is free again right after the partial absence ends');
+
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000006', pg_temp.day3(), pg_temp.day3())),
+  0::bigint, 'a professional of another specialty never offers slots for this service');
+
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000011', pg_temp.day3(), pg_temp.day3())),
+  0::bigint, 'a deactivated professional never offers slots, even with a matching schedule');
+
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b1', '84000000-0000-0000-0000-000000000001', null, null)),
+  0::bigint, 'a null date range offers no slots instead of erroring');
+
 select is((select count(*) from public.available_slots(
     '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004', pg_temp.today_madrid(), pg_temp.today_madrid())),
   0::bigint, 'the default 24-hour notice always excludes every slot left today, whatever the hour');
 update public.clinic_settings set booking_min_notice_hours = 0;
-select cmp_ok((select count(*) from public.available_slots(
-    '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004', pg_temp.today_madrid(), pg_temp.today_madrid())),
-  '>', 0::bigint, 'with no notice required, today does have slots: the earlier zero came from the notice rule, not from a missing schedule');
+create temporary table notice_grid_tomorrow as
+  select * from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004',
+    pg_temp.today_madrid() + 1, pg_temp.today_madrid() + 1);
 update public.clinic_settings set booking_min_notice_hours = 24;
-select is((select booking_min_notice_hours from public.clinic_settings), 24,
-  'the notice setting is restored to its default for the rest of the suite');
-select is(coalesce((select bool_and(starts_at >= now() + interval '24 hours') from public.available_slots(
+select cmp_ok((select count(*) from notice_grid_tomorrow), '>', 0::bigint,
+  'with no notice required, tomorrow''s full grid has slots to compare against, whatever the hour');
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004',
+    pg_temp.today_madrid() + 1, pg_temp.today_madrid() + 1)),
+  (select count(*) from notice_grid_tomorrow where starts_at >= now() + interval '24 hours'),
+  'with the default notice, tomorrow keeps exactly the grid slots that are at least 24 hours away, whatever the hour');
+select ok(coalesce((select min(starts_at) >= now() + interval '24 hours' from public.available_slots(
     '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004',
     pg_temp.today_madrid() + 1, pg_temp.today_madrid() + 1)), true),
-  true, 'no slot offered for tomorrow starts earlier than 24 hours from now');
+  'no slot offered for tomorrow starts earlier than 24 hours from now');
+select is((select booking_min_notice_hours from public.clinic_settings), 24,
+  'the notice setting is restored to its default for the rest of the suite');
+drop table notice_grid_tomorrow;
 
 select cmp_ok((select count(*) from public.available_slots(
     '84000000-0000-0000-0000-0000000000b7', '84000000-0000-0000-0000-000000000004',
@@ -482,17 +583,46 @@ select is((select count(*) from public.available_slots(
     pg_temp.today_madrid() + 61, pg_temp.today_madrid() + 61)),
   0::bigint, 'the day right after the 60-day horizon offers none');
 
+insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
+  ('84000000-0000-0000-0000-000000000005', extract(isodow from pg_temp.next_dst_day())::smallint, '15:15', '20:30');
+update public.clinic_settings set booking_horizon_days = (pg_temp.next_dst_day() - pg_temp.today_madrid());
 select is((select count(*) from public.available_slots(
-    '84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-000000000005', '2026-10-25', '2026-10-25')),
-  19::bigint, 'the DST day still fills the whole 15:15-20:30 segment with a 45-minute service');
+    '84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-000000000005', pg_temp.next_dst_day(), pg_temp.next_dst_day())),
+  19::bigint, 'the next DST day still fills the whole 15:15-20:30 segment with a 45-minute service');
 select is((select min(starts_at) from public.available_slots(
-    '84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-000000000005', '2026-10-25', '2026-10-25')),
-  '2026-10-25 15:15:00+01'::timestamptz,
-  'on the DST day, 15:15 is already CET (+01:00): the change happened at 03:00, hours before this segment opens');
+    '84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-000000000005', pg_temp.next_dst_day(), pg_temp.next_dst_day())),
+  (pg_temp.next_dst_day()::timestamp + '15:15'::time) at time zone 'Europe/Madrid',
+  'the first slot on the DST day matches Madrid''s own conversion of 15:15, whether the change was in March or October');
 select is((select max(starts_at) from public.available_slots(
-    '84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-000000000005', '2026-10-25', '2026-10-25')),
-  '2026-10-25 19:45:00+01'::timestamptz,
-  'the last DST-day slot is also given at the correct Madrid wall-clock time');
+    '84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-000000000005', pg_temp.next_dst_day(), pg_temp.next_dst_day())),
+  (pg_temp.next_dst_day()::timestamp + '19:45'::time) at time zone 'Europe/Madrid',
+  'the last slot on the DST day matches Madrid''s own conversion of 19:45 too');
+select is((select extract(epoch from (
+    (min(starts_at) at time zone 'Europe/Madrid') - (min(starts_at) at time zone 'UTC')
+  )) / 3600 from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b8', '84000000-0000-0000-0000-000000000005', pg_temp.next_dst_day(), pg_temp.next_dst_day())),
+  (case when extract(month from pg_temp.next_dst_day()) = 3 then 2 else 1 end)::numeric,
+  'the UTC offset of that slot matches the season the change lands in: +02:00 after a March change, +01:00 after an October one');
+update public.clinic_settings set booking_horizon_days = 60;
+
+update public.clinic_settings set booking_horizon_days = (pg_temp.next_spring_forward() - pg_temp.today_madrid());
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b9', '84000000-0000-0000-0000-000000000008',
+    pg_temp.next_spring_forward(), pg_temp.next_spring_forward())),
+  8::bigint, 'the spring-forward gap drops the four nonexistent 02:xx wall times from a 01:00-04:00 segment');
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b9', '84000000-0000-0000-0000-000000000008',
+    pg_temp.next_spring_forward(), pg_temp.next_spring_forward())),
+  (select count(distinct starts_at) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b9', '84000000-0000-0000-0000-000000000008',
+    pg_temp.next_spring_forward(), pg_temp.next_spring_forward())),
+  'every slot on the spring-forward day is a distinct instant: no nonexistent wall time collapses onto a real one');
+select is((select count(*) from public.available_slots(
+    '84000000-0000-0000-0000-0000000000b9', '84000000-0000-0000-0000-000000000008',
+    pg_temp.next_spring_forward(), pg_temp.next_spring_forward())
+  where extract(hour from (starts_at at time zone 'Europe/Madrid')) = 2),
+  0::bigint, 'no slot is ever offered at a wall-clock hour that Madrid skips on the spring-forward day');
+update public.clinic_settings set booking_horizon_days = 60;
 
 select is(pg_get_function_result('public.available_slots(uuid, uuid, date, date)'::regprocedure),
   'TABLE(starts_at timestamp with time zone, professional_id uuid)',

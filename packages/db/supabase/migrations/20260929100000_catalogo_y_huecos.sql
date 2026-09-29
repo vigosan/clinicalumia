@@ -104,12 +104,13 @@ begin
         seg.profile_id,
         seg.seg_end_wall,
         date_trunc('hour', seg.seg_start_wall)
-          + ceil(extract(minute from seg.seg_start_wall) / 15.0) * interval '15 minutes' as first_slot
+          + ceil(extract(epoch from (seg.seg_start_wall - date_trunc('hour', seg.seg_start_wall))) / 900.0) * interval '15 minutes' as first_slot
       from segments seg
     ),
     slots as (
       select
         g.profile_id,
+        g.slot_wall,
         (g.slot_wall at time zone 'Europe/Madrid') as starts_at,
         (g.slot_wall at time zone 'Europe/Madrid') + (service.duration_minutes * interval '1 minute') as ends_at
       from (
@@ -126,6 +127,7 @@ begin
     from slots
     where slots.starts_at >= window_start
       and slots.starts_at < window_end
+      and (slots.starts_at at time zone 'Europe/Madrid') = slots.slot_wall
       and not exists (
         select 1 from public.employee_time_off t
         where t.profile_id = slots.profile_id
