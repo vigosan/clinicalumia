@@ -234,7 +234,7 @@ test("the daily reminder emails tomorrow's patients once, to the guardian when t
 
   const { data: logged, error: loggedError } = await admin
     .from("appointment_reminders")
-    .select("appointment_id, channel, recipient, sent_at, error")
+    .select("appointment_id, channel, recipient, status, sent_at, error")
     .in("appointment_id", [
       adultAppointment.id,
       minorAppointment.id,
@@ -243,10 +243,11 @@ test("the daily reminder emails tomorrow's patients once, to the guardian when t
   expect(loggedError).toBeNull();
   expect(
     logged!
-      .map(({ appointment_id, channel, recipient, error }) => ({
+      .map(({ appointment_id, channel, recipient, status, error }) => ({
         appointment_id,
         channel,
         recipient,
+        status,
         error,
       }))
       .sort((a, b) => a.recipient.localeCompare(b.recipient)),
@@ -256,12 +257,14 @@ test("the daily reminder emails tomorrow's patients once, to the guardian when t
         appointment_id: adultAppointment.id,
         channel: "email",
         recipient: adultEmail,
+        status: "sent",
         error: "",
       },
       {
         appointment_id: minorAppointment.id,
         channel: "email",
         recipient: guardianEmail,
+        status: "sent",
         error: "",
       },
     ].sort((a, b) => a.recipient.localeCompare(b.recipient)),

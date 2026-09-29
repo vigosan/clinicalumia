@@ -115,6 +115,7 @@ export type Database = {
           id: string
           recipient: string
           sent_at: string | null
+          status: Database["public"]["Enums"]["reminder_status"]
         }
         Insert: {
           appointment_id: string
@@ -124,6 +125,7 @@ export type Database = {
           id?: string
           recipient: string
           sent_at?: string | null
+          status: Database["public"]["Enums"]["reminder_status"]
         }
         Update: {
           appointment_id?: string
@@ -133,6 +135,7 @@ export type Database = {
           id?: string
           recipient?: string
           sent_at?: string | null
+          status?: Database["public"]["Enums"]["reminder_status"]
         }
         Relationships: [
           {
@@ -862,6 +865,7 @@ export type Database = {
       guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
       payment_status: "not_required" | "pending" | "paid" | "refunded"
       reminder_channel: "email" | "sms"
+      reminder_status: "pending" | "sent" | "failed"
       user_role: "owner" | "employee"
       vat_treatment: "exempt" | "standard_21"
     }
@@ -1010,6 +1014,7 @@ export const Constants = {
       guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
       payment_status: ["not_required", "pending", "paid", "refunded"],
       reminder_channel: ["email", "sms"],
+      reminder_status: ["pending", "sent", "failed"],
       user_role: ["owner", "employee"],
       vat_treatment: ["exempt", "standard_21"],
     },

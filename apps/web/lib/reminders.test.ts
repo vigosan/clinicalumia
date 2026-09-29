@@ -29,8 +29,11 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
 
 let candidates: Candidate[];
 let reminders: Row[];
-let insertError: { code: string; message: string } | null;
 const rpc = vi.fn();
+
+function matches(row: Row, conditions: ((row: Row) => boolean)[]) {
+  return conditions.every((condition) => condition(row));
+}
 
 function fakeAdmin() {
   return {
@@ -55,10 +58,38 @@ function fakeAdmin() {
             .slice(0, count),
           error: null,
         }),
-        insert: async (row: Row) => {
-          if (insertError) return { error: insertError };
-          reminders.push(row);
-          return { error: null };
+        insert: (row: Row) => {
+          const taken = reminders.some(
+            (other) =>
+              other.appointment_id === row.appointment_id &&
+              other.channel === row.channel &&
+              other.status !== "failed",
+          );
+          const id = `r${reminders.length + 1}`;
+          if (!taken) reminders.push({ id, ...row });
+          const result = taken
+            ? { data: null, error: { code: "23505", message: "duplicate" } }
+            : { data: { id }, error: null };
+          return { select: () => ({ single: async () => result }) };
+        },
+        update: (values: Row) => {
+          const conditions: ((row: Row) => boolean)[] = [];
+          const apply = async (column: string, value: unknown) => {
+            conditions.push((row) => row[column] === value);
+            for (const row of reminders.filter((row) =>
+              matches(row, conditions),
+            )) {
+              Object.assign(row, values);
+            }
+            return { error: null };
+          };
+          return {
+            eq: apply,
+            lt: (column: string, value: string) => {
+              conditions.push((row) => String(row[column]) < value);
+              return { eq: apply };
+            },
+          };
         },
       };
       return query;
@@ -66,12 +97,15 @@ function fakeAdmin() {
   } as unknown as Parameters<typeof sendDailyReminders>[0]["admin"];
 }
 
+function logged() {
+  return reminders.map(({ id: _id, ...row }) => row);
+}
+
 const now = new Date("2026-10-05T06:00:00Z");
 
 beforeEach(() => {
   candidates = [];
   reminders = [];
-  insertError = null;
   rpc.mockReset();
   sendEmail.mockReset();
   sendEmail.mockResolvedValue(undefined);
@@ -154,7 +188,7 @@ describe("sendDailyReminders", () => {
     });
   });
 
-  it("sends a single email with the calendar file to all recipients of an appointment and logs one send, so guardians are reminded once and a second run skips it", async () => {
+  it("sends a single email with the calendar file to all recipients of an appointment and marks its claim as sent, so guardians are reminded once and a second run skips it", async () => {
     candidates = [
       candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
     ];
@@ -174,14 +208,87 @@ describe("sendDailyReminders", () => {
         contentType: "text/calendar",
       },
     ]);
-    expect(reminders).toEqual([
+    expect(logged()).toEqual([
       {
         appointment_id: "11111111-1111-4111-8111-111111111111",
         channel: "email",
         recipient: "madre@example.com, padre@example.com",
+        status: "sent",
         sent_at: now.toISOString(),
       },
     ]);
+    expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
+  });
+
+  it("claims the reminder as pending before sending it, so a run that overlaps with this one finds it taken instead of emailing the patient again", async () => {
+    candidates = [candidate()];
+    const atSend: Row[][] = [];
+    sendEmail.mockImplementation(async () => {
+      atSend.push(logged().map((row) => ({ ...row })));
+    });
+
+    await sendDailyReminders({ admin: fakeAdmin(), now });
+
+    expect(atSend).toEqual([
+      [
+        {
+          appointment_id: "11111111-1111-4111-8111-111111111111",
+          channel: "email",
+          recipient: "lucia@example.com",
+          status: "pending",
+        },
+      ],
+    ]);
+  });
+
+  it("skips an appointment another run has already claimed, without emailing it, so two overlapping runs never send the same reminder twice", async () => {
+    candidates = [candidate()];
+    reminders = [
+      {
+        id: "otra",
+        appointment_id: "11111111-1111-4111-8111-111111111111",
+        channel: "email",
+        recipient: "lucia@example.com",
+        status: "pending",
+      },
+    ];
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ sent: 0, failed: 0, skipped: 1 });
+  });
+
+  it("releases claims left pending for over an hour before claiming again, so a run that crashed mid-send does not block the reminder forever", async () => {
+    candidates = [candidate()];
+    reminders = [
+      {
+        id: "colgada",
+        appointment_id: "11111111-1111-4111-8111-111111111111",
+        channel: "email",
+        recipient: "lucia@example.com",
+        status: "pending",
+        created_at: "2026-10-05T04:59:00.000Z",
+      },
+      {
+        id: "reciente",
+        appointment_id: "22222222-2222-4222-8222-222222222222",
+        channel: "email",
+        recipient: "otra@example.com",
+        status: "pending",
+        created_at: "2026-10-05T05:30:00.000Z",
+      },
+    ];
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
+
+    expect(reminders.find((row) => row.id === "colgada")?.status).toBe(
+      "failed",
+    );
+    expect(reminders.find((row) => row.id === "reciente")?.status).toBe(
+      "pending",
+    );
+    expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
   });
 
@@ -198,48 +305,42 @@ describe("sendDailyReminders", () => {
     const result = await sendDailyReminders({ admin: fakeAdmin(), now });
 
     expect(sendEmail).toHaveBeenCalledTimes(2);
-    expect(reminders).toEqual([
+    expect(logged()).toEqual([
       {
         appointment_id: "a-falla",
         channel: "email",
         recipient: "rebota@example.com",
+        status: "failed",
         error: "buzón inexistente",
       },
       {
         appointment_id: "a-bien",
         channel: "email",
         recipient: "bien@example.com",
+        status: "sent",
         sent_at: now.toISOString(),
       },
     ]);
     expect(result).toEqual({ sent: 1, failed: 1, skipped: 0 });
   });
 
-  it("logs an appointment nobody can be emailed about without sending anything, and only once, so the team can see it without the log filling up", async () => {
+  it("logs an appointment nobody can be emailed about as failed without sending anything, and only once, so the team can see it without the log filling up", async () => {
     candidates = [candidate({ appointment_id: "a-sin", recipients: [] })];
 
     const first = await sendDailyReminders({ admin: fakeAdmin(), now });
     const second = await sendDailyReminders({ admin: fakeAdmin(), now });
 
     expect(sendEmail).not.toHaveBeenCalled();
-    expect(reminders).toEqual([
+    expect(logged()).toEqual([
       {
         appointment_id: "a-sin",
         channel: "email",
         recipient: "",
+        status: "failed",
         error: "sin_email",
       },
     ]);
     expect(first).toEqual({ sent: 0, failed: 0, skipped: 1 });
     expect(second).toEqual({ sent: 0, failed: 0, skipped: 1 });
-  });
-
-  it("counts a send another run already logged as skipped, so two runs at once never report the same reminder twice", async () => {
-    candidates = [candidate()];
-    insertError = { code: "23505", message: "duplicate key" };
-
-    const result = await sendDailyReminders({ admin: fakeAdmin(), now });
-
-    expect(result).toEqual({ sent: 0, failed: 0, skipped: 1 });
   });
 });

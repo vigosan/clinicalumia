@@ -56,6 +56,8 @@ export function patientIcs(candidate: ReminderCandidate, now: Date): string {
   });
 }
 
+const STALE_CLAIM_MS = 60 * 60 * 1000;
+
 async function logMissingEmail(admin: AdminClient, appointmentId: string) {
   const { data, error } = await admin
     .from("appointment_reminders")
@@ -71,9 +73,53 @@ async function logMissingEmail(admin: AdminClient, appointmentId: string) {
       appointment_id: appointmentId,
       channel: "email",
       recipient: "",
+      status: "failed",
       error: "sin_email",
     });
   if (insertError) throw insertError;
+}
+
+async function releaseStaleClaims(admin: AdminClient, now: Date) {
+  const { error } = await admin
+    .from("appointment_reminders")
+    .update({ status: "failed", error: "sin_confirmar" })
+    .lt("created_at", new Date(now.getTime() - STALE_CLAIM_MS).toISOString())
+    .eq("status", "pending");
+  if (error) throw error;
+}
+
+async function claim(
+  admin: AdminClient,
+  appointmentId: string,
+  recipient: string,
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("appointment_reminders")
+    .insert({
+      appointment_id: appointmentId,
+      channel: "email",
+      recipient,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+  if (error?.code === "23505") return null;
+  if (error) throw error;
+  return data.id;
+}
+
+async function settle(
+  admin: AdminClient,
+  claimId: string,
+  outcome:
+    | { status: "sent"; sent_at: string }
+    | { status: "failed"; error: string },
+) {
+  const { error } = await admin
+    .from("appointment_reminders")
+    .update(outcome)
+    .eq("id", claimId);
+  if (error) throw error;
 }
 
 export async function sendDailyReminders({
@@ -84,6 +130,7 @@ export async function sendDailyReminders({
   now: Date;
 }): Promise<{ sent: number; failed: number; skipped: number }> {
   const result = { sent: 0, failed: 0, skipped: 0 };
+  await releaseStaleClaims(admin, now);
   const { data: candidates, error } = await admin.rpc("reminder_candidates", {
     p_day: addDays(todayInMadrid(now), 1),
   });
@@ -96,7 +143,16 @@ export async function sendDailyReminders({
       continue;
     }
 
-    const recipient = candidate.recipients.join(", ");
+    const claimId = await claim(
+      admin,
+      candidate.appointment_id,
+      candidate.recipients.join(", "),
+    );
+    if (!claimId) {
+      result.skipped++;
+      continue;
+    }
+
     try {
       await sendEmail({
         to: candidate.recipients,
@@ -110,35 +166,20 @@ export async function sendDailyReminders({
         ],
       });
     } catch (sendError) {
-      const { error: logError } = await admin
-        .from("appointment_reminders")
-        .insert({
-          appointment_id: candidate.appointment_id,
-          channel: "email",
-          recipient,
-          error:
-            sendError instanceof Error ? sendError.message : String(sendError),
-        });
-      if (logError) throw logError;
+      await settle(admin, claimId, {
+        status: "failed",
+        error:
+          sendError instanceof Error ? sendError.message : String(sendError),
+      });
       result.failed++;
       continue;
     }
 
-    const { error: logError } = await admin
-      .from("appointment_reminders")
-      .insert({
-        appointment_id: candidate.appointment_id,
-        channel: "email",
-        recipient,
-        sent_at: now.toISOString(),
-      });
-    if (logError?.code === "23505") {
-      result.skipped++;
-    } else if (logError) {
-      throw logError;
-    } else {
-      result.sent++;
-    }
+    await settle(admin, claimId, {
+      status: "sent",
+      sent_at: now.toISOString(),
+    });
+    result.sent++;
   }
 
   return result;

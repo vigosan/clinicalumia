@@ -1,17 +1,19 @@
 create type public.reminder_channel as enum ('email', 'sms');
+create type public.reminder_status as enum ('pending', 'sent', 'failed');
 
 create table public.appointment_reminders (
   id uuid primary key default gen_random_uuid(),
   appointment_id uuid not null references public.appointments(id) on delete cascade,
   channel public.reminder_channel not null,
   recipient text not null,
+  status public.reminder_status not null,
   sent_at timestamptz,
   error text not null default '',
   created_at timestamptz not null default now()
 );
 
-create unique index appointment_reminders_one_sent_per_channel
-  on public.appointment_reminders(appointment_id, channel) where sent_at is not null;
+create unique index appointment_reminders_one_active_per_channel
+  on public.appointment_reminders(appointment_id, channel) where status <> 'failed';
 
 alter table public.appointment_reminders enable row level security;
 
@@ -70,7 +72,9 @@ as $$
     and (a.starts_at at time zone 'Europe/Madrid')::date = p_day
     and not exists (
       select 1 from public.appointment_reminders ar
-      where ar.appointment_id = a.id and ar.channel = 'email' and ar.sent_at is not null
+      where ar.appointment_id = a.id
+        and ar.channel = 'email'
+        and (ar.status = 'sent' or (ar.status = 'pending' and ar.created_at > now() - interval '1 hour'))
     );
 $$;
 

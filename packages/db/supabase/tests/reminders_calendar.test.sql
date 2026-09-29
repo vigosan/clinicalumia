@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(57);
+select plan(63);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -75,22 +75,33 @@ insert into public.appointments (id, professional_id, patient_id, service_id, st
   ('88000000-0000-0000-0000-0000000000de', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c2',
    '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('13:00'), pg_temp.at_day_x('13:30')),
   ('88000000-0000-0000-0000-0000000000df', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c2',
-   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('13:30'), pg_temp.at_day_x('14:00'));
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('13:30'), pg_temp.at_day_x('14:00')),
+  ('88000000-0000-0000-0000-0000000000da', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('14:00'), pg_temp.at_day_x('14:30')),
+  ('88000000-0000-0000-0000-0000000000db', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('14:30'), pg_temp.at_day_x('15:00'));
 
 update public.appointments
 set status = 'cancelled', cancelled_by = 'clinic', cancelled_at = now()
 where id = '88000000-0000-0000-0000-0000000000d7';
 
-insert into public.appointment_reminders (appointment_id, channel, recipient, sent_at) values
-  ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', now());
-insert into public.appointment_reminders (appointment_id, channel, recipient, sent_at, error) values
-  ('88000000-0000-0000-0000-0000000000df', 'email', 'bea-equipo-recordatorios@test.local', null, 'smtp_down');
+insert into public.appointment_reminders (appointment_id, channel, recipient, status, sent_at) values
+  ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', 'sent', now());
+insert into public.appointment_reminders (appointment_id, channel, recipient, status, error) values
+  ('88000000-0000-0000-0000-0000000000df', 'email', 'bea-equipo-recordatorios@test.local', 'failed', 'smtp_down');
+insert into public.appointment_reminders (appointment_id, channel, recipient, status) values
+  ('88000000-0000-0000-0000-0000000000da', 'email', 'bea-equipo-recordatorios@test.local', 'pending');
+insert into public.appointment_reminders (appointment_id, channel, recipient, status, created_at) values
+  ('88000000-0000-0000-0000-0000000000db', 'email', 'bea-equipo-recordatorios@test.local', 'pending', now() - interval '61 minutes');
 
 select has_column('public', 'appointment_reminders', 'appointment_id', 'a reminder always names its appointment');
 select has_column('public', 'appointment_reminders', 'channel', 'a reminder is sent through a channel');
 select has_column('public', 'appointment_reminders', 'sent_at', 'a reminder records when it was actually sent');
 select has_column('public', 'appointment_reminders', 'error', 'a reminder records why it failed, if it did');
 select enum_has_labels('public', 'reminder_channel', array['email', 'sms'], 'a reminder goes out by email or sms');
+select col_not_null('public', 'appointment_reminders', 'status', 'every reminder row says whether it is being sent, was sent or failed');
+select enum_has_labels('public', 'reminder_status', array['pending', 'sent', 'failed'],
+  'a reminder is claimed as pending before sending, then marked sent or failed');
 select is((select relrowsecurity from pg_class where oid = 'public.appointment_reminders'::regclass), true,
   'row level security is on for appointment_reminders');
 select is((select count(*) from pg_policies where schemaname = 'public' and tablename = 'appointment_reminders'), 0::bigint,
@@ -131,13 +142,26 @@ select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) wher
 select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000df'), 1::bigint,
   'an appointment whose only reminder attempt failed is still a candidate');
 
+select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000da'), 0::bigint,
+  'an appointment another run has just claimed is not a candidate, so two overlapping runs never email it twice');
+select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000db'), 1::bigint,
+  'a claim left pending for over an hour counts as failed, so a run that crashed mid-send does not block the reminder forever');
+
 select throws_ok(
-  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, sent_at)
-     values ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', now()) $$,
-  '23505', null, 'a second successful send for the same appointment and channel is rejected');
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status)
+     values ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', 'pending') $$,
+  '23505', null, 'an appointment already reminded by email cannot be claimed again for email');
+select throws_ok(
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status)
+     values ('88000000-0000-0000-0000-0000000000da', 'email', 'bea-equipo-recordatorios@test.local', 'pending') $$,
+  '23505', null, 'a second run cannot claim an appointment another run is still sending, so only one of them emails it');
 select lives_ok(
-  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, sent_at)
-     values ('88000000-0000-0000-0000-0000000000de', 'sms', '600000000', now()) $$,
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status)
+     values ('88000000-0000-0000-0000-0000000000df', 'email', 'bea-equipo-recordatorios@test.local', 'pending') $$,
+  'an appointment whose earlier attempt failed can be claimed again, so a failure can be retried');
+select lives_ok(
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status, sent_at)
+     values ('88000000-0000-0000-0000-0000000000de', 'sms', '600000000', 'sent', now()) $$,
   'the same appointment can still be reminded on a different channel');
 
 select is(has_table_privilege('anon', 'public.appointment_reminders', 'select'), false,
@@ -162,7 +186,7 @@ reset role;
 
 set local role service_role;
 select is((select count(*) from public.reminder_candidates(pg_temp.day_x())), 6::bigint,
-  'the service role sees exactly the day''s six non-cancelled, unreminded candidates');
+  'the service role sees exactly the day''s six non-cancelled candidates that are neither reminded nor being reminded');
 reset role;
 
 select set_config('request.jwt.claims', '', true);
