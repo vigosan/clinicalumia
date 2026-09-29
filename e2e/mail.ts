@@ -20,3 +20,22 @@ export async function latestLinkFor(
   }
   throw new Error(`No ha llegado el email a ${email}`);
 }
+
+export async function latestCodeFor(email: string): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const { messages } = await (
+      await fetch(
+        `${MAILPIT}/search?query=${encodeURIComponent(`to:"${email}"`)}`,
+      )
+    ).json();
+    if (messages.length > 0) {
+      const { HTML } = await (
+        await fetch(`${MAILPIT}/message/${messages[0].ID}`)
+      ).json();
+      const code = />\s*(\d{6})\s*</.exec(HTML)?.[1];
+      if (code) return code;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`No ha llegado el código a ${email}`);
+}

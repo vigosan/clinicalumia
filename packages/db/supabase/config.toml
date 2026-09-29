@@ -158,6 +158,7 @@ additional_redirect_urls = [
   "http://127.0.0.1:3001",
   "http://localhost:3000",
   "http://localhost:3001",
+  "http://localhost:3000/**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -247,6 +248,10 @@ content_path = "./supabase/templates/invite.html"
 [auth.email.template.recovery]
 subject = "Cambiar tu contraseña de LUMIA"
 content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.magic_link]
+subject = "Tu acceso a Clínica LUMIA"
+content_path = "./supabase/templates/magic_link.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -417,14 +422,14 @@ project_id = "cbyarpxrhgvmllneodoz"
 
 [remotes.dev.auth]
 site_url = "http://localhost:3001"
-additional_redirect_urls = ["http://localhost:3001", "http://127.0.0.1:3001"]
+additional_redirect_urls = ["http://localhost:3001", "http://127.0.0.1:3001", "https://www.clinicalumia.es/**"]
 
 [remotes.prod]
 project_id = "xdcyltzvqaqppdguexkj"
 
 [remotes.prod.auth]
 site_url = "https://panel.clinicalumia.es"
-additional_redirect_urls = ["https://panel.clinicalumia.es", "https://admin.clinicalumia.es"]
+additional_redirect_urls = ["https://panel.clinicalumia.es", "https://admin.clinicalumia.es", "https://www.clinicalumia.es/**"]
 
 [remotes.prod.auth.email.smtp]
 enabled = true

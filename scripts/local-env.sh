@@ -17,8 +17,11 @@ for app in web admin dashboard; do
   {
     echo "NEXT_PUBLIC_SUPABASE_URL=\"$url\""
     echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$anon\""
-    if [ "$app" = "admin" ]; then
+    if [ "$app" = "admin" ] || [ "$app" = "web" ]; then
       echo "SUPABASE_SERVICE_ROLE_KEY=\"$service\""
+    fi
+    if [ "$app" = "web" ]; then
+      echo "ACCESS_IP_SALT=\"lumia-desarrollo-local\""
     fi
   } > "$file"
   echo "  escrito apps/$app/.env.development.local"
