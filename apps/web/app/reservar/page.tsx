@@ -1,4 +1,4 @@
-import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -10,7 +10,6 @@ import {
   bookingError,
   bookingState,
   formatWhen,
-  groupSlotsByDay,
   isTeamSession,
   NEW_PERSON,
   SLOT_TAKEN,
@@ -28,13 +27,14 @@ import {
   loadSlots,
 } from "./load";
 import { NewPersonForm } from "./NewPersonForm";
-import { type PickerDay, SlotPicker } from "./SlotPicker";
+import { SlotPicker } from "./SlotPicker";
 import {
   type AccountPerson,
   type BookingStep,
   bookingStep,
   type CatalogService,
   type CatalogSpecialty,
+  pickerDays,
 } from "./step";
 import { TeamSession } from "./TeamSession";
 import { WhoStep } from "./WhoStep";
@@ -254,17 +254,7 @@ async function SlotStep({
     const chosen = reservar({ ...base, fecha: from, inicio: slot.starts_at });
     return signedIn ? chosen : `/acceder?next=${encodeURIComponent(chosen)}`;
   };
-  const toPicker = (slot: Slot) => ({
-    startsAt: slot.starts_at,
-    time: madridDateTime(slot.starts_at).time,
-    href: hrefFor(slot),
-  });
-  const days: PickerDay[] = groupSlotsByDay(slots, today).map((day) => ({
-    date: day.date,
-    label: day.label,
-    morning: day.morning.map(toPicker),
-    afternoon: day.afternoon.map(toPicker),
-  }));
+  const days = pickerDays(slots, today, hrefFor);
   return (
     <Step
       number={4}

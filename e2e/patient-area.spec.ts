@@ -140,7 +140,7 @@ async function clinic() {
   };
 }
 
-async function patientWithAppointments(prefix: string) {
+async function patientAccount(prefix: string) {
   const email = uniqueEmail(prefix);
   const password = "lumia-paciente-2026";
   const { data: user, error } = await admin.auth.admin.createUser({
@@ -168,13 +168,18 @@ async function patientWithAppointments(prefix: string) {
     .single();
   expect(personError).toBeNull();
 
-  const place = await clinic();
   const patient = createClient(API, anonKey ?? "");
   const { error: signInError } = await patient.auth.signInWithPassword({
     email,
     password,
   });
   expect(signInError).toBeNull();
+  return { email, person: person!, patient };
+}
+
+async function patientWithAppointments(prefix: string) {
+  const { email, person, patient } = await patientAccount(prefix);
+  const place = await clinic();
   const { data: slots, error: slotsError } = await patient.rpc(
     "available_slots",
     {
@@ -189,7 +194,7 @@ async function patientWithAppointments(prefix: string) {
   const { data: webId, error: bookError } = await patient.rpc(
     "book_appointment",
     {
-      p_person_id: person!.id,
+      p_person_id: person.id,
       p_service_id: place.serviceId,
       p_professional_id: place.professionalId,
       p_starts_at: webStartsAt,
@@ -202,7 +207,7 @@ async function patientWithAppointments(prefix: string) {
     .from("appointments")
     .insert({
       professional_id: place.professionalId,
-      patient_id: person!.id,
+      patient_id: person.id,
       service_id: place.serviceId,
       starts_at: madridInstant(teamDay, "10:00"),
       ends_at: madridInstant(teamDay, "10:45"),
@@ -214,7 +219,7 @@ async function patientWithAppointments(prefix: string) {
 
   return {
     email,
-    person: person!,
+    person,
     place,
     web: { id: webId as string, startsAt: webStartsAt },
     teamId: team!.id as string,
@@ -396,5 +401,141 @@ test("the cancel page of another account's appointment does not exist for this a
   );
   expect(response?.status()).toBe(404);
   await expect(page.getByTestId("cancel-confirm")).toHaveCount(0);
+  await expect(page.getByText(owner.place.serviceName)).toHaveCount(0);
+});
+
+const PLAZO_MS = CANCELLATION_HOURS * 3_600_000;
+
+async function chooseFirstOfferedSlot(page: Page) {
+  const slot = page.getByTestId("booking-slot").first();
+  const href = await slot.getAttribute("href");
+  const startsAt = new URL(href ?? "", WEB).searchParams.get("inicio") ?? "";
+  await slot.click();
+  await expect(page.getByTestId("reschedule-confirm")).toBeVisible();
+  return startsAt;
+}
+
+function dayAndTime(instant: string) {
+  const { date, time } = madridDateTime(instant);
+  return new RegExp(`\\b${Number(date.slice(8))} de \\S+ a las ${time}`);
+}
+
+test("a patient moves an appointment to another free slot of the same professional: Mi cuenta shows the new time, the account gets the confirmation and it keeps its length", async ({
+  page,
+}) => {
+  const { email, place, web } = await patientWithAppointments("cambiar");
+  const changePath = `/mi-cuenta/citas/${web.id}/cambiar`;
+
+  await page.goto(`${WEB}${changePath}`);
+  await expect(page).toHaveURL(
+    `${WEB}/acceder?next=${encodeURIComponent(changePath)}`,
+  );
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}${changePath}`);
+
+  const current = page.getByTestId("reschedule-current");
+  await expect(current).toContainText(dayAndTime(web.startsAt));
+  await expect(current).toContainText(place.serviceName);
+  await expect(current).toContainText(place.professionalName);
+
+  const newStart = await chooseFirstOfferedSlot(page);
+  expect(Date.parse(newStart)).not.toBe(Date.parse(web.startsAt));
+  expect(Date.parse(newStart) - PLAZO_MS).toBeGreaterThan(Date.now());
+  const summary = page.getByTestId("reschedule-summary");
+  await expect(summary).toContainText(dayAndTime(web.startsAt));
+  await expect(summary).toContainText(dayAndTime(newStart));
+  await page.getByTestId("reschedule-confirm").click();
+
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta?aviso=cambiada`);
+  await expect(page.getByTestId("account-notice")).toHaveText("Cita cambiada");
+  await expect(page.locator(`[data-appointment-id="${web.id}"]`)).toContainText(
+    dayAndTime(newStart),
+  );
+
+  const html = await latestEmailFor(email, "Cita confirmada");
+  expect(html).toMatch(dayAndTime(newStart));
+  expect(html).toContain(place.serviceName);
+
+  const { data: row, error } = await admin
+    .from("appointments")
+    .select("starts_at, ends_at")
+    .eq("id", web.id)
+    .single();
+  expect(error).toBeNull();
+  expect(Date.parse(row!.starts_at)).toBe(Date.parse(newStart));
+  expect(Date.parse(row!.ends_at) - Date.parse(row!.starts_at)).toBe(
+    45 * 60_000,
+  );
+});
+
+test("if another patient takes the chosen slot before the change is confirmed, the patient is told and chooses again while the appointment keeps its time", async ({
+  page,
+}) => {
+  const { email, place, web } =
+    await patientWithAppointments("cambiar-carrera");
+  const changePath = `/mi-cuenta/citas/${web.id}/cambiar`;
+
+  await page.goto(`${WEB}${changePath}`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}${changePath}`);
+  const newStart = await chooseFirstOfferedSlot(page);
+
+  const other = await patientAccount("cambiar-otro");
+  const { error: bookError } = await other.patient.rpc("book_appointment", {
+    p_person_id: other.person.id,
+    p_service_id: place.serviceId,
+    p_professional_id: place.professionalId,
+    p_starts_at: newStart,
+  });
+  expect(bookError).toBeNull();
+
+  await page.getByTestId("reschedule-confirm").click();
+  await expect(page.getByTestId("account-error")).toHaveText(
+    "Ese hueco ya no está libre. Elige otro.",
+  );
+  await expect(page).not.toHaveURL(/inicio=/);
+  await expect(page.getByTestId("reschedule-confirm")).toHaveCount(0);
+  await expect(page.getByTestId("booking-slot").first()).toBeVisible();
+
+  const { data: row, error } = await admin
+    .from("appointments")
+    .select("starts_at")
+    .eq("id", web.id)
+    .single();
+  expect(error).toBeNull();
+  expect(Date.parse(row!.starts_at)).toBe(Date.parse(web.startsAt));
+});
+
+test("the change page of an appointment outside the window only gives the phone, because the web can no longer move it", async ({
+  page,
+}) => {
+  const { email, teamId } = await patientWithAppointments("cambiar-fuera");
+  const changePath = `/mi-cuenta/citas/${teamId}/cambiar`;
+
+  await page.goto(`${WEB}${changePath}`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}${changePath}`);
+
+  await expect(page.getByTestId("reschedule-current")).toContainText(
+    "Fuera de plazo: llama al 614 552 808",
+  );
+  await expect(page.getByTestId("booking-slot")).toHaveCount(0);
+  await expect(page.getByTestId("reschedule-confirm")).toHaveCount(0);
+});
+
+test("the change page of another account's appointment does not exist for this account", async ({
+  page,
+}) => {
+  const owner = await patientWithAppointments("cambiar-ajena");
+
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, uniqueEmail("cambiar-otra"));
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+
+  const response = await page.goto(
+    `${WEB}/mi-cuenta/citas/${owner.web.id}/cambiar`,
+  );
+  expect(response?.status()).toBe(404);
+  await expect(page.getByTestId("booking-slot")).toHaveCount(0);
   await expect(page.getByText(owner.place.serviceName)).toHaveCount(0);
 });

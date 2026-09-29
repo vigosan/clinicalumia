@@ -60,6 +60,17 @@ export function changeWindowText(
   return `Puedes cambiarla o cancelarla hasta ${changeDeadlineText(row.change_deadline)}`;
 }
 
+export function canMoveTo(
+  row: Pick<AppointmentRow, "starts_at" | "change_deadline">,
+  startsAt: string,
+  now: Date,
+): boolean {
+  const current = Date.parse(row.starts_at);
+  const notice = current - Date.parse(row.change_deadline);
+  const start = Date.parse(startsAt);
+  return start !== current && start - notice > now.getTime();
+}
+
 export function statusLabel(row: AppointmentRow, now: Date): string {
   if (row.status === "cancelled" && row.cancelled_by === "patient")
     return "Cancelada por ti";

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { type AccountPerson, bookingStep, type CatalogSpecialty } from "./step";
+import {
+  type AccountPerson,
+  bookingStep,
+  type CatalogSpecialty,
+  pickerDays,
+  slotWindow,
+} from "./step";
 
 const SPECIALTY = "11111111-1111-1111-1111-111111111111";
 const SERVICE = "22222222-2222-2222-2222-222222222222";
@@ -299,5 +305,53 @@ describe("bookingStep", () => {
         }).kind,
       ).toBe("who");
     });
+  });
+});
+
+describe("slotWindow", () => {
+  it("keeps a requested date inside the horizon and offers the next days while they start within it", () => {
+    expect(slotWindow({ fecha: "2026-11-14", today, horizonDays: 60 })).toEqual(
+      { from: "2026-11-14", nextFrom: "2026-11-28" },
+    );
+  });
+
+  it("starts today for a missing, past or too far date, so a crafted URL never breaks the page", () => {
+    for (const fecha of [undefined, "2026-09-01", "9999-12-25"]) {
+      expect(slotWindow({ fecha, today, horizonDays: 60 })).toEqual({
+        from: today,
+        nextFrom: "2026-10-13",
+      });
+    }
+  });
+});
+
+describe("pickerDays", () => {
+  it("groups the slots by Madrid day with each link built by the caller, so the booking and the change of time share one picker", () => {
+    const slots = [
+      { starts_at: "2026-09-30T07:00:00+00:00", professional_id: PROFESSIONAL },
+      { starts_at: "2026-09-30T13:00:00+00:00", professional_id: PROFESSIONAL },
+    ];
+    expect(
+      pickerDays(slots, today, (slot) => `/x?inicio=${slot.starts_at}`),
+    ).toEqual([
+      {
+        date: "2026-09-30",
+        label: "Mañana",
+        morning: [
+          {
+            startsAt: "2026-09-30T07:00:00+00:00",
+            time: "09:00",
+            href: "/x?inicio=2026-09-30T07:00:00+00:00",
+          },
+        ],
+        afternoon: [
+          {
+            startsAt: "2026-09-30T13:00:00+00:00",
+            time: "15:00",
+            href: "/x?inicio=2026-09-30T13:00:00+00:00",
+          },
+        ],
+      },
+    ]);
   });
 });

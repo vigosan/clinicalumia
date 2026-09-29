@@ -1,11 +1,14 @@
-import { addDays } from "@clinicalumia/api/madrid-time";
+import { addDays, madridDateTime } from "@clinicalumia/api/madrid-time";
 import {
   ANY_PROFESSIONAL,
   type BookingState,
+  groupSlotsByDay,
   NEW_PERSON,
   personError,
   SLOT_TAKEN,
+  type Slot,
 } from "@/lib/booking";
+import type { PickerDay } from "./SlotPicker";
 
 export const WINDOW_DAYS = 14;
 
@@ -88,6 +91,39 @@ export type BookingStep =
       person: AccountPerson;
     } & Chosen);
 
+export function pickerDays(
+  slots: Slot[],
+  today: string,
+  hrefFor: (slot: Slot) => string,
+): PickerDay[] {
+  const toPicker = (slot: Slot) => ({
+    startsAt: slot.starts_at,
+    time: madridDateTime(slot.starts_at).time,
+    href: hrefFor(slot),
+  });
+  return groupSlotsByDay(slots, today).map((day) => ({
+    date: day.date,
+    label: day.label,
+    morning: day.morning.map(toPicker),
+    afternoon: day.afternoon.map(toPicker),
+  }));
+}
+
+export function slotWindow({
+  fecha,
+  today,
+  horizonDays,
+}: {
+  fecha: string | undefined;
+  today: string;
+  horizonDays: number;
+}): { from: string; nextFrom: string | null } {
+  const lastDay = addDays(today, horizonDays);
+  const from = fecha && fecha >= today && fecha <= lastDay ? fecha : today;
+  const nextFrom = addDays(from, WINDOW_DAYS);
+  return { from, nextFrom: nextFrom <= lastDay ? nextFrom : null };
+}
+
 export function bookingStep({
   catalog,
   state,
@@ -126,11 +162,11 @@ export function bookingStep({
   if (!professional || !knownProfessional)
     return { kind: "professional", specialty, service };
 
-  const lastDay = addDays(today, horizonDays);
-  const from =
-    state.fecha && state.fecha >= today && state.fecha <= lastDay
-      ? state.fecha
-      : today;
+  const { from, nextFrom } = slotWindow({
+    fecha: state.fecha,
+    today,
+    horizonDays,
+  });
 
   if (state.inicio && Date.parse(state.inicio) > now.getTime()) {
     const chosen = {
@@ -165,13 +201,12 @@ export function bookingStep({
     return { kind: "who", ...chosen, people };
   }
 
-  const nextFrom = addDays(from, WINDOW_DAYS);
   return {
     kind: "slots",
     specialty,
     service,
     professional,
     from,
-    nextFrom: nextFrom <= lastDay ? nextFrom : null,
+    nextFrom,
   };
 }

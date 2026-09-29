@@ -5,6 +5,7 @@ import {
   accountError,
   accountNotice,
   cancelledEmail,
+  canMoveTo,
   changeWindowText,
   parseContactForm,
   rescheduledEmail,
@@ -77,6 +78,39 @@ describe("changeWindowText", () => {
     });
     expect(changeWindowText(row)).toBe(
       "Puedes cambiarla o cancelarla hasta el domingo 25 a las 18:00",
+    );
+  });
+});
+
+describe("canMoveTo", () => {
+  const row = appointment({
+    starts_at: madridInstant("2026-10-09", "10:00"),
+    change_deadline: madridInstant("2026-10-06", "10:00"),
+  });
+  const now = new Date(madridInstant("2026-10-02", "12:00"));
+
+  it("offers a new start whose own window is still open, with the notice of this appointment's service", () => {
+    expect(canMoveTo(row, madridInstant("2026-10-05", "12:30"), now)).toBe(
+      true,
+    );
+  });
+
+  it("does not offer a start whose window has already closed, because the database would refuse it as outside the window", () => {
+    expect(canMoveTo(row, madridInstant("2026-10-05", "11:00"), now)).toBe(
+      false,
+    );
+  });
+
+  it("does not offer a start exactly at the limit, matching the database rule start - plazo > now()", () => {
+    expect(canMoveTo(row, madridInstant("2026-10-05", "12:00"), now)).toBe(
+      false,
+    );
+  });
+
+  it("does not offer the current time of the appointment, because moving there changes nothing", () => {
+    expect(canMoveTo(row, row.starts_at, now)).toBe(false);
+    expect(canMoveTo(row, new Date(row.starts_at).toISOString(), now)).toBe(
+      false,
     );
   });
 });
