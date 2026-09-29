@@ -62,18 +62,26 @@ function Upcoming({ appointment }: { appointment: AppointmentRow }) {
       <p className="mt-3 text-ink-500 text-sm">
         {changeWindowText(appointment)}
       </p>
-      {appointment.can_change && (
-        <div className="mt-4 flex flex-wrap gap-3">
-          {appointment.can_reschedule && (
-            <Link
-              href={`/mi-cuenta/citas/${appointment.id}/cambiar`}
-              data-testid="account-reschedule"
-              aria-label={`Cambiar la cita del ${when}`}
-              className={pillClass}
-            >
-              Cambiar
-            </Link>
-          )}
+      <div className="mt-4 flex flex-wrap gap-3">
+        <a
+          href={`/mi-cuenta/citas/${appointment.id}/cita.ics`}
+          data-testid="account-add-to-calendar"
+          aria-label={`Añadir a mi calendario la cita del ${when}`}
+          className={pillClass}
+        >
+          Añadir a mi calendario
+        </a>
+        {appointment.can_change && appointment.can_reschedule && (
+          <Link
+            href={`/mi-cuenta/citas/${appointment.id}/cambiar`}
+            data-testid="account-reschedule"
+            aria-label={`Cambiar la cita del ${when}`}
+            className={pillClass}
+          >
+            Cambiar
+          </Link>
+        )}
+        {appointment.can_change && (
           <Link
             href={`/mi-cuenta/citas/${appointment.id}/cancelar`}
             data-testid="account-cancel"
@@ -82,8 +90,8 @@ function Upcoming({ appointment }: { appointment: AppointmentRow }) {
           >
             Cancelar
           </Link>
-        </div>
-      )}
+        )}
+      </div>
     </li>
   );
 }

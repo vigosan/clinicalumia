@@ -100,6 +100,13 @@ describe("confirmBooking", () => {
     expect(email.to).toBe("marta@test.local");
     expect(email.subject).toBe("Cita confirmada");
     expect(email.html).toContain("Ana García");
+    expect(email.attachments).toEqual([
+      {
+        filename: "cita.ics",
+        content: expect.stringContaining(`UID:${APPOINTMENT}@clinicalumia.es`),
+        contentType: "text/calendar",
+      },
+    ]);
   });
 
   it("sends the patient back to the slots with a warning and without the taken time when someone else got it first", async () => {

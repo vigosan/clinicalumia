@@ -36,6 +36,7 @@ const cancelledRow = {
   id: APPOINTMENT,
   person_name: "Marta <b>Ruiz</b>",
   starts_at: "2026-10-02T07:00:00+00:00",
+  ends_at: "2026-10-02T07:45:00+00:00",
   status: "cancelled",
   service_name: "Sesión de logopedia",
   professional_name: "Ana García",
@@ -84,6 +85,7 @@ describe("cancelAppointment", () => {
     expect(email.subject).toBe("Cita cancelada");
     expect(email.html).toContain("Sesión de logopedia");
     expect(email.html).toContain("Marta &lt;b&gt;Ruiz&lt;/b&gt;");
+    expect(email.attachments).toBeUndefined();
   });
 
   it("explains that the window closed and sends nothing, because the appointment is still booked", async () => {
@@ -162,6 +164,7 @@ const movedRow = {
   ...cancelledRow,
   status: "scheduled",
   starts_at: "2026-10-05T08:30:00+00:00",
+  ends_at: "2026-10-05T09:15:00+00:00",
 };
 
 describe("rescheduleAppointment", () => {
@@ -185,6 +188,13 @@ describe("rescheduleAppointment", () => {
     expect(email.subject).toBe("Cita confirmada");
     expect(email.html).toContain("Lunes, 5 de octubre a las 10:30");
     expect(email.html).toContain("Marta &lt;b&gt;Ruiz&lt;/b&gt;");
+    expect(email.attachments).toEqual([
+      {
+        filename: "cita.ics",
+        content: expect.stringContaining(`UID:${APPOINTMENT}@clinicalumia.es`),
+        contentType: "text/calendar",
+      },
+    ]);
   });
 
   it("goes back to the same days of slots with the warning when someone took the slot meanwhile, so the patient can pick another", async () => {

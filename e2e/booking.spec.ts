@@ -8,7 +8,7 @@ import {
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
-import { latestCodeFor, latestEmailFor } from "./mail";
+import { latestCodeFor, latestEmailAttachments, latestEmailFor } from "./mail";
 import { removePatients } from "./users";
 
 const WEB = "http://localhost:3000";
@@ -467,6 +467,8 @@ test("a new patient picks a time, identifies with the emailed code, gives their 
   expect(html).toMatch(
     /Puedes verla o cambiarla en <a href="[^"]*\/mi-cuenta">Mi cuenta<\/a>\./,
   );
+  const attachments = await latestEmailAttachments(email, "Cita confirmada");
+  expect(attachments).toContain("cita.ics");
 });
 
 test("a mother books for her new child: she is saved as guardian without being a patient and the appointment is for the child", async ({

@@ -1,8 +1,8 @@
 import type { createAdminClient } from "@clinicalumia/api/admin";
 import { sendEmail } from "@clinicalumia/api/email";
-import { icsCalendar } from "@clinicalumia/api/ics";
 import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { changeWindowText } from "./account";
+import { appointmentIcs } from "./appointment-ics";
 import { escapeHtml, formatWhen } from "./booking";
 import { site } from "./site";
 
@@ -46,19 +46,13 @@ export function reminderEmail(candidate: ReminderCandidate): {
   };
 }
 
-export function patientIcs(candidate: ReminderCandidate): string {
-  return icsCalendar({
-    name: "Clínica LUMIA",
-    events: [
-      {
-        uid: `${candidate.appointment_id}@clinicalumia.es`,
-        startsAt: candidate.starts_at,
-        endsAt: candidate.ends_at,
-        stamp: new Date().toISOString(),
-        summary: `Cita en Clínica LUMIA · ${candidate.service_name}`,
-        location: address,
-      },
-    ],
+export function patientIcs(candidate: ReminderCandidate, now: Date): string {
+  return appointmentIcs({
+    id: candidate.appointment_id,
+    startsAt: candidate.starts_at,
+    endsAt: candidate.ends_at,
+    serviceName: candidate.service_name,
+    now,
   });
 }
 
@@ -110,7 +104,7 @@ export async function sendDailyReminders({
         attachments: [
           {
             filename: "cita.ics",
-            content: patientIcs(candidate),
+            content: patientIcs(candidate, now),
             contentType: "text/calendar",
           },
         ],

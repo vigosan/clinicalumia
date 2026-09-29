@@ -449,7 +449,9 @@ describe("firstFreeSlots", () => {
 
 describe("bookingConfirmationEmail", () => {
   const appointment = {
+    id: "77777777-7777-7777-7777-777777777777",
     startsAt: madridInstant("2026-10-02", "09:30"),
+    endsAt: madridInstant("2026-10-02", "10:15"),
     serviceName: "Sesión de logopedia",
     professionalName: "Ana García",
     personName: "Lucía Pérez",

@@ -8,7 +8,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { latestCodeFor, latestEmailFor } from "./mail";
+import { latestCodeFor, latestEmailAttachments, latestEmailFor } from "./mail";
 import { removePatients } from "./users";
 
 const WEB = "http://localhost:3000";
@@ -282,6 +282,14 @@ test("a patient who opens Mi cuenta without a session identifies with the code a
     "href",
     `/mi-cuenta/citas/${web.id}/cancelar`,
   );
+  await expect(team.getByTestId("account-add-to-calendar")).toHaveAttribute(
+    "href",
+    `/mi-cuenta/citas/${teamId}/cita.ics`,
+  );
+  await expect(booked.getByTestId("account-add-to-calendar")).toHaveAttribute(
+    "href",
+    `/mi-cuenta/citas/${web.id}/cita.ics`,
+  );
 
   await expect(page.getByTestId("account-people")).toContainText(
     `${person.first_name} ${person.last_name}`,
@@ -303,6 +311,54 @@ test("a patient who opens Mi cuenta without a session identifies with the code a
   await expect(page).toHaveURL(`${WEB}/`);
   await page.goto(`${WEB}/mi-cuenta`);
   await expect(page).toHaveURL(`${WEB}/acceder?next=%2Fmi-cuenta`);
+});
+
+test("Añadir a mi calendario downloads the appointment as a calendar file with its time", async ({
+  page,
+}) => {
+  const { email, web } = await patientWithAppointments("calendario");
+
+  await page.goto(`${WEB}/mi-cuenta`);
+  await enterWithCode(page, email);
+
+  const href = await page
+    .locator(`[data-appointment-id="${web.id}"]`)
+    .getByTestId("account-add-to-calendar")
+    .getAttribute("href");
+  expect(href).toBe(`/mi-cuenta/citas/${web.id}/cita.ics`);
+
+  const response = await page.request.get(`${WEB}${href}`);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe(
+    "text/calendar; charset=utf-8",
+  );
+  expect(response.headers()["content-disposition"]).toBe(
+    'attachment; filename="cita.ics"',
+  );
+  const body = await response.text();
+  expect(body).toContain(`UID:${web.id}@clinicalumia.es`);
+});
+
+test("the calendar file of another account's appointment does not exist for this account", async ({
+  page,
+}) => {
+  const owner = await patientWithAppointments("calendario-ajena");
+
+  await page.goto(`${WEB}/acceder`);
+  await enterWithCode(page, uniqueEmail("calendario-otra"));
+  await expect(page).toHaveURL(`${WEB}/mi-cuenta`);
+
+  const response = await page.request.get(
+    `${WEB}/mi-cuenta/citas/${owner.web.id}/cita.ics`,
+  );
+  expect(response.status()).toBe(404);
+});
+
+test("the calendar file needs a patient session", async ({ page }) => {
+  const response = await page.request.get(
+    `${WEB}/mi-cuenta/citas/${crypto.randomUUID()}/cita.ics`,
+  );
+  expect(response.status()).toBe(401);
 });
 
 test("someone who enters from /acceder lands on Mi cuenta and, with another email, sees none of another account's appointments", async ({
@@ -470,6 +526,8 @@ test("a patient moves an appointment 15 minutes later, overlapping only itself: 
   const html = await latestEmailFor(email, "Cita confirmada");
   expect(html).toMatch(dayAndTime(newStart));
   expect(html).toContain(place.serviceName);
+  const attachments = await latestEmailAttachments(email, "Cita confirmada");
+  expect(attachments).toContain("cita.ics");
 
   const { data: row, error } = await admin
     .from("appointments")

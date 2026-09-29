@@ -59,3 +59,25 @@ export async function latestEmailFor(
   }
   throw new Error(`No ha llegado "${subject}" a ${email}`);
 }
+
+export async function latestEmailAttachments(
+  email: string,
+  subject: string,
+): Promise<string[]> {
+  const query = `to:"${email}" subject:"${subject}"`;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const { messages } = await (
+      await fetch(`${MAILPIT}/search?query=${encodeURIComponent(query)}`)
+    ).json();
+    if (messages.length > 0) {
+      const { Attachments } = await (
+        await fetch(`${MAILPIT}/message/${messages[0].ID}`)
+      ).json();
+      return Attachments.map(
+        (attachment: { FileName: string }) => attachment.FileName,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`No ha llegado "${subject}" a ${email}`);
+}

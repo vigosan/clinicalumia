@@ -127,7 +127,7 @@ describe("reminderEmail", () => {
 
 describe("patientIcs", () => {
   it("identifies the event by the appointment, so importing a later reminder updates the same calendar entry instead of duplicating it", () => {
-    const ics = patientIcs(candidate());
+    const ics = patientIcs(candidate(), now);
 
     expect(ics).toContain(
       "UID:11111111-1111-4111-8111-111111111111@clinicalumia.es",

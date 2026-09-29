@@ -4,6 +4,7 @@ import {
   madridDateTime,
 } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
+import { appointmentIcs } from "./appointment-ics";
 import { site } from "./site";
 
 export type Slot = { starts_at: string; professional_id: string };
@@ -269,11 +270,30 @@ export function escapeHtml(value: string): string {
 }
 
 export type ConfirmedAppointment = {
+  id: string;
   startsAt: string;
+  endsAt: string;
   serviceName: string;
   professionalName: string;
   personName: string;
 };
+
+export function appointmentAttachment(
+  appointment: ConfirmedAppointment,
+  now: Date,
+): { filename: string; content: string; contentType: string } {
+  return {
+    filename: "cita.ics",
+    content: appointmentIcs({
+      id: appointment.id,
+      startsAt: appointment.startsAt,
+      endsAt: appointment.endsAt,
+      serviceName: appointment.serviceName,
+      now,
+    }),
+    contentType: "text/calendar",
+  };
+}
 
 export function appointmentEmailHtml(
   heading: string,
