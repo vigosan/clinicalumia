@@ -72,3 +72,10 @@ export async function loadPeople(): Promise<AccountPerson[]> {
   if (error) throw error;
   return data;
 }
+
+export async function loadPrivacyAccepted(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_privacy_accepted");
+  if (error) throw error;
+  return data;
+}

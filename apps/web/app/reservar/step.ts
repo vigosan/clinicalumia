@@ -24,6 +24,7 @@ export type AccountPerson = {
   id: string;
   first_name: string;
   last_name: string;
+  birth_date: string | null;
   is_minor: boolean;
   is_patient: boolean;
   relation: string;
@@ -62,6 +63,7 @@ export type BookingStep =
       from: string;
       startsAt: string;
       firstTime: boolean;
+      needsPrivacy: boolean;
       guardians: AccountPerson[];
     } & Chosen)
   | ({
@@ -79,6 +81,7 @@ export function bookingStep({
   horizonDays,
   now,
   people = null,
+  privacyAccepted = false,
 }: {
   catalog: CatalogSpecialty[];
   state: BookingState;
@@ -86,6 +89,7 @@ export function bookingStep({
   horizonDays: number;
   now: Date;
   people?: AccountPerson[] | null;
+  privacyAccepted?: boolean;
 }): BookingStep {
   if (catalog.length === 0) return { kind: "empty" };
 
@@ -123,14 +127,17 @@ export function bookingStep({
       startsAt: state.inicio,
     };
     if (!people) return { kind: "chosen", ...chosen };
-    const bookable = people.filter((person) => person.is_patient);
+    const bookable = people.filter(
+      (person) => person.is_patient || person.birth_date !== null,
+    );
     const person = bookable.find((candidate) => candidate.id === state.persona);
     if (person) return { kind: "summary", ...chosen, person };
-    if (state.persona === NEW_PERSON || bookable.length === 0)
+    if (state.persona === NEW_PERSON || people.length === 0)
       return {
         kind: "details",
         ...chosen,
         firstTime: people.length === 0,
+        needsPrivacy: !privacyAccepted,
         guardians: people.filter(
           (candidate) => candidate.relation === "self" && !candidate.is_minor,
         ),

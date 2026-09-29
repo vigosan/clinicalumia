@@ -51,11 +51,13 @@ function Field({
 
 function PersonFields({
   legend,
+  hideLegend = false,
   prefix,
   today,
   adult,
 }: {
   legend: string;
+  hideLegend?: boolean;
   prefix: string;
   today: string;
   adult: boolean;
@@ -63,7 +65,11 @@ function PersonFields({
   const own = adult ? "" : "off";
   return (
     <fieldset className="flex flex-col gap-4">
-      <legend className="mb-2 font-bold text-ink-600">{legend}</legend>
+      <legend
+        className={hideLegend ? "sr-only" : "mb-2 font-bold text-ink-600"}
+      >
+        {legend}
+      </legend>
       <Field
         label="Nombre"
         name={`${prefix}first_name`}
@@ -94,12 +100,12 @@ function PersonFields({
 
 export function NewPersonForm({
   estado,
-  firstTime,
+  needsPrivacy,
   guardians,
   today,
 }: {
   estado: string;
-  firstTime: boolean;
+  needsPrivacy: boolean;
   guardians: Guardian[];
   today: string;
 }) {
@@ -147,7 +153,13 @@ export function NewPersonForm({
       </fieldset>
 
       {!forMinor && (
-        <PersonFields legend="Tus datos" prefix="" today={today} adult />
+        <PersonFields
+          legend="Tus datos"
+          hideLegend
+          prefix=""
+          today={today}
+          adult
+        />
       )}
 
       {forMinor &&
@@ -170,7 +182,7 @@ export function NewPersonForm({
           </label>
         ) : (
           <PersonFields
-            legend="Tus datos"
+            legend="Tus datos como madre, padre o tutor"
             prefix="guardian_"
             today={today}
             adult
@@ -207,7 +219,7 @@ export function NewPersonForm({
         </>
       )}
 
-      {firstTime && (
+      {needsPrivacy && (
         <label className="flex items-start gap-3 text-ink-500 text-sm">
           <input
             type="checkbox"

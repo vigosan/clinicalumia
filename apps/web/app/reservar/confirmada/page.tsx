@@ -41,7 +41,7 @@ export default async function ConfirmadaPage({
             Cita confirmada
           </h1>
           <p className="mt-3 mb-8 text-ink-500">
-            Te hemos enviado un email a {user.email} con los datos.
+            Te enviaremos la confirmación a {user.email}.
           </p>
           <dl
             data-testid="booking-confirmed"

@@ -5,7 +5,7 @@ import {
   madridInstant,
   todayInMadrid,
 } from "@clinicalumia/api/madrid-time";
-import { type Browser, expect, type Page, test } from "@playwright/test";
+import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { latestCodeFor, latestEmailFor } from "./mail";
 
@@ -434,7 +434,7 @@ async function fillPerson(
   }
 }
 
-async function seedPerson(email: string, firstName: string) {
+async function seedPerson(email: string, firstName: string, isPatient = true) {
   const { data, error } = await admin
     .from("people")
     .insert({
@@ -442,7 +442,7 @@ async function seedPerson(email: string, firstName: string) {
       last_name: `Prueba ${unique()}`,
       birth_date: "1988-03-14",
       email,
-      is_patient: true,
+      is_patient: isPatient,
     })
     .select("id, first_name, last_name")
     .single();
@@ -570,21 +570,18 @@ test("a mother books for her new child: she is saved as guardian without being a
 });
 
 async function patientAtSummary(
-  browser: Browser,
+  context: BrowserContext,
   slotStep: string,
   prefix: string,
 ) {
-  const context = await browser.newContext({
-    extraHTTPHeaders: { "x-forwarded-for": randomIp() },
-  });
   const page = await context.newPage();
   const email = uniqueEmail(prefix);
-  const person = await seedPerson(email, prefix);
+  await seedPerson(email, prefix);
   const startsAt = await openChosenSlot(page, slotStep);
   await identify(page, email);
   await page.getByTestId("booking-person").click();
   await expect(page.getByTestId("booking-summary")).toBeVisible();
-  return { context, page, person, startsAt };
+  return { page, startsAt };
 }
 
 test("two people confirming the same time at once: one gets it and the other is told it is taken and chooses again", async ({
@@ -593,45 +590,131 @@ test("two people confirming the same time at once: one gets it and the other is 
   const { specialty, service, withHoursId } =
     await clinicWithTwoProfessionals();
   const slotStep = slotStepUrl(specialty.id, service.id, withHoursId, "");
-
-  const first = await patientAtSummary(browser, slotStep, "reserva-uno");
-  const second = await patientAtSummary(browser, slotStep, "reserva-dos");
-  expect(second.startsAt).toBe(first.startsAt);
-
-  await Promise.all([
-    first.page.getByTestId("booking-confirm").click(),
-    second.page.getByTestId("booking-confirm").click(),
-  ]);
-  const outcomes = await Promise.all(
-    [first.page, second.page].map(async (page) => {
-      await page.waitForURL(
-        (url) =>
-          url.pathname === "/reservar/confirmada" ||
-          url.searchParams.get("aviso") === "ocupado",
-      );
-      return new URL(page.url()).pathname === "/reservar/confirmada";
-    }),
+  const contexts = await Promise.all(
+    [0, 1].map(() =>
+      browser.newContext({
+        extraHTTPHeaders: { "x-forwarded-for": randomIp() },
+      }),
+    ),
   );
-  expect(outcomes.filter(Boolean)).toHaveLength(1);
 
-  const loser = outcomes[0] ? second.page : first.page;
-  await expect(loser.getByTestId("booking-error")).toHaveText(
-    "Ese hueco ya no está libre. Elige otro.",
+  try {
+    const first = await patientAtSummary(contexts[0]!, slotStep, "reserva-uno");
+    const second = await patientAtSummary(
+      contexts[1]!,
+      slotStep,
+      "reserva-dos",
+    );
+    expect(second.startsAt).toBe(first.startsAt);
+
+    await Promise.all([
+      first.page.getByTestId("booking-confirm").click(),
+      second.page.getByTestId("booking-confirm").click(),
+    ]);
+    const outcomes = await Promise.all(
+      [first.page, second.page].map(async (page) => {
+        await page.waitForURL(
+          (url) =>
+            url.pathname === "/reservar/confirmada" ||
+            url.searchParams.get("aviso") === "ocupado",
+        );
+        return new URL(page.url()).pathname === "/reservar/confirmada";
+      }),
+    );
+    expect(outcomes.filter(Boolean)).toHaveLength(1);
+
+    const loser = outcomes[0] ? second.page : first.page;
+    await expect(loser.getByTestId("booking-error")).toHaveText(
+      "Ese hueco ya no está libre. Elige otro.",
+    );
+    expect(new URL(loser.url()).searchParams.get("inicio")).toBeNull();
+    await expect(loser.getByTestId("booking-slot").first()).toBeVisible();
+
+    const { data: booked, error } = await admin
+      .from("appointments")
+      .select("id")
+      .eq("professional_id", withHoursId)
+      .eq("starts_at", first.startsAt)
+      .neq("status", "cancelled");
+    expect(error).toBeNull();
+    expect(booked).toHaveLength(1);
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
+  }
+});
+
+test("an account the clinic created is asked to accept privacy when adding a child from the web, since it never accepted it", async ({
+  page,
+}) => {
+  const { specialty, service, withHoursId } =
+    await clinicWithTwoProfessionals();
+  const email = uniqueEmail("reserva-clinica");
+  const mother = await seedPerson(email, "Clinica");
+
+  await openChosenSlot(
+    page,
+    slotStepUrl(specialty.id, service.id, withHoursId, ""),
   );
-  expect(new URL(loser.url()).searchParams.get("inicio")).toBeNull();
-  await expect(loser.getByTestId("booking-slot").first()).toBeVisible();
+  await identify(page, email);
 
-  const { data: booked, error } = await admin
-    .from("appointments")
-    .select("id")
-    .eq("professional_id", withHoursId)
-    .eq("starts_at", first.startsAt)
-    .neq("status", "cancelled");
-  expect(error).toBeNull();
-  expect(booked).toHaveLength(1);
+  await expect(page.getByTestId("booking-person")).toContainText(
+    mother.last_name,
+  );
+  await page.getByTestId("booking-other-person").click();
+  await expect(page.getByTestId("privacy-accept")).toBeVisible();
+  await page.getByTestId("new-person-for-minor").check();
+  await expect(page.getByTestId("new-person-guardian_id")).toHaveValue(
+    mother.id,
+  );
+  await fillPerson(page, "", {
+    first: "Nico",
+    last: "Clinica",
+    birth: addDays(todayInMadrid(), -4 * 365),
+  });
+  await page.getByTestId("new-person-relationship").selectOption("madre");
+  await page.getByTestId("privacy-accept").check();
+  await page.getByTestId("new-person-submit").click();
 
-  await first.context.close();
-  await second.context.close();
+  await expect(page.getByTestId("booking-summary")).toContainText(
+    "Nico Clinica",
+  );
+  const { data: account } = await admin
+    .from("patient_accounts")
+    .select("privacy_version")
+    .eq("email", email)
+    .single();
+  expect(account!.privacy_version).toBe("2026-09");
+});
+
+test("a mother saved only as guardian can later book for herself and becomes a patient", async ({
+  page,
+}) => {
+  const { specialty, service, withHoursId } =
+    await clinicWithTwoProfessionals();
+  const email = uniqueEmail("reserva-tutora");
+  const mother = await seedPerson(email, "Tutora", false);
+
+  await openChosenSlot(
+    page,
+    slotStepUrl(specialty.id, service.id, withHoursId, ""),
+  );
+  await identify(page, email);
+
+  await page
+    .getByTestId("booking-person")
+    .filter({ hasText: mother.last_name })
+    .click();
+  await page.getByTestId("booking-confirm").click();
+  await expect(page.getByTestId("booking-confirmed")).toContainText(
+    mother.last_name,
+  );
+
+  const { data: person } = await admin
+    .from("people")
+    .select("is_patient")
+    .eq("id", mother.id)
+    .single();
+  expect(person!.is_patient).toBe(true);
 });
 
 test("another email does not see the people or appointments of an account", async ({

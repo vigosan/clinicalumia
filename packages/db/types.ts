@@ -708,6 +708,7 @@ export type Database = {
           relation: string
         }[]
       }
+      my_privacy_accepted: { Args: never; Returns: boolean }
       normalize_phone: { Args: { value: string }; Returns: string }
       revoke_user_sessions: { Args: { target: string }; Returns: undefined }
       set_employee_schedule: {

@@ -18,7 +18,13 @@ import {
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 import { ConfirmForm } from "./ConfirmForm";
-import { loadCatalog, loadHorizonDays, loadPeople, loadSlots } from "./load";
+import {
+  loadCatalog,
+  loadHorizonDays,
+  loadPeople,
+  loadPrivacyAccepted,
+  loadSlots,
+} from "./load";
 import { NewPersonForm } from "./NewPersonForm";
 import { type PickerDay, SlotPicker } from "./SlotPicker";
 import {
@@ -402,6 +408,7 @@ function WhoView(props: ChosenProps & { people: AccountPerson[] }) {
 function DetailsView(
   props: ChosenProps & {
     firstTime: boolean;
+    needsPrivacy: boolean;
     guardians: AccountPerson[];
     today: string;
   },
@@ -415,7 +422,7 @@ function DetailsView(
     >
       <NewPersonForm
         estado={bookingState.encode(chosen)}
-        firstTime={props.firstTime}
+        needsPrivacy={props.needsPrivacy}
         guardians={props.guardians.map((guardian) => ({
           id: guardian.id,
           name: `${guardian.first_name} ${guardian.last_name}`,
@@ -512,10 +519,12 @@ export default async function ReservarPage({
   } = await supabase.auth.getUser();
   const signedIn = Boolean(user);
   const today = todayInMadrid();
-  const [catalog, horizonDays, people] = await Promise.all([
+  const choosingPerson = Boolean(user && state.inicio);
+  const [catalog, horizonDays, people, privacyAccepted] = await Promise.all([
     loadCatalog(),
     loadHorizonDays(),
-    user && state.inicio ? loadPeople() : null,
+    choosingPerson ? loadPeople() : null,
+    choosingPerson ? loadPrivacyAccepted() : false,
   ]);
   const step = bookingStep({
     catalog,
@@ -524,6 +533,7 @@ export default async function ReservarPage({
     horizonDays,
     now: new Date(),
     people,
+    privacyAccepted,
   });
 
   return (
