@@ -1,4 +1,5 @@
 import { createClient } from "@clinicalumia/api/server";
+import { splitAppointments } from "@/lib/account";
 import { appointmentIcs } from "@/lib/appointment-ics";
 import { isTeamSession } from "@/lib/booking";
 
@@ -16,7 +17,10 @@ export async function GET(
   const { data, error } = await supabase.rpc("my_appointments");
   if (isTeamSession(error)) return new Response(null, { status: 404 });
   if (error) throw error;
-  const appointment = data.find((candidate) => candidate.id === id);
+  const now = new Date();
+  const appointment = splitAppointments(data, now).upcoming.find(
+    (candidate) => candidate.id === id,
+  );
   if (!appointment) return new Response(null, { status: 404 });
 
   const ics = appointmentIcs({
@@ -24,7 +28,7 @@ export async function GET(
     startsAt: appointment.starts_at,
     endsAt: appointment.ends_at,
     serviceName: appointment.service_name,
-    now: new Date(),
+    now,
   });
 
   return new Response(ics, {

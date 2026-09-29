@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type RpcResult = {
   data: unknown;
@@ -25,6 +25,7 @@ function appointmentRow(overrides: Record<string, string> = {}) {
     starts_at: "2026-10-02T07:00:00+00:00",
     ends_at: "2026-10-02T07:45:00+00:00",
     service_name: "Sesión de logopedia",
+    status: "scheduled",
     ...overrides,
   };
 }
@@ -42,6 +43,12 @@ function context(id = APPOINTMENT) {
 beforeEach(() => {
   rpc.mockReset();
   user = { email: "marta@test.local" };
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-30T08:00:00Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("GET /mi-cuenta/citas/[id]/cita.ics", () => {
@@ -66,6 +73,33 @@ describe("GET /mi-cuenta/citas/[id]/cita.ics", () => {
     rpc.mockResolvedValue({
       data: null,
       error: { message: "patient_account_required", code: "42501" },
+    });
+
+    const response = await GET(request(), context());
+
+    expect(response.status).toBe(404);
+  });
+
+  it("does not exist for a cancelled appointment, so the patient never adds to their calendar a visit that will not happen", async () => {
+    rpc.mockResolvedValue({
+      data: [appointmentRow({ status: "cancelled" })],
+      error: null,
+    });
+
+    const response = await GET(request(), context());
+
+    expect(response.status).toBe(404);
+  });
+
+  it("does not exist for an appointment that already took place, since Mi cuenta only offers the calendar for upcoming ones", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        appointmentRow({
+          starts_at: "2026-09-28T07:00:00+00:00",
+          ends_at: "2026-09-28T07:45:00+00:00",
+        }),
+      ],
+      error: null,
     });
 
     const response = await GET(request(), context());
