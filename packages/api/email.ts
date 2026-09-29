@@ -17,7 +17,10 @@ export async function sendEmail({ to, subject, html }: Email): Promise<void> {
   const from = process.env.EMAIL_FROM || DEFAULT_FROM;
   const apiKey = process.env.RESEND_API_KEY;
 
-  if (apiKey) {
+  if (process.env.NODE_ENV === "production") {
+    if (!apiKey) {
+      throw new Error("Falta RESEND_API_KEY para enviar emails en producción.");
+    }
     const { error } = await new Resend(apiKey).emails.send({
       from,
       to,
@@ -30,10 +33,6 @@ export async function sendEmail({ to, subject, html }: Email): Promise<void> {
       );
     }
     return;
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Falta RESEND_API_KEY para enviar emails en producción.");
   }
 
   const response = await fetch(MAILPIT_SEND, {

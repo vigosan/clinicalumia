@@ -36,6 +36,7 @@ describe("sendEmail", () => {
   });
 
   it("sends through Resend from the clinic's notifications domain when production has an API key", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("RESEND_API_KEY", "re_test");
     vi.stubEnv("EMAIL_FROM", "");
     resendSend.mockResolvedValue({ data: { id: "1" }, error: null });
@@ -51,6 +52,7 @@ describe("sendEmail", () => {
   });
 
   it("uses EMAIL_FROM as the sender when it is configured", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("RESEND_API_KEY", "re_test");
     vi.stubEnv("EMAIL_FROM", "LUMIA <citas@notifications.clinicalumia.es>");
     resendSend.mockResolvedValue({ data: { id: "1" }, error: null });
@@ -65,6 +67,7 @@ describe("sendEmail", () => {
   });
 
   it("fails loudly when Resend rejects the email, so a booking never looks confirmed by mail when it was not", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("RESEND_API_KEY", "re_test");
     resendSend.mockResolvedValue({
       data: null,
@@ -95,6 +98,17 @@ describe("sendEmail", () => {
       Subject: "Cita confirmada",
       HTML: "<p>Hola</p>",
     });
+  });
+
+  it("keeps development on Mailpit even when a Resend key is in the local env, so trying a booking never emails a real person", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await sendEmail(message);
+
+    expect(resendSend).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("refuses to send in production without an API key, so a missing secret never silently drops patients' emails into a local Mailpit", async () => {
