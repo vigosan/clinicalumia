@@ -6,7 +6,7 @@ import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import logo from "@clinicalumia/ui/logo-dark.png";
 import Image from "next/image";
-import { startTransition, useActionState } from "react";
+import { useActionState } from "react";
 import { type RecoverState, requestRecovery } from "./actions";
 
 const initialState: RecoverState = undefined;
@@ -38,14 +38,7 @@ export default function RecoverPage() {
           contraseña.
         </p>
       ) : (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formData = new FormData(event.currentTarget);
-            startTransition(() => formAction(formData));
-          }}
-          className="flex flex-col gap-4"
-        >
+        <form action={formAction} className="flex flex-col gap-4">
           <Field label="Email">
             <Input
               type="email"
