@@ -1,10 +1,9 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
 import {
+  appointmentEmailHtml,
   type ConfirmedAppointment,
   type DbError,
-  escapeHtml,
-  formatWhen,
 } from "./booking";
 import { site } from "./site";
 
@@ -67,7 +66,7 @@ export function statusLabel(row: AppointmentRow, now: Date): string {
   if (row.status === "cancelled" && row.cancelled_by === "clinic")
     return "Cancelada por la clínica";
   if (row.status === "no_show") return "No asististe";
-  if (row.status === "scheduled" && new Date(row.ends_at) <= now)
+  if (row.status === "scheduled" && new Date(row.starts_at) < now)
     return "Realizada";
   return "Próxima";
 }
@@ -103,28 +102,17 @@ export function accountError(error: DbError): string {
   return mapped || "No se ha podido guardar. Inténtalo de nuevo.";
 }
 
-function accountEmail(
-  heading: string,
-  appointment: ConfirmedAppointment,
-): string {
-  return `
-      <h2>${heading}</h2>
-      <p><strong>Cuándo:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}</p>
-      <p><strong>Servicio:</strong> ${escapeHtml(appointment.serviceName)}</p>
-      <p><strong>Profesional:</strong> ${escapeHtml(appointment.professionalName)}</p>
-      <p><strong>Para:</strong> ${escapeHtml(appointment.personName)}</p>
-      <p><a href="${site.url}/mi-cuenta">Ver Mi cuenta</a></p>
-      <p>Clínica LUMIA</p>
-    `;
-}
-
 export function rescheduledEmail(appointment: ConfirmedAppointment): {
   subject: string;
   html: string;
 } {
   return {
     subject: "Cita confirmada",
-    html: accountEmail("Cita confirmada", appointment),
+    html: appointmentEmailHtml(
+      "Cita confirmada",
+      appointment,
+      `${site.url}/mi-cuenta`,
+    ),
   };
 }
 
@@ -134,6 +122,10 @@ export function cancelledEmail(appointment: ConfirmedAppointment): {
 } {
   return {
     subject: "Cita cancelada",
-    html: accountEmail("Cita cancelada", appointment),
+    html: appointmentEmailHtml(
+      "Cita cancelada",
+      appointment,
+      `${site.url}/mi-cuenta`,
+    ),
   };
 }

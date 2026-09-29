@@ -129,6 +129,17 @@ describe("splitAppointments", () => {
       "cancelled",
     ]);
   });
+
+  it("sends an in-progress appointment (already started, not yet ended) to history, since it is no longer upcoming", () => {
+    const inProgress = appointment({
+      id: "in_progress",
+      starts_at: madridInstant("2026-10-06", "11:00"),
+      ends_at: madridInstant("2026-10-06", "13:00"),
+    });
+    const { upcoming, history } = splitAppointments([inProgress], now);
+    expect(upcoming).toEqual([]);
+    expect(history.map((row) => row.id)).toEqual(["in_progress"]);
+  });
 });
 
 describe("statusLabel", () => {
@@ -158,6 +169,15 @@ describe("statusLabel", () => {
       status: "scheduled",
       starts_at: madridInstant("2026-10-06", "09:00"),
       ends_at: madridInstant("2026-10-06", "09:30"),
+    });
+    expect(statusLabel(row, now)).toBe("Realizada");
+  });
+
+  it("labels an in-progress appointment (already started, not yet ended) as done, agreeing with splitAppointments' starts_at boundary", () => {
+    const row = appointment({
+      status: "scheduled",
+      starts_at: madridInstant("2026-10-06", "11:00"),
+      ends_at: madridInstant("2026-10-06", "13:00"),
     });
     expect(statusLabel(row, now)).toBe("Realizada");
   });
