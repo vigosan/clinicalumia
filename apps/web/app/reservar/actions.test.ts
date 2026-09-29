@@ -428,4 +428,19 @@ describe("completeBirthDate", () => {
       await completeBirthDate(undefined, birthDateForm("1960-03-01")),
     ).toEqual({ error: "Esa persona no está en tu cuenta." });
   });
+
+  it("explains that the date would make the person a minor, who cannot be booked without a guardian", async () => {
+    answer({
+      complete_my_birth_date: {
+        data: null,
+        error: { message: "person_not_adult" },
+      },
+    });
+
+    expect(
+      await completeBirthDate(undefined, birthDateForm("2015-03-01")),
+    ).toEqual({
+      error: "Para pedir cita para ti tienes que ser mayor de edad.",
+    });
+  });
 });

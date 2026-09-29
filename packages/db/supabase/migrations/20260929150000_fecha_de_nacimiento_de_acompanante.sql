@@ -17,6 +17,10 @@ begin
   end if;
 
   update public.people set birth_date = p_birth_date where id = p_person_id;
+
+  if extract(year from age((now() at time zone 'Europe/Madrid')::date, p_birth_date)) < 18 then
+    raise exception 'person_not_adult' using errcode = 'P0001';
+  end if;
 end;
 $$;
 

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(15);
 
 insert into auth.users (id, email) values
   ('86000000-0000-0000-0000-000000000001', 'equipo-acompanante@test.local'),
@@ -64,6 +64,10 @@ select throws_ok($$ select public.complete_my_birth_date('86000000-0000-0000-000
   'P0001', 'person_not_in_account', 'a person of another account cannot be touched by guessing her id');
 select throws_ok($$ select public.complete_my_birth_date('86000000-0000-0000-0000-0000000000c4', '1960-03-01') $$,
   'P0001', 'person_not_in_account', 'an archived person is no longer part of the account');
+select throws_ok(
+  format('select public.complete_my_birth_date(%L, %L)', '86000000-0000-0000-0000-0000000000c2',
+    (now() at time zone 'Europe/Madrid')::date - interval '18 years' + interval '1 day'),
+  'P0001', 'person_not_adult', 'a date that makes the person a minor in Madrid is refused, since a minor needs a guardian to be booked');
 select throws_ok(
   format('select public.complete_my_birth_date(%L, %L)', '86000000-0000-0000-0000-0000000000c2',
     (now() at time zone 'Europe/Madrid')::date + 1),

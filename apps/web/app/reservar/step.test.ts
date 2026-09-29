@@ -264,6 +264,15 @@ describe("bookingStep", () => {
       expect(step).toMatchObject({ kind: "details", warning: null });
     });
 
+    it("does not offer a companion without birth date as guardian, because nobody knows she is an adult", () => {
+      const step = bookingStep({
+        ...session,
+        state: { ...chosenState, persona: "nueva" },
+        people: [mother, companion],
+      });
+      expect(step).toMatchObject({ kind: "details", guardians: [mother] });
+    });
+
     it("shows the summary for a person of the account, also for an adult who is not a patient yet", () => {
       expect(
         bookingStep({

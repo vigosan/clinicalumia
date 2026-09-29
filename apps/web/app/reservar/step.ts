@@ -152,7 +152,10 @@ export function bookingStep({
         firstTime: people.length === 0,
         needsPrivacy: !privacyAccepted,
         guardians: people.filter(
-          (candidate) => candidate.relation === "self" && !candidate.is_minor,
+          (candidate) =>
+            candidate.relation === "self" &&
+            !candidate.is_minor &&
+            candidate.birth_date !== null,
         ),
         warning:
           state.aviso && state.aviso !== SLOT_TAKEN
