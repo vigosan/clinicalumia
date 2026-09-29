@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(61);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -43,24 +43,30 @@ $$;
 
 insert into auth.users (id, email) values
   ('87000000-0000-0000-0000-000000000001', 'equipo-area@test.local'),
+  ('87000000-0000-0000-0000-000000000002', 'segunda-area@test.local'),
   ('87000000-0000-0000-0000-000000000010', 'cuenta-a-area@test.local'),
   ('87000000-0000-0000-0000-000000000011', 'cuenta-b-area@test.local');
 insert into public.specialties (id, name, slug) values
   ('87000000-0000-0000-0000-0000000000aa', 'Area de paciente test', 'area-de-paciente-test');
 insert into public.profiles (id, email, full_name, role, is_active, specialty_id) values
-  ('87000000-0000-0000-0000-000000000001', 'equipo-area@test.local', 'Profesional Area', 'employee', true, '87000000-0000-0000-0000-0000000000aa');
+  ('87000000-0000-0000-0000-000000000001', 'equipo-area@test.local', 'Profesional Area', 'employee', true, '87000000-0000-0000-0000-0000000000aa'),
+  ('87000000-0000-0000-0000-000000000002', 'segunda-area@test.local', 'Segunda Area', 'employee', true, '87000000-0000-0000-0000-0000000000aa');
 insert into public.patient_accounts (id, email) values
   ('87000000-0000-0000-0000-000000000010', 'cuenta-a-area@test.local'),
   ('87000000-0000-0000-0000-000000000011', 'cuenta-b-area@test.local');
 insert into public.services (id, specialty_id, name, duration_minutes, price_cents, bookable_online, cancellation_hours) values
   ('87000000-0000-0000-0000-0000000000b1', '87000000-0000-0000-0000-0000000000aa', 'Area 48 horas', 30, 3000, true, 48),
   ('87000000-0000-0000-0000-0000000000b2', '87000000-0000-0000-0000-0000000000aa', 'Area plazo general', 30, 3000, true, null),
-  ('87000000-0000-0000-0000-0000000000b3', '87000000-0000-0000-0000-0000000000aa', 'Area limite', 5, 1000, true, pg_temp.edge_hours());
+  ('87000000-0000-0000-0000-0000000000b3', '87000000-0000-0000-0000-0000000000aa', 'Area limite', 5, 1000, true, pg_temp.edge_hours()),
+  ('87000000-0000-0000-0000-0000000000b4', '87000000-0000-0000-0000-0000000000aa', 'Area solo clinica', 30, 3000, false, null);
 insert into public.people (id, first_name, last_name, birth_date, email, is_patient) values
   ('87000000-0000-0000-0000-0000000000c1', 'Ana', 'Cuenta', '1980-01-01', 'cuenta-a-area@test.local', true),
   ('87000000-0000-0000-0000-0000000000c2', 'Bea', 'Otra', '1981-01-01', 'cuenta-b-area@test.local', true);
 insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
-  ('87000000-0000-0000-0000-000000000001', extract(isodow from pg_temp.day3())::smallint, '10:00', '14:00');
+  ('87000000-0000-0000-0000-000000000001', extract(isodow from pg_temp.day3())::smallint, '10:00', '14:00'),
+  ('87000000-0000-0000-0000-000000000002', extract(isodow from pg_temp.day3())::smallint, '10:00', '14:00');
+insert into public.employee_time_off (profile_id, starts_at, ends_at, reason) values
+  ('87000000-0000-0000-0000-000000000002', pg_temp.at_day3('12:30'), pg_temp.at_day3('13:00'), 'Ausencia de prueba');
 
 select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
 select public.book_appointment('87000000-0000-0000-0000-0000000000c1', '87000000-0000-0000-0000-0000000000b1',
@@ -76,7 +82,7 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 select is(pg_get_function_result('public.my_appointments()'::regprocedure),
-  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean)',
+  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean, can_reschedule boolean)',
   'my_appointments gives the web what it needs to offer changes, and still never exposes notes, reasons or payment data');
 select is((select prosecdef from pg_proc where oid = 'public.reschedule_my_appointment(uuid, timestamptz)'::regprocedure), true,
   'reschedule runs as definer because patients cannot touch appointments directly');
@@ -103,9 +109,9 @@ select is(has_function_privilege('anon', 'public.available_slots(uuid, uuid, dat
 
 select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
 select results_eq(
-  $$ select id, origin::text, change_deadline, can_change from public.my_appointments() $$,
-  $$ values (pg_temp.web_id(), 'web'::text, pg_temp.at_day3('10:00') - interval '48 hours', true),
-            ('87000000-0000-0000-0000-0000000000d1'::uuid, 'staff'::text, pg_temp.at_day3('12:00') - pg_temp.general_hours(), true) $$,
+  $$ select id, origin::text, change_deadline, can_change, can_reschedule from public.my_appointments() $$,
+  $$ values (pg_temp.web_id(), 'web'::text, pg_temp.at_day3('10:00') - interval '48 hours', true, true),
+            ('87000000-0000-0000-0000-0000000000d1'::uuid, 'staff'::text, pg_temp.at_day3('12:00') - pg_temp.general_hours(), true, true) $$,
   'account A sees its web and team appointments in order, each with its service''s own deadline or the general one');
 
 select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000011');
@@ -220,6 +226,46 @@ select is((select actor_kind::text || ':' || actor_id::text from public.appointm
     where appointment_id = pg_temp.web_id() and kind = 'moved' and previous_starts_at = pg_temp.at_day3('11:15')),
   'staff:87000000-0000-0000-0000-000000000001',
   'a team move is credited to the team even with a marker naming the employee, since she has no patient account');
+
+select set_config('request.jwt.claims', '', true);
+select set_config('lumia.booking_account', '', true);
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('87000000-0000-0000-0000-0000000000d5', '87000000-0000-0000-0000-000000000002', '87000000-0000-0000-0000-0000000000c1',
+   '87000000-0000-0000-0000-0000000000b2', pg_temp.at_day3('10:00'), pg_temp.at_day3('11:30')),
+  ('87000000-0000-0000-0000-0000000000d6', '87000000-0000-0000-0000-000000000002', '87000000-0000-0000-0000-0000000000c1',
+   '87000000-0000-0000-0000-0000000000b4', pg_temp.at_day3('16:00'), pg_temp.at_day3('16:30')),
+  ('87000000-0000-0000-0000-0000000000d7', '87000000-0000-0000-0000-000000000002', '87000000-0000-0000-0000-0000000000c1',
+   '87000000-0000-0000-0000-0000000000b2', date_trunc('hour', now() - interval '2 days'),
+   date_trunc('hour', now() - interval '2 days') + interval '30 minutes'),
+  ('87000000-0000-0000-0000-0000000000d8', '87000000-0000-0000-0000-000000000002', '87000000-0000-0000-0000-0000000000c1',
+   '87000000-0000-0000-0000-0000000000b2', date_trunc('hour', now() - interval '3 days'),
+   date_trunc('hour', now() - interval '3 days') + interval '30 minutes');
+update public.appointments set status = 'no_show' where id = '87000000-0000-0000-0000-0000000000d8';
+
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
+select is((select can_change from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d6'), true,
+  'a team appointment for a service not offered online can still be cancelled in time');
+select is((select can_reschedule from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d6'), false,
+  'but the web must not offer to move it, because no online slot would ever be free for it');
+select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d5', pg_temp.at_day3('11:30')),
+  'P0001', 'slot_not_available', 'a 90-minute appointment keeps its length, so a slot whose tail runs into time off is refused');
+select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d5', pg_temp.at_day3('13:30')),
+  'P0001', 'slot_not_available', 'the last 30-minute slot of the day cannot hold a 90-minute appointment');
+select lives_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d5', pg_temp.at_day3('10:30')),
+  'a slot where the whole 90 minutes fit is accepted');
+select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d7', pg_temp.at_day3('10:00')),
+  'P0001', 'outside_change_window', 'an appointment that already happened cannot be moved');
+select throws_ok(format($$ select public.cancel_my_appointment(%L) $$, '87000000-0000-0000-0000-0000000000d7'),
+  'P0001', 'outside_change_window', 'an appointment that already happened cannot be cancelled');
+select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d8', pg_temp.at_day3('10:00')),
+  'P0001', 'outside_change_window', 'a missed appointment cannot be moved to erase the no-show');
+select throws_ok(format($$ select public.cancel_my_appointment(%L) $$, '87000000-0000-0000-0000-0000000000d8'),
+  'P0001', 'outside_change_window', 'a missed appointment cannot be cancelled to erase the no-show');
+select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, pg_temp.web_id(), now() + interval '48 hours'),
+  'P0001', 'outside_change_window', 'a new time exactly on its own deadline is already too late');
+reset role;
+select is((select starts_at || '/' || ends_at from public.appointments where id = '87000000-0000-0000-0000-0000000000d5'),
+  pg_temp.at_day3('10:30') || '/' || pg_temp.at_day3('12:00'), 'the 90-minute appointment moved whole');
 
 select set_config('request.jwt.claims', '', true);
 select set_config('lumia.booking_account', '', true);

@@ -16,6 +16,7 @@ declare
   today_madrid date;
   window_start timestamptz;
   window_end timestamptz;
+  slot_length interval;
 begin
   if p_to < p_from or p_to - p_from > 13 then
     raise exception 'available_slots_range' using errcode = '22023';
@@ -38,6 +39,10 @@ begin
     return;
   end if;
 
+  slot_length := coalesce(
+    (select a.ends_at - a.starts_at from public.appointments a where a.id = p_ignore_appointment),
+    service.duration_minutes * interval '1 minute'
+  );
   today_madrid := (now() at time zone 'Europe/Madrid')::date;
   window_start := now() + make_interval(hours => settings.booking_min_notice_hours);
   window_end := (today_madrid + settings.booking_horizon_days + 1)::timestamp at time zone 'Europe/Madrid';
@@ -72,13 +77,13 @@ begin
         g.profile_id,
         g.slot_wall,
         (g.slot_wall at time zone 'Europe/Madrid') as starts_at,
-        (g.slot_wall at time zone 'Europe/Madrid') + (service.duration_minutes * interval '1 minute') as ends_at
+        (g.slot_wall at time zone 'Europe/Madrid') + slot_length as ends_at
       from (
         select grid.profile_id, gen.slot_wall
         from grid
         cross join lateral generate_series(
           grid.first_slot,
-          grid.seg_end_wall - (service.duration_minutes * interval '1 minute'),
+          grid.seg_end_wall - slot_length,
           interval '15 minutes'
         ) as gen(slot_wall)
       ) g
@@ -183,7 +188,8 @@ returns table (
   origin public.appointment_origin,
   cancelled_by public.appointment_canceller,
   change_deadline timestamptz,
-  can_change boolean
+  can_change boolean,
+  can_reschedule boolean
 )
 language sql
 stable
@@ -205,7 +211,14 @@ as $$
     a.cancelled_by,
     a.starts_at - make_interval(hours => coalesce(s.cancellation_hours, cs.cancellation_hours)),
     a.status = 'scheduled'
+      and now() < a.starts_at - make_interval(hours => coalesce(s.cancellation_hours, cs.cancellation_hours)),
+    a.status = 'scheduled'
       and now() < a.starts_at - make_interval(hours => coalesce(s.cancellation_hours, cs.cancellation_hours))
+      and pr.is_active
+      and exists (
+        select 1 from public.booking_catalog() bc
+        where bc.service_id = s.id and not bc.phone_only
+      )
   from public.my_people() mp
   join public.appointments a on a.patient_id = mp.id
   join public.services s on s.id = a.service_id

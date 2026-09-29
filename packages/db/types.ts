@@ -707,6 +707,7 @@ export type Database = {
         Args: never
         Returns: {
           can_change: boolean
+          can_reschedule: boolean
           cancelled_by: Database["public"]["Enums"]["appointment_canceller"]
           change_deadline: string
           ends_at: string
