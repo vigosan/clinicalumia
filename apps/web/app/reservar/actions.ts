@@ -10,6 +10,7 @@ import {
   bookingConfirmationEmail,
   bookingError,
   bookingState,
+  isMinorOn,
   NEW_PERSON,
   type NewPersonInput,
   PRIVACY_VERSION,
@@ -47,11 +48,6 @@ function prefixed(formData: FormData, prefix: string) {
 }
 
 const PHONE_REQUIRED = "El teléfono es obligatorio.";
-
-function isMinorOn(birthDate: string, today: string) {
-  const adultOn = `${Number(birthDate.slice(0, 4)) + 18}${birthDate.slice(4)}`;
-  return adultOn > today;
-}
 
 async function addPerson(
   supabase: Client,

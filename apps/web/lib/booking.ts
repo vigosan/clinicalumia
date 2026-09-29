@@ -119,6 +119,11 @@ export function parseNewPersonForm(
   };
 }
 
+export function isMinorOn(birthDate: string, today: string) {
+  const adultOn = `${Number(birthDate.slice(0, 4)) + 18}${birthDate.slice(4)}`;
+  return adultOn > today;
+}
+
 export type DbError = { message?: string };
 
 const BOOKING_MESSAGE_BY_CODE: Record<string, string> = {

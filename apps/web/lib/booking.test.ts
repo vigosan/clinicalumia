@@ -6,6 +6,7 @@ import {
   bookingState,
   firstFreeSlots,
   groupSlotsByDay,
+  isMinorOn,
   parseEmail,
   parseNewPersonForm,
   personError,
@@ -214,6 +215,21 @@ describe("parseNewPersonForm", () => {
         phone: null,
       },
     });
+  });
+});
+
+describe("isMinorOn", () => {
+  it("treats a child as an adult on the 18th birthday itself, so she can book for herself that day", () => {
+    expect(isMinorOn("2008-09-29", "2026-09-29")).toBe(false);
+  });
+
+  it("still treats a child as a minor the day before turning 18, so a guardian is required", () => {
+    expect(isMinorOn("2008-09-29", "2026-09-28")).toBe(true);
+  });
+
+  it("makes someone born on 29 February an adult on 1 March of a non-leap year, like the database's age()", () => {
+    expect(isMinorOn("2008-02-29", "2026-02-28")).toBe(true);
+    expect(isMinorOn("2008-02-29", "2026-03-01")).toBe(false);
   });
 });
 
