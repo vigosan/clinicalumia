@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(49);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -164,6 +164,116 @@ set local role service_role;
 select is((select count(*) from public.reminder_candidates(pg_temp.day_x())), 6::bigint,
   'the service role sees exactly the day''s six non-cancelled, unreminded candidates');
 reset role;
+
+select set_config('request.jwt.claims', '', true);
+
+insert into auth.users (id, email) values
+  ('88000000-0000-0000-0000-000000000020', 'propietaria-calendario@test.local'),
+  ('88000000-0000-0000-0000-000000000021', 'a-calendario@test.local'),
+  ('88000000-0000-0000-0000-000000000022', 'b-calendario@test.local'),
+  ('88000000-0000-0000-0000-000000000023', 'inactiva-calendario@test.local');
+insert into public.profiles (id, email, full_name, role, is_active, specialty_id, calendar_token) values
+  ('88000000-0000-0000-0000-000000000020', 'propietaria-calendario@test.local', 'Propietaria Calendario', 'owner', true, null, null),
+  ('88000000-0000-0000-0000-000000000021', 'a-calendario@test.local', 'Empleada A Calendario', 'employee', true, '88000000-0000-0000-0000-0000000000aa', null),
+  ('88000000-0000-0000-0000-000000000022', 'b-calendario@test.local', 'Empleada B Calendario', 'employee', true, '88000000-0000-0000-0000-0000000000aa', null),
+  ('88000000-0000-0000-0000-000000000023', 'inactiva-calendario@test.local', 'Inactiva Calendario', 'employee', false, '88000000-0000-0000-0000-0000000000aa', 'token-de-una-inactiva-token-de-una-inactiva');
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('88000000-0000-0000-0000-0000000000e1', '88000000-0000-0000-0000-000000000021', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('09:00'), pg_temp.at_day_x('09:30')),
+  ('88000000-0000-0000-0000-0000000000e2', '88000000-0000-0000-0000-000000000021', '88000000-0000-0000-0000-0000000000c3',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('10:00'), pg_temp.at_day_x('10:30')),
+  ('88000000-0000-0000-0000-0000000000e3', '88000000-0000-0000-0000-000000000021', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('11:00'), pg_temp.at_day_x('11:30')),
+  ('88000000-0000-0000-0000-0000000000e4', '88000000-0000-0000-0000-000000000021', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('09:00') + interval '95 days', pg_temp.at_day_x('09:30') + interval '95 days'),
+  ('88000000-0000-0000-0000-0000000000e5', '88000000-0000-0000-0000-000000000022', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('09:00'), pg_temp.at_day_x('09:30'));
+
+update public.appointments
+set status = 'cancelled', cancelled_by = 'clinic', cancelled_at = now()
+where id = '88000000-0000-0000-0000-0000000000e3';
+
+select is(pg_get_function_result('public.calendar_feed(text)'::regprocedure),
+  'TABLE(appointment_id uuid, starts_at timestamp with time zone, ends_at timestamp with time zone, updated_at timestamp with time zone, summary text)',
+  'calendar_feed gives the calendar only the time and a short summary of each appointment');
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000021');
+select set_config('lumia_test.token_a', public.regenerate_my_calendar_token(), true);
+select matches(current_setting('lumia_test.token_a'), '^[A-Za-z0-9_-]{43}$',
+  'a calendar token is 32 random bytes in url-safe base64 without padding, so it fits in a link as is');
+select is(public.my_calendar_token(), current_setting('lumia_test.token_a'),
+  'an employee can read back her own calendar token to build her link');
+select throws_ok($$ select calendar_token from public.profiles where id = '88000000-0000-0000-0000-000000000021' $$,
+  '42501', null, 'not even the employee herself reads the token column directly; only through my_calendar_token');
+reset role;
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000021', 'aal1');
+select throws_ok($$ select public.my_calendar_token() $$, '42501', null,
+  'without the second factor an employee cannot read her calendar token');
+select throws_ok($$ select public.regenerate_my_calendar_token() $$, '42501', null,
+  'without the second factor an employee cannot create a calendar token');
+reset role;
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000022');
+select throws_ok($$ select calendar_token from public.profiles $$, '42501', null,
+  'a colleague cannot read anybody''s calendar token');
+reset role;
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000020');
+select throws_ok($$ select calendar_token from public.profiles where id = '88000000-0000-0000-0000-000000000021' $$,
+  '42501', null, 'not even the owner can read an employee''s calendar token, which is a secret like a password');
+select throws_ok($$ update public.profiles set calendar_token = 'forged' where id = '88000000-0000-0000-0000-000000000021' $$,
+  '42501', null, 'not even the owner can plant a calendar token she knows for an employee');
+select lives_ok($$ select id, email, full_name, role, specialty_id, is_active, created_at, updated_at, license_number from public.profiles $$,
+  'the owner still reads every other column of the team, so the admin keeps working');
+reset role;
+
+set local role anon;
+select results_eq(
+  format($$ select appointment_id, summary from public.calendar_feed(%L) $$, current_setting('lumia_test.token_a')),
+  $$ values ('88000000-0000-0000-0000-0000000000e1'::uuid, 'Bea Adulta · Recordatorios servicio'),
+            ('88000000-0000-0000-0000-0000000000e2'::uuid, 'Cati Menor · Recordatorios servicio') $$,
+  'the calendar link shows her own non-cancelled appointments in order, named "Name Surname · Service" and nothing else, without signing in');
+select is((select count(*) from public.calendar_feed('estoNoEsUnTokenDeVerdadEstoNoEsUnTokenDeVer')), 0::bigint,
+  'a made-up token shows no appointments at all');
+select is((select count(*) from public.calendar_feed(null)), 0::bigint,
+  'a missing token never matches the employees who have no token');
+select is((select count(*) from public.calendar_feed('token-de-una-inactiva-token-de-una-inactiva')), 0::bigint,
+  'the token of a deactivated employee shows nothing even if it is still stored');
+reset role;
+select is(has_function_privilege('anon', 'public.calendar_feed(text)', 'execute'), true,
+  'calendar apps fetch the feed without a session, so anon can execute calendar_feed');
+select is(has_function_privilege('anon', 'public.my_calendar_token()', 'execute'), false,
+  'an anonymous visitor cannot ask for anybody''s calendar token');
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000021');
+select set_config('lumia_test.token_b', public.regenerate_my_calendar_token(), true);
+reset role;
+select is((select count(*) from public.calendar_feed(current_setting('lumia_test.token_a'))), 0::bigint,
+  'after regenerating, a leaked old link stops showing appointments at once');
+select is((select count(*) from public.calendar_feed(current_setting('lumia_test.token_b'))), 2::bigint,
+  'the new link shows her appointments');
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000022');
+select throws_ok($$ select public.revoke_calendar_token('88000000-0000-0000-0000-000000000021') $$, '42501', null,
+  'an employee cannot invalidate a colleague''s calendar link');
+reset role;
+select pg_temp.act_as('88000000-0000-0000-0000-000000000020');
+select lives_ok($$ select public.revoke_calendar_token('88000000-0000-0000-0000-000000000021') $$,
+  'the owner can invalidate an employee''s calendar link');
+reset role;
+select is((select calendar_token from public.profiles where id = '88000000-0000-0000-0000-000000000021'), null,
+  'an invalidated calendar link leaves the employee with no token');
+
+select pg_temp.act_as('88000000-0000-0000-0000-000000000021');
+select public.regenerate_my_calendar_token();
+reset role;
+select pg_temp.act_as('88000000-0000-0000-0000-000000000020');
+update public.profiles set is_active = false where id = '88000000-0000-0000-0000-000000000021';
+reset role;
+select is((select calendar_token from public.profiles where id = '88000000-0000-0000-0000-000000000021'), null,
+  'deactivating an employee wipes her calendar token, so reactivating her never revives an old link');
 
 select * from finish();
 rollback;

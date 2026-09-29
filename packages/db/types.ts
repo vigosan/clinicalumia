@@ -517,6 +517,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          calendar_token: string | null
           created_at: string
           email: string
           full_name: string
@@ -528,6 +529,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          calendar_token?: string | null
           created_at?: string
           email: string
           full_name: string
@@ -539,6 +541,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          calendar_token?: string | null
           created_at?: string
           email?: string
           full_name?: string
@@ -715,6 +718,16 @@ export type Database = {
         }[]
       }
       booking_horizon_days: { Args: never; Returns: number }
+      calendar_feed: {
+        Args: { p_token: string }
+        Returns: {
+          appointment_id: string
+          ends_at: string
+          starts_at: string
+          summary: string
+          updated_at: string
+        }[]
+      }
       cancel_my_appointment: {
         Args: { p_appointment_id: string }
         Returns: undefined
@@ -761,6 +774,7 @@ export type Database = {
           status: Database["public"]["Enums"]["appointment_status"]
         }[]
       }
+      my_calendar_token: { Args: never; Returns: string }
       my_contact: {
         Args: { p_person_id: string }
         Returns: {
@@ -789,6 +803,7 @@ export type Database = {
         }[]
       }
       normalize_phone: { Args: { value: string }; Returns: string }
+      regenerate_my_calendar_token: { Args: never; Returns: string }
       reminder_candidates: {
         Args: { p_day: string }
         Returns: {
@@ -806,6 +821,10 @@ export type Database = {
       reschedule_my_appointment: {
         Args: { p_appointment_id: string; p_starts_at: string }
         Returns: string
+      }
+      revoke_calendar_token: {
+        Args: { p_profile_id: string }
+        Returns: undefined
       }
       revoke_user_sessions: { Args: { target: string }; Returns: undefined }
       set_employee_schedule: {

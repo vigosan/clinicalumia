@@ -76,3 +76,119 @@ $$;
 
 revoke all on function public.reminder_candidates(date) from public, anon, authenticated;
 grant execute on function public.reminder_candidates(date) to service_role;
+
+alter table public.profiles add column calendar_token text unique;
+
+revoke select, insert, update on public.profiles from anon, authenticated;
+grant select (id, email, full_name, role, specialty_id, is_active, created_at, updated_at, license_number)
+  on public.profiles to anon, authenticated;
+grant insert (id, email, full_name, role, specialty_id, is_active, created_at, updated_at, license_number)
+  on public.profiles to anon, authenticated;
+grant update (id, email, full_name, role, specialty_id, is_active, created_at, updated_at, license_number)
+  on public.profiles to anon, authenticated;
+
+create or replace function public.clear_calendar_token_on_deactivation()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.calendar_token := null;
+  return new;
+end;
+$$;
+
+create trigger profiles_clear_calendar_token
+  before update of is_active on public.profiles
+  for each row
+  when (old.is_active and not new.is_active)
+  execute function public.clear_calendar_token_on_deactivation();
+
+create or replace function public.my_calendar_token()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_active_staff() then
+    raise exception 'calendar_token_forbidden' using errcode = '42501';
+  end if;
+  return (select calendar_token from public.profiles where id = auth.uid());
+end;
+$$;
+
+revoke all on function public.my_calendar_token() from public, anon;
+grant execute on function public.my_calendar_token() to authenticated;
+
+create or replace function public.regenerate_my_calendar_token()
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  token text := rtrim(translate(encode(extensions.gen_random_bytes(32), 'base64'), '+/', '-_'), '=');
+begin
+  if not public.is_active_staff() then
+    raise exception 'calendar_token_forbidden' using errcode = '42501';
+  end if;
+  update public.profiles set calendar_token = token where id = auth.uid();
+  return token;
+end;
+$$;
+
+revoke all on function public.regenerate_my_calendar_token() from public, anon;
+grant execute on function public.regenerate_my_calendar_token() to authenticated;
+
+create or replace function public.revoke_calendar_token(p_profile_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_owner() then
+    raise exception 'calendar_token_forbidden' using errcode = '42501';
+  end if;
+  update public.profiles set calendar_token = null where id = p_profile_id;
+end;
+$$;
+
+revoke all on function public.revoke_calendar_token(uuid) from public, anon;
+grant execute on function public.revoke_calendar_token(uuid) to authenticated;
+
+create or replace function public.calendar_feed(p_token text)
+returns table (
+  appointment_id uuid,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  updated_at timestamptz,
+  summary text
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    a.id,
+    a.starts_at,
+    a.ends_at,
+    a.updated_at,
+    pe.first_name || ' ' || pe.last_name || ' · ' || s.name
+  from public.profiles pr
+  join public.appointments a on a.professional_id = pr.id
+  join public.people pe on pe.id = a.patient_id
+  join public.services s on s.id = a.service_id
+  where pr.calendar_token = p_token
+    and pr.is_active
+    and a.status <> 'cancelled'
+    and a.starts_at >= (((now() at time zone 'Europe/Madrid')::date - 30)::timestamp at time zone 'Europe/Madrid')
+    and a.starts_at < (((now() at time zone 'Europe/Madrid')::date + 91)::timestamp at time zone 'Europe/Madrid')
+  order by a.starts_at;
+$$;
+
+revoke all on function public.calendar_feed(text) from public;
+grant execute on function public.calendar_feed(text) to anon, authenticated;
