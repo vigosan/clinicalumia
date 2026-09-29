@@ -67,6 +67,13 @@ export type BookingStep =
       guardians: AccountPerson[];
     } & Chosen)
   | ({
+      kind: "birthDate";
+      professional: string;
+      from: string;
+      startsAt: string;
+      person: AccountPerson;
+    } & Chosen)
+  | ({
       kind: "summary";
       professional: string;
       from: string;
@@ -127,10 +134,9 @@ export function bookingStep({
       startsAt: state.inicio,
     };
     if (!people) return { kind: "chosen", ...chosen };
-    const bookable = people.filter(
-      (person) => person.is_patient || person.birth_date !== null,
-    );
-    const person = bookable.find((candidate) => candidate.id === state.persona);
+    const person = people.find((candidate) => candidate.id === state.persona);
+    if (person?.birth_date === null)
+      return { kind: "birthDate", ...chosen, person };
     if (person) return { kind: "summary", ...chosen, person };
     if (state.persona === NEW_PERSON || people.length === 0)
       return {
@@ -142,7 +148,7 @@ export function bookingStep({
           (candidate) => candidate.relation === "self" && !candidate.is_minor,
         ),
       };
-    return { kind: "who", ...chosen, people: bookable };
+    return { kind: "who", ...chosen, people };
   }
 
   const nextFrom = addDays(from, WINDOW_DAYS);

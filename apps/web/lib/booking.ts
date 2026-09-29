@@ -136,6 +136,7 @@ const PERSON_MESSAGE_BY_CODE: Record<string, string> = {
   privacy_required: "Tienes que aceptar la política de privacidad.",
   relationship_required: "Indica la relación con el menor.",
   guardian_not_in_account: "Esa persona no está en tu cuenta.",
+  person_not_in_account: "Esa persona no está en tu cuenta.",
   guardian_not_adult: "La persona responsable tiene que ser mayor de edad.",
   person_not_minor: "Solo puedes añadir a un menor a tu cargo.",
   person_not_adult: "Para pedir cita para ti tienes que ser mayor de edad.",

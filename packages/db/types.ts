@@ -664,6 +664,10 @@ export type Database = {
         }[]
       }
       booking_horizon_days: { Args: never; Returns: number }
+      complete_my_birth_date: {
+        Args: { p_birth_date: string; p_person_id: string }
+        Returns: undefined
+      }
       f_unaccent: { Args: { value: string }; Returns: string }
       find_possible_duplicates: {
         Args: {

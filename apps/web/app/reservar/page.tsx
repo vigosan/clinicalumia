@@ -17,6 +17,7 @@ import {
 } from "@/lib/booking";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
+import { BirthDateForm } from "./BirthDateForm";
 import { ConfirmForm } from "./ConfirmForm";
 import {
   loadCatalog,
@@ -433,6 +434,27 @@ function DetailsView(
   );
 }
 
+function BirthDateView(
+  props: ChosenProps & { person: AccountPerson; today: string },
+) {
+  const chosen = { ...chosenBase(props), inicio: props.startsAt };
+  return (
+    <Step
+      number={6}
+      title={`${props.person.first_name} ${props.person.last_name}`}
+      back={reservar(chosen)}
+    >
+      <p className="-mt-4 mb-6 text-ink-500">
+        Para reservar necesitamos su fecha de nacimiento.
+      </p>
+      <BirthDateForm
+        estado={bookingState.encode({ ...chosen, persona: props.person.id })}
+        today={props.today}
+      />
+    </Step>
+  );
+}
+
 function SummaryView(props: ChosenProps & { person: AccountPerson }) {
   const chosen = { ...chosenBase(props), inicio: props.startsAt };
   return (
@@ -502,6 +524,8 @@ function StepView({
       return <WhoView {...step} />;
     case "details":
       return <DetailsView {...step} today={today} />;
+    case "birthDate":
+      return <BirthDateView {...step} today={today} />;
     case "summary":
       return <SummaryView {...step} />;
   }

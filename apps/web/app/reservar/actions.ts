@@ -139,6 +139,25 @@ export async function savePerson(
   redirect(reservar({ ...state, persona: data }));
 }
 
+export async function completeBirthDate(
+  _prev: BookingFormState,
+  formData: FormData,
+): Promise<BookingFormState> {
+  const state = stateFrom(formData);
+  const birthDate = String(formData.get("birth_date") ?? "").trim();
+  if (!birthDate) return { error: "La fecha de nacimiento es obligatoria." };
+  if (birthDate > todayInMadrid())
+    return { error: "La fecha de nacimiento no puede ser futura." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("complete_my_birth_date", {
+    p_person_id: state.persona as string,
+    p_birth_date: birthDate,
+  });
+  if (error) return { error: personError(error) };
+  redirect(reservar(state));
+}
+
 async function findAppointment(
   supabase: Client,
   match: (appointment: {

@@ -717,6 +717,56 @@ test("a mother saved only as guardian can later book for herself and becomes a p
   expect(person!.is_patient).toBe(true);
 });
 
+test("a companion the clinic saved without birth date is offered, completes only her birth date and gets booked without being duplicated", async ({
+  page,
+}) => {
+  const { specialty, service, withHoursId } =
+    await clinicWithTwoProfessionals();
+  const email = uniqueEmail("reserva-acompanante");
+  const { data: companion, error } = await admin
+    .from("people")
+    .insert({
+      first_name: "Acompañante",
+      last_name: `Prueba ${unique()}`,
+      birth_date: null,
+      email,
+      is_patient: false,
+    })
+    .select("id, last_name")
+    .single();
+  expect(error).toBeNull();
+
+  await openChosenSlot(
+    page,
+    slotStepUrl(specialty.id, service.id, withHoursId, ""),
+  );
+  await identify(page, email);
+
+  await page
+    .getByTestId("booking-person")
+    .filter({ hasText: companion!.last_name })
+    .click();
+  await expect(page.getByTestId("birth-date-form")).toBeVisible();
+  await page.getByTestId("birth-date-input").fill("1960-03-01");
+  await page.getByTestId("birth-date-submit").click();
+
+  await expect(page.getByTestId("booking-summary")).toContainText(
+    companion!.last_name,
+  );
+  await page.getByTestId("booking-confirm").click();
+  await expect(page.getByTestId("booking-confirmed")).toContainText(
+    companion!.last_name,
+  );
+
+  const { data: people } = await admin
+    .from("people")
+    .select("id, birth_date, is_patient")
+    .eq("email", email);
+  expect(people).toEqual([
+    { id: companion!.id, birth_date: "1960-03-01", is_patient: true },
+  ]);
+});
+
 test("another email does not see the people or appointments of an account", async ({
   page,
 }) => {

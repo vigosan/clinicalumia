@@ -22,7 +22,9 @@ vi.mock("@clinicalumia/api/server", () => ({
 }));
 vi.mock("@clinicalumia/api/email", () => ({ sendEmail }));
 
-const { confirmBooking, savePerson } = await import("./actions");
+const { completeBirthDate, confirmBooking, savePerson } = await import(
+  "./actions"
+);
 const { PRIVACY_VERSION } = await import("@/lib/booking");
 
 const SERVICE = "22222222-2222-2222-2222-222222222222";
@@ -378,5 +380,50 @@ describe("savePerson", () => {
       ),
     ).toEqual({ error: "El teléfono es obligatorio." });
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+function birthDateForm(birthDate: string) {
+  const data = new FormData();
+  data.set("estado", `${chosen.toString()}&persona=${PERSON}`);
+  data.set("birth_date", birthDate);
+  return data;
+}
+
+describe("completeBirthDate", () => {
+  it("stores the birth date on the chosen companion and goes on with the same person, so no duplicate is created", async () => {
+    answer({ complete_my_birth_date: { data: null, error: null } });
+
+    await expect(
+      completeBirthDate(undefined, birthDateForm("1960-03-01")),
+    ).rejects.toThrow(new RegExp(`redirect:/reservar\\?.*persona=${PERSON}`));
+
+    expect(rpc).toHaveBeenCalledWith("complete_my_birth_date", {
+      p_person_id: PERSON,
+      p_birth_date: "1960-03-01",
+    });
+  });
+
+  it("asks again for a missing or future birth date without touching the person", async () => {
+    expect(await completeBirthDate(undefined, birthDateForm(""))).toEqual({
+      error: "La fecha de nacimiento es obligatoria.",
+    });
+    expect(
+      await completeBirthDate(undefined, birthDateForm("2999-01-01")),
+    ).toEqual({ error: "La fecha de nacimiento no puede ser futura." });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("explains a database refusal, such as a person that is no longer in the account", async () => {
+    answer({
+      complete_my_birth_date: {
+        data: null,
+        error: { message: "person_not_in_account" },
+      },
+    });
+
+    expect(
+      await completeBirthDate(undefined, birthDateForm("1960-03-01")),
+    ).toEqual({ error: "Esa persona no está en tu cuenta." });
   });
 });

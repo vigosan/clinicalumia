@@ -168,13 +168,32 @@ describe("bookingStep", () => {
       expect(step).toMatchObject({ kind: "who", people: [mother, child] });
     });
 
-    it("leaves out a companion saved without birth date, because she cannot become a patient from the web", () => {
+    it("offers a companion the clinic saved without birth date, so the account does not create her again as someone new", () => {
       const step = bookingStep({
         ...session,
         state: chosenState,
         people: [mother, companion],
       });
-      expect(step).toMatchObject({ kind: "who", people: [mother] });
+      expect(step).toMatchObject({ kind: "who", people: [mother, companion] });
+    });
+
+    it("asks only for the birth date of a chosen companion who has none, because a patient cannot be booked without it", () => {
+      const step = bookingStep({
+        ...session,
+        state: { ...chosenState, persona: companion.id },
+        people: [mother, companion],
+      });
+      expect(step).toMatchObject({ kind: "birthDate", person: companion });
+    });
+
+    it("continues to the summary once the companion has a birth date", () => {
+      const completed = { ...companion, birth_date: "1960-03-01" };
+      const step = bookingStep({
+        ...session,
+        state: { ...chosenState, persona: companion.id },
+        people: [mother, completed],
+      });
+      expect(step).toMatchObject({ kind: "summary", person: completed });
     });
 
     it("goes straight to the person's details the first time, because there is nobody to choose and privacy must be accepted", () => {
@@ -243,13 +262,6 @@ describe("bookingStep", () => {
           ...session,
           state: { ...chosenState, persona: UNKNOWN },
           people: [mother, child],
-        }).kind,
-      ).toBe("who");
-      expect(
-        bookingStep({
-          ...session,
-          state: { ...chosenState, persona: companion.id },
-          people: [mother, companion],
         }).kind,
       ).toBe("who");
     });
