@@ -728,6 +728,9 @@ test("clicking a person's name in the list, an archive/recover round trip, and c
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
   await page.goto(`${DASHBOARD}/patients`);
   await page.getByTestId("patients-search").fill(minorLastName);
+  await expect(page).toHaveURL(
+    `${DASHBOARD}/patients?q=${encodeURIComponent(minorLastName)}`,
+  );
 
   await page
     .getByTestId("patient-row")
