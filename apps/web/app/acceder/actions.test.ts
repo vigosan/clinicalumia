@@ -267,6 +267,27 @@ describe("requestAccess", () => {
     expect(signInWithOtp).toHaveBeenCalledTimes(5);
   });
 
+  it("records each email request as a request, apart from wrong codes", async () => {
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    expect(tables.access_requests).toEqual([
+      expect.objectContaining({ email: "lucia@example.com", kind: "request" }),
+    ]);
+  });
+
+  it("does not count wrong codes against asking for a new email", async () => {
+    tables.access_requests = Array.from({ length: 5 }, () => ({
+      email: "lucia@example.com",
+      ip_hash: "otra-red",
+      kind: "failed_code",
+      created_at: new Date().toISOString(),
+    }));
+
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    expect(signInWithOtp).toHaveBeenCalledTimes(1);
+  });
+
   it("forgets requests older than an hour", async () => {
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
     tables.access_requests = Array.from({ length: 5 }, () => ({
@@ -435,6 +456,9 @@ describe("requestAccess", () => {
 
 describe("verifyCode", () => {
   beforeEach(() => {
+    tables = { access_requests: [] };
+    fromIp("203.0.113.7");
+    vi.stubEnv("ACCESS_IP_SALT", "sal-de-prueba");
     verifyError = null;
     verifyOtp.mockReset();
     verifyOtp.mockImplementation(async () => ({ error: verifyError }));
@@ -467,6 +491,105 @@ describe("verifyCode", () => {
       error: "El código no es correcto o ha caducado.",
     });
     expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("records each wrong code against the email and the network", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+
+    await verifyCode(undefined, codeForm("Lucia@Example.com", "000000"));
+
+    expect(tables.access_requests).toEqual([
+      expect.objectContaining({
+        email: "lucia@example.com",
+        ip_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        kind: "failed_code",
+      }),
+    ]);
+  });
+
+  it("does not record anything when the code is right", async () => {
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(tables.access_requests).toHaveLength(0);
+  });
+
+  it("stops checking codes for an email after five wrong ones in an hour, so six digits cannot be guessed", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      fromIp(`198.51.100.${attempt}`);
+      await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+    }
+    verifyError = null;
+    verifyOtp.mockClear();
+
+    const result = await verifyCode(
+      undefined,
+      codeForm("lucia@example.com", "123456"),
+    );
+
+    expect(result).toEqual(TOO_MANY);
+    expect(verifyOtp).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("still accepts the right code after four wrong ones", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+    }
+    verifyError = null;
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(redirectMock).toHaveBeenCalledWith("/reservar");
+  });
+
+  it("stops a network after thirty wrong codes in an hour, even spread over many emails", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await verifyCode(
+        undefined,
+        codeForm(`persona-${attempt}@example.com`, "000000"),
+      );
+    }
+    verifyOtp.mockClear();
+
+    const blocked = await verifyCode(
+      undefined,
+      codeForm("otra@example.com", "123456"),
+    );
+    fromIp("192.0.2.1");
+    await verifyCode(undefined, codeForm("otra-mas@example.com", "123456"));
+
+    expect(blocked).toEqual(TOO_MANY);
+    expect(verifyOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets wrong codes older than an hour", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    tables.access_requests = Array.from({ length: 5 }, () => ({
+      email: "lucia@example.com",
+      ip_hash: "otra-red",
+      kind: "failed_code",
+      created_at: twoHoursAgo,
+    }));
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(verifyOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not count email requests as wrong codes", async () => {
+    tables.access_requests = Array.from({ length: 5 }, () => ({
+      email: "lucia@example.com",
+      ip_hash: "otra-red",
+      kind: "request",
+      created_at: new Date().toISOString(),
+    }));
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(verifyOtp).toHaveBeenCalledTimes(1);
   });
 
   it("sends an external next to the home page", async () => {

@@ -11,12 +11,15 @@ import { site } from "@/lib/site";
 export type AccessState = { error: string } | undefined;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+type AttemptKind = "request" | "failed_code";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const MAX_PER_EMAIL = 5;
 const MAX_PER_IP = 20;
+const MAX_FAILED_CODES_PER_EMAIL = 5;
+const MAX_FAILED_CODES_PER_IP = 30;
 const USERS_PAGE = 1000;
 const TOO_MANY = "Demasiados intentos. Espera unos minutos.";
 const TOO_SOON = "For security purposes, you can only request this after";
@@ -46,8 +49,9 @@ function hashIp(requestHeaders: Headers) {
     .digest("hex");
 }
 
-async function recentRequests(
+async function recentAttempts(
   admin: AdminClient,
+  kind: AttemptKind,
   column: "email" | "ip_hash",
   value: string,
   since: string,
@@ -55,6 +59,7 @@ async function recentRequests(
   const { count, error } = await admin
     .from("access_requests")
     .select("id", { count: "exact", head: true })
+    .eq("kind", kind)
     .eq(column, value)
     .gte("created_at", since);
   if (error) throw new Error(error.message);
@@ -64,7 +69,7 @@ async function recentRequests(
 async function overLimit(admin: AdminClient, email: string, ipHash: string) {
   const { data, error } = await admin
     .from("access_requests")
-    .insert({ email, ip_hash: ipHash })
+    .insert({ email, ip_hash: ipHash, kind: "request" })
     .select("created_at")
     .single();
   if (error) throw new Error(error.message);
@@ -78,8 +83,8 @@ async function overLimit(admin: AdminClient, email: string, ipHash: string) {
 
   const since = new Date(insertedAt - HOUR_MS).toISOString();
   const [byEmail, byIp] = await Promise.all([
-    recentRequests(admin, "email", email, since),
-    recentRequests(admin, "ip_hash", ipHash, since),
+    recentAttempts(admin, "request", "email", email, since),
+    recentAttempts(admin, "request", "ip_hash", ipHash, since),
   ]);
   return byEmail > MAX_PER_EMAIL || byIp > MAX_PER_IP;
 }
@@ -186,17 +191,45 @@ export async function requestAccess(
   redirect(`/acceder/codigo?${new URLSearchParams({ email, next })}`);
 }
 
+async function tooManyFailedCodes(
+  admin: AdminClient,
+  email: string,
+  ipHash: string,
+) {
+  const since = new Date(Date.now() - HOUR_MS).toISOString();
+  const [byEmail, byIp] = await Promise.all([
+    recentAttempts(admin, "failed_code", "email", email, since),
+    recentAttempts(admin, "failed_code", "ip_hash", ipHash, since),
+  ]);
+  return (
+    byEmail >= MAX_FAILED_CODES_PER_EMAIL || byIp >= MAX_FAILED_CODES_PER_IP
+  );
+}
+
 export async function verifyCode(
   _prev: AccessState,
   formData: FormData,
 ): Promise<AccessState> {
+  const email = field(formData, "email").toLowerCase();
+  const ipHash = hashIp(await headers());
+  const admin = createAdminClient();
+  if (await tooManyFailedCodes(admin, email, ipHash)) {
+    return { error: TOO_MANY };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({
-    email: field(formData, "email").toLowerCase(),
+    email,
     token: field(formData, "code"),
     type: "email",
   });
-  if (error) return { error: "El código no es correcto o ha caducado." };
+  if (error) {
+    const { error: logError } = await admin
+      .from("access_requests")
+      .insert({ email, ip_hash: ipHash, kind: "failed_code" });
+    if (logError) throw new Error(logError.message);
+    return { error: "El código no es correcto o ha caducado." };
+  }
 
   redirect(nextFrom(formData));
 }

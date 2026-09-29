@@ -40,18 +40,21 @@ export type Database = {
           email: string
           id: string
           ip_hash: string
+          kind: string
         }
         Insert: {
           created_at?: string
           email: string
           id?: string
           ip_hash: string
+          kind?: string
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
           ip_hash?: string
+          kind?: string
         }
         Relationships: []
       }
