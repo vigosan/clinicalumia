@@ -18,10 +18,11 @@ import {
 } from "@/lib/booking";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
-import { loadHorizonDays, loadSlots } from "../../../../reservar/load";
+import { loadHorizonDays } from "../../../../reservar/load";
 import { SlotPicker } from "../../../../reservar/SlotPicker";
 import { pickerDays, slotWindow } from "../../../../reservar/step";
 import { TeamSession } from "../../../../reservar/TeamSession";
+import { loadRescheduleSlots } from "../../../load";
 import { requirePatientPage } from "../../../session";
 import { RescheduleForm } from "./RescheduleForm";
 
@@ -54,25 +55,17 @@ async function Slots({
   from,
   nextFrom,
   today,
-  now,
   slotTaken,
 }: {
   appointment: AppointmentRow;
   from: string;
   nextFrom: string | null;
   today: string;
-  now: Date;
   slotTaken: boolean;
 }) {
-  const slots = await loadSlots(
-    appointment.service_id,
-    appointment.professional_id,
-    from,
-  );
-  const days = pickerDays(
-    slots.filter((slot) => canMoveTo(appointment, slot.starts_at, now)),
-    today,
-    (slot) => cambiar(appointment.id, from, slot.starts_at),
+  const slots = await loadRescheduleSlots(appointment.id, from);
+  const days = pickerDays(slots, today, (slot) =>
+    cambiar(appointment.id, from, slot.starts_at),
   );
   return (
     <div className="mt-10">
@@ -228,7 +221,6 @@ export default async function CambiarCitaPage({
               from={range.from}
               nextFrom={range.nextFrom}
               today={today}
-              now={now}
               slotTaken={state.aviso === SLOT_TAKEN}
             />
           )}

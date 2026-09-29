@@ -743,6 +743,13 @@ export type Database = {
         }[]
       }
       my_privacy_accepted: { Args: never; Returns: boolean }
+      my_reschedule_slots: {
+        Args: { p_appointment_id: string; p_from: string; p_to: string }
+        Returns: {
+          professional_id: string
+          starts_at: string
+        }[]
+      }
       normalize_phone: { Args: { value: string }; Returns: string }
       reschedule_my_appointment: {
         Args: { p_appointment_id: string; p_starts_at: string }

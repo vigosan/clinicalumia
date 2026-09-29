@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(78);
+select plan(93);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -169,6 +169,53 @@ select is((select count(*) from public.available_slots('87000000-0000-0000-0000-
     where starts_at in (pg_temp.at_day3('11:00'), pg_temp.at_day3('11:15'), pg_temp.at_day3('11:30'))),
   0::bigint, 'public free slots still count every appointment, the patient''s own included');
 
+select is((select prosecdef from pg_proc where oid = 'public.my_reschedule_slots(uuid, date, date)'::regprocedure), true,
+  'the slots to move an appointment run as definer because they must ignore that appointment');
+select is(has_function_privilege('anon', 'public.my_reschedule_slots(uuid, date, date)', 'execute'), false,
+  'an anonymous visitor cannot ask for the slots to move anybody''s appointment');
+select is(has_function_privilege('authenticated', 'public.my_reschedule_slots(uuid, date, date)', 'execute'), true,
+  'a signed-in patient can ask for the slots to move her appointments');
+
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
+select ok(pg_temp.at_day3('11:30') in (select starts_at from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day3(), pg_temp.day3())),
+  'a start that overlaps only the appointment itself is offered, because moving there is accepted');
+select ok(pg_temp.at_day3('11:15') not in (select starts_at from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day3(), pg_temp.day3())),
+  'the current start is not offered, because moving there changes nothing');
+select ok(pg_temp.at_day3('13:00') not in (select starts_at from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day3(), pg_temp.day3())),
+  'a start taken by someone else is not offered');
+select throws_ok(format($$ select * from public.my_reschedule_slots(%L, %L, %L) $$, pg_temp.web_id(), pg_temp.day3(), pg_temp.day3() + 14),
+  '22023', 'available_slots_range', 'the range is limited like the public slots, so nobody asks for a huge search');
+
+reset role;
+update public.services set duration_minutes = 90 where id = '87000000-0000-0000-0000-0000000000b1';
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
+select ok(pg_temp.at_day3('11:30') in (select starts_at from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day3(), pg_temp.day3())),
+  'after the service gets longer the 30-minute appointment still fits before the next one, because it keeps its own length');
+select ok(pg_temp.at_day3('13:30') in (select starts_at from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day3(), pg_temp.day3())),
+  'and it still fits in the last half hour of the day, as the move itself would accept');
+
+reset role;
+update public.services set duration_minutes = 30,
+  cancellation_hours = ceil(extract(epoch from pg_temp.at_day3('10:00') - now()) / 3600)::int
+  where id = '87000000-0000-0000-0000-0000000000b1';
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
+select ok(pg_temp.at_day3('10:00') not in (select starts_at from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day3(), pg_temp.day3())),
+  'a start whose own deadline has already passed, or is right now, is not offered, because the move would be refused');
+select ok(pg_temp.at_day3('11:30') in (select starts_at from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day3(), pg_temp.day3())),
+  'later starts with the same notice are still offered');
+reset role;
+update public.services set cancellation_hours = 48 where id = '87000000-0000-0000-0000-0000000000b1';
+
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000011');
+select throws_ok(format($$ select * from public.my_reschedule_slots(%L, %L, %L) $$, pg_temp.web_id(), pg_temp.day3(), pg_temp.day3()),
+  'P0001', 'appointment_not_in_account', 'account B cannot see where account A''s appointment could move');
+
+select pg_temp.act_as('87000000-0000-0000-0000-000000000001');
+select throws_ok(format($$ select * from public.my_reschedule_slots(%L, %L, %L) $$, pg_temp.web_id(), pg_temp.day3(), pg_temp.day3()),
+  '42501', null, 'a team member without a patient account cannot use the patient door for slots');
+reset role;
+select set_config('request.jwt.claims', '', true);
+
 select set_config('request.jwt.claims', '', true);
 select set_config('lumia.booking_account', '', true);
 insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
@@ -190,6 +237,10 @@ select throws_ok(format($$ select public.cancel_my_appointment(%L) $$, '87000000
   'P0001', 'outside_change_window', 'an appointment inside its 48-hour window cannot be cancelled from the web');
 select throws_ok(format($$ select public.cancel_my_appointment(%L) $$, '87000000-0000-0000-0000-0000000000d4'),
   'P0001', 'outside_change_window', 'exactly at the deadline the web cannot cancel either');
+select throws_ok(format($$ select * from public.my_reschedule_slots(%L, %L, %L) $$, '87000000-0000-0000-0000-0000000000d3', pg_temp.day3(), pg_temp.day3()),
+  'P0001', 'outside_change_window', 'an appointment inside its window offers no slots to move it');
+select throws_ok(format($$ select * from public.my_reschedule_slots(%L, %L, %L) $$, '87000000-0000-0000-0000-0000000000d4', pg_temp.day3(), pg_temp.day3()),
+  'P0001', 'outside_change_window', 'exactly at the deadline it offers no slots either');
 
 select lives_ok($$ select public.cancel_my_appointment('87000000-0000-0000-0000-0000000000d1') $$,
   'account A cancels an appointment the clinic booked for her');

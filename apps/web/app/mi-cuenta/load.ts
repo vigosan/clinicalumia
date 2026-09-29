@@ -1,6 +1,8 @@
+import { addDays } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import type { AppointmentRow } from "@/lib/account";
-import type { AccountPerson } from "../reservar/step";
+import type { Slot } from "@/lib/booking";
+import { type AccountPerson, WINDOW_DAYS } from "../reservar/step";
 
 export type AccountContact = {
   personId: string;
@@ -43,4 +45,18 @@ export async function loadAccount(): Promise<Account> {
   );
 
   return { appointments: appointments.data, people: people.data, contacts };
+}
+
+export async function loadRescheduleSlots(
+  appointmentId: string,
+  from: string,
+): Promise<Slot[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_reschedule_slots", {
+    p_appointment_id: appointmentId,
+    p_from: from,
+    p_to: addDays(from, WINDOW_DAYS - 1),
+  });
+  if (error) throw error;
+  return data;
 }

@@ -404,8 +404,6 @@ test("the cancel page of another account's appointment does not exist for this a
   await expect(page.getByText(owner.place.serviceName)).toHaveCount(0);
 });
 
-const PLAZO_MS = CANCELLATION_HOURS * 3_600_000;
-
 async function chooseFirstOfferedSlot(page: Page) {
   const slot = page.getByTestId("booking-slot").first();
   const href = await slot.getAttribute("href");
@@ -420,7 +418,7 @@ function dayAndTime(instant: string) {
   return new RegExp(`\\b${Number(date.slice(8))} de \\S+ a las ${time}`);
 }
 
-test("a patient moves an appointment to another free slot of the same professional: Mi cuenta shows the new time, the account gets the confirmation and it keeps its length", async ({
+test("a patient moves an appointment 15 minutes later, overlapping only itself: Mi cuenta shows the new time, the account gets the confirmation and it keeps its length", async ({
   page,
 }) => {
   const { email, place, web } = await patientWithAppointments("cambiar");
@@ -438,9 +436,26 @@ test("a patient moves an appointment to another free slot of the same profession
   await expect(current).toContainText(place.serviceName);
   await expect(current).toContainText(place.professionalName);
 
-  const newStart = await chooseFirstOfferedSlot(page);
-  expect(Date.parse(newStart)).not.toBe(Date.parse(web.startsAt));
-  expect(Date.parse(newStart) - PLAZO_MS).toBeGreaterThan(Date.now());
+  const currentStart = madridDateTime(web.startsAt);
+  const quarterLater = madridDateTime(
+    new Date(Date.parse(web.startsAt) + 15 * 60_000).toISOString(),
+  );
+  await page
+    .getByTestId("booking-day")
+    .filter({
+      hasText: new RegExp(`^\\S+ ${Number(currentStart.date.slice(8))} de `),
+    })
+    .click();
+  const sameDay = page.locator(
+    `[data-testid="booking-slot"][data-date="${currentStart.date}"]`,
+  );
+  await expect(sameDay.filter({ hasText: currentStart.time })).toHaveCount(0);
+  const overlapping = sameDay.filter({ hasText: quarterLater.time });
+  const href = await overlapping.getAttribute("href");
+  const newStart = new URL(href ?? "", WEB).searchParams.get("inicio") ?? "";
+  expect(Date.parse(newStart)).toBe(Date.parse(web.startsAt) + 15 * 60_000);
+  await overlapping.click();
+  await expect(page.getByTestId("reschedule-confirm")).toBeVisible();
   const summary = page.getByTestId("reschedule-summary");
   await expect(summary).toContainText(dayAndTime(web.startsAt));
   await expect(summary).toContainText(dayAndTime(newStart));
@@ -538,4 +553,55 @@ test("the change page of another account's appointment does not exist for this a
   expect(response?.status()).toBe(404);
   await expect(page.getByTestId("booking-slot")).toHaveCount(0);
   await expect(page.getByText(owner.place.serviceName)).toHaveCount(0);
+});
+
+test("an appointment the clinic booked for a service not offered online can be cancelled in time but only moved by phone", async ({
+  page,
+}) => {
+  const { email, person, place } =
+    await patientWithAppointments("cambiar-telefono");
+  const { data: bookable, error: serviceError } = await admin
+    .from("services")
+    .select("specialty_id")
+    .eq("id", place.serviceId)
+    .single();
+  expect(serviceError).toBeNull();
+  const { data: offline, error: offlineError } = await admin
+    .from("services")
+    .insert({
+      specialty_id: bookable!.specialty_id,
+      name: `Valoración presencial ${unique()}`,
+      duration_minutes: 60,
+      price_cents: 6000,
+      bookable_online: false,
+      cancellation_hours: CANCELLATION_HOURS,
+    })
+    .select("id")
+    .single();
+  expect(offlineError).toBeNull();
+  createdServiceIds.push(offline!.id);
+  const day = addDays(todayInMadrid(), 8);
+  const { data: team, error: teamError } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: place.professionalId,
+      patient_id: person.id,
+      service_id: offline!.id,
+      starts_at: madridInstant(day, "11:00"),
+      ends_at: madridInstant(day, "12:00"),
+    })
+    .select("id")
+    .single();
+  expect(teamError).toBeNull();
+  const changePath = `/mi-cuenta/citas/${team!.id}/cambiar`;
+
+  await page.goto(`${WEB}${changePath}`);
+  await enterWithCode(page, email);
+  await expect(page).toHaveURL(`${WEB}${changePath}`);
+
+  await expect(page.getByTestId("reschedule-phone-only")).toHaveText(
+    "Esta cita no se puede cambiar desde la web. Llama al 614 552 808.",
+  );
+  await expect(page.getByTestId("booking-slot")).toHaveCount(0);
+  await expect(page.getByTestId("reschedule-confirm")).toHaveCount(0);
 });

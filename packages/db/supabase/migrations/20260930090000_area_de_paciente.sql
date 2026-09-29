@@ -295,6 +295,53 @@ $$;
 revoke all on function public.reschedule_my_appointment(uuid, timestamptz) from public, anon;
 grant execute on function public.reschedule_my_appointment(uuid, timestamptz) to authenticated;
 
+create or replace function public.my_reschedule_slots(p_appointment_id uuid, p_from date, p_to date)
+returns table (starts_at timestamptz, professional_id uuid)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  target record;
+begin
+  if not exists (select 1 from public.patient_accounts pa where pa.id = auth.uid()) then
+    raise exception 'patient_account_required' using errcode = '42501';
+  end if;
+
+  select
+    a.id,
+    a.service_id,
+    a.professional_id,
+    a.starts_at,
+    a.status,
+    make_interval(hours => coalesce(s.cancellation_hours, cs.cancellation_hours)) as notice
+  into target
+  from public.appointments a
+  join public.services s on s.id = a.service_id
+  cross join public.clinic_settings cs
+  where a.id = p_appointment_id
+    and a.patient_id in (select mp.id from public.my_people() mp);
+  if not found then
+    raise exception 'appointment_not_in_account' using errcode = 'P0001';
+  end if;
+
+  if target.status <> 'scheduled' or now() >= target.starts_at - target.notice then
+    raise exception 'outside_change_window' using errcode = 'P0001';
+  end if;
+
+  return query
+    select fs.starts_at, fs.professional_id
+    from public._free_slots(target.service_id, target.professional_id, p_from, p_to, target.id) fs
+    where fs.starts_at - target.notice > now()
+      and fs.starts_at <> target.starts_at
+    order by fs.starts_at;
+end;
+$$;
+
+revoke all on function public.my_reschedule_slots(uuid, date, date) from public, anon;
+grant execute on function public.my_reschedule_slots(uuid, date, date) to authenticated;
+
 create or replace function public.cancel_my_appointment(p_appointment_id uuid)
 returns void
 language plpgsql
