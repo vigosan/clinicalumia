@@ -188,13 +188,12 @@ describe("rescheduleAppointment", () => {
     expect(email.subject).toBe("Cita confirmada");
     expect(email.html).toContain("Lunes, 5 de octubre a las 10:30");
     expect(email.html).toContain("Marta &lt;b&gt;Ruiz&lt;/b&gt;");
-    expect(email.attachments).toEqual([
-      {
-        filename: "cita.ics",
-        content: expect.stringContaining(`UID:${APPOINTMENT}@clinicalumia.es`),
-        contentType: "text/calendar",
-      },
-    ]);
+    const attachment = email.attachments[0];
+    expect(attachment.filename).toBe("cita.ics");
+    expect(attachment.contentType).toBe("text/calendar");
+    expect(attachment.content).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
+    expect(attachment.content).toContain("DTSTART:20261005T083000Z");
+    expect(attachment.content).toContain("DTEND:20261005T091500Z");
   });
 
   it("goes back to the same days of slots with the warning when someone took the slot meanwhile, so the patient can pick another", async () => {

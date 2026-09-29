@@ -81,3 +81,31 @@ export async function latestEmailAttachments(
   }
   throw new Error(`No ha llegado "${subject}" a ${email}`);
 }
+
+export async function latestEmailIcs(
+  email: string,
+  subject: string,
+): Promise<string> {
+  const query = `to:"${email}" subject:"${subject}"`;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const { messages } = await (
+      await fetch(`${MAILPIT}/search?query=${encodeURIComponent(query)}`)
+    ).json();
+    if (messages.length > 0) {
+      const { ID, Attachments } = await (
+        await fetch(`${MAILPIT}/message/${messages[0].ID}`)
+      ).json();
+      const attachment = Attachments.find(
+        (candidate: { FileName: string }) => candidate.FileName === "cita.ics",
+      );
+      if (attachment) {
+        const response = await fetch(
+          `${MAILPIT}/message/${ID}/part/${attachment.PartID}`,
+        );
+        return response.text();
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`No ha llegado "${subject}" a ${email} con cita.ics`);
+}

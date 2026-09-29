@@ -8,7 +8,12 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { latestCodeFor, latestEmailAttachments, latestEmailFor } from "./mail";
+import {
+  latestCodeFor,
+  latestEmailAttachments,
+  latestEmailFor,
+  latestEmailIcs,
+} from "./mail";
 import { removePatients } from "./users";
 
 const WEB = "http://localhost:3000";
@@ -313,6 +318,13 @@ test("a patient who opens Mi cuenta without a session identifies with the code a
   await expect(page).toHaveURL(`${WEB}/acceder?next=%2Fmi-cuenta`);
 });
 
+function icsUtc(instant: string): string {
+  return new Date(instant)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+}
+
 test("Añadir a mi calendario downloads the appointment as a calendar file with its time", async ({
   page,
 }) => {
@@ -335,8 +347,10 @@ test("Añadir a mi calendario downloads the appointment as a calendar file with 
   expect(response.headers()["content-disposition"]).toBe(
     'attachment; filename="cita.ics"',
   );
+  expect(response.headers()["cache-control"]).toBe("private, no-store");
   const body = await response.text();
   expect(body).toContain(`UID:${web.id}@clinicalumia.es`);
+  expect(body).toContain(`DTSTART:${icsUtc(web.startsAt)}`);
 });
 
 test("the calendar file of another account's appointment does not exist for this account", async ({
@@ -528,6 +542,8 @@ test("a patient moves an appointment 15 minutes later, overlapping only itself: 
   expect(html).toContain(place.serviceName);
   const attachments = await latestEmailAttachments(email, "Cita confirmada");
   expect(attachments).toContain("cita.ics");
+  const ics = await latestEmailIcs(email, "Cita confirmada");
+  expect(ics).toContain(`DTSTART:${icsUtc(newStart)}`);
 
   const { data: row, error } = await admin
     .from("appointments")
