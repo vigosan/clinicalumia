@@ -14,7 +14,6 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 
 const usedEmails: string[] = [];
-const staffIds: string[] = [];
 
 function uniqueEmail(prefix: string) {
   const email = `${prefix}-${Date.now()}-${randomInt(1e9)}@test.local`;
@@ -29,21 +28,19 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async () => {
-  for (const email of usedEmails.splice(0)) {
-    const { data: account } = await admin
-      .from("patient_accounts")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-    if (account) await admin.auth.admin.deleteUser(account.id);
+  const emails = usedEmails.splice(0);
+  const { data } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  for (const user of data.users) {
+    if (user.email && emails.includes(user.email)) {
+      await admin.auth.admin.deleteUser(user.id);
+    }
+  }
+  for (const email of emails) {
     await admin.from("access_requests").delete().eq("email", email);
     await fetch(
       `${MAILPIT}/search?query=${encodeURIComponent(`to:"${email}"`)}`,
       { method: "DELETE" },
     );
-  }
-  for (const id of staffIds.splice(0)) {
-    await admin.auth.admin.deleteUser(id);
   }
 });
 
@@ -53,7 +50,7 @@ async function requestAccess(page: Page, email: string) {
   await page.getByTestId("access-submit").click();
 }
 
-test("a new patient gets a code by email that opens a session and returns to booking", async ({
+test("a new patient gets a code by email that opens a session and returns to booking, even after a mail scanner opened the link", async ({
   page,
 }) => {
   const email = uniqueEmail("paciente-codigo");
@@ -62,6 +59,11 @@ test("a new patient gets a code by email that opens a session and returns to boo
   await expect(page.getByTestId("access-sent")).toContainText(
     "Te hemos enviado un enlace y un código",
   );
+  const codePage = page.url();
+
+  await page.goto(await latestLinkFor(email, "/acceder/confirmar"));
+  await expect(page.getByTestId("access-confirm")).toBeVisible();
+  await page.goto(codePage);
 
   const { data: account } = await admin
     .from("patient_accounts")
@@ -86,6 +88,7 @@ test("the link in the same email also opens the session, for someone reading mai
   await expect(page.getByTestId("access-sent")).toBeVisible();
 
   await page.goto(await latestLinkFor(email, "/acceder/confirmar"));
+  await page.getByTestId("access-confirm").click();
 
   await expect(page).toHaveURL(`${WEB}/reservar`);
   await expect(page.getByTestId("reservar-email")).toHaveText(email);
@@ -97,6 +100,7 @@ test("a used or forged link sends the person back to ask for a new one", async (
   await page.goto(
     `${WEB}/acceder/confirmar?token_hash=caducado&type=email&next=%2Freservar`,
   );
+  await page.getByTestId("access-confirm").click();
 
   await expect(page).toHaveURL(`${WEB}/acceder?caducado=1`);
   await expect(page.getByTestId("access-link-expired")).toBeVisible();
@@ -127,7 +131,6 @@ test("a team email cannot become a patient account and is sent to the panel", as
     email_confirm: true,
   });
   expect(error).toBeNull();
-  staffIds.push(data.user!.id);
   const { error: profileError } = await admin.from("profiles").insert({
     id: data.user!.id,
     email,

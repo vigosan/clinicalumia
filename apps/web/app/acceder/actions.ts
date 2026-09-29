@@ -14,10 +14,12 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 const MAX_PER_EMAIL = 5;
 const MAX_PER_IP = 20;
 const USERS_PAGE = 1000;
 const TOO_MANY = "Demasiados intentos. Espera unos minutos.";
+const TOO_SOON = "For security purposes, you can only request this after";
 const STAFF_EMAIL =
   "Esta dirección es del equipo de la clínica; entra desde el panel.";
 
@@ -67,9 +69,14 @@ async function overLimit(admin: AdminClient, email: string, ipHash: string) {
     .single();
   if (error) throw new Error(error.message);
 
-  const since = new Date(
-    new Date(data.created_at).getTime() - HOUR_MS,
-  ).toISOString();
+  const insertedAt = new Date(data.created_at).getTime();
+  const { error: purgeError } = await admin
+    .from("access_requests")
+    .delete()
+    .lt("created_at", new Date(insertedAt - DAY_MS).toISOString());
+  if (purgeError) throw new Error(purgeError.message);
+
+  const since = new Date(insertedAt - HOUR_MS).toISOString();
   const [byEmail, byIp] = await Promise.all([
     recentRequests(admin, "email", email, since),
     recentRequests(admin, "ip_hash", ipHash, since),
@@ -127,6 +134,13 @@ async function ensurePatientAccount(
   return undefined;
 }
 
+function sentRecently(error: { code?: string; message: string }) {
+  return (
+    error.code === "over_email_send_rate_limit" &&
+    error.message.startsWith(TOO_SOON)
+  );
+}
+
 export async function requestAccess(
   _prev: AccessState,
   formData: FormData,
@@ -156,16 +170,16 @@ export async function requestAccess(
   );
   if (rejected) return rejected;
 
-  const origin = requestHeaders.get("origin") ?? site.url;
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: `${origin}/acceder/confirmar?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${site.url}/acceder/confirmar?next=${encodeURIComponent(next)}`,
     },
   });
-  if (error && error.status !== 429) {
+  if (error && !sentRecently(error)) {
+    if (error.status === 429) return { error: TOO_MANY };
     return { error: "No hemos podido enviarte el email. Inténtalo de nuevo." };
   }
 
@@ -185,4 +199,13 @@ export async function verifyCode(
   if (error) return { error: "El código no es correcto o ha caducado." };
 
   redirect(nextFrom(formData));
+}
+
+export async function confirmLink(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: field(formData, "token_hash"),
+    type: "email",
+  });
+  redirect(error ? "/acceder?caducado=1" : nextFrom(formData));
 }

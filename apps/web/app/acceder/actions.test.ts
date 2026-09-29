@@ -5,7 +5,7 @@ type Row = Record<string, string>;
 let tables: Record<string, Row[]>;
 let authUsers: { id: string; email: string }[];
 let requestHeaders: Headers;
-let otpError: { message: string } | null;
+let otpError: { message: string; status?: number; code?: string } | null;
 let verifyError: { message: string } | null;
 const createUser = vi.fn();
 const signInWithOtp = vi.fn();
@@ -45,6 +45,14 @@ function table(name: string) {
         }),
       };
     },
+    delete: () => ({
+      lt: async (column: string, value: string) => {
+        tables[name] = (tables[name] ?? []).filter(
+          (row) => (row[column] ?? "") >= value,
+        );
+        return { error: null };
+      },
+    }),
     upsert: async (row: Row) => {
       if (!(tables[name] ?? []).some((existing) => existing.id === row.id)) {
         tables[name] = [...(tables[name] ?? []), row];
@@ -55,6 +63,9 @@ function table(name: string) {
   return builder;
 }
 
+vi.mock("@/lib/site", () => ({
+  site: { url: "https://web.clinicalumia.test" },
+}));
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders }));
 vi.mock("next/navigation", () => ({
   redirect: (...args: unknown[]) => redirectMock(...args),
@@ -74,7 +85,7 @@ vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({ auth: { signInWithOtp, verifyOtp } }),
 }));
 
-const { requestAccess, verifyCode } = await import("./actions");
+const { confirmLink, requestAccess, verifyCode } = await import("./actions");
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -98,7 +109,7 @@ function codeForm(email: string, code: string, next = "/reservar") {
 function fromIp(ip: string) {
   requestHeaders = new Headers({
     "x-forwarded-for": `${ip}, 10.0.0.1`,
-    origin: "https://www.clinicalumia.es",
+    origin: "https://evil.example",
   });
 }
 
@@ -159,7 +170,7 @@ describe("requestAccess", () => {
       options: {
         shouldCreateUser: false,
         emailRedirectTo:
-          "https://www.clinicalumia.es/acceder/confirmar?next=%2Freservar",
+          "https://web.clinicalumia.test/acceder/confirmar?next=%2Freservar",
       },
     });
     expect(redirectMock).toHaveBeenCalledWith(
@@ -323,7 +334,7 @@ describe("requestAccess", () => {
       expect.objectContaining({
         options: expect.objectContaining({
           emailRedirectTo:
-            "https://www.clinicalumia.es/acceder/confirmar?next=%2F",
+            "https://web.clinicalumia.test/acceder/confirmar?next=%2F",
         }),
       }),
     );
@@ -332,11 +343,37 @@ describe("requestAccess", () => {
     );
   });
 
+  it("builds the emailed link from the web's own address, never from a header the visitor controls", async () => {
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    const [{ options }] = signInWithOtp.mock.lastCall ?? [];
+    expect(options.emailRedirectTo).toMatch(
+      /^https:\/\/web\.clinicalumia\.test\//,
+    );
+  });
+
+  it("purges attempts older than a day so the table only keeps what the limits need", async () => {
+    const hours = (n: number) =>
+      new Date(Date.now() - n * 60 * 60 * 1000).toISOString();
+    tables.access_requests = [
+      { email: "vieja@example.com", ip_hash: "h", created_at: hours(25) },
+      { email: "reciente@example.com", ip_hash: "h", created_at: hours(23) },
+    ];
+
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    expect(
+      (tables.access_requests ?? []).map((row) => row.email).sort(),
+    ).toEqual(["lucia@example.com", "reciente@example.com"]);
+  });
+
   it("still leads to the code screen when a repeat request comes too soon, because the code already sent keeps working", async () => {
-    otpError = { message: "only request this after 58 seconds" };
-    signInWithOtp.mockImplementation(async () => ({
-      error: { ...otpError, status: 429 },
-    }));
+    otpError = {
+      status: 429,
+      code: "over_email_send_rate_limit",
+      message:
+        "For security purposes, you can only request this after 42 seconds.",
+    };
 
     const result = await requestAccess(
       undefined,
@@ -347,6 +384,38 @@ describe("requestAccess", () => {
     expect(redirectMock).toHaveBeenCalledWith(
       "/acceder/codigo?email=lucia%40example.com&next=%2Freservar",
     );
+  });
+
+  it("reports too many attempts when Supabase's hourly email quota is spent, instead of pretending an email went out", async () => {
+    otpError = {
+      status: 429,
+      code: "over_email_send_rate_limit",
+      message: "email rate limit exceeded",
+    };
+
+    const result = await requestAccess(
+      undefined,
+      accessForm("lucia@example.com"),
+    );
+
+    expect(result).toEqual(TOO_MANY);
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("reports too many attempts when Supabase limits the server's requests", async () => {
+    otpError = {
+      status: 429,
+      code: "over_request_rate_limit",
+      message: "Request rate limit reached",
+    };
+
+    const result = await requestAccess(
+      undefined,
+      accessForm("lucia@example.com"),
+    );
+
+    expect(result).toEqual(TOO_MANY);
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 
   it("tells the person to retry when the email could not be sent", async () => {
@@ -405,6 +474,46 @@ describe("verifyCode", () => {
       undefined,
       codeForm("lucia@example.com", "123456", "//evil.example/robar"),
     );
+
+    expect(redirectMock).toHaveBeenCalledWith("/");
+  });
+});
+
+describe("confirmLink", () => {
+  beforeEach(() => {
+    verifyError = null;
+    verifyOtp.mockReset();
+    verifyOtp.mockImplementation(async () => ({ error: verifyError }));
+    redirectMock.mockClear();
+  });
+
+  function linkForm(tokenHash: string, next: string) {
+    const data = new FormData();
+    data.set("token_hash", tokenHash);
+    data.set("next", next);
+    return data;
+  }
+
+  it("opens the session only when the person presses the button, and returns to where they were", async () => {
+    await confirmLink(linkForm("hash-1", "/reservar?hueco=1"));
+
+    expect(verifyOtp).toHaveBeenCalledWith({
+      token_hash: "hash-1",
+      type: "email",
+    });
+    expect(redirectMock).toHaveBeenCalledWith("/reservar?hueco=1");
+  });
+
+  it("sends a used or expired link back to ask for a new one", async () => {
+    verifyError = { message: "Email link is invalid or has expired" };
+
+    await confirmLink(linkForm("usado", "/reservar"));
+
+    expect(redirectMock).toHaveBeenCalledWith("/acceder?caducado=1");
+  });
+
+  it("never follows an external next", async () => {
+    await confirmLink(linkForm("hash-1", "https://evil.example"));
 
     expect(redirectMock).toHaveBeenCalledWith("/");
   });

@@ -424,12 +424,28 @@ project_id = "cbyarpxrhgvmllneodoz"
 site_url = "http://localhost:3001"
 additional_redirect_urls = ["http://localhost:3001", "http://127.0.0.1:3001", "https://www.clinicalumia.es/**"]
 
+[remotes.dev.auth.rate_limit]
+email_sent = 100
+sign_in_sign_ups = 200
+token_verifications = 200
+
+[remotes.dev.auth.email]
+max_frequency = "60s"
+
 [remotes.prod]
 project_id = "xdcyltzvqaqppdguexkj"
 
 [remotes.prod.auth]
 site_url = "https://panel.clinicalumia.es"
 additional_redirect_urls = ["https://panel.clinicalumia.es", "https://admin.clinicalumia.es", "https://www.clinicalumia.es/**"]
+
+[remotes.prod.auth.rate_limit]
+email_sent = 100
+sign_in_sign_ups = 200
+token_verifications = 200
+
+[remotes.prod.auth.email]
+max_frequency = "60s"
 
 [remotes.prod.auth.email.smtp]
 enabled = true
