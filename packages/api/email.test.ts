@@ -125,4 +125,58 @@ describe("sendEmail", () => {
 
     await expect(sendEmail(message)).rejects.toThrow(/Mailpit.*400/);
   });
+
+  it("sends attachments to Resend as base64", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    resendSend.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await sendEmail({
+      ...message,
+      attachments: [
+        {
+          filename: "cita.ics",
+          content: "BEGIN:VCALENDAR",
+          contentType: "text/calendar",
+        },
+      ],
+    });
+
+    expect(resendSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachments: [
+          {
+            filename: "cita.ics",
+            content: Buffer.from("BEGIN:VCALENDAR").toString("base64"),
+            contentType: "text/calendar",
+          },
+        ],
+      }),
+    );
+  });
+
+  it("sends attachments to Mailpit as base64", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await sendEmail({
+      ...message,
+      attachments: [
+        {
+          filename: "cita.ics",
+          content: "BEGIN:VCALENDAR",
+          contentType: "text/calendar",
+        },
+      ],
+    });
+
+    const [, init] = fetchMock.mock.lastCall ?? [];
+    expect(JSON.parse(init.body).Attachments).toEqual([
+      {
+        Filename: "cita.ics",
+        Content: Buffer.from("BEGIN:VCALENDAR").toString("base64"),
+        ContentType: "text/calendar",
+      },
+    ]);
+  });
 });

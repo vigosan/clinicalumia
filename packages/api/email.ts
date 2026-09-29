@@ -4,7 +4,13 @@ const DEFAULT_FROM =
   "Clínica LUMIA <no-responder@notifications.clinicalumia.es>";
 const MAILPIT_SEND = "http://127.0.0.1:54324/api/v1/send";
 
-type Email = { to: string; subject: string; html: string };
+type Attachment = { filename: string; content: string; contentType: string };
+type Email = {
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: Attachment[];
+};
 
 function parseSender(from: string) {
   const match = /^(.*?)\s*<([^>]+)>$/.exec(from);
@@ -13,7 +19,12 @@ function parseSender(from: string) {
     : { Name: "", Email: from };
 }
 
-export async function sendEmail({ to, subject, html }: Email): Promise<void> {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  attachments,
+}: Email): Promise<void> {
   const from = process.env.EMAIL_FROM || DEFAULT_FROM;
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -26,6 +37,13 @@ export async function sendEmail({ to, subject, html }: Email): Promise<void> {
       to,
       subject,
       html,
+      ...(attachments && {
+        attachments: attachments.map(({ filename, content, contentType }) => ({
+          filename,
+          content: Buffer.from(content).toString("base64"),
+          contentType,
+        })),
+      }),
     });
     if (error) {
       throw new Error(
@@ -43,6 +61,13 @@ export async function sendEmail({ to, subject, html }: Email): Promise<void> {
       To: [{ Email: to }],
       Subject: subject,
       HTML: html,
+      ...(attachments && {
+        Attachments: attachments.map(({ filename, content, contentType }) => ({
+          Filename: filename,
+          Content: Buffer.from(content).toString("base64"),
+          ContentType: contentType,
+        })),
+      }),
     }),
   });
   if (!response.ok) {
