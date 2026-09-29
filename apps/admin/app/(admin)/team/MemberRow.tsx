@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import {
   resendInvite,
   resetTwoFactor,
+  revokeCalendarLink,
   setMemberActive,
   updateMember,
 } from "./actions";
@@ -36,12 +37,14 @@ export function MemberRow({
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const run = (
     action: () => Promise<{ ok: true } | { error: string }>,
     onOk?: () => void,
   ) =>
     startTransition(async () => {
+      setSuccess(null);
       const result = await action();
       if ("error" in result) {
         setError(result.error);
@@ -154,6 +157,28 @@ export function MemberRow({
         >
           Editar
         </Button>
+        <ConfirmDialog
+          trigger={
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              data-testid="member-revoke-calendar"
+            >
+              Invalidar calendario
+            </Button>
+          }
+          title="¿Invalidar el calendario?"
+          description="Su enlace de calendario dejará de funcionar. Tendrá que generar uno nuevo desde el panel."
+          confirmLabel="Invalidar"
+          onConfirm={() =>
+            run(
+              () => revokeCalendarLink(member.id),
+              () => setSuccess("Calendario invalidado."),
+            )
+          }
+        />
         {member.role !== "owner" && (
           <Button
             type="button"
@@ -214,6 +239,14 @@ export function MemberRow({
             </Button>
           ))}
       </div>
+      {success && (
+        <p
+          data-testid="member-success"
+          className="w-full text-[13px] text-sage-900"
+        >
+          {success}
+        </p>
+      )}
       {error && (
         <p
           role="alert"

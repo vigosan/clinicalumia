@@ -292,3 +292,59 @@ test("the owner resets an employee's two-factor step, closing their still-open s
     await employeeContext.close();
   }
 });
+
+test("the owner invalidates a member's calendar link and it stops serving the feed", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const employeeContext = await browser.newContext();
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const employeePage = await employeeContext.newPage();
+
+    const fullName = `Empleada Calendario ${Date.now()}`;
+    const employeeEmail = `empleada-calendario-${Date.now()}@test.local`;
+    const employeePassword = "lumia-segura-2026";
+    const { data, error } = await admin.auth.admin.createUser({
+      email: employeeEmail,
+      password: employeePassword,
+      email_confirm: true,
+    });
+    expect(error).toBeNull();
+    createdUserIds.push(data.user!.id);
+    const { error: profileError } = await admin.from("profiles").insert({
+      id: data.user!.id,
+      email: employeeEmail,
+      full_name: fullName,
+      role: "employee",
+      is_active: true,
+    });
+    expect(profileError).toBeNull();
+
+    await signIn(employeePage, DASHBOARD, employeeEmail, employeePassword);
+    await employeePage.goto(`${DASHBOARD}/mi-calendario`);
+    await employeePage.getByTestId("calendar-generate").click();
+    const url = (
+      await employeePage.getByTestId("calendar-url").textContent()
+    )?.trim();
+    expect(url).toBeTruthy();
+
+    const beforeRevoke = await fetch(url!);
+    expect(beforeRevoke.status).toBe(200);
+
+    await loginAsOwner(ownerPage);
+    await ownerPage.goto(`${ADMIN}/team`);
+    const row = ownerPage.getByRole("listitem").filter({ hasText: fullName });
+    await row.getByTestId("member-revoke-calendar").click();
+    await ownerPage.getByTestId("confirm-action").click();
+    await expect(row.getByTestId("member-success")).toHaveText(
+      "Calendario invalidado.",
+    );
+
+    const afterRevoke = await fetch(url!);
+    expect(afterRevoke.status).toBe(404);
+  } finally {
+    await ownerContext.close();
+    await employeeContext.close();
+  }
+});

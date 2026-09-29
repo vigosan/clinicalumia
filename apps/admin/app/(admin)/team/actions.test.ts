@@ -6,6 +6,8 @@ let ownerResult: { ok: true; userId: string } | { ok: false; error: string } =
 const result = { error: null as null | { code: string; message: string } };
 const updateEq = vi.fn(async () => result);
 const updateFn = vi.fn(() => ({ eq: updateEq }));
+const rpcResult = { error: null as null | { code: string; message: string } };
+const rpcFn = vi.fn(async () => rpcResult);
 
 const revalidatePathMock = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
@@ -15,6 +17,7 @@ vi.mock("@clinicalumia/api/server", () => ({
     from: () => ({
       update: updateFn,
     }),
+    rpc: rpcFn,
   }),
 }));
 vi.mock("@clinicalumia/api/auth", () => ({
@@ -26,6 +29,7 @@ const {
   createMember,
   resendInvite,
   resetTwoFactor,
+  revokeCalendarLink,
   setMemberActive,
   updateMember,
 } = await import("./actions");
@@ -42,6 +46,8 @@ describe("team actions", () => {
     result.error = null;
     updateEq.mockClear();
     updateFn.mockClear();
+    rpcResult.error = null;
+    rpcFn.mockClear();
     vi.mocked(createAdminClient).mockClear();
     revalidatePathMock.mockClear();
   });
@@ -317,5 +323,27 @@ describe("team actions", () => {
   it("does not try to close sessions when reactivating a member", async () => {
     expect(await setMemberActive("employee-1", true)).toEqual({ ok: true });
     expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("refuses revokeCalendarLink for a non-owner and never calls the database", async () => {
+    ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
+    expect(await revokeCalendarLink("employee-1")).toEqual({
+      error: "No tienes permiso para hacer esto.",
+    });
+    expect(rpcFn).not.toHaveBeenCalled();
+  });
+
+  it("revokes the member's calendar token", async () => {
+    expect(await revokeCalendarLink("employee-1")).toEqual({ ok: true });
+    expect(rpcFn).toHaveBeenCalledWith("revoke_calendar_token", {
+      p_profile_id: "employee-1",
+    });
+  });
+
+  it("reports a generic error when the token revocation fails", async () => {
+    rpcResult.error = { code: "500", message: "boom" };
+    expect(await revokeCalendarLink("employee-1")).toEqual({
+      error: "No se ha podido invalidar el calendario.",
+    });
   });
 });

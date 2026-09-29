@@ -140,6 +140,21 @@ export async function resendInvite(email: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+export async function revokeCalendarLink(
+  memberId: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
+  const { error } = await supabase.rpc("revoke_calendar_token", {
+    p_profile_id: memberId,
+  });
+  if (error) return { error: "No se ha podido invalidar el calendario." };
+
+  return { ok: true };
+}
+
 export async function resetTwoFactor(memberId: string): Promise<ActionResult> {
   const owner = await requireOwner(await createClient());
   if (!owner.ok) return { error: owner.error };
