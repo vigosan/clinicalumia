@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(93);
+select plan(95);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -296,12 +296,27 @@ insert into public.appointments (id, professional_id, patient_id, service_id, st
    '87000000-0000-0000-0000-0000000000b2', date_trunc('hour', now() - interval '3 days'),
    date_trunc('hour', now() - interval '3 days') + interval '30 minutes');
 update public.appointments set status = 'no_show' where id = '87000000-0000-0000-0000-0000000000d8';
+insert into auth.users (id, email) values ('87000000-0000-0000-0000-000000000003', 'tercera-area@test.local');
+insert into public.specialties (id, name, slug) values
+  ('87000000-0000-0000-0000-0000000000ab', 'Otra especialidad area', 'otra-especialidad-area');
+insert into public.profiles (id, email, full_name, role, is_active, specialty_id) values
+  ('87000000-0000-0000-0000-000000000003', 'tercera-area@test.local', 'Tercera Area', 'employee', true, '87000000-0000-0000-0000-0000000000aa');
+insert into public.employee_schedules (profile_id, weekday, starts_at, ends_at) values
+  ('87000000-0000-0000-0000-000000000003', extract(isodow from pg_temp.day3())::smallint, '10:00', '14:00');
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('87000000-0000-0000-0000-0000000000d9', '87000000-0000-0000-0000-000000000003', '87000000-0000-0000-0000-0000000000c1',
+   '87000000-0000-0000-0000-0000000000b2', pg_temp.at_day3('12:00'), pg_temp.at_day3('12:30'));
+update public.profiles set specialty_id = '87000000-0000-0000-0000-0000000000ab' where id = '87000000-0000-0000-0000-000000000003';
 
 select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
 select is((select can_change from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d6'), true,
   'a team appointment for a service not offered online can still be cancelled in time');
 select is((select can_reschedule from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d6'), false,
   'but the web must not offer to move it, because no online slot would ever be free for it');
+select is((select can_change from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d9'), true,
+  'an appointment with a professional who moved to another specialty can still be cancelled in time');
+select is((select can_reschedule from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d9'), false,
+  'but the web must not offer to move it, because she no longer has free slots for that service');
 select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d5', pg_temp.at_day3('11:30')),
   'P0001', 'slot_not_available', 'a 90-minute appointment keeps its length, so a slot whose tail runs into time off is refused');
 select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d5', pg_temp.at_day3('13:30')),

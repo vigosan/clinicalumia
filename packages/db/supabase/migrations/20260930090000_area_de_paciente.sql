@@ -215,6 +215,7 @@ as $$
     a.status = 'scheduled'
       and now() < a.starts_at - make_interval(hours => coalesce(s.cancellation_hours, cs.cancellation_hours))
       and pr.is_active
+      and pr.specialty_id = s.specialty_id
       and exists (
         select 1 from public.booking_catalog() bc
         where bc.service_id = s.id and not bc.phone_only
