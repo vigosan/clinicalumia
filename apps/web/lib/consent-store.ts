@@ -19,7 +19,7 @@ export async function storeConsent({
   pdf: Uint8Array;
 }): Promise<{ id: string; personId: string | null }> {
   const id = crypto.randomUUID();
-  const path = `consents/${signedAt.getUTCFullYear()}/${pad(signedAt.getUTCMonth() + 1)}/${id}.pdf`;
+  const path = `${signedAt.getUTCFullYear()}/${pad(signedAt.getUTCMonth() + 1)}/${id}.pdf`;
 
   const { error: uploadError } = await admin.storage
     .from("consents")

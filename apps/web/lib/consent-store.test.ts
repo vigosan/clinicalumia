@@ -82,7 +82,7 @@ describe("storeConsent", () => {
 
     const result = await storeConsent({ admin, consent, signedAt, pdf });
 
-    const path = `consents/2026/09/${result.id}.pdf`;
+    const path = `2026/09/${result.id}.pdf`;
     expect(upload).toHaveBeenCalledWith(path, pdf, {
       contentType: "application/pdf",
     });
