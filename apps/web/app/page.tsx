@@ -21,16 +21,6 @@ const clinicPhotos = [
     position: "30% 50%",
   },
   {
-    src: "/patricia-retrato.jpg",
-    alt: "Patricia Hernán en la sala de espera de la clínica LUMIA",
-    position: "50% 0%",
-  },
-  {
-    src: "/patricia-sala-vertical.jpg",
-    alt: "Patricia Hernán junto a los juegos de la sala infantil",
-    position: "50% 0%",
-  },
-  {
     src: "/patricia-escritorio.jpg",
     alt: "Patricia Hernán sentada en su despacho de la clínica LUMIA",
     position: "50% 0%",
