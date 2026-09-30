@@ -43,7 +43,7 @@ const color = {
 
 export const QR_COLOR = color.ink;
 
-const QR_SIZE = (19 / 25.4) * 72;
+const QR_SIZE = (30 / 25.4) * 72;
 
 const s = StyleSheet.create({
   page: {
@@ -52,7 +52,7 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: color.ink,
     paddingTop: 64,
-    paddingBottom: 120,
+    paddingBottom: 90,
     paddingHorizontal: 64,
   },
   header: {
@@ -73,13 +73,20 @@ const s = StyleSheet.create({
   title: { fontSize: 16, fontWeight: 300 },
   date: { marginTop: 6, color: color.grey },
   reference: { marginTop: 4, color: color.grey, fontSize: 8 },
-  parties: { flexDirection: "row", marginTop: 56 },
-  party: { width: 200, marginRight: 40 },
+  partiesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 48,
+  },
+  parties: { flex: 1, flexDirection: "row", marginRight: 24 },
+  party: { flex: 1, marginRight: 24 },
+  lastParty: { flex: 1 },
   label: { fontSize: 7.5, color: color.grey, marginBottom: 6 },
   name: { fontWeight: 400, marginBottom: 3 },
   line: { color: color.grey, marginTop: 2 },
   concept: {
-    marginTop: 80,
+    marginTop: 64,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
@@ -106,22 +113,11 @@ const s = StyleSheet.create({
   },
   totalLabel: { fontSize: 10, fontWeight: 400, marginBottom: 2 },
   totalValue: { fontSize: 18, fontWeight: 300, color: color.bark },
-  notes: { marginTop: 56 },
+  notes: { marginTop: 48 },
   note: { color: color.grey, fontSize: 8, marginBottom: 4 },
-  footer: {
-    position: "absolute",
-    left: 64,
-    right: 64 + QR_SIZE + 80,
-    bottom: 40,
-  },
-  qrBlock: {
-    position: "absolute",
-    right: 64,
-    bottom: 40,
-    flexDirection: "row",
-    alignItems: "flex-end",
-  },
-  qrLabel: { fontSize: 7, color: color.grey, marginRight: 6 },
+  footer: { position: "absolute", left: 64, right: 64, bottom: 40 },
+  qrBlock: { alignItems: "center", width: QR_SIZE },
+  qrLabel: { color: color.grey, marginBottom: 6 },
   qr: { width: QR_SIZE, height: QR_SIZE },
   footerRow: { flexDirection: "row", justifyContent: "space-between" },
   footerText: { fontSize: 7, color: color.grey, maxWidth: 400 },
@@ -213,27 +209,33 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
           </View>
         </View>
 
-        <View style={s.parties}>
-          <View style={s.party}>
-            {snapshot.recipient && <Text style={s.label}> </Text>}
-            <Text style={s.name}>{snapshot.issuer.name}</Text>
-            {issuerLines(snapshot.issuer).map((line) => (
-              <Text key={line} style={s.line}>
-                {line}
-              </Text>
-            ))}
-          </View>
-          {snapshot.recipient && (
-            <View style={s.party}>
-              <Text style={s.label}>Para</Text>
-              <Text style={s.name}>{snapshot.recipient.name}</Text>
-              {recipientLines(snapshot.recipient).map((line) => (
+        <View style={s.partiesRow}>
+          <View style={s.parties}>
+            <View style={snapshot.recipient ? s.party : s.lastParty}>
+              {snapshot.recipient && <Text style={s.label}> </Text>}
+              <Text style={s.name}>{snapshot.issuer.name}</Text>
+              {issuerLines(snapshot.issuer).map((line) => (
                 <Text key={line} style={s.line}>
                   {line}
                 </Text>
               ))}
             </View>
-          )}
+            {snapshot.recipient && (
+              <View style={s.lastParty}>
+                <Text style={s.label}>Para</Text>
+                <Text style={s.name}>{snapshot.recipient.name}</Text>
+                {recipientLines(snapshot.recipient).map((line) => (
+                  <Text key={line} style={s.line}>
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
+          <View style={s.qrBlock}>
+            <Text style={s.qrLabel}>{AEAT_QR_LABEL}</Text>
+            <Image style={s.qr} src={qr} />
+          </View>
         </View>
 
         {snapshot.lines.map((line) => (
@@ -290,18 +292,13 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
           </View>
         )}
 
-        <View style={s.qrBlock}>
-          <Text style={s.qrLabel}>{AEAT_QR_LABEL}</Text>
-          <Image style={s.qr} src={qr} />
-        </View>
-
         <View style={s.footer} fixed>
           <View style={s.footerRow}>
             <Text style={s.footerText}>{snapshot.footer}</Text>
             <Text
               style={s.footerText}
               render={({ pageNumber, totalPages }) =>
-                totalPages > 1 ? `${pageNumber} / ${totalPages}` : ""
+                `${pageNumber} / ${totalPages}`
               }
             />
           </View>
