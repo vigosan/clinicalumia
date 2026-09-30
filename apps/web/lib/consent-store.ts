@@ -7,6 +7,17 @@ function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
+export async function matchConsentPerson(admin: AdminClient, consent: Consent) {
+  const { data: matches, error } = await admin.rpc("match_consent_person", {
+    p_tax_id: consent.dni,
+    p_email: consent.email,
+    p_birth_date: consent.birthDate,
+    p_first_name: consent.firstName,
+  });
+  if (error) throw new Error(error.message);
+  return matches[0] ?? null;
+}
+
 export async function storeConsent({
   admin,
   consent,
@@ -17,7 +28,7 @@ export async function storeConsent({
   consent: Consent;
   signedAt: Date;
   pdf: Uint8Array;
-}): Promise<{ id: string; personId: string | null }> {
+}) {
   const id = crypto.randomUUID();
   const path = `${signedAt.getUTCFullYear()}/${pad(signedAt.getUTCMonth() + 1)}/${id}.pdf`;
 
@@ -27,17 +38,7 @@ export async function storeConsent({
   if (uploadError) throw new Error(uploadError.message);
 
   try {
-    const { data: matches, error: matchError } = await admin.rpc(
-      "match_consent_person",
-      {
-        p_tax_id: consent.dni,
-        p_email: consent.email,
-        p_birth_date: consent.birthDate,
-        p_first_name: consent.firstName,
-      },
-    );
-    if (matchError) throw new Error(matchError.message);
-    const match = matches[0] ?? null;
+    const match = await matchConsentPerson(admin, consent);
 
     const { error: insertError } = await admin.from("consents").insert({
       id,
@@ -58,7 +59,11 @@ export async function storeConsent({
     });
     if (insertError) throw new Error(insertError.message);
 
-    return { id, personId: match?.person_id ?? null };
+    return {
+      id,
+      personId: match?.person_id ?? null,
+      method: match?.method ?? null,
+    };
   } catch (error) {
     await admin.storage.from("consents").remove([path]);
     throw error;

@@ -1,7 +1,7 @@
 import type { createAdminClient } from "@clinicalumia/api/admin";
 import { describe, expect, it, vi } from "vitest";
 import type { Consent } from "./consent";
-import { storeConsent } from "./consent-store";
+import { matchConsentPerson, storeConsent } from "./consent-store";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -100,7 +100,7 @@ describe("storeConsent", () => {
 
     const result = await storeConsent({ admin, consent, signedAt, pdf });
 
-    expect(result.personId).toBe("p1");
+    expect(result).toMatchObject({ personId: "p1", method: "auto_tax_id" });
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
         person_id: "p1",
@@ -116,7 +116,7 @@ describe("storeConsent", () => {
 
     const result = await storeConsent({ admin, consent, signedAt, pdf });
 
-    expect(result.personId).toBeNull();
+    expect(result).toMatchObject({ personId: null, method: null });
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
         person_id: null,
@@ -179,5 +179,37 @@ describe("storeConsent", () => {
 
     expect(insert).not.toHaveBeenCalled();
     expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("matchConsentPerson", () => {
+  it("asks the database with the consent's identifiers, so imports and the web link people by the same rules", async () => {
+    const { admin, rpc } = fakeAdmin({
+      match: [{ person_id: "p1", method: "auto_guardian" }],
+    });
+
+    const match = await matchConsentPerson(admin, consent);
+
+    expect(match).toEqual({ person_id: "p1", method: "auto_guardian" });
+    expect(rpc).toHaveBeenCalledWith("match_consent_person", {
+      p_tax_id: "12345678Z",
+      p_email: "Ana@Example.com",
+      p_birth_date: "1990-05-10",
+      p_first_name: "Ana",
+    });
+  });
+
+  it("returns no match when nobody is safe to link, leaving the consent pending", async () => {
+    const { admin } = fakeAdmin({ match: [] });
+
+    expect(await matchConsentPerson(admin, consent)).toBeNull();
+  });
+
+  it("fails loudly when the lookup fails, instead of silently leaving the consent pending", async () => {
+    const { admin } = fakeAdmin({ matchError: { message: "rpc down" } });
+
+    await expect(matchConsentPerson(admin, consent)).rejects.toThrow(
+      "rpc down",
+    );
   });
 });

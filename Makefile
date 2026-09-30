@@ -6,7 +6,7 @@ DB := packages/db
         build lint format typecheck test test.db test.e2e clean totp \
         db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
         db.status db.push.dev db.push.prod db.config.dev db.config.prod db.types.check \
-        db.owner.local db.owner.prod
+        db.owner.local db.owner.prod consents.import
 
 help: ## Muestra los comandos disponibles
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -168,3 +168,25 @@ db.owner.prod: ## Invita a la propietaria en producción (pide confirmación): m
 	 OWNER_EMAIL="$(email)" OWNER_FULL_NAME="$(name)" \
 	 REDIRECT_TO="https://panel.clinicalumia.es/auth/confirm" \
 	 pnpm invite:owner
+
+consents.import: ## Importa PDF de consentimientos firmados: make consents.import dir=<carpeta> env=local|dev|prod [dry=1]
+	@if [ -z "$(dir)" ] || [ -z "$(env)" ]; then \
+		echo 'Uso: make consents.import dir=~/consentimientos env=local|dev|prod [dry=1]'; exit 1; \
+	fi
+	@if [ "$(env)" = "prod" ] && [ "$(dry)" != "1" ]; then \
+		read -p "¿Importar consentimientos en PRODUCCIÓN? Escribe 'produccion': " answer; \
+		[ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1); \
+	fi
+	@case "$(env)" in \
+	 local) status="$$(cd $(DB) && supabase status -o env 2>/dev/null)"; \
+		url="$$(printf '%s\n' "$$status" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')"; \
+		key="$$(printf '%s\n' "$$status" | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"')";; \
+	 dev|prod) file="$(DB)/.env.$(env)"; \
+		url="$$(grep -E '^(NEXT_PUBLIC_)?SUPABASE_URL=' $$file 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"')"; \
+		key="$$(grep '^SUPABASE_SERVICE_ROLE_KEY=' $$file 2>/dev/null | cut -d= -f2- | tr -d '"')";; \
+	 *) echo "env debe ser local, dev o prod"; exit 1;; \
+	 esac; \
+	 if [ -z "$$url" ] || [ -z "$$key" ]; then echo "Falta la URL o SUPABASE_SERVICE_ROLE_KEY de $(env)"; exit 1; fi; \
+	 CONSENTS_DIR="$$(cd "$(dir)" && pwd)" && cd apps/web && \
+	 SUPABASE_URL="$$url" SUPABASE_SERVICE_ROLE_KEY="$$key" CONSENTS_DIR="$$CONSENTS_DIR" DRY="$(dry)" \
+	 pnpm --silent exec tsx scripts/import-consents.ts
