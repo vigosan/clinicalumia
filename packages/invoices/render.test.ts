@@ -15,7 +15,7 @@ const issuer = {
   province: "Valencia",
   phone: "614 552 808",
   email: "info@clinicalumia.es",
-  website: "clinicalumia.es",
+  website: "https://www.clinicalumia.es/",
 };
 
 const noRelated = {
@@ -210,11 +210,20 @@ describe("renderInvoicePdf", () => {
     const text = await pdfText(await renderInvoicePdf(rectifying()));
 
     expect(text).toContain("Factura rectificativa R1/26");
-    expect(text).toContain("Rectifica la factura 34/26");
+    expect(text).toContain("Rectifica la factura 34/26 del 30/09/2026");
     expect(text).toContain("Cobro registrado por error en la cita equivocada");
     expect(text).toContain("-45,00 €");
     expect(text).toContain("QR tributario:");
     expect(text).not.toContain("Pagado");
+  });
+
+  it("ends every page with the clinic's footer and its website, written without the protocol, so the patient knows where to find the clinic", async () => {
+    const text = await pdfText(await renderInvoicePdf(simplified()));
+
+    expect(text).toContain(
+      "LUMIA · Calle Montesa 7, 46800 Xàtiva · Gracias por confiar en LUMIA. · www.clinicalumia.es",
+    );
+    expect(text).not.toContain("https://");
   });
 
   it("keeps accents, commas and very long texts readable instead of breaking the PDF", async () => {

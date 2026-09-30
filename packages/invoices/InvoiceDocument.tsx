@@ -137,7 +137,9 @@ function referenceLine(
   related: InvoiceRelated,
 ): string {
   if (detail.kind === "rectifying") {
-    const code = snapshot.rectifies?.code ?? related.rectifies?.code;
+    if (snapshot.rectifies)
+      return `Rectifica la factura ${snapshot.rectifies.code} del ${formatSessionDate(snapshot.rectifies.issued_on)}`;
+    const code = related.rectifies?.code;
     return code ? `Rectifica la factura ${code}` : "";
   }
   if (related.replaces) {
@@ -294,7 +296,17 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
 
         <View style={s.footer} fixed>
           <View style={s.footerRow}>
-            <Text style={s.footerText}>{snapshot.footer}</Text>
+            <Text style={s.footerText}>
+              {joinFilled(
+                [
+                  snapshot.footer,
+                  snapshot.issuer.website
+                    .replace(/^https?:\/\//, "")
+                    .replace(/\/$/, ""),
+                ],
+                " · ",
+              )}
+            </Text>
             <Text
               style={s.footerText}
               render={({ pageNumber, totalPages }) =>

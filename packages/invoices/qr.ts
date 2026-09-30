@@ -5,9 +5,6 @@ export const AEAT_QR_URL =
 
 export const AEAT_QR_LABEL = "QR tributario:";
 
-export const AEAT_QR_LEGEND =
-  "Factura verificable en la sede electrónica de la AEAT";
-
 export function invoiceQrUrl({
   nif,
   code,
