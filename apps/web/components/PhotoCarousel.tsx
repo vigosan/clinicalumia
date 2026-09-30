@@ -7,6 +7,7 @@ import { ArrowCircle } from "./icons";
 export type CarouselPhoto = {
   src: string;
   alt: string;
+  position?: string;
 };
 
 export function PhotoCarousel({
@@ -44,6 +45,7 @@ export function PhotoCarousel({
               width={1124}
               height={1238}
               sizes="(min-width: 768px) 30vw, 78vw"
+              style={{ objectPosition: photo.position }}
               className="aspect-[562/619] w-full rounded-panel object-cover"
             />
           </li>

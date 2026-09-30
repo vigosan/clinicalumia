@@ -10,8 +10,36 @@ import { services } from "@/lib/services";
 import { isPending, nearbyTowns, site } from "@/lib/site";
 
 const clinicPhotos = [
-  { src: "/clinica-01.jpg", alt: "Recepción de la clínica LUMIA en Xàtiva" },
-  { src: "/clinica-02.jpg", alt: "Patricia Hernán en la clínica LUMIA" },
+  {
+    src: "/patricia-recepcion.jpg",
+    alt: "Patricia Hernán en la recepción de la clínica LUMIA en Xàtiva",
+    position: "25% 50%",
+  },
+  {
+    src: "/patricia-sala.jpg",
+    alt: "Patricia Hernán en la sala infantil de la clínica LUMIA",
+    position: "30% 50%",
+  },
+  {
+    src: "/patricia-retrato.jpg",
+    alt: "Patricia Hernán en la sala de espera de la clínica LUMIA",
+    position: "50% 0%",
+  },
+  {
+    src: "/patricia-sala-vertical.jpg",
+    alt: "Patricia Hernán junto a los juegos de la sala infantil",
+    position: "50% 0%",
+  },
+  {
+    src: "/patricia-escritorio.jpg",
+    alt: "Patricia Hernán sentada en su despacho de la clínica LUMIA",
+    position: "50% 0%",
+  },
+  {
+    src: "/patricia-consulta.jpg",
+    alt: "Patricia Hernán tomando notas en la consulta de LUMIA",
+    position: "30% 50%",
+  },
 ];
 
 const instagramSlots = ["uno", "dos", "tres", "cuatro"];
@@ -174,10 +202,10 @@ export default async function Home() {
       >
         <div className="grid items-start gap-10 md:grid-cols-[36.042vw_1fr] md:gap-[5.208vw]">
           <Image
-            src="/patricia.jpg"
+            src="/patricia-retrato.jpg"
             alt="Patricia Hernán, logopeda especializada en terapia miofuncional"
-            width={1086}
-            height={1448}
+            width={1024}
+            height={1536}
             sizes="(min-width: 768px) 36vw, 100vw"
             className="aspect-[692/906] w-full rounded-panel object-cover"
           />

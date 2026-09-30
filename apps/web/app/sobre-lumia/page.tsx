@@ -48,10 +48,10 @@ export default function SobreLumiaPage() {
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto grid max-w-6xl items-start gap-10 md:grid-cols-2 md:gap-16">
           <Image
-            src="/patricia.jpg"
+            src="/patricia-retrato.jpg"
             alt="Patricia Hernán, logopeda especializada en terapia miofuncional"
-            width={1086}
-            height={1448}
+            width={1024}
+            height={1536}
             sizes="(min-width: 768px) 50vw, 100vw"
             className="h-auto w-full rounded-panel object-cover"
           />
