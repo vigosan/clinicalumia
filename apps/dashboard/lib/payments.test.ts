@@ -1,6 +1,7 @@
 import { madridInstant } from "@clinicalumia/api/madrid-time";
 import { describe, expect, it } from "vitest";
 import {
+  canVoidPayment,
   formatEuros,
   methodLabel,
   parseAmount,
@@ -136,6 +137,17 @@ describe("paymentStatus", () => {
     });
   });
 
+  it("says pending for a no-show without payment, since a missed session can still be charged", () => {
+    const noShow = {
+      starts_at: scheduled.starts_at,
+      status: "no_show" as const,
+    };
+    expect(paymentStatus({ appointment: noShow, payment: null, now })).toEqual({
+      kind: "pending",
+      label: "Pendiente de cobro",
+    });
+  });
+
   it("shows nothing for a cancelled appointment with no payment, instead of nagging staff to collect a cancelled visit", () => {
     const cancelled = {
       starts_at: scheduled.starts_at,
@@ -255,32 +267,41 @@ describe("paymentHistoryLines", () => {
 
 describe("paymentError", () => {
   it("maps each known code to its Spanish message", () => {
-    expect(paymentError({ message: "already_paid" })).toBe(
+    expect(paymentError({ code: "P0001", message: "already_paid" })).toBe(
       "Esta cita ya está cobrada.",
     );
-    expect(paymentError({ message: "note_required" })).toBe(
+    expect(paymentError({ code: "P0001", message: "note_required" })).toBe(
       "Indica el motivo del cambio de importe.",
     );
-    expect(paymentError({ message: "appointment_cancelled_needs_note" })).toBe(
-      "Indica por qué se cobra una cita cancelada.",
-    );
-    expect(paymentError({ message: "appointment_not_started" })).toBe(
-      "Todavía no se puede cobrar esta cita.",
-    );
-    expect(paymentError({ message: "invalid_amount" })).toBe(
+    expect(
+      paymentError({
+        code: "P0001",
+        message: "appointment_cancelled_needs_note",
+      }),
+    ).toBe("Indica por qué se cobra una cita cancelada.");
+    expect(
+      paymentError({ code: "P0001", message: "appointment_not_started" }),
+    ).toBe("Todavía no se puede cobrar esta cita.");
+    expect(paymentError({ code: "P0001", message: "invalid_amount" })).toBe(
       "Escribe un importe válido.",
     );
-    expect(paymentError({ message: "invalid_method" })).toBe(
+    expect(paymentError({ code: "P0001", message: "invalid_method" })).toBe(
       "Elige la forma de pago.",
     );
-    expect(paymentError({ message: "reason_required" })).toBe(
+    expect(paymentError({ code: "P0001", message: "reason_required" })).toBe(
       "Indica el motivo de la anulación.",
     );
-    expect(paymentError({ message: "not_allowed" })).toBe(
+    expect(paymentError({ code: "P0001", message: "not_allowed" })).toBe(
       "Solo puede anular este cobro quien lo registró hoy o la propietaria.",
     );
-    expect(paymentError({ message: "already_voided" })).toBe(
+    expect(paymentError({ code: "P0001", message: "already_voided" })).toBe(
       "Este cobro ya está anulado.",
+    );
+  });
+
+  it("ignores a message that looks like a known code when it doesn't come from our own raise, so a foreign error isn't shown as a payment rule", () => {
+    expect(paymentError({ code: "23505", message: "already_paid" })).toBe(
+      "No se ha podido guardar. Inténtalo de nuevo.",
     );
   });
 
@@ -291,11 +312,62 @@ describe("paymentError", () => {
   });
 
   it("falls back to a generic retry message for anything unrecognised", () => {
-    expect(paymentError({ message: "appointment_not_found" })).toBe(
-      "No se ha podido guardar. Inténtalo de nuevo.",
-    );
+    expect(
+      paymentError({ code: "P0001", message: "appointment_not_found" }),
+    ).toBe("No se ha podido guardar. Inténtalo de nuevo.");
     expect(paymentError({})).toBe(
       "No se ha podido guardar. Inténtalo de nuevo.",
     );
+  });
+});
+
+describe("canVoidPayment", () => {
+  const payment = {
+    collected_by: "staff-1",
+    collected_at: madridInstant("2026-09-30", "09:00"),
+  };
+
+  it("lets whoever collected it undo a mistake the same Madrid day", () => {
+    expect(
+      canVoidPayment({
+        payment,
+        userId: "staff-1",
+        isOwner: false,
+        now: new Date(madridInstant("2026-09-30", "23:59")),
+      }),
+    ).toBe(true);
+  });
+
+  it("stops the collector the next Madrid day, so closed cash can't be changed quietly", () => {
+    expect(
+      canVoidPayment({
+        payment,
+        userId: "staff-1",
+        isOwner: false,
+        now: new Date(madridInstant("2026-10-01", "00:01")),
+      }),
+    ).toBe(false);
+  });
+
+  it("stops a colleague from voiding someone else's payment", () => {
+    expect(
+      canVoidPayment({
+        payment,
+        userId: "staff-2",
+        isOwner: false,
+        now: new Date(madridInstant("2026-09-30", "10:00")),
+      }),
+    ).toBe(false);
+  });
+
+  it("always lets the owner void, whoever collected it and whenever", () => {
+    expect(
+      canVoidPayment({
+        payment,
+        userId: "owner-1",
+        isOwner: true,
+        now: new Date(madridInstant("2026-11-15", "10:00")),
+      }),
+    ).toBe(true);
   });
 });

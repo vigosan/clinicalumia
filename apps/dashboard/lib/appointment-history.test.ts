@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { type AppointmentEventRow, historyLine } from "./appointment-history";
+import {
+  type AppointmentEventRow,
+  appointmentHistory,
+  historyLine,
+} from "./appointment-history";
 
 const nameById = new Map([
   ["actor-1", "Laura Ejemplo"],
@@ -161,5 +165,65 @@ describe("historyLine", () => {
       nameById,
     );
     expect(line).toBe("Cancelada desde la web el 28/09 a las 10:12");
+  });
+});
+
+describe("appointmentHistory", () => {
+  it("interleaves payment lines with appointment events by time, so a re-collection after a void reads in the order it happened", () => {
+    const created = event({
+      id: "event-1",
+      created_at: "2026-09-28T08:00:00Z",
+    });
+    const noShow = event({
+      id: "event-2",
+      kind: "no_show",
+      created_at: "2026-09-28T10:30:00Z",
+    });
+    const history = appointmentHistory({
+      events: [created, noShow],
+      appointment,
+      payments: [
+        {
+          id: "payment-2",
+          amount_cents: 5500,
+          method: "bizum",
+          collected_at: "2026-09-28T11:00:00Z",
+          collected_by: "actor-2",
+          voided_at: null,
+          voided_by: null,
+          void_reason: "",
+        },
+        {
+          id: "payment-1",
+          amount_cents: 5500,
+          method: "cash",
+          collected_at: "2026-09-28T09:00:00Z",
+          collected_by: "actor-1",
+          voided_at: "2026-09-28T10:45:00Z",
+          voided_by: "actor-2",
+          void_reason: "Pagó con Bizum",
+        },
+      ],
+      nameById,
+    });
+    expect(history).toEqual([
+      { id: "event-1", text: "Creada por Laura Ejemplo el 28/09 a las 10:00" },
+      {
+        id: "payment-1-collected",
+        text: "Cobrada · 55,00 € · Efectivo por Laura Ejemplo el 28/09 a las 11:00",
+      },
+      {
+        id: "event-2",
+        text: "Marcada como no presentada por Laura Ejemplo el 28/09 a las 12:30",
+      },
+      {
+        id: "payment-1-voided",
+        text: "Cobro anulado · Pagó con Bizum por Patricia el 28/09 a las 12:45",
+      },
+      {
+        id: "payment-2-collected",
+        text: "Cobrada · 55,00 € · Bizum por Patricia el 28/09 a las 13:00",
+      },
+    ]);
   });
 });

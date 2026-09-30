@@ -1,4 +1,5 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
+import { type PaymentHistoryRow, paymentHistoryLines } from "./payments";
 
 export type AppointmentEventRow = {
   id: string;
@@ -16,7 +17,7 @@ export type HistoryAppointment = {
   cancel_reason: string;
 };
 
-function formatHistoryMoment(instant: string): string {
+export function formatHistoryMoment(instant: string): string {
   const { date, time } = madridDateTime(instant);
   return `${date.slice(8, 10)}/${date.slice(5, 7)} a las ${time.slice(0, 5)}`;
 }
@@ -81,4 +82,40 @@ export function historyLine(
     return `Marcada como no presentada por ${actorName} el ${moment}`;
 
   return `Restaurada por ${actorName} el ${moment}`;
+}
+
+export function appointmentHistory({
+  events,
+  appointment,
+  payments,
+  nameById,
+}: {
+  events: AppointmentEventRow[];
+  appointment: HistoryAppointment;
+  payments: (PaymentHistoryRow & { id: string })[];
+  nameById: Map<string, string>;
+}): { id: string; text: string }[] {
+  const entries = [
+    ...events.map((event, index) => ({
+      id: event.id,
+      at: event.created_at,
+      text: historyLine(event, index, events, appointment, nameById),
+    })),
+    ...payments.flatMap((payment) => {
+      const [collected = "", voided] = paymentHistoryLines(payment, nameById);
+      const collectedEntry = {
+        id: `${payment.id}-collected`,
+        at: payment.collected_at,
+        text: collected,
+      };
+      if (!payment.voided_at || !voided) return [collectedEntry];
+      return [
+        collectedEntry,
+        { id: `${payment.id}-voided`, at: payment.voided_at, text: voided },
+      ];
+    }),
+  ];
+  return entries
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+    .map(({ id, text }) => ({ id, text }));
 }

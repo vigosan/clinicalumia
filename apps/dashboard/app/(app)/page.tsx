@@ -8,8 +8,9 @@ import { Card } from "@clinicalumia/ui/card";
 import { canMarkNoShow, canMove, isUuid } from "@/lib/agenda";
 import {
   type AppointmentEventRow,
-  historyLine,
+  appointmentHistory,
 } from "@/lib/appointment-history";
+import { canVoidPayment, paymentStatus } from "@/lib/payments";
 import { AgendaHeader } from "./agenda/AgendaHeader";
 import {
   type AppointmentDetail,
@@ -58,6 +59,11 @@ async function loadAppointmentDetail(
   const [
     { data: events, error: eventsError },
     { data: directory, error: directoryError },
+    { data: payments, error: paymentsError },
+    { data: suggestedCents, error: suggestedError },
+    {
+      data: { user },
+    },
   ] = await Promise.all([
     supabase
       .from("appointment_events")
@@ -67,21 +73,45 @@ async function loadAppointmentDetail(
       .eq("appointment_id", appointmentId)
       .order("created_at", { ascending: true }),
     supabase.rpc("staff_directory"),
+    supabase
+      .from("payments")
+      .select(
+        "id, amount_cents, method, note, collected_at, collected_by, voided_at, voided_by, void_reason",
+      )
+      .eq("appointment_id", appointmentId)
+      .order("collected_at", { ascending: true }),
+    supabase.rpc("suggested_amount", { p_appointment_id: appointmentId }),
+    supabase.auth.getUser(),
   ]);
-  if (eventsError || directoryError) return { status: "error" };
+  if (
+    eventsError ||
+    directoryError ||
+    paymentsError ||
+    suggestedError ||
+    suggestedCents === null ||
+    !user
+  )
+    return { status: "error" };
 
   const nameById = new Map(
     (directory ?? []).map((profile) => [profile.id, profile.full_name]),
   );
   const professionalName = nameById.get(appt.professional_id) ?? "Profesional";
 
-  const eventRows = (events ?? []) as AppointmentEventRow[];
-  const history = eventRows.map((event, index) => ({
-    id: event.id,
-    text: historyLine(event, index, eventRows, appt, nameById),
-  }));
+  const paymentRows = payments ?? [];
+  const history = appointmentHistory({
+    events: (events ?? []) as AppointmentEventRow[],
+    appointment: appt,
+    payments: paymentRows,
+    nameById,
+  });
 
   const now = new Date();
+  const activePayment =
+    paymentRows.find((payment) => payment.voided_at === null) ?? null;
+  const isOwner =
+    (directory ?? []).find((profile) => profile.id === user.id)?.role ===
+    "owner";
   const initial = madridDateTime(appt.starts_at);
 
   return {
@@ -101,6 +131,23 @@ async function loadAppointmentDetail(
       origin: appt.origin,
       notes: appt.notes,
       priceCents: appt.price_cents,
+      paymentStatus: paymentStatus({
+        appointment: appt,
+        payment: activePayment,
+        now,
+      }).label,
+      suggestedAmountCents: suggestedCents,
+      canCollect:
+        !activePayment && new Date(appt.starts_at).getTime() <= now.getTime(),
+      activePaymentId: activePayment?.id ?? null,
+      canVoid:
+        activePayment !== null &&
+        canVoidPayment({
+          payment: activePayment,
+          userId: user.id,
+          isOwner,
+          now,
+        }),
       canMove: canMove({ status: appt.status, starts_at: appt.starts_at }, now),
       canMarkNoShow: canMarkNoShow(
         { status: appt.status, starts_at: appt.starts_at },

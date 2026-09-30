@@ -1,8 +1,14 @@
-import { madridDateTime } from "@clinicalumia/api/madrid-time";
+import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { formatHistoryMoment } from "./appointment-history";
 
 export type PaymentMethod = "cash" | "card" | "bizum" | "transfer";
 
-const METHOD_ORDER: PaymentMethod[] = ["cash", "card", "bizum", "transfer"];
+export const METHOD_ORDER: PaymentMethod[] = [
+  "cash",
+  "card",
+  "bizum",
+  "transfer",
+];
 
 const METHOD_LABELS: Record<PaymentMethod, string> = {
   cash: "Efectivo",
@@ -123,11 +129,6 @@ export function totalsByMethod(payments: VoidablePayment[]): {
   return { methods, total };
 }
 
-function formatHistoryMoment(instant: string): string {
-  const { date, time } = madridDateTime(instant);
-  return `${date.slice(8, 10)}/${date.slice(5, 7)} a las ${time.slice(0, 5)}`;
-}
-
 export type PaymentHistoryRow = {
   amount_cents: number;
   method: PaymentMethod;
@@ -173,9 +174,27 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
 
 export function paymentError(error: DbError): string {
   if (error.code === "42501") return "No tienes permiso para hacer esto.";
-  if (error.message) {
+  if (error.code === "P0001" && error.message) {
     const mapped = ERROR_MESSAGE_BY_CODE[error.message];
     if (mapped) return mapped;
   }
   return "No se ha podido guardar. Inténtalo de nuevo.";
+}
+
+export function canVoidPayment({
+  payment,
+  userId,
+  isOwner,
+  now,
+}: {
+  payment: { collected_by: string; collected_at: string };
+  userId: string;
+  isOwner: boolean;
+  now: Date;
+}): boolean {
+  if (isOwner) return true;
+  return (
+    payment.collected_by === userId &&
+    madridDateTime(payment.collected_at).date === todayInMadrid(now)
+  );
 }

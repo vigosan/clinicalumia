@@ -1,0 +1,43 @@
+"use server";
+
+import { createClient } from "@clinicalumia/api/server";
+import { revalidatePath } from "next/cache";
+import type { ActionResult } from "@/lib/action-result";
+import { METHOD_ORDER, parseAmount, paymentError } from "@/lib/payments";
+
+export async function collectPayment(
+  appointmentId: string,
+  input: { amount: string; method: string; note: string },
+): Promise<ActionResult> {
+  const parsed = parseAmount(input.amount);
+  if ("error" in parsed) return parsed;
+  const method = METHOD_ORDER.find((candidate) => candidate === input.method);
+  if (!method) return { error: "Elige la forma de pago." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("collect_payment", {
+    p_appointment_id: appointmentId,
+    p_amount_cents: parsed.cents,
+    p_method: method,
+    p_note: input.note.trim(),
+  });
+  if (error) return { error: paymentError(error) };
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function voidPayment(
+  paymentId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("void_payment", {
+    p_payment_id: paymentId,
+    p_reason: reason.trim(),
+  });
+  if (error) return { error: paymentError(error) };
+
+  revalidatePath("/");
+  return { ok: true };
+}

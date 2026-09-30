@@ -8,6 +8,8 @@ import { useState, useTransition } from "react";
 import { markNoShow, restoreFromNoShow } from "../appointments/actions";
 import { CancelDialog } from "./CancelDialog";
 import { MoveForm } from "./MoveForm";
+import { PaymentForm } from "./PaymentForm";
+import { VoidPaymentDialog } from "./VoidPaymentDialog";
 
 export type AppointmentDetail = {
   id: string;
@@ -24,6 +26,11 @@ export type AppointmentDetail = {
   origin: "staff" | "web";
   notes: string;
   priceCents: number;
+  paymentStatus: string;
+  suggestedAmountCents: number;
+  canCollect: boolean;
+  activePaymentId: string | null;
+  canVoid: boolean;
   canMove: boolean;
   canMarkNoShow: boolean;
   canCancel: boolean;
@@ -156,7 +163,26 @@ export function AppointmentPanel({
           Pago
         </h2>
         <p className="text-ink-900">{formatPrice(appointment.priceCents)}</p>
-        <p className="text-[13px] text-ink-800">Los cobros llegarán pronto.</p>
+        {appointment.paymentStatus && (
+          <p
+            className="text-[13px] text-ink-800"
+            data-testid="appointment-payment-status"
+          >
+            {appointment.paymentStatus}
+          </p>
+        )}
+        {appointment.canCollect && (
+          <PaymentForm
+            appointmentId={appointment.id}
+            suggestedAmountCents={appointment.suggestedAmountCents}
+            cancelled={appointment.status === "cancelled"}
+          />
+        )}
+        {appointment.activePaymentId && appointment.canVoid && (
+          <div>
+            <VoidPaymentDialog paymentId={appointment.activePaymentId} />
+          </div>
+        )}
       </div>
 
       {(appointment.canCancel ||
