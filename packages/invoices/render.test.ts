@@ -157,7 +157,7 @@ async function pdfText(bytes: Uint8Array): Promise<string> {
 }
 
 describe("renderInvoicePdf", () => {
-  it("produces a simplified invoice PDF with everything the patient needs to read", async () => {
+  it("produces a simplified invoice PDF with everything the patient needs to read, and only the QR label a non-VERI*FACTU system may print", async () => {
     const bytes = await renderInvoicePdf(simplified());
 
     expect(new TextDecoder().decode(bytes.slice(0, 4))).toBe("%PDF");
@@ -170,9 +170,8 @@ describe("renderInvoicePdf", () => {
     expect(text).toContain("45,00 €");
     expect(text).toContain("Pagado con tarjeta");
     expect(text).toContain(exemption);
-    expect(text).toContain(
-      "Factura verificable en la sede electrónica de la AEAT",
-    );
+    expect(text).toContain("QR tributario:");
+    expect(text).not.toContain("Factura verificable");
     expect(text).not.toContain("Para");
   });
 
@@ -193,13 +192,15 @@ describe("renderInvoicePdf", () => {
     expect(text).toContain("Pagado por Bizum");
   });
 
-  it("marks a rectifying invoice with the original code, the reason and negative amounts", async () => {
+  it("marks a rectifying invoice with the original code, the reason and negative amounts, without claiming a payment it reverses", async () => {
     const text = await pdfText(await renderInvoicePdf(rectifying()));
 
     expect(text).toContain("Factura rectificativa R1/26");
     expect(text).toContain("Rectifica la factura 34/26");
     expect(text).toContain("Cobro registrado por error en la cita equivocada");
     expect(text).toContain("-45,00 €");
+    expect(text).toContain("QR tributario:");
+    expect(text).not.toContain("Pagado");
   });
 
   it("keeps accents, commas and very long texts readable instead of breaking the PDF", async () => {

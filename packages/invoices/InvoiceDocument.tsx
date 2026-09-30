@@ -15,7 +15,7 @@ import {
   formatSessionDate,
   paymentSummary,
 } from "./format";
-import { AEAT_QR_LEGEND } from "./qr";
+import { AEAT_QR_LABEL } from "./qr";
 import type { InvoiceDetail, InvoiceRelated, InvoiceSnapshot } from "./types";
 
 function packaged(path: string): string {
@@ -43,6 +43,8 @@ const color = {
 
 export const QR_COLOR = color.ink;
 
+const QR_SIZE = (30 / 25.4) * 72;
+
 const s = StyleSheet.create({
   page: {
     fontFamily: "NeueHaas",
@@ -50,7 +52,7 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: color.ink,
     paddingTop: 64,
-    paddingBottom: 150,
+    paddingBottom: 90,
     paddingHorizontal: 64,
   },
   header: {
@@ -67,16 +69,17 @@ const s = StyleSheet.create({
     objectPosition: "left",
   },
   headerRight: { alignItems: "flex-end", maxWidth: 280 },
+  headerText: { alignItems: "flex-end", height: 52 },
   title: { fontSize: 16, fontWeight: 300 },
   date: { marginTop: 6, color: color.grey },
   reference: { marginTop: 4, color: color.grey, fontSize: 8 },
-  parties: { flexDirection: "row", marginTop: 72 },
+  parties: { flexDirection: "row", marginTop: 32 },
   party: { width: 200, marginRight: 40 },
   label: { fontSize: 7.5, color: color.grey, marginBottom: 6 },
   name: { fontWeight: 400, marginBottom: 3 },
   line: { color: color.grey, marginTop: 2 },
   concept: {
-    marginTop: 80,
+    marginTop: 64,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
@@ -103,24 +106,12 @@ const s = StyleSheet.create({
   },
   totalLabel: { fontSize: 10, fontWeight: 400, marginBottom: 2 },
   totalValue: { fontSize: 18, fontWeight: 300, color: color.bark },
-  notes: { marginTop: 56 },
+  notes: { marginTop: 48 },
   note: { color: color.grey, fontSize: 8, marginBottom: 4 },
   footer: { position: "absolute", left: 64, right: 64, bottom: 40 },
-  qrBlock: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "flex-end",
-    marginBottom: 20,
-  },
-  qrText: {
-    fontSize: 6.5,
-    color: color.grey,
-    width: 100,
-    textAlign: "right",
-    marginRight: 10,
-    marginBottom: 1,
-  },
-  qr: { width: 60, height: 60 },
+  qrBlock: { alignItems: "center", marginTop: 10 },
+  qrLabel: { color: color.grey, marginBottom: 6 },
+  qr: { width: QR_SIZE, height: QR_SIZE },
   footerRow: { flexDirection: "row", justifyContent: "space-between" },
   footerText: { fontSize: 7, color: color.grey, maxWidth: 400 },
 });
@@ -193,7 +184,7 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
   const showBreakdown = snapshot.totals.vat_cents !== 0;
   const notes = [
     snapshot.vat_note,
-    paymentSummary(snapshot.payments),
+    detail.kind === "rectifying" ? "" : paymentSummary(snapshot.payments),
     reason ? `Motivo: ${reason}` : "",
   ].filter((note) => note.trim() !== "");
 
@@ -203,9 +194,15 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
         <View style={s.header}>
           <Image style={s.logo} src={logo} />
           <View style={s.headerRight}>
-            <Text style={s.title}>{title}</Text>
-            <Text style={s.date}>{formatMadridDate(detail.issued_at)}</Text>
-            {reference !== "" && <Text style={s.reference}>{reference}</Text>}
+            <View style={s.headerText}>
+              <Text style={s.title}>{title}</Text>
+              <Text style={s.date}>{formatMadridDate(detail.issued_at)}</Text>
+              {reference !== "" && <Text style={s.reference}>{reference}</Text>}
+            </View>
+            <View style={s.qrBlock}>
+              <Text style={s.qrLabel}>{AEAT_QR_LABEL}</Text>
+              <Image style={s.qr} src={qr} />
+            </View>
           </View>
         </View>
 
@@ -287,10 +284,6 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
         )}
 
         <View style={s.footer} fixed>
-          <View style={s.qrBlock}>
-            <Text style={s.qrText}>{AEAT_QR_LEGEND}</Text>
-            <Image style={s.qr} src={qr} />
-          </View>
           <View style={s.footerRow}>
             <Text style={s.footerText}>{snapshot.footer}</Text>
             <Text

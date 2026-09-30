@@ -3,6 +3,8 @@ import { madridDateParts } from "./format";
 export const AEAT_QR_URL =
   "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQRNoVerifactu";
 
+export const AEAT_QR_LABEL = "QR tributario:";
+
 export const AEAT_QR_LEGEND =
   "Factura verificable en la sede electrónica de la AEAT";
 
