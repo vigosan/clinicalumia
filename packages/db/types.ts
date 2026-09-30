@@ -346,6 +346,7 @@ export type Database = {
           pdf_path: string
           person_id: string | null
           privacy_accepted: boolean
+          search_text: string | null
           signed_at: string
           sources: string[]
           tax_id: string
@@ -368,6 +369,7 @@ export type Database = {
           pdf_path: string
           person_id?: string | null
           privacy_accepted?: boolean
+          search_text?: string | null
           signed_at: string
           sources?: string[]
           tax_id: string
@@ -390,6 +392,7 @@ export type Database = {
           pdf_path?: string
           person_id?: string | null
           privacy_accepted?: boolean
+          search_text?: string | null
           signed_at?: string
           sources?: string[]
           tax_id?: string

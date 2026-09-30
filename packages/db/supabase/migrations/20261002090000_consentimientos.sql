@@ -19,12 +19,16 @@ create table public.consents (
   linked_by uuid references public.profiles(id) on delete set null,
   link_method public.consent_link_method,
   created_at timestamptz not null default now(),
+  search_text text generated always as (
+    lower(public.f_unaccent(first_name || ' ' || last_name || ' ' || tax_id))
+  ) stored,
   constraint consents_link_method_with_person check ((person_id is null) = (link_method is null))
 );
 
 create index consents_person_idx on public.consents(person_id);
 create index consents_signed_at_idx on public.consents(signed_at desc);
 create index consents_tax_id_idx on public.consents(tax_id);
+create index consents_search_idx on public.consents using gin (search_text extensions.gin_trgm_ops);
 
 create or replace function public.clear_consent_link()
 returns trigger

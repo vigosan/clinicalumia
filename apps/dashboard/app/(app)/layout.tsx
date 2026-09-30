@@ -45,6 +45,7 @@ export default async function DashboardLayout({
       nav={[
         { href: "/", label: "Agenda" },
         { href: "/patients", label: "Pacientes" },
+        { href: "/consentimientos", label: "Consentimientos" },
         { href: "/mi-calendario", label: "Mi calendario" },
       ]}
       user={{
