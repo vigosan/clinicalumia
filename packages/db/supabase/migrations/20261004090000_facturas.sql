@@ -888,3 +888,66 @@ $$;
 
 revoke all on function public.invoice_detail(uuid) from public, anon;
 grant execute on function public.invoice_detail(uuid) to authenticated;
+
+create table public.invoice_emails (
+  id uuid primary key default gen_random_uuid(),
+  invoice_id uuid not null references public.invoices(id) on delete restrict,
+  sent_to text not null check (sent_to ~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' and char_length(sent_to) <= 320),
+  sent_by uuid not null references public.profiles(id),
+  sent_at timestamptz not null default now()
+);
+
+create index invoice_emails_invoice_idx on public.invoice_emails(invoice_id);
+
+alter table public.invoice_emails enable row level security;
+
+revoke all on public.invoice_emails from anon, authenticated, service_role;
+grant select on public.invoice_emails to authenticated, service_role;
+
+create policy "invoice_emails_select_own_or_owner" on public.invoice_emails
+  for select to authenticated
+  using (
+    public.is_active_staff()
+    and exists (
+      select 1 from public.invoices i
+      join public.payments p on p.id = i.payment_id
+      join public.appointments a on a.id = p.appointment_id
+      where i.id = invoice_emails.invoice_id
+        and (public.is_owner() or a.professional_id = auth.uid() or p.collected_by = auth.uid())
+    )
+  );
+
+create or replace function public.record_invoice_email(p_invoice_id uuid, p_email text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  clean_email text := lower(btrim(coalesce(p_email, '')));
+  email_id uuid;
+begin
+  if not public.is_active_staff() then
+    raise exception 'invoice_forbidden' using errcode = '42501';
+  end if;
+  if clean_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' or char_length(clean_email) > 320 then
+    raise exception 'email_invalid' using errcode = 'P0001';
+  end if;
+  if not exists (
+    select 1 from public.invoices i
+    join public.payments p on p.id = i.payment_id
+    join public.appointments a on a.id = p.appointment_id
+    where i.id = p_invoice_id
+      and (public.is_owner() or a.professional_id = auth.uid() or p.collected_by = auth.uid())
+  ) then
+    raise exception 'invoice_not_found' using errcode = 'P0001';
+  end if;
+  insert into public.invoice_emails (invoice_id, sent_to, sent_by)
+  values (p_invoice_id, clean_email, auth.uid())
+  returning id into email_id;
+  return email_id;
+end;
+$$;
+
+revoke all on function public.record_invoice_email(uuid, text) from public, anon;
+grant execute on function public.record_invoice_email(uuid, text) to authenticated;

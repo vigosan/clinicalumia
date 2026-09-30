@@ -27,6 +27,7 @@ export function deleteInvoicesOfAppointments(appointmentIds: string[]) {
       input: [
         "begin;",
         "set local session_replication_role = replica;",
+        `delete from public.invoice_emails where invoice_id in (${invoices});`,
         `delete from public.invoice_records where invoice_id in (${invoices});`,
         `delete from public.invoices where id in (${invoices});`,
         "commit;",

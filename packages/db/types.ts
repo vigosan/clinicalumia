@@ -517,6 +517,45 @@ export type Database = {
           },
         ]
       }
+      invoice_emails: {
+        Row: {
+          id: string
+          invoice_id: string
+          sent_at: string
+          sent_by: string
+          sent_to: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          sent_at?: string
+          sent_by: string
+          sent_to: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          sent_at?: string
+          sent_by?: string
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_emails_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_emails_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_records: {
         Row: {
           aeat_status: string | null
@@ -1244,6 +1283,10 @@ export type Database = {
           starts_at: string
           suggested_cents: number
         }[]
+      }
+      record_invoice_email: {
+        Args: { p_email: string; p_invoice_id: string }
+        Returns: string
       }
       regenerate_my_calendar_token: { Args: never; Returns: string }
       reminder_candidates: {

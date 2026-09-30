@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(161);
+select plan(168);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -883,6 +883,30 @@ select is(
   or has_function_privilege('anon', 'public.issue_rectifying_invoice(uuid, text)', 'execute'),
   false,
   'an anonymous visitor can neither read nor issue invoices');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.record_invoice_email(pg_temp.id_of('f9'), '  Tutor@Correo.test '), null,
+  'the professional records that she emailed her patient''s invoice');
+select results_eq(
+  $$ select invoice_id, sent_to, sent_by, sent_at = now() from public.invoice_emails $$,
+  $$ values (pg_temp.id_of('f9'), 'tutor@correo.test', '8b000000-0000-0000-0000-000000000001'::uuid, true) $$,
+  'each email keeps the invoice, the normalised address, who sent it and when, so the clinic can prove what was sent to whom');
+select throws_ok($$ select public.record_invoice_email(pg_temp.id_of('f9'), 'no-es-un-email') $$, 'P0001', 'email_invalid',
+  'an address that cannot receive email is never recorded as a delivery');
+select throws_ok($$ select public.record_invoice_email(pg_temp.id_of('s8'), 'alguien@correo.test') $$, 'P0001', 'invoice_not_found',
+  'a professional cannot record sending a colleague''s invoice');
+select throws_ok($$ insert into public.invoice_emails (invoice_id, sent_to, sent_by) values (pg_temp.id_of('f9'), 'x@y.test', '8b000000-0000-0000-0000-000000000001') $$,
+  '42501', null,
+  'staff cannot write the email log directly, so it only holds real sends');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000002');
+select is((select count(*) from public.invoice_emails)::int, 0,
+  'a colleague does not see who received invoices of patients that are not hers');
+reset role;
+select pg_temp.act_as_patient('8b000000-0000-0000-0000-000000000010');
+select throws_ok($$ select public.record_invoice_email(pg_temp.id_of('f9'), 'x@y.test') $$, '42501', null,
+  'a patient cannot record invoice emails');
+reset role;
 
 select * from finish();
 rollback;
