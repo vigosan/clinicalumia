@@ -185,6 +185,24 @@ describe("invoiceSetupWarnings", () => {
     ]);
   });
 
+  it("warns when the rectifying numbering is not confirmed, because voiding an invoiced charge needs a rectifying invoice", () => {
+    expect(
+      invoiceSetupWarnings({
+        settings,
+        series: [
+          confirmed[0]!,
+          { code: "rectifying", year: 2026, configured: false },
+        ],
+        year: 2026,
+      }),
+    ).toEqual([
+      {
+        id: "invoice-series-rectifying-warning",
+        text: "Falta confirmar la numeración de las rectificativas: sin ella no se pueden anular cobros facturados.",
+      },
+    ]);
+  });
+
   it("does not warn on 1 January, because a new year without its own row inherits the previous year's confirmation and invoicing keeps working", () => {
     expect(
       invoiceSetupWarnings({ settings, series: confirmed, year: 2027 }),

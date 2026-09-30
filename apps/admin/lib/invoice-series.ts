@@ -168,6 +168,16 @@ export function invoiceSetupWarnings({
       id: "invoice-series-warning",
       text: `Confirma la numeración de facturas de ${year} en Facturación: hasta que la guardes, no se pueden registrar cobros.`,
     });
+  if (
+    !effectiveSeries(
+      series.filter((row) => row.code === "rectifying"),
+      year,
+    )?.configured
+  )
+    warnings.push({
+      id: "invoice-series-rectifying-warning",
+      text: "Falta confirmar la numeración de las rectificativas: sin ella no se pueden anular cobros facturados.",
+    });
   return warnings;
 }
 
