@@ -117,6 +117,11 @@ describe("parseConsent", () => {
     );
   });
 
+  it("drops the dots people often type in a DNI, so the clinic finds it the same way it finds people", () => {
+    const result = parseConsent(form({ dni: "12.345.678-z" }), today);
+    expect(result).toHaveProperty("consent.dni", "12345678Z");
+  });
+
   it("normalises the DNI so the same person is always recorded the same way", () => {
     const result = parseConsent(form({ dni: " 12345678-z " }), today);
     expect(result).toHaveProperty("consent.dni", "12345678Z");

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(62);
+select plan(63);
 
 create or replace function pg_temp.years_ago(years int) returns date language sql stable as $$
   select ((now() at time zone 'Europe/Madrid')::date - make_interval(years => years))::date
@@ -137,6 +137,12 @@ insert into public.consents (id, signed_at, first_name, last_name, birth_date, t
    '2026/09/89000000-0000-0000-0000-0000000000f2.pdf');
 select is((select search_text from public.consents where id = '89000000-0000-0000-0000-0000000000f2'), 'lucia martinez soler 89000021c',
   'the staff search finds a consent by full name without accents or by DNI, the same way it finds people');
+
+insert into public.consents (id, signed_at, first_name, last_name, birth_date, tax_id, email, marketing, media_for_training, pdf_path) values
+  ('89000000-0000-0000-0000-0000000000f3', now(), 'Con', 'Puntos', '1985-03-03', '12.345.678-z', null, false, false,
+   '2026/09/89000000-0000-0000-0000-0000000000f3.pdf');
+select is((select count(*) from public.consents where search_text ilike '%' || lower('12345678Z') || '%'), 1::bigint,
+  'a consent whose DNI was stored with dots or dashes is still found by the plain DNI staff type');
 
 select is((select public from storage.buckets where id = 'consents'), false,
   'the consents bucket is private, so a signed PDF can never be reached by a public URL');

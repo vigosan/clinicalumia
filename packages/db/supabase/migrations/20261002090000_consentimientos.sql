@@ -20,7 +20,7 @@ create table public.consents (
   link_method public.consent_link_method,
   created_at timestamptz not null default now(),
   search_text text generated always as (
-    lower(public.f_unaccent(first_name || ' ' || last_name || ' ' || tax_id))
+    lower(public.f_unaccent(first_name || ' ' || last_name || ' ' || upper(regexp_replace(tax_id, '[\s.\-]', '', 'g'))))
   ) stored,
   constraint consents_link_method_with_person check ((person_id is null) = (link_method is null))
 );
