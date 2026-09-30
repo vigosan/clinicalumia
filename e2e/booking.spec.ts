@@ -354,14 +354,21 @@ test("a chosen time that has already passed goes back to the slots instead of sh
   await expect(page.getByTestId("booking-chosen")).toHaveCount(0);
 });
 
-async function openChosenSlot(page: Page, slotStep: string) {
+async function firstSlotHref(page: Page, slotStep: string) {
   await page.goto(slotStep);
   const slot = page.getByTestId("booking-slot").first();
   await expect(slot).toBeVisible();
-  const href = (await slot.getAttribute("href")) ?? "";
+  return (await slot.getAttribute("href")) ?? "";
+}
+
+async function openSlot(page: Page, href: string) {
   await page.goto(`${WEB}${href}`);
   const next = new URL(page.url()).searchParams.get("next") ?? "";
   return new URL(next, WEB).searchParams.get("inicio") ?? "";
+}
+
+async function openChosenSlot(page: Page, slotStep: string) {
+  return openSlot(page, await firstSlotHref(page, slotStep));
 }
 
 async function identify(page: Page, email: string) {
@@ -531,13 +538,13 @@ test("a mother books for her new child: she is saved as guardian without being a
 
 async function patientAtSummary(
   context: BrowserContext,
-  slotStep: string,
+  slotHref: string,
   prefix: string,
 ) {
   const page = await context.newPage();
   const email = uniqueEmail(prefix);
   await seedPerson(email, prefix);
-  const startsAt = await openChosenSlot(page, slotStep);
+  const startsAt = await openSlot(page, slotHref);
   await identify(page, email);
   await page.getByTestId("booking-person").click();
   await expect(page.getByTestId("booking-summary")).toBeVisible();
@@ -559,10 +566,13 @@ test("two people confirming the same time at once: one gets it and the other is 
   );
 
   try {
-    const first = await patientAtSummary(contexts[0]!, slotStep, "reserva-uno");
+    const probe = await contexts[0]!.newPage();
+    const slotHref = await firstSlotHref(probe, slotStep);
+    await probe.close();
+    const first = await patientAtSummary(contexts[0]!, slotHref, "reserva-uno");
     const second = await patientAtSummary(
       contexts[1]!,
-      slotStep,
+      slotHref,
       "reserva-dos",
     );
     expect(second.startsAt).toBe(first.startsAt);
