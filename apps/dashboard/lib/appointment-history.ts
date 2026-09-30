@@ -1,4 +1,5 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
+import { formatHistoryMoment } from "./madrid-format";
 import { type PaymentHistoryRow, paymentHistoryLines } from "./payments";
 
 export type AppointmentEventRow = {
@@ -16,11 +17,6 @@ export type HistoryAppointment = {
   cancelled_by: "patient" | "clinic" | null;
   cancel_reason: string;
 };
-
-export function formatHistoryMoment(instant: string): string {
-  const { date, time } = madridDateTime(instant);
-  return `${date.slice(8, 10)}/${date.slice(5, 7)} a las ${time.slice(0, 5)}`;
-}
 
 function formatMoveTime(instant: string, includeDate: boolean): string {
   const { date, time } = madridDateTime(instant);

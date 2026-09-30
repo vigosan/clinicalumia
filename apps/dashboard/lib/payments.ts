@@ -1,5 +1,5 @@
 import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
-import { formatHistoryMoment } from "./appointment-history";
+import { formatHistoryMoment } from "./madrid-format";
 
 export type PaymentMethod = "cash" | "card" | "bizum" | "transfer";
 
