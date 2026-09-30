@@ -1158,6 +1158,7 @@ export type Database = {
           p_kind?: Database["public"]["Enums"]["invoice_kind"]
           p_limit?: number
           p_offset?: number
+          p_patient_id?: string
           p_professional_id?: string
           p_query?: string
           p_start?: string
@@ -1172,7 +1173,8 @@ export type Database = {
           payment_id: string
           professional_id: string
           recipient_name: string
-          rectified: boolean
+          rectified_by_code: string
+          replaced_by_code: string
           status: Database["public"]["Enums"]["invoice_status"]
           total_cents: number
           total_count: number

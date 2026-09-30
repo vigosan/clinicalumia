@@ -47,6 +47,7 @@ export default async function DashboardLayout({
         { href: "/patients", label: "Pacientes" },
         { href: "/consentimientos", label: "Consentimientos" },
         { href: "/cobros", label: "Cobros" },
+        { href: "/facturas", label: "Facturas" },
         { href: "/mi-calendario", label: "Mi calendario" },
       ]}
       user={{

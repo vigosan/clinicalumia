@@ -759,7 +759,8 @@ create or replace function public.list_invoices(
   p_query text default null,
   p_professional_id uuid default null,
   p_limit integer default 25,
-  p_offset integer default 0
+  p_offset integer default 0,
+  p_patient_id uuid default null
 )
 returns table (
   id uuid,
@@ -773,7 +774,8 @@ returns table (
   patient_name text,
   professional_id uuid,
   payment_id uuid,
-  rectified boolean,
+  replaced_by_code text,
+  rectified_by_code text,
   total_count bigint
 )
 language plpgsql
@@ -800,7 +802,8 @@ begin
       pe.first_name || ' ' || pe.last_name,
       a.professional_id,
       i.payment_id,
-      exists (select 1 from public.invoices r where r.rectifies_invoice_id = i.id),
+      (select o.code from public.invoices o where o.replaces_invoice_id = i.id),
+      (select o.code from public.invoices o where o.rectifies_invoice_id = i.id),
       count(*) over ()
     from public.invoices i
     join public.payments p on p.id = i.payment_id
@@ -810,6 +813,7 @@ begin
       and (p_end is null or i.issued_at < (p_end + 1)::timestamp at time zone 'Europe/Madrid')
       and (p_kind is null or i.kind = p_kind)
       and (p_professional_id is null or a.professional_id = p_professional_id)
+      and (p_patient_id is null or a.patient_id = p_patient_id)
       and (needle = '' or position(needle in lower(public.f_unaccent(
         i.code || ' ' || coalesce(i.snapshot->'recipient'->>'name', '') || ' ' || pe.first_name || ' ' || pe.last_name
       ))) > 0)
@@ -820,8 +824,8 @@ begin
 end;
 $$;
 
-revoke all on function public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer) from public, anon;
-grant execute on function public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer) to authenticated;
+revoke all on function public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer, uuid) from public, anon;
+grant execute on function public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer, uuid) to authenticated;
 
 create or replace function public.invoice_detail(p_invoice_id uuid)
 returns table (

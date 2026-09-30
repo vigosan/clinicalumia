@@ -93,6 +93,16 @@ async function invoicesOf(appointmentId: string) {
   return data ?? [];
 }
 
+async function patientIdOf(appointmentId: string): Promise<string> {
+  const { data, error } = await admin
+    .from("appointments")
+    .select("patient_id")
+    .eq("id", appointmentId)
+    .single();
+  expect(error).toBeNull();
+  return data!.patient_id as string;
+}
+
 async function openAppointment(page: Page, date: string, id: string) {
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${id}`);
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
@@ -370,4 +380,157 @@ test("una profesional no puede abrir el PDF de la factura de una compañera", as
   );
   expect(response.status()).toBe(404);
   expect(response.headers()["content-type"]).not.toBe("application/pdf");
+});
+
+test("el listado de facturas filtra por tipo, texto y profesional, cada profesional ve solo las suyas y la propietaria las ve todas", async ({
+  page,
+}) => {
+  const date = todayInMadrid();
+  const employeeOne = await createEmployee("Profesional Lista Factura Uno");
+  const employeeTwo = await createEmployee("Profesional Lista Factura Dos");
+  const appointmentOne = await createAppointment(employeeOne.id, date);
+  const appointmentTwo = await createAppointment(employeeTwo.id, date);
+
+  await signIn(page, DASHBOARD, employeeOne.email, employeeOne.password);
+  await openAppointment(page, date, appointmentOne.id);
+  const codeOne = await collectAndReadCode(page);
+  await page.getByTestId("logout").click();
+
+  await signIn(page, DASHBOARD, employeeTwo.email, employeeTwo.password);
+  await openAppointment(page, date, appointmentTwo.id);
+  await collectAndReadCode(page);
+
+  await page.goto(`${DASHBOARD}/facturas`);
+  await expect(page.getByTestId("invoices-list")).toBeVisible();
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentTwo.patientName }),
+  ).toHaveCount(1);
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentOne.patientName }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("invoices-professional")).toHaveCount(0);
+  await page.getByTestId("logout").click();
+
+  await signIn(page, DASHBOARD, "info@clinicalumia.es");
+  await page.goto(`${DASHBOARD}/facturas`);
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentOne.patientName }),
+  ).toHaveCount(1);
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentTwo.patientName }),
+  ).toHaveCount(1);
+
+  await page.getByTestId("invoices-kind").selectOption("simplified");
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentOne.patientName }),
+  ).toHaveCount(1);
+  await page.getByTestId("invoices-kind").selectOption("rectifying");
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentOne.patientName }),
+  ).toHaveCount(0);
+  await page.getByTestId("invoices-kind").selectOption("");
+
+  await page.getByTestId("invoices-search").fill(appointmentOne.patientName);
+  await expect(page.getByTestId("invoice-row")).toHaveCount(1);
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentOne.patientName }),
+  ).toHaveCount(1);
+  await page.getByTestId("invoices-search").fill("");
+  await expect(page.getByTestId("invoice-row")).toHaveCount(2);
+
+  await page.getByTestId("invoices-professional").selectOption(employeeOne.id);
+  await expect(page.getByTestId("invoice-row")).toHaveCount(1);
+  await expect(
+    page
+      .getByTestId("invoice-row")
+      .filter({ hasText: appointmentOne.patientName }),
+  ).toHaveCount(1);
+
+  await page.getByTestId("invoice-open").click();
+  await expect(page).toHaveURL(/\/facturas\/[0-9a-f-]+$/);
+  await expect(page.getByTestId("invoice-code")).toHaveText(
+    `Factura ${codeOne}`,
+  );
+  await expect(page.getByTestId("invoice-status")).toHaveText("Emitida");
+  await expect(page.getByTestId("invoice-view")).toHaveAttribute(
+    "target",
+    "_blank",
+  );
+  await expect(page.getByTestId("invoice-send")).toBeVisible();
+  await expect(page.getByTestId("invoice-full")).toBeVisible();
+
+  const patientId = await patientIdOf(appointmentOne.id);
+  await page.goto(`${DASHBOARD}/patients/${patientId}`);
+  await expect(page.getByTestId("patient-invoices")).toBeVisible();
+  await expect(
+    page.getByTestId("patient-invoice").filter({ hasText: codeOne }),
+  ).toHaveCount(1);
+});
+
+test("una página de facturas más allá del final avisa y enlaza a la primera", async ({
+  page,
+}) => {
+  const date = todayInMadrid();
+  const employee = await createEmployee("Profesional Factura Sin Más");
+  const appointment = await createAppointment(employee.id, date);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointment.id);
+  await collectAndReadCode(page);
+
+  await page.goto(`${DASHBOARD}/facturas?pagina=2`);
+  await expect(page.getByTestId("invoices-empty-page")).toBeVisible();
+  await page.getByTestId("invoices-back-to-first").click();
+  await expect(page.getByTestId("invoices-list")).toBeVisible();
+});
+
+test("desde el detalle se puede emitir la factura completa, y la relación entre ambas facturas queda enlazada en los dos sentidos", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Detalle Factura");
+  const appointment = await createAppointment(employee.id, date, {
+    tax_id: "12345678Z",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointment.id);
+  const simplifiedCode = await collectAndReadCode(page);
+  const [invoice] = await invoicesOf(appointment.id);
+
+  await page.goto(`${DASHBOARD}/facturas/${invoice!.id}`);
+  await expect(page.getByTestId("invoice-code")).toHaveText(
+    `Factura ${simplifiedCode}`,
+  );
+  await page.getByTestId("invoice-full").click();
+  await page.getByTestId("invoice-full-postal-code").fill("46800");
+  await page.getByTestId("invoice-full-city").fill("Xàtiva");
+  await page.getByTestId("invoice-full-submit").click();
+
+  await expect(page.getByTestId("invoice-status")).toContainText(
+    "Sustituida por",
+  );
+  await expect(page.getByTestId("invoice-full")).toHaveCount(0);
+  const relatedLink = page.getByTestId("invoice-related-link");
+  await expect(relatedLink).toContainText(`Sustituida por`);
+
+  await relatedLink.click();
+  await expect(page.getByTestId("invoice-status")).toHaveText("Emitida");
+  await expect(
+    page.getByTestId("invoice-related-link").filter({ hasText: "Sustituye a" }),
+  ).toContainText(simplifiedCode);
 });

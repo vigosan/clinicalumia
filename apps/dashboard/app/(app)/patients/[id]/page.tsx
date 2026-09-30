@@ -6,12 +6,16 @@ import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { notFound } from "next/navigation";
 import { guardianErrorMessage } from "@/lib/guardian-error";
+import type { InvoiceRow } from "@/lib/invoices-load";
 import type { PatientAppointmentSource } from "@/lib/patient-appointments";
 import { splitPatientAppointments } from "@/lib/patient-appointments";
 import { ConsentsSection, type PatientConsent } from "./ConsentsSection";
 import { GuardiansSection } from "./GuardiansSection";
 import { PatientAppointments } from "./PatientAppointments";
+import { PatientInvoices } from "./PatientInvoices";
 import { PersonActions } from "./PersonActions";
+
+const PATIENT_INVOICES_LIMIT = 20;
 
 export default async function PatientPage({
   params,
@@ -113,6 +117,7 @@ export default async function PatientPage({
   const [
     { data: appointmentRows, error: appointmentsError },
     { data: directory, error: directoryError },
+    { data: invoiceRows, error: invoicesError },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -121,7 +126,28 @@ export default async function PatientPage({
       )
       .eq("patient_id", id),
     supabase.rpc("staff_directory"),
+    supabase.rpc("list_invoices", {
+      p_patient_id: id,
+      p_limit: PATIENT_INVOICES_LIMIT,
+    }),
   ]);
+
+  const invoices: InvoiceRow[] = (invoiceRows ?? []).map((row) => ({
+    id: row.id,
+    code: row.code,
+    kind: row.kind,
+    status: row.status,
+    issuedAt: row.issued_at,
+    totalCents: row.total_cents,
+    recipientName: row.recipient_name,
+    patientId: row.patient_id,
+    patientName: row.patient_name,
+    professionalId: row.professional_id,
+    replacedByCode: row.replaced_by_code,
+    rectifiedByCode: row.rectified_by_code,
+  }));
+  const invoicesTruncated =
+    (invoiceRows?.[0]?.total_count ?? 0) > PATIENT_INVOICES_LIMIT;
 
   const appointmentsFailed = Boolean(
     appointmentsError ||
@@ -244,6 +270,15 @@ export default async function PatientPage({
           upcomingTruncated={upcomingTruncated}
           past={past}
           pastTruncated={pastTruncated}
+        />
+      </Card>
+
+      <Card className="flex flex-col gap-2">
+        <h2 className="text-lg font-bold text-ink-900">Facturas</h2>
+        <PatientInvoices
+          error={Boolean(invoicesError)}
+          invoices={invoices}
+          truncated={invoicesTruncated}
         />
       </Card>
     </>

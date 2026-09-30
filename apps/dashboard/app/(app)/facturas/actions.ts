@@ -30,6 +30,8 @@ export async function issueFullInvoice(
   if (error) return { error: paymentError(error) };
 
   revalidatePath("/");
+  revalidatePath("/facturas");
+  revalidatePath(`/facturas/${invoiceId}`);
   return { ok: true };
 }
 
@@ -45,6 +47,8 @@ export async function issueRectifyingInvoice(
   if (error) return { error: paymentError(error) };
 
   revalidatePath("/");
+  revalidatePath("/facturas");
+  revalidatePath(`/facturas/${invoiceId}`);
   return { ok: true };
 }
 

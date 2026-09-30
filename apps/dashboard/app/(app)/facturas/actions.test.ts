@@ -74,6 +74,8 @@ describe("issueFullInvoice", () => {
       },
     });
     expect(revalidatePath).toHaveBeenCalledWith("/");
+    expect(revalidatePath).toHaveBeenCalledWith("/facturas");
+    expect(revalidatePath).toHaveBeenCalledWith(`/facturas/${INVOICE_ID}`);
   });
 
   it("explains an invalid tax id and keeps the form as typed so it can be corrected", async () => {
@@ -108,6 +110,8 @@ describe("issueRectifyingInvoice", () => {
       p_reason: "Cobrado por error",
     });
     expect(revalidatePath).toHaveBeenCalledWith("/");
+    expect(revalidatePath).toHaveBeenCalledWith("/facturas");
+    expect(revalidatePath).toHaveBeenCalledWith(`/facturas/${INVOICE_ID}`);
   });
 
   it("explains who may void when a colleague tries it the next day", async () => {

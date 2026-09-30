@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(168);
+select plan(170);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -818,6 +818,18 @@ select results_eq(
   $$ values ('8/' || pg_temp.yy()) $$,
   'the owner filters by professional');
 select results_eq(
+  $$ select code from public.list_invoices(null, null, null, null, null, 100, 0, '8b000000-0000-0000-0000-0000000000c3') $$,
+  $$ values ('R3/' || pg_temp.yy()), ('R2/' || pg_temp.yy()), ('7/' || pg_temp.yy()), ('6/' || pg_temp.yy()) $$,
+  'the owner filters by patient');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000002');
+select is(
+  (select count(*) from public.list_invoices(null, null, null, null, null, 100, 0, '8b000000-0000-0000-0000-0000000000c3'))::int,
+  0,
+  'a professional filtering by a colleague''s patient still sees nothing, so the patient filter never widens visibility');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select results_eq(
   $$ select code from public.list_invoices(make_date(pg_temp.this_year() + 1, 12, 31), make_date(pg_temp.this_year() + 1, 12, 31), null, null, null, 100, 0) $$,
   $$ values ('F' || (pg_temp.this_year() + 1) || '-0040') $$,
   'the date filter uses the Madrid day, so an invoice at 23:30 on 31 December is on that day');
@@ -826,15 +838,16 @@ select results_eq(
   $$ values ('F' || (pg_temp.this_year() + 2) || '-0001') $$,
   'an invoice at 00:30 on 1 January in Madrid is on 1 January even though it is still 31 December in UTC');
 select results_eq(
-  $$ select code, kind::text, status::text, total_cents, recipient_name, patient_id, patient_name, professional_id, rectified
+  $$ select code, kind::text, status::text, total_cents, recipient_name, patient_id, patient_name, professional_id,
+            replaced_by_code, rectified_by_code
      from public.list_invoices(null, null, null, null, null, 100, 0)
      where code in ('5/' || pg_temp.yy(), '9/' || pg_temp.yy())
      order by code $$,
   $$ values ('5/' || pg_temp.yy(), 'simplified', 'replaced', 4500, null::text, '8b000000-0000-0000-0000-0000000000c1'::uuid,
-             'Lucía Martínez López', '8b000000-0000-0000-0000-000000000001'::uuid, false),
+             'Lucía Martínez López', '8b000000-0000-0000-0000-000000000001'::uuid, '9/' || pg_temp.yy(), null::text),
             ('9/' || pg_temp.yy(), 'full', 'issued', 4500, 'Tutor Ñandú García', '8b000000-0000-0000-0000-0000000000c1'::uuid,
-             'Lucía Martínez López', '8b000000-0000-0000-0000-000000000001'::uuid, true) $$,
-  'each row says whether the invoice was replaced or rectified, to whom it was issued and for which patient');
+             'Lucía Martínez López', '8b000000-0000-0000-0000-000000000001'::uuid, null::text, 'R1/' || pg_temp.yy()) $$,
+  'each row says which invoice replaced or rectified it, to whom it was issued and for which patient');
 select results_eq(
   $$ select code, kind::text, status::text, snapshot = (pg_temp.inv(code)).snapshot, related, qr
      from public.invoice_detail(pg_temp.id_of('f9')) $$,
@@ -877,7 +890,7 @@ select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s4'), 
   'a patient cannot rectify invoices');
 reset role;
 select is(
-  has_function_privilege('anon', 'public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer)', 'execute')
+  has_function_privilege('anon', 'public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer, uuid)', 'execute')
   or has_function_privilege('anon', 'public.invoice_detail(uuid)', 'execute')
   or has_function_privilege('anon', 'public.issue_full_invoice(uuid, jsonb)', 'execute')
   or has_function_privilege('anon', 'public.issue_rectifying_invoice(uuid, text)', 'execute'),
