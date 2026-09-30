@@ -294,3 +294,62 @@ test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la 
     await secondContext.close();
   }
 });
+
+test("la página de cobros muestra los cobros del día con sus totales por forma de pago, el anulado se ve pero no suma, y el filtro por profesional funciona", async ({
+  page,
+}) => {
+  const date = todayInMadrid();
+  const employee = await createEmployee("Profesional Lista Cobros");
+  const secondEmployee = await createEmployee("Profesional Lista Cobros Dos");
+  const otherEmployee = await createEmployee("Profesional Lista Cobros Tres");
+  const cashAppointmentId = await createAppointment(employee.id, date);
+  const cardAppointmentId = await createAppointment(secondEmployee.id, date);
+  const voidedAppointmentId = await createAppointment(otherEmployee.id, date);
+
+  await signIn(page, DASHBOARD, "info@clinicalumia.es");
+  await openAppointment(page, date, cashAppointmentId);
+  await collect(page, "cash");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Efectivo · 55,00 €",
+  );
+  await openAppointment(page, date, cardAppointmentId);
+  await collect(page, "card");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Tarjeta · 55,00 €",
+  );
+  await openAppointment(page, date, voidedAppointmentId);
+  await collect(page, "cash");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Efectivo · 55,00 €",
+  );
+  await page.getByTestId("payment-void").click();
+  await page.getByTestId("payment-void-reason").fill("Cobrado por error");
+  await page.getByTestId("payment-void-confirm").click();
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pendiente de cobro",
+  );
+
+  await page.goto(`${DASHBOARD}/cobros`);
+  await expect(page.getByTestId("payments-list")).toBeVisible();
+  await expect(page.getByTestId("payment-row")).toHaveCount(3);
+  await expect(page.getByTestId("payment-voided")).toHaveText("Anulado");
+  await expect(
+    page.locator('[data-testid="payments-total-method"][data-method="cash"]'),
+  ).toHaveText("Efectivo: 55,00 €");
+  await expect(
+    page.locator('[data-testid="payments-total-method"][data-method="card"]'),
+  ).toHaveText("Tarjeta: 55,00 €");
+  await expect(page.getByTestId("payments-total-amount")).toHaveText(
+    "Total: 110,00 €",
+  );
+
+  await page
+    .getByTestId("payments-professional")
+    .selectOption(otherEmployee.id);
+  await expect(page.getByTestId("payment-row")).toHaveCount(1);
+  await expect(page.getByTestId("payment-voided")).toHaveText("Anulado");
+  await expect(page.getByTestId("payments-total-method")).toHaveCount(0);
+  await expect(page.getByTestId("payments-total-amount")).toHaveText(
+    "Total: 0,00 €",
+  );
+});

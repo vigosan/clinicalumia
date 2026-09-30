@@ -920,6 +920,22 @@ export type Database = {
         Args: { p_consent_id: string; p_person_id: string }
         Returns: undefined
       }
+      list_payments: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          amount_cents: number
+          collected_at: string
+          collected_by: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          patient_id: string
+          patient_name: string
+          professional_id: string
+          service_name: string
+          void_reason: string
+          voided_at: string
+        }[]
+      }
       match_consent_person: {
         Args: {
           p_birth_date: string

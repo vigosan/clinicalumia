@@ -158,3 +158,51 @@ $$;
 
 revoke all on function public.void_payment(uuid, text) from public, anon;
 grant execute on function public.void_payment(uuid, text) to authenticated;
+
+create or replace function public.list_payments(p_start timestamptz, p_end timestamptz)
+returns table (
+  id uuid,
+  collected_at timestamptz,
+  amount_cents integer,
+  method public.payment_method,
+  collected_by uuid,
+  voided_at timestamptz,
+  void_reason text,
+  professional_id uuid,
+  patient_id uuid,
+  patient_name text,
+  service_name text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_active_staff() then
+    raise exception 'payment_forbidden' using errcode = '42501';
+  end if;
+  return query
+    select
+      p.id,
+      p.collected_at,
+      p.amount_cents,
+      p.method,
+      p.collected_by,
+      p.voided_at,
+      p.void_reason,
+      a.professional_id,
+      a.patient_id,
+      pe.first_name || ' ' || pe.last_name,
+      s.name
+    from public.payments p
+    join public.appointments a on a.id = p.appointment_id
+    join public.people pe on pe.id = a.patient_id
+    join public.services s on s.id = a.service_id
+    where p.collected_at >= p_start and p.collected_at < p_end
+    order by p.collected_at asc;
+end;
+$$;
+
+revoke all on function public.list_payments(timestamptz, timestamptz) from public, anon;
+grant execute on function public.list_payments(timestamptz, timestamptz) to authenticated;
