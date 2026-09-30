@@ -265,16 +265,22 @@ describe("renderInvoicePdf", () => {
     expect(new TextDecoder().decode(bytes.slice(0, 4))).toBe("%PDF");
   });
 
-  it("places the parties beside the tax QR so the QR does not take a band of its own", async () => {
+  it("keeps the tax QR discreetly in the footer, below the totals and the notes, not beside the parties", async () => {
     const bytes = await renderInvoicePdf(fullWithVat());
     const qrLabel = await textPosition(bytes, "QR tributario:");
-    const issuerName = await textPosition(bytes, "Patricia Hernán Sánchez");
     const recipientName = await textPosition(bytes, "Marta López Ferrer");
-    const qrBottom = qrLabel.y - 100;
+    const total = await textPosition(bytes, "60,50 €");
+    const payment = await textPosition(bytes, "Pagado por Bizum");
 
-    expect(issuerName.y).toBeLessThanOrEqual(qrLabel.y);
-    expect(issuerName.y).toBeGreaterThan(qrBottom);
-    expect(recipientName.y).toBeGreaterThan(qrBottom);
-    expect(recipientName.x).toBeLessThan(qrLabel.x);
+    expect(qrLabel.y).toBeLessThan(total.y);
+    expect(qrLabel.y).toBeLessThan(payment.y);
+    expect(qrLabel.y).toBeLessThan(60);
+    expect(recipientName.y).toBeGreaterThan(total.y);
+  });
+
+  it("hides the page counter on single-page invoices so the footer holds only the clinic line and the QR", async () => {
+    const text = await pdfText(await renderInvoicePdf(fullWithVat()));
+
+    expect(text).not.toContain("1 / 1");
   });
 });
