@@ -12,9 +12,13 @@ import { voidPayment } from "../payments/actions";
 export function VoidPaymentDialog({
   paymentId,
   invoiceId,
+  triggerLabel = "Anular cobro",
+  triggerTestId = "payment-void",
 }: {
   paymentId: string;
   invoiceId: string | null;
+  triggerLabel?: string;
+  triggerTestId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -45,9 +49,9 @@ export function VoidPaymentDialog({
           type="button"
           variant="secondary"
           size="sm"
-          data-testid="payment-void"
+          data-testid={triggerTestId}
         >
-          Anular cobro
+          {triggerLabel}
         </Button>
       }
       title={

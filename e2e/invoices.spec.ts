@@ -528,9 +528,45 @@ test("desde el detalle se puede emitir la factura completa, y la relación entre
   const relatedLink = page.getByTestId("invoice-related-link");
   await expect(relatedLink).toContainText(`Sustituida por`);
 
+  await expect(page.getByTestId("invoice-rectify")).toHaveCount(0);
+
   await relatedLink.click();
   await expect(page.getByTestId("invoice-status")).toHaveText("Emitida");
   await expect(
     page.getByTestId("invoice-related-link").filter({ hasText: "Sustituye a" }),
   ).toContainText(simplifiedCode);
+  await expect(page.getByTestId("invoice-rectify")).toBeVisible();
+});
+
+test("desde el detalle, quien cobró hoy puede emitir la rectificativa de la factura vigente, y la simplificada rectificada ya no ofrece factura completa", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Rectifica Detalle");
+  const appointment = await createAppointment(employee.id, date);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointment.id);
+  await collectAndReadCode(page);
+  const [invoice] = await invoicesOf(appointment.id);
+
+  await page.goto(`${DASHBOARD}/facturas/${invoice!.id}`);
+  await expect(page.getByTestId("invoice-full")).toBeVisible();
+  await expect(page.getByTestId("invoice-rectify")).toHaveText(
+    "Emitir rectificativa",
+  );
+  await page.getByTestId("invoice-rectify").click();
+  await page.getByTestId("payment-void-reason").fill("Importe equivocado");
+  await page.getByTestId("payment-void-confirm").click();
+
+  await expect(page.getByTestId("invoice-status")).toContainText(
+    "Rectificada por R",
+  );
+  await expect(page.getByTestId("invoice-rectify")).toHaveCount(0);
+  await expect(page.getByTestId("invoice-full")).toHaveCount(0);
+
+  const invoices = await invoicesOf(appointment.id);
+  expect(invoices.map((row) => row.kind)).toEqual(["simplified", "rectifying"]);
+  await page.goto(`${DASHBOARD}/facturas/${invoices[1]!.id}`);
+  await expect(page.getByTestId("invoice-rectify")).toHaveCount(0);
 });

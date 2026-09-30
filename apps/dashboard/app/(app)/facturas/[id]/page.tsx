@@ -13,9 +13,10 @@ import {
   invoiceKindLabel,
   invoiceStatusLabel,
 } from "@/lib/invoices-load";
-import { formatEuros } from "@/lib/payments";
+import { canVoidPayment, formatEuros } from "@/lib/payments";
 import { FullInvoiceForm } from "../../agenda/FullInvoiceForm";
 import { SendInvoiceForm } from "../../agenda/SendInvoiceForm";
+import { VoidPaymentDialog } from "../../agenda/VoidPaymentDialog";
 
 type RelatedInvoice = { id: string; code: string } | null;
 type Related = {
@@ -77,7 +78,39 @@ export default async function InvoiceDetailPage({
     ? isMinor(patient.birth_date, todayInMadrid())
     : false;
 
+  const [
+    { data: payment, error: paymentError },
+    {
+      data: { user },
+    },
+  ] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("collected_by, collected_at")
+      .eq("id", detail.payment_id)
+      .maybeSingle(),
+    supabase.auth.getUser(),
+  ]);
+  if (paymentError || !payment || !user) return <ErrorCard />;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const related = detail.related as Related;
+  const inForce =
+    detail.kind !== "rectifying" &&
+    detail.status === "issued" &&
+    !related.rectified_by;
+  const canRectify =
+    inForce &&
+    canVoidPayment({
+      payment,
+      userId: user.id,
+      isOwner: profile?.role === "owner",
+      now: new Date(),
+    });
   const status = invoiceStatusLabel({
     status: detail.status,
     replacedByCode: related.replaced_by?.code ?? null,
@@ -137,14 +170,26 @@ export default async function InvoiceDetailPage({
           </Button>
         </div>
         <SendInvoiceForm
+          key={`send-${detail.id}`}
           invoiceId={detail.id}
           proposedEmail={proposedInvoiceEmail({ patient, guardian })}
         />
-        {detail.kind === "simplified" && detail.status === "issued" && (
+        {detail.kind === "simplified" && inForce && (
           <FullInvoiceForm
+            key={`full-${detail.id}`}
             invoiceId={detail.id}
             recipient={recipientDraft({ patient, guardian, minor })}
           />
+        )}
+        {canRectify && (
+          <div>
+            <VoidPaymentDialog
+              paymentId={detail.payment_id}
+              invoiceId={detail.id}
+              triggerLabel="Emitir rectificativa"
+              triggerTestId="invoice-rectify"
+            />
+          </div>
         )}
       </Card>
     </>
