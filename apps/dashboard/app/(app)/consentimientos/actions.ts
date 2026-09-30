@@ -3,6 +3,7 @@
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
+import { isUuid } from "@/lib/agenda";
 
 function consentError(error: { code?: string; message?: string }): string {
   if (error.code === "42501") return "No tienes permiso para hacer esto.";
@@ -24,6 +25,8 @@ export async function linkConsent(
   consentId: string,
   personId: string,
 ): Promise<ActionResult> {
+  if (!isUuid(consentId) || !isUuid(personId))
+    return { error: "No se ha podido guardar." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("link_consent", {
     p_consent_id: consentId,
@@ -39,6 +42,7 @@ export async function linkConsent(
 }
 
 export async function unlinkConsent(consentId: string): Promise<ActionResult> {
+  if (!isUuid(consentId)) return { error: "No se ha podido guardar." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("unlink_consent", {
     p_consent_id: consentId,

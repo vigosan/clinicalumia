@@ -120,30 +120,30 @@ async function searchConsents(page: Page, query: string) {
 }
 
 test.afterEach(async () => {
-  if (createdConsentIds.length > 0) {
+  const errors: unknown[] = [];
+  const consentIds = createdConsentIds.splice(0);
+  if (consentIds.length > 0) {
     const { error } = await admin
       .from("consents")
       .delete()
-      .in("id", createdConsentIds.splice(0));
-    expect(error).toBeNull();
+      .in("id", consentIds);
+    if (error) errors.push(error);
   }
-  if (createdPdfPaths.length > 0) {
-    const { error } = await admin.storage
-      .from("consents")
-      .remove(createdPdfPaths.splice(0));
-    expect(error).toBeNull();
+  const pdfPaths = createdPdfPaths.splice(0);
+  if (pdfPaths.length > 0) {
+    const { error } = await admin.storage.from("consents").remove(pdfPaths);
+    if (error) errors.push(error);
   }
-  if (createdPersonIds.length > 0) {
-    const { error } = await admin
-      .from("people")
-      .delete()
-      .in("id", createdPersonIds.splice(0));
-    expect(error).toBeNull();
+  const personIds = createdPersonIds.splice(0);
+  if (personIds.length > 0) {
+    const { error } = await admin.from("people").delete().in("id", personIds);
+    if (error) errors.push(error);
   }
   for (const id of createdUserIds.splice(0)) {
     const { error } = await admin.auth.admin.deleteUser(id);
-    expect(error).toBeNull();
+    if (error) errors.push(error);
   }
+  expect(errors).toEqual([]);
 });
 
 test("staff see a pending consent first, link it by hand to the right record and can undo it", async ({
@@ -297,4 +297,39 @@ test("an unknown consent id shows the not-found page instead of an empty detail"
     `${DASHBOARD}/consentimientos/${randomUUID()}`,
   );
   expect(response?.status()).toBe(404);
+});
+
+test("an address that is not a consent id shows the not-found page instead of a load error", async ({
+  page,
+}) => {
+  await loginAsThrowawayEmployee(page);
+  const response = await page.goto(`${DASHBOARD}/consentimientos/no-es-un-id`);
+  expect(response?.status()).toBe(404);
+});
+
+test("the search box follows the address when staff navigate, so it never shows a filter that is not applied", async ({
+  page,
+}) => {
+  const surname = `Navegacion${uniqueSuffix()}`;
+  await createConsent({ firstName: "Pendiente", lastName: surname });
+  await loginAsThrowawayEmployee(page);
+  await page.goto(`${DASHBOARD}/consentimientos`);
+  await searchConsents(page, surname);
+  await page.getByTestId("consents-pending-filter").uncheck();
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("pendientes") === "0",
+  );
+
+  await page.getByRole("link", { name: "Consentimientos" }).click();
+  await expect(page).toHaveURL(`${DASHBOARD}/consentimientos`);
+  await expect(page.getByTestId("consents-search")).toHaveValue("");
+  await expect(page.getByTestId("consents-pending-filter")).toBeChecked();
+
+  await page.goBack();
+  await expect(page).toHaveURL((url) => url.searchParams.get("q") === surname);
+  await expect(page.getByTestId("consents-search")).toHaveValue(surname);
+  await expect(page.getByTestId("consents-pending-filter")).not.toBeChecked();
+  await expect(
+    page.getByTestId("consents-list").getByTestId("consent-row"),
+  ).toHaveCount(1);
 });

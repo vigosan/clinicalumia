@@ -3,6 +3,7 @@ import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { isUuid } from "@/lib/agenda";
 import { formatSignedAt, linkedPersonLabel } from "@/lib/consents";
 import { ConsentActions } from "./ConsentActions";
 
@@ -16,6 +17,7 @@ export default async function ConsentPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const supabase = await createClient();
 
   const { data: consent, error } = await supabase
