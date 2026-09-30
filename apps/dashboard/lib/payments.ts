@@ -1,0 +1,181 @@
+import { madridDateTime } from "@clinicalumia/api/madrid-time";
+
+export type PaymentMethod = "cash" | "card" | "bizum" | "transfer";
+
+const METHOD_ORDER: PaymentMethod[] = ["cash", "card", "bizum", "transfer"];
+
+const METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: "Efectivo",
+  card: "Tarjeta",
+  bizum: "Bizum",
+  transfer: "Transferencia",
+};
+
+export function methodLabel(method: PaymentMethod): string {
+  return METHOD_LABELS[method];
+}
+
+export type ParsedAmount = { cents: number } | { error: string };
+
+const INVALID_AMOUNT: ParsedAmount = { error: "Escribe un importe válido." };
+const MAX_CENTS = 100_000 * 100;
+
+const THOUSANDS_DECIMAL = /^\d{1,3}(\.\d{3})+,\d{1,2}$/;
+const THOUSANDS_ONLY = /^\d{1,3}(\.\d{3})+$/;
+const COMMA_DECIMAL = /^\d+,\d{1,2}$/;
+const DOT_DECIMAL = /^\d+\.\d{1,2}$/;
+const INTEGER_ONLY = /^\d+$/;
+
+function toCents(integerPart: string, decimalPart: string): number {
+  return Number(integerPart) * 100 + Number(decimalPart.padEnd(2, "0"));
+}
+
+export function parseAmount(input: string): ParsedAmount {
+  const cleaned = input.replace(/€/g, "").trim();
+  let cents: number;
+  if (THOUSANDS_DECIMAL.test(cleaned)) {
+    const [integerPart = "", decimalPart = ""] = cleaned.split(",");
+    cents = toCents(integerPart.replace(/\./g, ""), decimalPart);
+  } else if (THOUSANDS_ONLY.test(cleaned)) {
+    cents = toCents(cleaned.replace(/\./g, ""), "");
+  } else if (COMMA_DECIMAL.test(cleaned)) {
+    const [integerPart = "", decimalPart = ""] = cleaned.split(",");
+    cents = toCents(integerPart, decimalPart);
+  } else if (DOT_DECIMAL.test(cleaned)) {
+    const [integerPart = "", decimalPart = ""] = cleaned.split(".");
+    cents = toCents(integerPart, decimalPart);
+  } else if (INTEGER_ONLY.test(cleaned)) {
+    cents = toCents(cleaned, "");
+  } else {
+    return INVALID_AMOUNT;
+  }
+  if (cents > MAX_CENTS) return INVALID_AMOUNT;
+  return { cents };
+}
+
+export function formatEuros(cents: number): string {
+  return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
+}
+
+export type PaymentStatusAppointment = {
+  starts_at: string;
+  status: "scheduled" | "cancelled" | "no_show";
+};
+
+export type ActivePayment = {
+  amount_cents: number;
+  method: PaymentMethod;
+  note: string;
+};
+
+export type PaymentStatus = {
+  kind: "paid" | "free" | "pending" | "future" | "none";
+  label: string;
+};
+
+export function paymentStatus({
+  appointment,
+  payment,
+  now,
+}: {
+  appointment: PaymentStatusAppointment;
+  payment: ActivePayment | null;
+  now: Date;
+}): PaymentStatus {
+  if (payment) {
+    if (payment.amount_cents === 0) {
+      return {
+        kind: "free",
+        label: payment.note ? `Sin cobro · ${payment.note}` : "Sin cobro",
+      };
+    }
+    return {
+      kind: "paid",
+      label: `Pagada · ${methodLabel(payment.method)} · ${formatEuros(payment.amount_cents)}`,
+    };
+  }
+  if (appointment.status === "cancelled") return { kind: "none", label: "" };
+  if (new Date(appointment.starts_at).getTime() > now.getTime())
+    return { kind: "future", label: "" };
+  return { kind: "pending", label: "Pendiente de cobro" };
+}
+
+export type VoidablePayment = {
+  amount_cents: number;
+  method: PaymentMethod;
+  voided_at: string | null;
+};
+
+export type MethodTotal = { method: PaymentMethod; cents: number };
+
+export function totalsByMethod(payments: VoidablePayment[]): {
+  methods: MethodTotal[];
+  total: number;
+} {
+  const active = payments.filter((payment) => payment.voided_at === null);
+  const methods = METHOD_ORDER.map((method) => ({
+    method,
+    cents: active
+      .filter((payment) => payment.method === method)
+      .reduce((sum, payment) => sum + payment.amount_cents, 0),
+  })).filter((entry) => entry.cents > 0);
+  const total = methods.reduce((sum, entry) => sum + entry.cents, 0);
+  return { methods, total };
+}
+
+function formatHistoryMoment(instant: string): string {
+  const { date, time } = madridDateTime(instant);
+  return `${date.slice(8, 10)}/${date.slice(5, 7)} a las ${time.slice(0, 5)}`;
+}
+
+export type PaymentHistoryRow = {
+  amount_cents: number;
+  method: PaymentMethod;
+  collected_at: string;
+  collected_by: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string;
+};
+
+export function paymentHistoryLines(
+  payment: PaymentHistoryRow,
+  nameById: Map<string, string>,
+): string[] {
+  const collectorName = nameById.get(payment.collected_by) ?? "Alguien";
+  const lines = [
+    `Cobrada · ${formatEuros(payment.amount_cents)} · ${methodLabel(payment.method)} por ${collectorName} el ${formatHistoryMoment(payment.collected_at)}`,
+  ];
+  if (payment.voided_at && payment.voided_by) {
+    const voidedByName = nameById.get(payment.voided_by) ?? "Alguien";
+    lines.push(
+      `Cobro anulado · ${payment.void_reason} por ${voidedByName} el ${formatHistoryMoment(payment.voided_at)}`,
+    );
+  }
+  return lines;
+}
+
+export type DbError = { code?: string; message?: string };
+
+const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
+  already_paid: "Esta cita ya está cobrada.",
+  note_required: "Indica el motivo del cambio de importe.",
+  appointment_cancelled_needs_note:
+    "Indica por qué se cobra una cita cancelada.",
+  appointment_not_started: "Todavía no se puede cobrar esta cita.",
+  invalid_amount: "Escribe un importe válido.",
+  invalid_method: "Elige la forma de pago.",
+  reason_required: "Indica el motivo de la anulación.",
+  not_allowed:
+    "Solo puede anular este cobro quien lo registró hoy o la propietaria.",
+  already_voided: "Este cobro ya está anulado.",
+};
+
+export function paymentError(error: DbError): string {
+  if (error.code === "42501") return "No tienes permiso para hacer esto.";
+  if (error.message) {
+    const mapped = ERROR_MESSAGE_BY_CODE[error.message];
+    if (mapped) return mapped;
+  }
+  return "No se ha podido guardar. Inténtalo de nuevo.";
+}
