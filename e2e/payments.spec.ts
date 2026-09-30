@@ -3,6 +3,7 @@ import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
+import { deleteInvoicesOfAppointments } from "./invoices";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -97,6 +98,7 @@ test.afterEach(async () => {
   const errors: unknown[] = [];
   const appointmentIds = createdAppointmentIds.splice(0);
   if (appointmentIds.length > 0) {
+    deleteInvoicesOfAppointments(appointmentIds);
     const { error: paymentsError } = await admin
       .from("payments")
       .delete()

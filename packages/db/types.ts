@@ -517,6 +517,144 @@ export type Database = {
           },
         ]
       }
+      invoice_records: {
+        Row: {
+          aeat_status: string | null
+          canonical: string
+          generated_at: string
+          hash: string
+          id: string
+          invoice_id: string
+          kind: Database["public"]["Enums"]["invoice_record_kind"]
+          previous_hash: string
+          sent_at: string | null
+        }
+        Insert: {
+          aeat_status?: string | null
+          canonical: string
+          generated_at: string
+          hash: string
+          id?: string
+          invoice_id: string
+          kind: Database["public"]["Enums"]["invoice_record_kind"]
+          previous_hash: string
+          sent_at?: string | null
+        }
+        Update: {
+          aeat_status?: string | null
+          canonical?: string
+          generated_at?: string
+          hash?: string
+          id?: string
+          invoice_id?: string
+          kind?: Database["public"]["Enums"]["invoice_record_kind"]
+          previous_hash?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_records_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_series: {
+        Row: {
+          code: Database["public"]["Enums"]["invoice_series_code"]
+          format: string
+          locked: boolean
+          next_number: number
+          year: number
+        }
+        Insert: {
+          code: Database["public"]["Enums"]["invoice_series_code"]
+          format: string
+          locked?: boolean
+          next_number?: number
+          year: number
+        }
+        Update: {
+          code?: Database["public"]["Enums"]["invoice_series_code"]
+          format?: string
+          locked?: boolean
+          next_number?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          code: string
+          id: string
+          issued_at: string
+          kind: Database["public"]["Enums"]["invoice_kind"]
+          number: number
+          payment_id: string
+          reason: string
+          rectifies_invoice_id: string | null
+          replaces_invoice_id: string | null
+          series: Database["public"]["Enums"]["invoice_series_code"]
+          snapshot: Json
+          status: Database["public"]["Enums"]["invoice_status"]
+          total_cents: number
+        }
+        Insert: {
+          code: string
+          id?: string
+          issued_at: string
+          kind: Database["public"]["Enums"]["invoice_kind"]
+          number: number
+          payment_id: string
+          reason?: string
+          rectifies_invoice_id?: string | null
+          replaces_invoice_id?: string | null
+          series: Database["public"]["Enums"]["invoice_series_code"]
+          snapshot: Json
+          status?: Database["public"]["Enums"]["invoice_status"]
+          total_cents: number
+        }
+        Update: {
+          code?: string
+          id?: string
+          issued_at?: string
+          kind?: Database["public"]["Enums"]["invoice_kind"]
+          number?: number
+          payment_id?: string
+          reason?: string
+          rectifies_invoice_id?: string | null
+          replaces_invoice_id?: string | null
+          series?: Database["public"]["Enums"]["invoice_series_code"]
+          snapshot?: Json
+          status?: Database["public"]["Enums"]["invoice_status"]
+          total_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_rectifies_invoice_id_fkey"
+            columns: ["rectifies_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_replaces_invoice_id_fkey"
+            columns: ["replaces_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_accounts: {
         Row: {
           created_at: string
@@ -834,6 +972,10 @@ export type Database = {
           starts_at: string
         }[]
       }
+      append_invoice_record: {
+        Args: { p_invoice_id: string; p_type: string }
+        Returns: undefined
+      }
       available_slots: {
         Args: {
           p_from: string
@@ -914,8 +1056,30 @@ export type Database = {
           wards: Json
         }[]
       }
+      format_invoice_code: {
+        Args: { p_format: string; p_number: number; p_year: number }
+        Returns: string
+      }
+      invoice_alta_canonical: {
+        Args: {
+          p_code: string
+          p_generated_at: string
+          p_issued_on: string
+          p_issuer_tax_id: string
+          p_previous_hash: string
+          p_total_cents: number
+          p_type: string
+          p_vat_cents: number
+        }
+        Returns: string
+      }
+      invoice_hash: { Args: { p_canonical: string }; Returns: string }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      issue_simplified_invoice: {
+        Args: { p_payment_id: string }
+        Returns: string
+      }
       link_consent: {
         Args: { p_consent_id: string; p_person_id: string }
         Returns: undefined
@@ -994,6 +1158,16 @@ export type Database = {
         Returns: {
           professional_id: string
           starts_at: string
+        }[]
+      }
+      next_invoice_number: {
+        Args: {
+          p_issued_at: string
+          p_series: Database["public"]["Enums"]["invoice_series_code"]
+        }
+        Returns: {
+          invoice_code: string
+          invoice_number: number
         }[]
       }
       normalize_phone: { Args: { value: string }; Returns: string }
@@ -1083,6 +1257,10 @@ export type Database = {
         | "auto_email"
         | "manual"
       guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
+      invoice_kind: "simplified" | "full" | "rectifying"
+      invoice_record_kind: "alta" | "anulacion"
+      invoice_series_code: "main" | "rectifying"
+      invoice_status: "issued" | "replaced"
       payment_method: "cash" | "card" | "bizum" | "transfer"
       payment_status: "not_required" | "pending" | "paid" | "refunded"
       reminder_channel: "email" | "sms"
@@ -1239,6 +1417,10 @@ export const Constants = {
         "manual",
       ],
       guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
+      invoice_kind: ["simplified", "full", "rectifying"],
+      invoice_record_kind: ["alta", "anulacion"],
+      invoice_series_code: ["main", "rectifying"],
+      invoice_status: ["issued", "replaced"],
       payment_method: ["cash", "card", "bizum", "transfer"],
       payment_status: ["not_required", "pending", "paid", "refunded"],
       reminder_channel: ["email", "sms"],
