@@ -2,7 +2,7 @@ import type { createAdminClient } from "@clinicalumia/api/admin";
 import { madridInstant } from "@clinicalumia/api/madrid-time";
 import { extractText } from "unpdf";
 import { type Consent, consentSources, parseConsent } from "@/lib/consent";
-import { consentClauses, consentTitle } from "@/lib/consent-legal";
+import { consentTitle } from "@/lib/consent-legal";
 import { matchConsentPerson, storeConsent } from "@/lib/consent-store";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -17,7 +17,6 @@ const FIELDS = {
   DNI: "dni",
   Email: "email",
   "Padre, madre o tutor": "guardian",
-  "Cómo nos ha conocido": "sources",
 } as const;
 
 const MONTHS = [
@@ -38,6 +37,7 @@ const MONTHS = [
 const FIELD_LINE = new RegExp(`^(${Object.keys(FIELDS).join("|")}): (.*)$`);
 const CHECKBOX_LINE = /^\[([X ])\] (.*)$/;
 const SIGNED_LINE = "Firmado por ";
+const SOURCES_LABEL = "Cómo nos ha conocido: ";
 const SIGNED_DATE =
   / el (\d{1,2}) de (\p{L}+) de (\d{4})(?:,| a las) (\d{1,2}):(\d{2})\.$/u;
 const EMPTY = "—";
@@ -94,24 +94,33 @@ export function parseConsentText(
     .map((line) => line.trim())
     .filter(Boolean);
   const title = lines.indexOf(consentTitle);
-  const [intro = ""] = consentClauses;
-  const clauses = lines.findIndex((line) => intro.startsWith(line));
-  const signed = lines.findIndex((line) => line.startsWith(SIGNED_LINE));
-  if (title === -1 || clauses <= title || signed <= clauses) {
+  const sourcesLine = lines.findIndex(
+    (line, index) => index > title && line.startsWith(SOURCES_LABEL),
+  );
+  const signed = lines.findIndex(
+    (line, index) => index > sourcesLine && line.startsWith(SIGNED_LINE),
+  );
+  if (title === -1 || sourcesLine === -1 || signed === -1) {
     return { error: "No es un consentimiento." };
   }
 
   const values: Partial<Record<(typeof FIELDS)[keyof typeof FIELDS], string>> =
     {};
-  for (const block of blocks(lines.slice(title + 1, clauses), FIELD_LINE)) {
+  for (const block of blocks(lines.slice(title + 1, sourcesLine), FIELD_LINE)) {
     const [, label, value = ""] = FIELD_LINE.exec(block) ?? [];
     values[FIELDS[label as keyof typeof FIELDS]] = value === EMPTY ? "" : value;
   }
 
-  const sources = splitSources(values.sources ?? "");
+  let fieldsEnd = sourcesLine + 1;
+  let sourcesText = lines[sourcesLine]?.slice(SOURCES_LABEL.length) ?? "";
+  while (!splitSources(sourcesText) && fieldsEnd < signed) {
+    sourcesText += ` ${lines[fieldsEnd]}`;
+    fieldsEnd++;
+  }
+  const sources = splitSources(sourcesText);
   if (!sources) return { error: "Origen desconocido." };
 
-  const boxes = blocks(lines.slice(clauses, signed), CHECKBOX_LINE).map(
+  const boxes = blocks(lines.slice(fieldsEnd, signed), CHECKBOX_LINE).map(
     (block) => {
       const [, mark = "", label = ""] = CHECKBOX_LINE.exec(block) ?? [];
       return { checked: mark === "X", label };

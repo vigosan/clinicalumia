@@ -7,6 +7,8 @@ import {
   parseConsentText,
   readPdfText,
 } from "./consent-import";
+import { buildConsentPdf as buildConsentPdfV2 } from "./fixtures/consent-pdf-39d8223";
+import { buildConsentPdf as buildConsentPdfV1 } from "./fixtures/consent-pdf-2599666";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -114,19 +116,47 @@ describe("parseConsentText", () => {
     expect(result.consent.dni).toBe("87654321X");
   });
 
-  it("reads the first version, with the old marketing text and no media authorization, as media not authorized", async () => {
-    const text = (await pdfText(minor, summerSignature))
-      .replace(
-        /\[X\] Acepto recibir[\s\S]*?\(opcional\)\.\n/,
-        "[X] Acepto recibir información sobre los servicios de LUMIA por email u otros medios (opcional).\n",
-      )
-      .replace(/\[ \] Autorizo el uso[\s\S]*?\(opcional\)\.\n/, "");
+  it.each([
+    [
+      "the first version, without media authorization",
+      buildConsentPdfV1,
+      false,
+    ],
+    ["the version that added media authorization", buildConsentPdfV2, true],
+  ])("reads consents signed with %s, whose legal text was different", async (_, build, hasMedia) => {
+    const all = {
+      ...minor,
+      mediaForTraining: true,
+      sources: [
+        "Familiares o amigos",
+        "Web de LUMIA",
+        "Internet (Google, etc.)",
+        "Instagram u otras redes sociales",
+        "Otros",
+      ],
+    };
 
-    const result = parseConsentText(text);
+    const result = parseConsentText(
+      await readPdfText(await build(all, summerSignature)),
+    );
 
     if (!("ok" in result)) throw new Error(result.error);
-    expect(result.consent.marketing).toBe(true);
-    expect(result.consent.mediaForTraining).toBe(false);
+    expect(withoutSignature(result.consent)).toEqual(
+      withoutSignature({ ...all, mediaForTraining: hasMedia }),
+    );
+    expect(result.signedAt).toEqual(summerSignature);
+  });
+
+  it("reads an unchecked marketing box in the first version as no marketing", async () => {
+    const result = parseConsentText(
+      await readPdfText(await buildConsentPdfV1(adult, winterSignature)),
+    );
+
+    if (!("ok" in result)) throw new Error(result.error);
+    expect(withoutSignature(result.consent)).toEqual(
+      withoutSignature({ ...adult, mediaForTraining: false }),
+    );
+    expect(result.signedAt).toEqual(winterSignature);
   });
 
   it("rejects a minor's consent without a guardian, the same as the web form would", async () => {
