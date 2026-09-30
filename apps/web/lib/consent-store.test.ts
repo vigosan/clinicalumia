@@ -23,10 +23,12 @@ const pdf = new Uint8Array([1, 2, 3]);
 function fakeAdmin({
   match = [],
   uploadError = null,
+  matchError = null,
   insertError = null,
 }: {
   match?: { person_id: string; method: string }[];
   uploadError?: { message: string } | null;
+  matchError?: { message: string } | null;
   insertError?: { message: string } | null;
 } = {}) {
   const calls: string[] = [];
@@ -40,7 +42,7 @@ function fakeAdmin({
   });
   const rpc = vi.fn(async () => {
     calls.push("match");
-    return { data: match, error: null };
+    return { data: matchError ? null : match, error: matchError };
   });
   const insert = vi.fn(async () => {
     calls.push("insert");
@@ -149,6 +151,21 @@ describe("storeConsent", () => {
     ).rejects.toThrow("db down");
 
     expect(remove).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes the uploaded PDF when looking for the person fails, so no orphaned file survives an unsaved consent", async () => {
+    const { admin, insert, remove } = fakeAdmin({
+      matchError: { message: "rpc down" },
+    });
+
+    await expect(
+      storeConsent({ admin, consent, signedAt, pdf }),
+    ).rejects.toThrow("rpc down");
+
+    expect(insert).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith([
+      expect.stringMatching(/^2026\/09\/.+\.pdf$/),
+    ]);
   });
 
   it("never inserts when the upload fails, so a consent row can never be created without its PDF", async () => {
