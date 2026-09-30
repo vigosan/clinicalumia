@@ -42,7 +42,9 @@ export function parseConsent(
   const lastName = text(formData, "lastName");
   const guardian = text(formData, "guardian");
   const birthDate = text(formData, "birthDate");
-  const dni = text(formData, "dni").toUpperCase().replace(/[\s.-]/g, "");
+  const dni = text(formData, "dni")
+    .toUpperCase()
+    .replace(/[\s.-]/g, "");
   const email = text(formData, "email");
   const sources = formData.getAll("source").map(String);
   const signature = text(formData, "signature");
