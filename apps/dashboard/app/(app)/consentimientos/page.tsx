@@ -14,6 +14,7 @@ import Link from "next/link";
 import {
   consentsListHref,
   consentsListParams,
+  consentsListResult,
   consentsPageCount,
   formatSignedAt,
   hasPendingConsents,
@@ -36,10 +37,11 @@ export default async function ConsentsPage({
       : false;
   const params = consentsListParams(search, hasPending);
 
-  const { data, error, count } = await listConsents(supabase, params);
-  const consents = data ?? [];
-  const state = patientsListState(Boolean(error), consents.length);
-  const pageCount = consentsPageCount(count ?? 0);
+  const { consents, failed, total } = consentsListResult(
+    await listConsents(supabase, params),
+  );
+  const state = patientsListState(failed, consents.length);
+  const pageCount = consentsPageCount(total);
 
   return (
     <>

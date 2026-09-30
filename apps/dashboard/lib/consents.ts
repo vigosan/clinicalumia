@@ -41,6 +41,22 @@ export function consentsPageCount(total: number): number {
   return Math.max(1, Math.ceil(total / CONSENTS_PAGE_SIZE));
 }
 
+export function consentsListResult<Row>({
+  data,
+  error,
+  count,
+}: {
+  data: Row[] | null;
+  error: { code?: string } | null;
+  count: number | null;
+}): { consents: Row[]; failed: boolean; total: number } {
+  return {
+    consents: data ?? [],
+    failed: Boolean(error) && error?.code !== "PGRST103",
+    total: count ?? 0,
+  };
+}
+
 export function formatSignedAt(instant: string): string {
   const { date, time } = madridDateTime(instant);
   return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)} ${time}`;

@@ -3,6 +3,7 @@ import {
   CONSENTS_PAGE_SIZE,
   consentsListHref,
   consentsListParams,
+  consentsListResult,
   consentsPageCount,
   formatSignedAt,
   hasPendingConsents,
@@ -148,5 +149,30 @@ describe("hasPendingConsents", () => {
     expect(pending.query.is).toHaveBeenCalledWith("person_id", null);
 
     expect(await hasPendingConsents(fakeClient(0).client as never)).toBe(false);
+  });
+});
+
+describe("consentsListResult", () => {
+  it("shows an empty page, not a load error, when the page number is past the end", () => {
+    expect(
+      consentsListResult({
+        data: null,
+        error: { code: "PGRST103" },
+        count: null,
+      }),
+    ).toEqual({ consents: [], failed: false, total: 0 });
+  });
+
+  it("reports any other failure as a load error", () => {
+    expect(
+      consentsListResult({ data: null, error: { code: "XX000" }, count: null })
+        .failed,
+    ).toBe(true);
+  });
+
+  it("passes rows and total through", () => {
+    expect(
+      consentsListResult({ data: [{ id: "a" }], error: null, count: 30 }),
+    ).toEqual({ consents: [{ id: "a" }], failed: false, total: 30 });
   });
 });
