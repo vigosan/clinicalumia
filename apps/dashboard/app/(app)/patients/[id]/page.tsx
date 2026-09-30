@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { guardianErrorMessage } from "@/lib/guardian-error";
 import type { PatientAppointmentSource } from "@/lib/patient-appointments";
 import { splitPatientAppointments } from "@/lib/patient-appointments";
+import { ConsentsSection, type PatientConsent } from "./ConsentsSection";
 import { GuardiansSection } from "./GuardiansSection";
 import { PatientAppointments } from "./PatientAppointments";
 import { PersonActions } from "./PersonActions";
@@ -147,6 +148,28 @@ export default async function PatientPage({
   const { upcoming, upcomingTruncated, past, pastTruncated } =
     splitPatientAppointments(appointmentSources, new Date());
 
+  const { data: consentRows, error: consentsError } = await supabase
+    .from("consents")
+    .select("id, signed_at, marketing, media_for_training, pdf_path")
+    .eq("person_id", id)
+    .order("signed_at", { ascending: false });
+  const { data: signedPdfs } =
+    consentRows && consentRows.length > 0
+      ? await supabase.storage.from("consents").createSignedUrls(
+          consentRows.map((row) => row.pdf_path),
+          300,
+        )
+      : { data: [] };
+  const consents: PatientConsent[] = (consentRows ?? []).map((row) => ({
+    id: row.id,
+    signedAt: row.signed_at,
+    marketing: row.marketing,
+    mediaForTraining: row.media_for_training,
+    pdfUrl:
+      signedPdfs?.find((signed) => signed.path === row.pdf_path)?.signedUrl ||
+      null,
+  }));
+
   return (
     <>
       <PageHeader
@@ -210,6 +233,8 @@ export default async function PatientPage({
         wards={wards}
         initialError={guardianErrorMessage(guardianError)}
       />
+
+      <ConsentsSection consents={consents} error={Boolean(consentsError)} />
 
       <Card className="flex flex-col gap-2">
         <h2 className="text-lg font-bold text-ink-900">Historial</h2>

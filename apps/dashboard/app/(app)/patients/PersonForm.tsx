@@ -22,6 +22,7 @@ import {
 } from "@/lib/duplicate-checker";
 import { createSubmitGate } from "@/lib/submit-gate";
 import type { Ward } from "@/lib/ward-label";
+import { linkConsent } from "../consentimientos/actions";
 import {
   addGuardian,
   checkDuplicates,
@@ -46,14 +47,26 @@ type Person = {
 
 type GuardianOf = { id: string; minorName: string };
 
+export type ConsentPrefill = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  birth_date: string;
+  tax_id: string;
+  email: string | null;
+  guardian_name: string | null;
+};
+
 export function PersonForm({
   person,
   guardianOf,
   returnTo,
+  consent,
 }: {
   person?: Person;
   guardianOf?: GuardianOf;
   returnTo?: string;
+  consent?: ConsentPrefill;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(savePerson, undefined);
@@ -106,6 +119,18 @@ export function PersonForm({
   }
 
   function handleUseExisting(id: string) {
+    if (consent) {
+      setUseExistingError(null);
+      startUsingExisting(async () => {
+        const result = await linkConsent(consent.id, id);
+        if ("error" in result) {
+          setUseExistingError(result.error);
+          return;
+        }
+        router.push(`/consentimientos/${consent.id}`);
+      });
+      return;
+    }
     if (!guardianOf) {
       router.push(`/patients/${id}`);
       return;
@@ -135,7 +160,9 @@ export function PersonForm({
     ? `/patients/${person.id}`
     : guardianOf
       ? `/patients/${guardianOf.id}`
-      : "/patients";
+      : consent
+        ? `/consentimientos/${consent.id}`
+        : "/patients";
 
   return (
     <form
@@ -170,24 +197,40 @@ export function PersonForm({
         <input type="hidden" name="guardian_of" value={guardianOf.id} />
       )}
       {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
+      {consent && <input type="hidden" name="consent_id" value={consent.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nombre">
-          <Input name="first_name" defaultValue={person?.first_name} required />
+        <Field
+          label="Nombre"
+          hint={
+            consent?.guardian_name
+              ? `Firmado por: ${consent.guardian_name}`
+              : undefined
+          }
+        >
+          <Input
+            name="first_name"
+            defaultValue={person?.first_name ?? consent?.first_name}
+            required
+          />
         </Field>
         <Field label="Apellidos">
-          <Input name="last_name" defaultValue={person?.last_name} required />
+          <Input
+            name="last_name"
+            defaultValue={person?.last_name ?? consent?.last_name}
+            required
+          />
         </Field>
         <Field label="Fecha de nacimiento">
           <Input
             name="birth_date"
             type="date"
-            defaultValue={person?.birth_date ?? ""}
+            defaultValue={person?.birth_date ?? consent?.birth_date ?? ""}
           />
         </Field>
         <Field label="DNI/NIE">
           <Input
             name="tax_id"
-            defaultValue={person?.tax_id ?? ""}
+            defaultValue={person?.tax_id ?? consent?.tax_id ?? ""}
             onBlur={handleDuplicateFieldBlur}
           />
         </Field>
@@ -195,7 +238,7 @@ export function PersonForm({
           <Input
             name="email"
             type="email"
-            defaultValue={person?.email ?? ""}
+            defaultValue={person?.email ?? consent?.email ?? ""}
             onBlur={handleDuplicateFieldBlur}
           />
         </Field>

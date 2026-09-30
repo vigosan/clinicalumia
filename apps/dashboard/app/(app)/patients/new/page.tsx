@@ -1,7 +1,8 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
-import { PersonForm } from "../PersonForm";
+import { isUuid } from "@/lib/agenda";
+import { type ConsentPrefill, PersonForm } from "../PersonForm";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -9,9 +10,13 @@ const UUID_REGEX =
 export default async function NewPersonPage({
   searchParams,
 }: {
-  searchParams: Promise<{ guardianOf?: string; returnTo?: string }>;
+  searchParams: Promise<{
+    guardianOf?: string;
+    returnTo?: string;
+    consentimiento?: string;
+  }>;
 }) {
-  const { guardianOf, returnTo } = await searchParams;
+  const { guardianOf, returnTo, consentimiento } = await searchParams;
   const minorId = guardianOf && UUID_REGEX.test(guardianOf) ? guardianOf : null;
 
   let guardianOfProp: { id: string; minorName: string } | undefined;
@@ -30,6 +35,20 @@ export default async function NewPersonPage({
     }
   }
 
+  let consent: ConsentPrefill | undefined;
+  if (consentimiento && isUuid(consentimiento)) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("consents")
+      .select(
+        "id, first_name, last_name, birth_date, tax_id, email, guardian_name",
+      )
+      .eq("id", consentimiento)
+      .is("person_id", null)
+      .maybeSingle();
+    consent = data ?? undefined;
+  }
+
   return (
     <>
       <PageHeader
@@ -39,7 +58,11 @@ export default async function NewPersonPage({
         }
       />
       <Card>
-        <PersonForm guardianOf={guardianOfProp} returnTo={returnTo} />
+        <PersonForm
+          guardianOf={guardianOfProp}
+          returnTo={returnTo}
+          consent={consent}
+        />
       </Card>
     </>
   );

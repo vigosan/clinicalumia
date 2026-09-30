@@ -191,6 +191,55 @@ describe("savePerson", () => {
   });
 });
 
+describe("savePerson with a consent", () => {
+  const consentId = "7b0c7c1e-2f3a-4c5d-8e9f-0a1b2c3d4e5f";
+  const personId = "0f9e8d7c-6b5a-4938-8271-605f4e3d2c1b";
+
+  beforeEach(() => {
+    insertResult.data = { id: personId };
+    insertResult.error = null;
+    rpcResult.data = null;
+    rpcResult.error = null;
+    rpc.mockClear();
+    vi.mocked(redirect).mockClear();
+  });
+
+  it("links the signed consent to the new record and goes back to it, so the consent stops waiting as pending", async () => {
+    await savePerson(undefined, personForm({ consent_id: consentId }));
+    expect(rpc).toHaveBeenCalledWith("link_consent", {
+      p_consent_id: consentId,
+      p_person_id: personId,
+    });
+    expect(vi.mocked(redirect).mock.calls[0]).toEqual([
+      `/consentimientos/${consentId}`,
+    ]);
+  });
+
+  it("does not link anything on a plain creation, so normal records never get someone else's consent", async () => {
+    await savePerson(undefined, personForm());
+    expect(rpc).not.toHaveBeenCalledWith("link_consent", expect.anything());
+    expect(vi.mocked(redirect).mock.calls[0]).toEqual([
+      `/patients/${personId}`,
+    ]);
+  });
+
+  it("ignores a consent id that is not a uuid, since it comes from the address bar", async () => {
+    await savePerson(undefined, personForm({ consent_id: "not-a-uuid" }));
+    expect(rpc).not.toHaveBeenCalledWith("link_consent", expect.anything());
+    expect(vi.mocked(redirect).mock.calls[0]).toEqual([
+      `/patients/${personId}`,
+    ]);
+  });
+
+  it("keeps the new record and shows why on the consent when linking fails, e.g. someone linked it meanwhile", async () => {
+    rpcResult.error = { message: "consent_already_linked" };
+    await savePerson(undefined, personForm({ consent_id: consentId }));
+    expect(vi.mocked(redirect).mock.calls[0]).toEqual([
+      `/consentimientos/${consentId}?linkError=already-linked`,
+    ]);
+  });
+});
+
 describe("savePerson with guardian_of", () => {
   beforeEach(() => {
     primaryGuardianLookupResult.data = null;

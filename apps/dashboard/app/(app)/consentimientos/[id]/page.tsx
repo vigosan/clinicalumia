@@ -4,6 +4,7 @@ import { PageHeader } from "@clinicalumia/ui/page-header";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/agenda";
+import { consentLinkErrorMessage } from "@/lib/consent-link-error";
 import { formatSignedAt, linkedPersonLabel } from "@/lib/consents";
 import { ConsentActions } from "./ConsentActions";
 
@@ -13,10 +14,13 @@ function yesNo(value: boolean): string {
 
 export default async function ConsentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ linkError?: string }>;
 }) {
   const { id } = await params;
+  const { linkError } = await searchParams;
   if (!isUuid(id)) notFound();
   const supabase = await createClient();
 
@@ -100,6 +104,7 @@ export default async function ConsentPage({
         <ConsentActions
           consentId={consent.id}
           linked={Boolean(consent.person)}
+          initialError={consentLinkErrorMessage(linkError)}
         />
       </Card>
     </>

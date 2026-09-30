@@ -14,11 +14,13 @@ export function PatientPicker({
   onSelect,
   onClear,
   returnTo,
+  hideNewPerson = false,
 }: {
   selected: PatientOption | null;
   onSelect: (patient: PatientOption) => void;
   onClear: () => void;
   returnTo?: string;
+  hideNewPerson?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PatientOption[]>([]);
@@ -118,17 +120,19 @@ export function PatientPicker({
           No hay nadie con esos datos.
         </p>
       )}
-      <Button asChild variant="ghost" size="sm">
-        <Link
-          href={
-            returnTo
-              ? `/patients/new?returnTo=${encodeURIComponent(returnTo)}`
-              : "/patients/new"
-          }
-        >
-          Nueva persona
-        </Link>
-      </Button>
+      {!hideNewPerson && (
+        <Button asChild variant="ghost" size="sm">
+          <Link
+            href={
+              returnTo
+                ? `/patients/new?returnTo=${encodeURIComponent(returnTo)}`
+                : "/patients/new"
+            }
+          >
+            Nueva persona
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

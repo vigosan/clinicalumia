@@ -2,6 +2,7 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   type PatientOption,
@@ -12,12 +13,14 @@ import { linkConsent, unlinkConsent } from "../actions";
 export function ConsentActions({
   consentId,
   linked,
+  initialError,
 }: {
   consentId: string;
   linked: boolean;
+  initialError?: string;
 }) {
   const [selected, setSelected] = useState<PatientOption | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
   const [pending, startTransition] = useTransition();
 
   function handleLink() {
@@ -65,9 +68,10 @@ export function ConsentActions({
               selected={selected}
               onSelect={setSelected}
               onClear={() => setSelected(null)}
+              hideNewPerson
             />
           </div>
-          <div>
+          <div className="flex flex-wrap gap-2.5">
             <Button
               type="button"
               size="sm"
@@ -76,6 +80,14 @@ export function ConsentActions({
               onClick={handleLink}
             >
               {pending ? "Asociando…" : "Asociar"}
+            </Button>
+            <Button asChild variant="secondary" size="sm">
+              <Link
+                href={`/patients/new?consentimiento=${consentId}`}
+                data-testid="consent-create-person"
+              >
+                Crear ficha con estos datos
+              </Link>
             </Button>
           </div>
         </>

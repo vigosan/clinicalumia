@@ -12,8 +12,11 @@ import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionResult } from "@/lib/action-result";
+import { isUuid } from "@/lib/agenda";
+import { consentLinkErrorCode } from "@/lib/consent-link-error";
 import { guardianErrorCode } from "@/lib/guardian-error";
 import type { Ward } from "@/lib/ward-label";
+import { linkConsent } from "../consentimientos/actions";
 
 export type PersonFormState = { error: string } | undefined;
 
@@ -75,6 +78,8 @@ export async function savePerson(
     formData.get("relationship") ?? "otro",
   ) as Ward["relationship"];
   const isPrimary = formData.get("is_primary") === "on";
+  const consentIdRaw = String(formData.get("consent_id") ?? "");
+  const consentId = isUuid(consentIdRaw) ? consentIdRaw : null;
 
   if (guardianOf) {
     if (parsed.person.birth_date && isMinor(parsed.person.birth_date, today))
@@ -101,6 +106,16 @@ export async function savePerson(
   if (!data) return { error: "No tienes permiso para hacer esto." };
 
   revalidatePath("/patients");
+
+  if (consentId) {
+    const linkResult = await linkConsent(consentId, data.id);
+    if ("error" in linkResult) {
+      redirect(
+        `/consentimientos/${consentId}?linkError=${consentLinkErrorCode(linkResult.error)}`,
+      );
+    }
+    redirect(`/consentimientos/${consentId}`);
+  }
 
   if (guardianOf) {
     const guardianResult = await addGuardian(
