@@ -150,6 +150,20 @@ function rectifying(): InvoiceDetail {
   };
 }
 
+async function textPosition(
+  bytes: Uint8Array,
+  needle: string,
+): Promise<{ x: number; y: number }> {
+  const pdf = await getDocumentProxy(new Uint8Array(bytes));
+  const page = await pdf.getPage(1);
+  const content = await page.getTextContent();
+  const item = content.items.find(
+    (entry) => "str" in entry && entry.str.includes(needle),
+  );
+  if (!item || !("transform" in item)) throw new Error(`${needle} not found`);
+  return { x: item.transform[4], y: item.transform[5] };
+}
+
 async function pdfText(bytes: Uint8Array): Promise<string> {
   const pdf = await getDocumentProxy(new Uint8Array(bytes));
   const { text } = await extractText(pdf, { mergePages: true });
@@ -249,5 +263,18 @@ describe("renderInvoicePdf", () => {
     const bytes = await renderInvoicePdf(simplified(), { logo });
 
     expect(new TextDecoder().decode(bytes.slice(0, 4))).toBe("%PDF");
+  });
+
+  it("places the parties beside the tax QR so the QR does not take a band of its own", async () => {
+    const bytes = await renderInvoicePdf(fullWithVat());
+    const qrLabel = await textPosition(bytes, "QR tributario:");
+    const issuerName = await textPosition(bytes, "Patricia Hernán Sánchez");
+    const recipientName = await textPosition(bytes, "Marta López Ferrer");
+    const qrBottom = qrLabel.y - 100;
+
+    expect(issuerName.y).toBeLessThanOrEqual(qrLabel.y);
+    expect(issuerName.y).toBeGreaterThan(qrBottom);
+    expect(recipientName.y).toBeGreaterThan(qrBottom);
+    expect(recipientName.x).toBeLessThan(qrLabel.x);
   });
 });

@@ -73,8 +73,15 @@ const s = StyleSheet.create({
   title: { fontSize: 16, fontWeight: 300 },
   date: { marginTop: 6, color: color.grey },
   reference: { marginTop: 4, color: color.grey, fontSize: 8 },
-  parties: { flexDirection: "row", marginTop: 32 },
-  party: { width: 200, marginRight: 40 },
+  partiesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 48,
+  },
+  parties: { flex: 1, flexDirection: "row", marginRight: 24 },
+  party: { flex: 1, marginRight: 24 },
+  lastParty: { flex: 1 },
   label: { fontSize: 7.5, color: color.grey, marginBottom: 6 },
   name: { fontWeight: 400, marginBottom: 3 },
   line: { color: color.grey, marginTop: 2 },
@@ -109,7 +116,7 @@ const s = StyleSheet.create({
   notes: { marginTop: 48 },
   note: { color: color.grey, fontSize: 8, marginBottom: 4 },
   footer: { position: "absolute", left: 64, right: 64, bottom: 40 },
-  qrBlock: { alignItems: "center", marginTop: 10 },
+  qrBlock: { alignItems: "center", width: QR_SIZE },
   qrLabel: { color: color.grey, marginBottom: 6 },
   qr: { width: QR_SIZE, height: QR_SIZE },
   footerRow: { flexDirection: "row", justifyContent: "space-between" },
@@ -199,34 +206,36 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
               <Text style={s.date}>{formatMadridDate(detail.issued_at)}</Text>
               {reference !== "" && <Text style={s.reference}>{reference}</Text>}
             </View>
-            <View style={s.qrBlock}>
-              <Text style={s.qrLabel}>{AEAT_QR_LABEL}</Text>
-              <Image style={s.qr} src={qr} />
-            </View>
           </View>
         </View>
 
-        <View style={s.parties}>
-          <View style={s.party}>
-            {snapshot.recipient && <Text style={s.label}> </Text>}
-            <Text style={s.name}>{snapshot.issuer.name}</Text>
-            {issuerLines(snapshot.issuer).map((line) => (
-              <Text key={line} style={s.line}>
-                {line}
-              </Text>
-            ))}
-          </View>
-          {snapshot.recipient && (
-            <View style={s.party}>
-              <Text style={s.label}>Para</Text>
-              <Text style={s.name}>{snapshot.recipient.name}</Text>
-              {recipientLines(snapshot.recipient).map((line) => (
+        <View style={s.partiesRow}>
+          <View style={s.parties}>
+            <View style={snapshot.recipient ? s.party : s.lastParty}>
+              {snapshot.recipient && <Text style={s.label}> </Text>}
+              <Text style={s.name}>{snapshot.issuer.name}</Text>
+              {issuerLines(snapshot.issuer).map((line) => (
                 <Text key={line} style={s.line}>
                   {line}
                 </Text>
               ))}
             </View>
-          )}
+            {snapshot.recipient && (
+              <View style={s.lastParty}>
+                <Text style={s.label}>Para</Text>
+                <Text style={s.name}>{snapshot.recipient.name}</Text>
+                {recipientLines(snapshot.recipient).map((line) => (
+                  <Text key={line} style={s.line}>
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
+          <View style={s.qrBlock}>
+            <Text style={s.qrLabel}>{AEAT_QR_LABEL}</Text>
+            <Image style={s.qr} src={qr} />
+          </View>
         </View>
 
         {snapshot.lines.map((line) => (
