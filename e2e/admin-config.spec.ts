@@ -2,7 +2,11 @@ import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
-import { deleteInvoiceSeries, lockNextYearInvoiceSeries } from "./invoices";
+import {
+  deleteInvoiceSeries,
+  lockNextYearInvoiceSeries,
+  madridYear,
+} from "./invoices";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -244,11 +248,11 @@ test("uploading a logo over 2 MB shows a clear error instead of crashing", async
 test("the owner configures a future year of the main invoice series and sees the preview and the saved numbering", async ({
   page,
 }) => {
-  const year = new Date().getFullYear() + 5;
+  const year = madridYear() + 5;
   try {
     await loginAsOwner(page);
     await page.goto(`${ADMIN}/clinic`);
-    const currentYear = new Date().getFullYear();
+    const currentYear = madridYear();
     for (const listedYear of [currentYear, currentYear + 1]) {
       await expect(
         page.getByTestId(`invoice-series-main-summary-${listedYear}`),

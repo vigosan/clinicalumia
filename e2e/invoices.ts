@@ -1,6 +1,11 @@
 import { execFileSync } from "node:child_process";
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export function madridYear(): number {
+  return Number(todayInMadrid().slice(0, 4));
+}
 
 export function deleteInvoicesOfAppointments(appointmentIds: string[]) {
   if (appointmentIds.length === 0) return;
@@ -39,7 +44,7 @@ export function deleteInvoicesOfAppointments(appointmentIds: string[]) {
 export function deleteInvoiceSeries(code: "main" | "rectifying", year: number) {
   if (code !== "main" && code !== "rectifying")
     throw new Error("Serie no válida");
-  if (!Number.isInteger(year) || year <= new Date().getFullYear())
+  if (!Number.isInteger(year) || year <= madridYear())
     throw new Error("Solo se borran series de años futuros de prueba");
   execFileSync(
     "docker",
@@ -71,7 +76,7 @@ export function lockNextYearInvoiceSeries(
   code: "main" | "rectifying",
   format: string,
 ) {
-  const year = new Date().getFullYear() + 1;
+  const year = madridYear() + 1;
   if (!/^[A-Za-z0-9/_.{}:ñ-]+$/.test(format))
     throw new Error("Formato no válido para la prueba");
   execFileSync(

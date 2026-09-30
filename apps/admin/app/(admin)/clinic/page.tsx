@@ -1,7 +1,7 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { PageHeader } from "@clinicalumia/ui/page-header";
-import { invoiceSetupWarnings } from "@/lib/invoice-series";
+import { effectiveSeries, invoiceSetupWarnings } from "@/lib/invoice-series";
 import { ClinicSettingsForm } from "./ClinicSettingsForm";
 import { InvoiceHeaderPreview } from "./InvoiceHeaderPreview";
 import { InvoiceSeriesForm } from "./InvoiceSeriesForm";
@@ -20,16 +20,16 @@ export default async function ClinicPage() {
   const { data: series } = await supabase
     .from("invoice_series")
     .select("*")
-    .in("year", years);
+    .lte("year", currentYear + 1);
   const rowsOf = (code: "main" | "rectifying") =>
     (series ?? []).filter((row) => row.code === code);
-  const mainSeries = rowsOf("main").find((row) => row.year === currentYear);
-  const rectifyingSeries = rowsOf("rectifying").find(
-    (row) => row.year === currentYear,
-  );
+  const mainSeries = effectiveSeries(rowsOf("main"), currentYear);
+  const rectifyingSeries = effectiveSeries(rowsOf("rectifying"), currentYear);
+  const nextNumberOf = (row: typeof mainSeries) =>
+    row?.year === currentYear ? row.next_number : 1;
   const warnings = invoiceSetupWarnings({
     settings: settings!,
-    mainSeries,
+    series: series ?? [],
     year: currentYear,
   });
 
@@ -62,8 +62,8 @@ export default async function ClinicPage() {
           code="main"
           title="Facturas"
           format={mainSeries?.format ?? DEFAULT_FORMAT.main}
-          year={mainSeries?.year ?? currentYear}
-          nextNumber={mainSeries?.next_number ?? 1}
+          year={currentYear}
+          nextNumber={nextNumberOf(mainSeries)}
           years={years}
           rows={rowsOf("main")}
           otherRows={rowsOf("rectifying")}
@@ -72,8 +72,8 @@ export default async function ClinicPage() {
           code="rectifying"
           title="Rectificativas"
           format={rectifyingSeries?.format ?? DEFAULT_FORMAT.rectifying}
-          year={rectifyingSeries?.year ?? currentYear}
-          nextNumber={rectifyingSeries?.next_number ?? 1}
+          year={currentYear}
+          nextNumber={nextNumberOf(rectifyingSeries)}
           years={years}
           rows={rowsOf("rectifying")}
           otherRows={rowsOf("main")}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  effectiveSeries,
   formatInvoiceCode,
   invoiceFormatProblem,
   invoiceSeriesError,
@@ -142,6 +143,11 @@ describe("invoiceSeriesError", () => {
   });
 });
 
+const confirmed = [
+  { code: "main" as const, year: 2026, configured: true },
+  { code: "rectifying" as const, year: 2026, configured: true },
+];
+
 describe("invoiceSetupWarnings", () => {
   const settings = {
     legal_name: "Patricia Hernán Sánchez",
@@ -155,7 +161,7 @@ describe("invoiceSetupWarnings", () => {
     expect(
       invoiceSetupWarnings({
         settings,
-        mainSeries: { configured: true },
+        series: confirmed,
         year: 2026,
       }),
     ).toEqual([]);
@@ -165,7 +171,10 @@ describe("invoiceSetupWarnings", () => {
     expect(
       invoiceSetupWarnings({
         settings,
-        mainSeries: { configured: false },
+        series: [
+          { code: "main", year: 2026, configured: false },
+          confirmed[1]!,
+        ],
         year: 2026,
       }),
     ).toEqual([
@@ -174,16 +183,34 @@ describe("invoiceSetupWarnings", () => {
         text: "Confirma la numeración de facturas de 2026 en Facturación: hasta que la guardes, no se pueden registrar cobros.",
       },
     ]);
+  });
+
+  it("does not warn on 1 January, because a new year without its own row inherits the previous year's confirmation and invoicing keeps working", () => {
     expect(
-      invoiceSetupWarnings({ settings, mainSeries: undefined, year: 2026 }),
-    ).toHaveLength(1);
+      invoiceSetupWarnings({ settings, series: confirmed, year: 2027 }),
+    ).toEqual([]);
+  });
+
+  it("still warns in a new year when the previous year was never confirmed, since the new row inherits that too", () => {
+    expect(
+      invoiceSetupWarnings({
+        settings,
+        series: [
+          { code: "main", year: 2026, configured: false },
+          confirmed[1]!,
+        ],
+        year: 2027,
+      }).map((warning) => warning.text),
+    ).toEqual([
+      "Confirma la numeración de facturas de 2027 en Facturación: hasta que la guardes, no se pueden registrar cobros.",
+    ]);
   });
 
   it("warns about the missing legal name or tax id, without which no invoice can be issued", () => {
     expect(
       invoiceSetupWarnings({
         settings: { ...settings, legal_name: " " },
-        mainSeries: { configured: true },
+        series: confirmed,
         year: 2026,
       }),
     ).toEqual([
@@ -208,7 +235,7 @@ describe("invoiceSetupWarnings address", () => {
             city: "Xàtiva",
             [missing]: "",
           },
-          mainSeries: { configured: true },
+          series: confirmed,
           year: 2026,
         }),
       ).toEqual([
@@ -316,5 +343,18 @@ describe("invoiceFormatProblem", () => {
       conflict,
     );
     expect(invoiceFormatProblem("{n}/{año}", "{n}/{aa}", 2026)).toBeNull();
+  });
+});
+
+describe("effectiveSeries", () => {
+  it("uses the latest row up to the year, which is the one numbering will copy, and ignores later years", () => {
+    const rows = [
+      { year: 2025, format: "{n}/{aa}" },
+      { year: 2026, format: "F{n}/{aa}" },
+      { year: 2028, format: "G{n}/{aa}" },
+    ];
+    expect(effectiveSeries(rows, 2027)?.format).toBe("F{n}/{aa}");
+    expect(effectiveSeries(rows, 2026)?.format).toBe("F{n}/{aa}");
+    expect(effectiveSeries(rows, 2024)).toBeUndefined();
   });
 });

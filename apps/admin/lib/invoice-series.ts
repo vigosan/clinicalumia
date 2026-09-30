@@ -120,9 +120,18 @@ export function invoiceSeriesError(error: DbError, year: number): string {
 
 export type SetupWarning = { id: string; text: string };
 
+export function effectiveSeries<Row extends { year: number }>(
+  rows: Row[],
+  year: number,
+): Row | undefined {
+  return rows
+    .filter((row) => row.year <= year)
+    .sort((a, b) => b.year - a.year)[0];
+}
+
 export function invoiceSetupWarnings({
   settings,
-  mainSeries,
+  series,
   year,
 }: {
   settings: {
@@ -132,9 +141,13 @@ export function invoiceSetupWarnings({
     postal_code: string;
     city: string;
   };
-  mainSeries: { configured: boolean } | undefined;
+  series: { code: InvoiceSeriesCode; year: number; configured: boolean }[];
   year: number;
 }): SetupWarning[] {
+  const mainSeries = effectiveSeries(
+    series.filter((row) => row.code === "main"),
+    year,
+  );
   const warnings: SetupWarning[] = [];
   if (!settings.legal_name.trim() || !settings.tax_id.trim())
     warnings.push({
