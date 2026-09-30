@@ -5,10 +5,13 @@ import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import type { CurrentInvoice, RecipientDraft } from "@/lib/invoices";
 import { markNoShow, restoreFromNoShow } from "../appointments/actions";
 import { CancelDialog } from "./CancelDialog";
+import { FullInvoiceForm } from "./FullInvoiceForm";
 import { MoveForm } from "./MoveForm";
 import { PaymentForm } from "./PaymentForm";
+import { SendInvoiceForm } from "./SendInvoiceForm";
 import { VoidPaymentDialog } from "./VoidPaymentDialog";
 
 export type AppointmentDetail = {
@@ -30,6 +33,9 @@ export type AppointmentDetail = {
   suggestedAmountCents: number;
   canCollect: boolean;
   activePaymentId: string | null;
+  invoice:
+    | (CurrentInvoice & { email: string; recipient: RecipientDraft })
+    | null;
   canVoid: boolean;
   canMove: boolean;
   canMarkNoShow: boolean;
@@ -178,9 +184,42 @@ export function AppointmentPanel({
             cancelled={appointment.status === "cancelled"}
           />
         )}
+        {appointment.invoice && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] text-ink-800" data-testid="invoice-code">
+              Factura {appointment.invoice.code}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="secondary" size="sm">
+                <a
+                  href={`/facturas/${appointment.invoice.id}/pdf`}
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="invoice-view"
+                >
+                  Ver / Imprimir
+                </a>
+              </Button>
+            </div>
+            <SendInvoiceForm
+              key={`send-${appointment.invoice.id}`}
+              invoiceId={appointment.invoice.id}
+              proposedEmail={appointment.invoice.email}
+            />
+            {appointment.invoice.kind === "simplified" && (
+              <FullInvoiceForm
+                invoiceId={appointment.invoice.id}
+                recipient={appointment.invoice.recipient}
+              />
+            )}
+          </div>
+        )}
         {appointment.activePaymentId && appointment.canVoid && (
           <div>
-            <VoidPaymentDialog paymentId={appointment.activePaymentId} />
+            <VoidPaymentDialog
+              paymentId={appointment.activePaymentId}
+              invoiceId={appointment.invoice?.id ?? null}
+            />
           </div>
         )}
       </div>

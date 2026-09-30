@@ -6,9 +6,16 @@ import { Field } from "@clinicalumia/ui/field";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import { useRef, useState, useTransition } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
+import { issueRectifyingInvoice } from "../facturas/actions";
 import { voidPayment } from "../payments/actions";
 
-export function VoidPaymentDialog({ paymentId }: { paymentId: string }) {
+export function VoidPaymentDialog({
+  paymentId,
+  invoiceId,
+}: {
+  paymentId: string;
+  invoiceId: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +25,9 @@ export function VoidPaymentDialog({ paymentId }: { paymentId: string }) {
   function handleConfirm() {
     if (!submitGateRef.current.tryStart()) return;
     startTransition(async () => {
-      const result = await voidPayment(paymentId, reason);
+      const result = invoiceId
+        ? await issueRectifyingInvoice(invoiceId, reason)
+        : await voidPayment(paymentId, reason);
       submitGateRef.current.finish();
       if ("error" in result) {
         setError(result.error);
@@ -41,9 +50,23 @@ export function VoidPaymentDialog({ paymentId }: { paymentId: string }) {
           Anular cobro
         </Button>
       }
-      title="¿Anular este cobro?"
-      description="El cobro quedará anulado en el historial y se podrá volver a cobrar."
-      confirmLabel={pending ? "Anulando…" : "Anular cobro"}
+      title={
+        invoiceId
+          ? "¿Emitir rectificativa y anular cobro?"
+          : "¿Anular este cobro?"
+      }
+      description={
+        invoiceId
+          ? "El cobro tiene factura: se emitirá una factura rectificativa por el mismo importe en negativo, el cobro quedará anulado en el historial y se podrá volver a cobrar."
+          : "El cobro quedará anulado en el historial y se podrá volver a cobrar."
+      }
+      confirmLabel={
+        pending
+          ? "Anulando…"
+          : invoiceId
+            ? "Emitir rectificativa y anular cobro"
+            : "Anular cobro"
+      }
       cancelLabel="Volver"
       confirmTestId="payment-void-confirm"
       open={open}

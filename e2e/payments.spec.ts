@@ -226,6 +226,9 @@ test("anular un cobro con motivo lo deja pendiente y se puede volver a cobrar co
   );
 
   await page.getByTestId("payment-void").click();
+  await expect(page.getByTestId("payment-void-confirm")).toHaveText(
+    "Emitir rectificativa y anular cobro",
+  );
   await page.getByTestId("payment-void-reason").fill("Pagó con Bizum");
   await page.getByTestId("payment-void-confirm").click();
 
@@ -358,6 +361,9 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     "Pagada · Efectivo · 55,00 €",
   );
   await page.getByTestId("payment-void").click();
+  await expect(page.getByTestId("payment-void-confirm")).toHaveText(
+    "Emitir rectificativa y anular cobro",
+  );
   await page.getByTestId("payment-void-reason").fill("Cobrado por error");
   await page.getByTestId("payment-void-confirm").click();
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(

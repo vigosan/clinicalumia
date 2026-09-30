@@ -151,6 +151,18 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   already_voided: "Este cobro ya está anulado.",
   appointment_not_found: "Esta cita ya no está disponible.",
   payment_not_found: "Este cobro ya no está disponible.",
+  clinic_fiscal_data_missing:
+    "Faltan los datos fiscales de la clínica (razón social y NIF). Pide a la propietaria que los complete en el admin.",
+  full_invoice_required:
+    "Este importe supera los 400 € de una factura simplificada. Habla con la propietaria para emitir la factura completa.",
+  invoice_already_rectified: "Esta factura ya está rectificada.",
+  invoice_already_replaced: "Esta factura ya tiene factura completa.",
+  recipient_tax_id_invalid:
+    "Escribe un DNI, NIE o CIF válido. Otros documentos (pasaporte, NIF extranjero) no se admiten todavía.",
+  recipient_invalid: "Completa nombre, NIF, dirección, código postal y ciudad.",
+  clinic_tax_id_changed:
+    "El NIF de la clínica ha cambiado desde la factura original. Consulta con la gestoría.",
+  invoice_not_found: "Esta factura ya no está disponible.",
 };
 
 export function paymentError(error: DbError): string {

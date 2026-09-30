@@ -262,6 +262,47 @@ describe("needsPaymentNote", () => {
 });
 
 describe("paymentError", () => {
+  it("tells the person who charges that the clinic's fiscal data is missing, because without it no invoice can be issued and the charge is refused", () => {
+    expect(
+      paymentError({ code: "P0001", message: "clinic_fiscal_data_missing" }),
+    ).toBe(
+      "Faltan los datos fiscales de la clínica (razón social y NIF). Pide a la propietaria que los complete en el admin.",
+    );
+  });
+
+  it("explains that a charge over 400 € cannot get a simplified invoice, so the person knows who can solve it", () => {
+    expect(
+      paymentError({ code: "P0001", message: "full_invoice_required" }),
+    ).toBe(
+      "Este importe supera los 400 € de una factura simplificada. Habla con la propietaria para emitir la factura completa.",
+    );
+  });
+
+  it("explains each invoice refusal in words the staff can act on", () => {
+    expect(
+      paymentError({ code: "P0001", message: "invoice_already_rectified" }),
+    ).toBe("Esta factura ya está rectificada.");
+    expect(
+      paymentError({ code: "P0001", message: "invoice_already_replaced" }),
+    ).toBe("Esta factura ya tiene factura completa.");
+    expect(
+      paymentError({ code: "P0001", message: "recipient_tax_id_invalid" }),
+    ).toBe(
+      "Escribe un DNI, NIE o CIF válido. Otros documentos (pasaporte, NIF extranjero) no se admiten todavía.",
+    );
+    expect(paymentError({ code: "P0001", message: "recipient_invalid" })).toBe(
+      "Completa nombre, NIF, dirección, código postal y ciudad.",
+    );
+    expect(
+      paymentError({ code: "P0001", message: "clinic_tax_id_changed" }),
+    ).toBe(
+      "El NIF de la clínica ha cambiado desde la factura original. Consulta con la gestoría.",
+    );
+    expect(paymentError({ code: "P0001", message: "invoice_not_found" })).toBe(
+      "Esta factura ya no está disponible.",
+    );
+  });
+
   it("says the appointment is no longer available when it was deleted or belongs to someone else, instead of a vague save failure", () => {
     expect(
       paymentError({ code: "P0001", message: "appointment_not_found" }),

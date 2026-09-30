@@ -63,6 +63,9 @@ importers:
       '@clinicalumia/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@clinicalumia/invoices':
+        specifier: workspace:*
+        version: link:../../packages/invoices
       '@clinicalumia/ui':
         specifier: workspace:*
         version: link:../../packages/ui

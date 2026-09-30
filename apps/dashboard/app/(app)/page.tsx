@@ -3,6 +3,7 @@ import {
   madridDateTime,
   todayInMadrid,
 } from "@clinicalumia/api/madrid-time";
+import { isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { canMarkNoShow, canMove, isUuid } from "@/lib/agenda";
@@ -10,6 +11,11 @@ import {
   type AppointmentEventRow,
   appointmentHistory,
 } from "@/lib/appointment-history";
+import {
+  currentInvoice,
+  proposedInvoiceEmail,
+  recipientDraft,
+} from "@/lib/invoices";
 import { canVoidPayment, paymentStatus } from "@/lib/payments";
 import { AgendaHeader } from "./agenda/AgendaHeader";
 import {
@@ -44,7 +50,7 @@ async function loadAppointmentDetail(
   const { data: appt, error } = await supabase
     .from("appointments")
     .select(
-      "id, professional_id, starts_at, ends_at, status, notes, price_cents, cancelled_by, cancel_reason, origin, patient:people(id, first_name, last_name), service:services(id, name, duration_minutes)",
+      "id, professional_id, starts_at, ends_at, status, notes, price_cents, cancelled_by, cancel_reason, origin, patient:people(id, first_name, last_name, email, tax_id, address, birth_date), service:services(id, name, duration_minutes)",
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -61,6 +67,7 @@ async function loadAppointmentDetail(
     { data: directory, error: directoryError },
     { data: payments, error: paymentsError },
     { data: suggestedCents, error: suggestedError },
+    { data: guardianRows, error: guardiansError },
     {
       data: { user },
     },
@@ -76,11 +83,18 @@ async function loadAppointmentDetail(
     supabase
       .from("payments")
       .select(
-        "id, amount_cents, method, note, collected_at, collected_by, voided_at, voided_by, void_reason",
+        "id, amount_cents, method, note, collected_at, collected_by, voided_at, voided_by, void_reason, invoices(id, code, kind, status)",
       )
       .eq("appointment_id", appointmentId)
       .order("collected_at", { ascending: true }),
     supabase.rpc("suggested_amount", { p_appointment_id: appointmentId }),
+    supabase
+      .from("guardianships")
+      .select(
+        "is_primary, guardian:people!guardianships_guardian_id_fkey(first_name, last_name, email, tax_id, address)",
+      )
+      .eq("minor_id", appt.patient.id)
+      .order("is_primary", { ascending: false }),
     supabase.auth.getUser(),
   ]);
   if (
@@ -88,6 +102,7 @@ async function loadAppointmentDetail(
     directoryError ||
     paymentsError ||
     suggestedError ||
+    guardiansError ||
     suggestedCents === null ||
     !user
   )
@@ -113,6 +128,8 @@ async function loadAppointmentDetail(
     (directory ?? []).find((profile) => profile.id === user.id)?.role ===
     "owner";
   const initial = madridDateTime(appt.starts_at);
+  const invoice = activePayment ? currentInvoice(activePayment.invoices) : null;
+  const guardian = guardianRows?.[0]?.guardian ?? null;
 
   return {
     status: "ok",
@@ -140,6 +157,17 @@ async function loadAppointmentDetail(
       canCollect:
         !activePayment && new Date(appt.starts_at).getTime() <= now.getTime(),
       activePaymentId: activePayment?.id ?? null,
+      invoice: invoice && {
+        ...invoice,
+        email: proposedInvoiceEmail({ patient: appt.patient, guardian }),
+        recipient: recipientDraft({
+          patient: appt.patient,
+          guardian,
+          minor: appt.patient.birth_date
+            ? isMinor(appt.patient.birth_date, todayInMadrid(now))
+            : false,
+        }),
+      },
       canVoid:
         activePayment !== null &&
         canVoidPayment({

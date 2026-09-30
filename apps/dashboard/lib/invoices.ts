@@ -1,0 +1,71 @@
+export type InvoiceKind = "simplified" | "full" | "rectifying";
+
+export type CurrentInvoice = { id: string; code: string; kind: InvoiceKind };
+
+export type InvoiceContact = {
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  tax_id: string | null;
+  address: string;
+};
+
+export type RecipientDraft = {
+  name: string;
+  taxId: string;
+  address: string;
+  postalCode: string;
+  city: string;
+};
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function currentInvoice(
+  invoices: {
+    id: string;
+    code: string;
+    kind: InvoiceKind;
+    status: "issued" | "replaced";
+  }[],
+): CurrentInvoice | null {
+  const current = invoices.find(
+    (invoice) => invoice.status === "issued" && invoice.kind !== "rectifying",
+  );
+  return current
+    ? { id: current.id, code: current.code, kind: current.kind }
+    : null;
+}
+
+export function recipientDraft({
+  patient,
+  guardian,
+  minor,
+}: {
+  patient: InvoiceContact;
+  guardian: InvoiceContact | null;
+  minor: boolean;
+}): RecipientDraft {
+  const payer = minor && guardian ? guardian : patient;
+  return {
+    name: `${payer.first_name} ${payer.last_name}`,
+    taxId: payer.tax_id ?? "",
+    address: payer.address,
+    postalCode: "",
+    city: "",
+  };
+}
+
+export function proposedInvoiceEmail({
+  patient,
+  guardian,
+}: {
+  patient: InvoiceContact;
+  guardian: InvoiceContact | null;
+}): string {
+  return patient.email ?? guardian?.email ?? "";
+}
+
+export function normalizeEmail(input: string): string | null {
+  const email = input.trim().toLowerCase();
+  return EMAIL.test(email) ? email : null;
+}

@@ -1,0 +1,117 @@
+"use client";
+
+import { Button } from "@clinicalumia/ui/button";
+import { Field } from "@clinicalumia/ui/field";
+import { Input } from "@clinicalumia/ui/input";
+import { useRef, useState, useTransition } from "react";
+import type { RecipientDraft } from "@/lib/invoices";
+import { createSubmitGate } from "@/lib/submit-gate";
+import { issueFullInvoice } from "../facturas/actions";
+
+const FIELDS: {
+  key: keyof RecipientDraft;
+  label: string;
+  testId: string;
+}[] = [
+  { key: "name", label: "Nombre o razón social", testId: "invoice-full-name" },
+  { key: "taxId", label: "NIF", testId: "invoice-full-tax-id" },
+  { key: "address", label: "Dirección", testId: "invoice-full-address" },
+  {
+    key: "postalCode",
+    label: "Código postal",
+    testId: "invoice-full-postal-code",
+  },
+  { key: "city", label: "Ciudad", testId: "invoice-full-city" },
+];
+
+export function FullInvoiceForm({
+  invoiceId,
+  recipient,
+}: {
+  invoiceId: string;
+  recipient: RecipientDraft;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(recipient);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const submitGateRef = useRef(createSubmitGate());
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!submitGateRef.current.tryStart()) return;
+    startTransition(async () => {
+      const result = await issueFullInvoice(invoiceId, draft);
+      submitGateRef.current.finish();
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      setOpen(false);
+    });
+  }
+
+  if (!open) {
+    return (
+      <div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          data-testid="invoice-full"
+          onClick={() => setOpen(true)}
+        >
+          Factura completa
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      data-testid="invoice-full-form"
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3"
+    >
+      {FIELDS.map((field) => (
+        <Field key={field.key} label={field.label}>
+          <Input
+            data-testid={field.testId}
+            value={draft[field.key]}
+            onChange={(event) =>
+              setDraft({ ...draft, [field.key]: event.target.value })
+            }
+          />
+        </Field>
+      ))}
+      {error && (
+        <p
+          role="alert"
+          data-testid="invoice-full-error"
+          className="text-[13px] text-danger-600"
+        >
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={pending}
+          data-testid="invoice-full-submit"
+        >
+          {pending ? "Emitiendo…" : "Emitir factura completa"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setOpen(false)}
+        >
+          Volver
+        </Button>
+      </div>
+    </form>
+  );
+}
