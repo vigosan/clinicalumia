@@ -1027,6 +1027,7 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: undefined
       }
+      clinic_invoice_header: { Args: never; Returns: Json }
       collect_payment: {
         Args: {
           p_amount_cents: number

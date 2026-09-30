@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(156);
+select plan(161);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -547,6 +547,33 @@ update public.payments set collected_at = pg_temp.at_madrid(-1, '20:00')
 where appointment_id = '8b000000-0000-0000-0000-0000000000f5';
 reset role;
 
+update public.clinic_settings set tax_id = 'A12345674';
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'clinic_tax_id_changed',
+  'a full invoice must come from the same issuer as the simplified one it replaces, so a changed clinic tax id stops it');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s5'), 'Error') $$,
+  'P0001', 'clinic_tax_id_changed',
+  'a rectifying invoice must come from the same issuer as the invoice it cancels');
+reset role;
+select results_eq(
+  $$ select (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()),
+            (select next_number from public.invoice_series where code = 'rectifying' and year = pg_temp.this_year()),
+            (select count(*) from public.invoices where kind <> 'simplified') $$,
+  $$ values (9, 1, 0::bigint) $$,
+  'the refused issues consumed no number in either series');
+update public.clinic_settings set tax_id = 'B12345674', legal_name = '';
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'clinic_fiscal_data_missing',
+  'without the clinic''s legal name no full invoice can be issued either');
+reset role;
+update public.clinic_settings set legal_name = 'Clínica de Pruebas, S.L.', address_line = 'Avenida Nueva 5';
+
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
 select throws_ok(
   $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
@@ -608,8 +635,13 @@ select is((pg_temp.inv('9/' || pg_temp.yy())).snapshot->'recipient',
   jsonb_build_object('name', 'Tutor Ñandú García', 'tax_id', '12345678Z', 'address', 'Calle Luna 3, 2º',
     'postal_code', '46800', 'city', 'Xàtiva'),
   'the recipient is frozen trimmed and with the tax id normalised, as it will be printed');
-select is((pg_temp.inv('9/' || pg_temp.yy())).snapshot - 'recipient', (pg_temp.inv('5/' || pg_temp.yy())).snapshot - 'recipient',
+select is((pg_temp.inv('9/' || pg_temp.yy())).snapshot - 'recipient' - 'issuer', (pg_temp.inv('5/' || pg_temp.yy())).snapshot - 'recipient' - 'issuer',
   'the full invoice keeps exactly the concept, amounts, VAT and payments of the simplified one it replaces');
+select results_eq(
+  $$ select (pg_temp.inv('9/' || pg_temp.yy())).snapshot->'issuer'->>'address_line',
+            (pg_temp.inv('5/' || pg_temp.yy())).snapshot->'issuer'->>'address_line' $$,
+  $$ values ('Avenida Nueva 5', 'Calle Mayor 1') $$,
+  'the full invoice is issued today with the clinic''s current address, while the simplified one keeps what it printed');
 select ok(
   (pg_temp.rec('9/' || pg_temp.yy())).canonical like
     'IDEmisorFactura=B12345674&NumSerieFactura=9/' || pg_temp.yy() || '&FechaExpedicionFactura='

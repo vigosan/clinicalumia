@@ -280,6 +280,39 @@ $$;
 
 revoke all on function public.append_invoice_record(uuid, text) from public, anon, authenticated, service_role;
 
+create or replace function public.clinic_invoice_header()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  settings public.clinic_settings;
+begin
+  select * into settings from public.clinic_settings;
+  if btrim(settings.legal_name) = '' or btrim(settings.tax_id) = '' then
+    raise exception 'clinic_fiscal_data_missing' using errcode = 'P0001';
+  end if;
+  return jsonb_build_object(
+    'issuer', jsonb_build_object(
+      'name', btrim(settings.legal_name),
+      'tax_id', upper(btrim(settings.tax_id)),
+      'address_line', settings.address_line,
+      'postal_code', settings.postal_code,
+      'city', settings.city,
+      'province', settings.province,
+      'phone', settings.phone,
+      'email', settings.email,
+      'website', settings.website
+    ),
+    'footer', settings.invoice_footer
+  );
+end;
+$$;
+
+revoke all on function public.clinic_invoice_header() from public, anon, authenticated, service_role;
+
 create or replace function public.issue_simplified_invoice(p_payment_id uuid)
 returns uuid
 language plpgsql
@@ -289,6 +322,7 @@ as $$
 declare
   payment record;
   settings public.clinic_settings;
+  header jsonb;
   deposit_cents integer;
   total_cents integer;
   base_cents integer;
@@ -304,10 +338,8 @@ begin
   join public.services s on s.id = a.service_id
   join public.people pe on pe.id = a.patient_id
   where p.id = p_payment_id;
+  header := public.clinic_invoice_header();
   select * into settings from public.clinic_settings;
-  if btrim(settings.legal_name) = '' or btrim(settings.tax_id) = '' then
-    raise exception 'clinic_fiscal_data_missing' using errcode = 'P0001';
-  end if;
   deposit_cents := case when payment.payment_status = 'paid' then payment.payment_amount_cents else 0 end;
   total_cents := payment.amount_cents + deposit_cents;
   base_cents := case when payment.vat = 'standard_21' then round(total_cents / 1.21)::integer else total_cents end;
@@ -321,17 +353,7 @@ begin
     payment.collected_at,
     p_payment_id,
     jsonb_build_object(
-      'issuer', jsonb_build_object(
-        'name', btrim(settings.legal_name),
-        'tax_id', upper(btrim(settings.tax_id)),
-        'address_line', settings.address_line,
-        'postal_code', settings.postal_code,
-        'city', settings.city,
-        'province', settings.province,
-        'phone', settings.phone,
-        'email', settings.email,
-        'website', settings.website
-      ),
+      'issuer', header->'issuer',
       'recipient', null,
       'lines', jsonb_build_array(jsonb_build_object(
         'description', payment.service_name,
@@ -356,7 +378,7 @@ begin
           as t(position, method, amount_cents)
         where t.amount_cents > 0
       ),
-      'footer', settings.invoice_footer
+      'footer', header->'footer'
     ),
     total_cents
   )
@@ -489,7 +511,9 @@ set search_path = ''
 as $$
 declare
   original record;
+  current_status public.invoice_status;
   recipient jsonb;
+  header jsonb;
   numbering record;
   issued timestamptz := now();
   invoice_id uuid;
@@ -497,7 +521,7 @@ begin
   if not public.is_active_staff() then
     raise exception 'invoice_forbidden' using errcode = '42501';
   end if;
-  select i.id, i.kind, i.status, i.payment_id, i.snapshot, i.total_cents, p.collected_by, a.professional_id
+  select i.id, i.kind, i.payment_id, i.snapshot, i.total_cents, p.collected_by, a.professional_id
   into original
   from public.invoices i
   join public.payments p on p.id = i.payment_id
@@ -510,7 +534,8 @@ begin
   if original.kind <> 'simplified' then
     raise exception 'invoice_not_simplified' using errcode = 'P0001';
   end if;
-  if original.status = 'replaced' then
+  select i.status into current_status from public.invoices i where i.id = original.id;
+  if current_status = 'replaced' then
     raise exception 'invoice_already_replaced' using errcode = 'P0001';
   end if;
   if exists (select 1 from public.invoices r where r.rectifies_invoice_id = original.id) then
@@ -532,6 +557,10 @@ begin
   if not public.is_valid_spanish_tax_id(recipient->>'tax_id') then
     raise exception 'recipient_tax_id_invalid' using errcode = 'P0001';
   end if;
+  header := public.clinic_invoice_header();
+  if header->'issuer'->>'tax_id' is distinct from original.snapshot->'issuer'->>'tax_id' then
+    raise exception 'clinic_tax_id_changed' using errcode = 'P0001';
+  end if;
   select * into numbering from public.next_invoice_number('main', issued);
   insert into public.invoices (series, number, code, kind, issued_at, payment_id, replaces_invoice_id, snapshot, total_cents)
   values (
@@ -542,7 +571,7 @@ begin
     issued,
     original.payment_id,
     original.id,
-    original.snapshot || jsonb_build_object('recipient', recipient),
+    original.snapshot || header || jsonb_build_object('recipient', recipient),
     original.total_cents
   )
   returning id into invoice_id;
@@ -565,6 +594,7 @@ declare
   clean_reason text := left(btrim(coalesce(p_reason, ''), E' \t\r\n'), 500);
   target record;
   original public.invoices;
+  header jsonb;
   numbering record;
   issued timestamptz := now();
   invoice_id uuid;
@@ -603,6 +633,10 @@ begin
   if not found then
     raise exception 'invoice_already_rectified' using errcode = 'P0001';
   end if;
+  header := public.clinic_invoice_header();
+  if header->'issuer'->>'tax_id' is distinct from original.snapshot->'issuer'->>'tax_id' then
+    raise exception 'clinic_tax_id_changed' using errcode = 'P0001';
+  end if;
   select * into numbering from public.next_invoice_number('rectifying', issued);
   insert into public.invoices (series, number, code, kind, issued_at, payment_id, rectifies_invoice_id, reason, snapshot, total_cents)
   values (
@@ -614,7 +648,7 @@ begin
     original.payment_id,
     original.id,
     clean_reason,
-    original.snapshot || jsonb_build_object(
+    original.snapshot || header || jsonb_build_object(
       'lines', (
         select jsonb_agg(l.line || jsonb_build_object(
           'base_cents', -(l.line->>'base_cents')::integer,
