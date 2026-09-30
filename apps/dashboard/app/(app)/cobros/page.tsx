@@ -13,7 +13,7 @@ import {
 } from "@clinicalumia/ui/table";
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
-import { formatEuros, methodLabel, totalsByMethod } from "@/lib/payments";
+import { formatEuros, methodLabel } from "@/lib/payments";
 import {
   cobrosListParams,
   formatPaymentMoment,
@@ -39,13 +39,8 @@ export default async function CobrosPage({
   const staffOptions = result.ok ? result.data.staffOptions : [];
   const nameById = result.ok ? result.data.nameById : new Map<string, string>();
   const isOwner = result.ok ? result.data.isOwner : false;
-  const totals = totalsByMethod(
-    payments.map((payment) => ({
-      amount_cents: payment.amountCents,
-      method: payment.method,
-      voided_at: payment.voidedAt,
-    })),
-  );
+  const totals = result.ok ? result.data.totals : { methods: [], total: 0 };
+  const truncated = result.ok && result.data.truncated;
   const state = patientsListState(!result.ok, payments.length);
   const showDate = params.desde !== params.hasta;
 
@@ -138,6 +133,14 @@ export default async function CobrosPage({
               ))}
             </TableBody>
           </Table>
+          {truncated && (
+            <p
+              className="text-[13px] text-ink-800"
+              data-testid="payments-truncated"
+            >
+              Hay más cobros de los que se pueden mostrar; acota las fechas.
+            </p>
+          )}
           <div
             data-testid="payments-totals"
             className="flex flex-wrap items-center gap-4 text-sm text-ink-900"

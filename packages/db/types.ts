@@ -997,6 +997,25 @@ export type Database = {
         }[]
       }
       normalize_phone: { Args: { value: string }; Returns: string }
+      payment_totals: {
+        Args: { p_end: string; p_professional_id?: string; p_start: string }
+        Returns: {
+          cents: number
+          method: Database["public"]["Enums"]["payment_method"]
+        }[]
+      }
+      pending_payments: {
+        Args: { p_since: string }
+        Returns: {
+          appointment_id: string
+          patient_id: string
+          patient_name: string
+          professional_id: string
+          service_name: string
+          starts_at: string
+          suggested_cents: number
+        }[]
+      }
       regenerate_my_calendar_token: { Args: never; Returns: string }
       reminder_candidates: {
         Args: { p_day: string }

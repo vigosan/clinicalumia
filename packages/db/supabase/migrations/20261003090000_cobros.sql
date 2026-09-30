@@ -240,3 +240,86 @@ $$;
 
 revoke all on function public.list_payments(timestamptz, timestamptz, uuid) from public, anon;
 grant execute on function public.list_payments(timestamptz, timestamptz, uuid) to authenticated;
+
+create or replace function public.payment_totals(
+  p_start timestamptz,
+  p_end timestamptz,
+  p_professional_id uuid default null
+)
+returns table (
+  method public.payment_method,
+  cents bigint
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_active_staff() then
+    raise exception 'payment_forbidden' using errcode = '42501';
+  end if;
+  return query
+    select p.method, sum(p.amount_cents)::bigint
+    from public.payments p
+    join public.appointments a on a.id = p.appointment_id
+    where p.collected_at >= p_start and p.collected_at < p_end
+      and p.voided_at is null
+      and (p_professional_id is null or a.professional_id = p_professional_id)
+      and (public.is_owner() or a.professional_id = auth.uid() or p.collected_by = auth.uid())
+    group by p.method
+    order by p.method;
+end;
+$$;
+
+revoke all on function public.payment_totals(timestamptz, timestamptz, uuid) from public, anon;
+grant execute on function public.payment_totals(timestamptz, timestamptz, uuid) to authenticated;
+
+create or replace function public.pending_payments(p_since timestamptz)
+returns table (
+  appointment_id uuid,
+  starts_at timestamptz,
+  patient_id uuid,
+  patient_name text,
+  service_name text,
+  professional_id uuid,
+  suggested_cents integer
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_active_staff() then
+    raise exception 'payment_forbidden' using errcode = '42501';
+  end if;
+  return query
+    select
+      a.id,
+      a.starts_at,
+      a.patient_id,
+      pe.first_name || ' ' || pe.last_name,
+      s.name,
+      a.professional_id,
+      greatest(
+        a.price_cents
+          - case when a.payment_status = 'paid' then a.payment_amount_cents else 0 end,
+        0
+      )
+    from public.appointments a
+    join public.people pe on pe.id = a.patient_id
+    join public.services s on s.id = a.service_id
+    where a.starts_at >= p_since and a.starts_at <= now()
+      and a.status <> 'cancelled'
+      and (public.is_owner() or a.professional_id = auth.uid())
+      and not exists (
+        select 1 from public.payments p
+        where p.appointment_id = a.id and p.voided_at is null
+      )
+    order by a.starts_at asc;
+end;
+$$;
+
+revoke all on function public.pending_payments(timestamptz) from public, anon;
+grant execute on function public.pending_payments(timestamptz) to authenticated;

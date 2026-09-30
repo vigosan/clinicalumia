@@ -166,6 +166,8 @@ describe("formatPaymentMoment", () => {
 function fakeClient({
   payments = [],
   paymentsError = null,
+  totals = [],
+  totalsError = null,
   directory = [],
   directoryError = null,
   specialties = [],
@@ -174,6 +176,8 @@ function fakeClient({
 }: {
   payments?: unknown[];
   paymentsError?: { code?: string } | null;
+  totals?: unknown[];
+  totalsError?: { code?: string } | null;
   directory?: unknown[];
   directoryError?: { code?: string } | null;
   specialties?: unknown[];
@@ -183,6 +187,8 @@ function fakeClient({
   const rpc = vi.fn((name: string) => {
     if (name === "list_payments")
       return Promise.resolve({ data: payments, error: paymentsError });
+    if (name === "payment_totals")
+      return Promise.resolve({ data: totals, error: totalsError });
     if (name === "staff_directory")
       return Promise.resolve({ data: directory, error: directoryError });
     throw new Error(`unexpected rpc ${name}`);
@@ -281,6 +287,8 @@ describe("loadCobros", () => {
           ["prof-2", "Zoe Profesional"],
         ]),
         isOwner: false,
+        totals: { methods: [], total: 0 },
+        truncated: false,
       },
     });
   });
@@ -369,12 +377,84 @@ describe("loadCobros", () => {
         staffOptions: [],
         nameById: new Map(),
         isOwner: false,
+        totals: { methods: [], total: 0 },
+        truncated: false,
       },
     });
   });
 
   it("reports failure when any of the reads fails, instead of showing a partial or wrong reconciliation", async () => {
     const { client } = fakeClient({ paymentsError: { code: "XX000" } });
+    const result = await loadCobros(client as never, {
+      desde: "2026-09-30",
+      hasta: "2026-09-30",
+      profesionalId: null,
+    });
+    expect(result).toEqual({ ok: false });
+  });
+
+  it("asks the database for the totals over the same range and professional, so they cover every payment even when the list is cut short", async () => {
+    const { client, rpc } = fakeClient();
+    await loadCobros(client as never, {
+      desde: "2026-09-30",
+      hasta: "2026-09-30",
+      profesionalId: "prof-2",
+    });
+    expect(rpc).toHaveBeenCalledWith("payment_totals", {
+      p_start: "2026-09-30T00:00:00+02:00",
+      p_end: "2026-10-01T00:00:00+02:00",
+      p_professional_id: "prof-2",
+    });
+  });
+
+  it("uses the database totals per method, leaving out methods that add up to nothing", async () => {
+    const { client } = fakeClient({
+      totals: [
+        { method: "cash", cents: 5500 },
+        { method: "card", cents: 0 },
+        { method: "transfer", cents: 700 },
+      ],
+    });
+    const result = await loadCobros(client as never, {
+      desde: "2026-09-30",
+      hasta: "2026-09-30",
+      profesionalId: null,
+    });
+    expect(result.ok && result.data.totals).toEqual({
+      methods: [
+        { method: "cash", cents: 5500 },
+        { method: "transfer", cents: 700 },
+      ],
+      total: 6200,
+    });
+  });
+
+  it("flags the list as cut short when the database returns its maximum of 1000 rows, so nobody takes a partial list as complete", async () => {
+    const { client } = fakeClient({
+      payments: Array.from({ length: 1000 }, (_, index) => ({
+        id: `pay-${index}`,
+        collected_at: "2026-09-30T09:00:00Z",
+        amount_cents: 100,
+        method: "cash",
+        collected_by: "prof-1",
+        voided_at: null,
+        void_reason: "",
+        professional_id: "prof-1",
+        patient_id: "pat-1",
+        patient_name: "Marta Paciente",
+        service_name: "Consulta",
+      })),
+    });
+    const result = await loadCobros(client as never, {
+      desde: "2026-09-30",
+      hasta: "2026-09-30",
+      profesionalId: null,
+    });
+    expect(result.ok && result.data.truncated).toBe(true);
+  });
+
+  it("reports failure when the totals fail to load, instead of showing a wrong reconciliation", async () => {
+    const { client } = fakeClient({ totalsError: { code: "XX000" } });
     const result = await loadCobros(client as never, {
       desde: "2026-09-30",
       hasta: "2026-09-30",

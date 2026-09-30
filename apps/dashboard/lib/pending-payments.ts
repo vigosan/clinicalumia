@@ -11,30 +11,9 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 
 export const PENDING_WINDOW_DAYS = 60;
 
-export function pendingWindow(now: Date): { start: string; end: string } {
-  return {
-    start: madridDayBounds(addDays(todayInMadrid(now), -PENDING_WINDOW_DAYS))
-      .start,
-    end: now.toISOString(),
-  };
-}
-
-export function computeSuggestedAmountCents(appointment: {
-  price_cents: number;
-  payment_status: string;
-  payment_amount_cents: number;
-}): number {
-  const deposit =
-    appointment.payment_status === "paid"
-      ? appointment.payment_amount_cents
-      : 0;
-  return Math.max(appointment.price_cents - deposit, 0);
-}
-
-export function hasActivePayment(
-  payments: { voided_at: string | null }[],
-): boolean {
-  return payments.some((payment) => payment.voided_at === null);
+export function pendingSince(now: Date): string {
+  return madridDayBounds(addDays(todayInMadrid(now), -PENDING_WINDOW_DAYS))
+    .start;
 }
 
 export type PendingAppointmentRow = {
@@ -48,15 +27,12 @@ export type PendingAppointmentRow = {
 };
 
 type PendingAppointmentSource = {
-  id: string;
+  appointment_id: string;
   starts_at: string;
-  price_cents: number;
-  payment_status: string;
-  payment_amount_cents: number;
+  patient_name: string;
+  service_name: string;
   professional_id: string;
-  patient: { first_name: string; last_name: string } | null;
-  service: { name: string } | null;
-  payments: { voided_at: string | null }[] | null;
+  suggested_cents: number;
 };
 
 function toRow(
@@ -65,16 +41,14 @@ function toRow(
 ): PendingAppointmentRow {
   const { date } = madridDateTime(appointment.starts_at);
   return {
-    id: appointment.id,
+    id: appointment.appointment_id,
     moment: formatPaymentMoment(appointment.starts_at, true),
-    patientName: appointment.patient
-      ? `${appointment.patient.first_name} ${appointment.patient.last_name}`
-      : "—",
-    serviceName: appointment.service?.name ?? "—",
+    patientName: appointment.patient_name,
+    serviceName: appointment.service_name,
     professionalName:
       nameById.get(appointment.professional_id) ?? "Profesional",
-    suggestedAmountCents: computeSuggestedAmountCents(appointment),
-    href: `/?date=${date}&appointment=${appointment.id}`,
+    suggestedAmountCents: appointment.suggested_cents,
+    href: `/?date=${date}&appointment=${appointment.appointment_id}`,
   };
 }
 
@@ -86,19 +60,9 @@ export async function loadPendingPayments(
   supabase: Client,
   now: Date,
 ): Promise<LoadPendingPaymentsResult> {
-  const { start, end } = pendingWindow(now);
-
   const [{ data: rows, error }, { data: directory, error: directoryError }] =
     await Promise.all([
-      supabase
-        .from("appointments")
-        .select(
-          "id, starts_at, price_cents, payment_status, payment_amount_cents, professional_id, patient:people(first_name, last_name), service:services(name), payments(voided_at)",
-        )
-        .gte("starts_at", start)
-        .lte("starts_at", end)
-        .neq("status", "cancelled")
-        .order("starts_at", { ascending: true }),
+      supabase.rpc("pending_payments", { p_since: pendingSince(now) }),
       supabase.rpc("staff_directory"),
     ]);
 
@@ -108,9 +72,7 @@ export async function loadPendingPayments(
     (directory ?? []).map((profile) => [profile.id, profile.full_name]),
   );
 
-  const data = (rows ?? [])
-    .filter((row) => !hasActivePayment(row.payments ?? []))
-    .map((row) => toRow(row, nameById));
+  const data = (rows ?? []).map((row) => toRow(row, nameById));
 
   return { ok: true, data };
 }

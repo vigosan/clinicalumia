@@ -1,99 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  computeSuggestedAmountCents,
-  hasActivePayment,
-  loadPendingPayments,
-  pendingWindow,
-} from "./pending-payments";
+import { loadPendingPayments, pendingSince } from "./pending-payments";
 
-describe("pendingWindow", () => {
+describe("pendingSince", () => {
   it("starts 60 days before today in Madrid, at midnight, so old unpaid visits stay visible for two months", () => {
-    const now = new Date("2026-09-30T08:00:00Z");
-    expect(pendingWindow(now)).toEqual({
-      start: "2026-08-01T00:00:00+02:00",
-      end: now.toISOString(),
-    });
-  });
-
-  it("ends exactly at now, so an appointment that hasn't started yet never counts as pending", () => {
-    const now = new Date("2026-10-25T10:30:00Z");
-    expect(pendingWindow(now).end).toBe(now.toISOString());
-  });
-});
-
-describe("computeSuggestedAmountCents", () => {
-  it("proposes the full price when no deposit was paid online", () => {
-    expect(
-      computeSuggestedAmountCents({
-        price_cents: 5500,
-        payment_status: "not_required",
-        payment_amount_cents: 0,
-      }),
-    ).toBe(5500);
-  });
-
-  it("subtracts a paid deposit from the price", () => {
-    expect(
-      computeSuggestedAmountCents({
-        price_cents: 5500,
-        payment_status: "paid",
-        payment_amount_cents: 2000,
-      }),
-    ).toBe(3500);
-  });
-
-  it("ignores a pending (unpaid) deposit, since nothing was actually collected online", () => {
-    expect(
-      computeSuggestedAmountCents({
-        price_cents: 5500,
-        payment_status: "pending",
-        payment_amount_cents: 2000,
-      }),
-    ).toBe(5500);
-  });
-
-  it("never proposes a negative amount when the deposit exceeds the price", () => {
-    expect(
-      computeSuggestedAmountCents({
-        price_cents: 1000,
-        payment_status: "paid",
-        payment_amount_cents: 2000,
-      }),
-    ).toBe(0);
-  });
-});
-
-describe("hasActivePayment", () => {
-  it("has no active payment when there are none at all", () => {
-    expect(hasActivePayment([])).toBe(false);
-  });
-
-  it("has no active payment when every payment was voided", () => {
-    expect(hasActivePayment([{ voided_at: "2026-09-01T10:00:00Z" }])).toBe(
-      false,
+    expect(pendingSince(new Date("2026-09-30T08:00:00Z"))).toBe(
+      "2026-08-01T00:00:00+02:00",
     );
   });
-
-  it("has an active payment when at least one is not voided", () => {
-    expect(
-      hasActivePayment([
-        { voided_at: "2026-09-01T10:00:00Z" },
-        { voided_at: null },
-      ]),
-    ).toBe(true);
-  });
 });
-
-function appointmentsQuery(data: unknown[] | null, error: unknown = null) {
-  const query = {
-    select: vi.fn(() => query),
-    gte: vi.fn(() => query),
-    lte: vi.fn(() => query),
-    neq: vi.fn(() => query),
-    order: vi.fn(() => Promise.resolve({ data, error })),
-  };
-  return query;
-}
 
 function fakeClient({
   rows = [],
@@ -106,64 +20,38 @@ function fakeClient({
   directory?: unknown[];
   directoryError?: { code?: string } | null;
 } = {}) {
-  const query = appointmentsQuery(rows, rowsError);
-  const from = vi.fn(() => query);
   const rpc = vi.fn((name: string) => {
+    if (name === "pending_payments")
+      return Promise.resolve({ data: rows, error: rowsError });
     if (name === "staff_directory")
       return Promise.resolve({ data: directory, error: directoryError });
     throw new Error(`unexpected rpc ${name}`);
   });
-  return { client: { from, rpc }, from, rpc, query };
+  return { client: { rpc }, rpc };
 }
 
 const NOW = new Date("2026-09-30T08:00:00Z");
 
 describe("loadPendingPayments", () => {
-  it("queries appointments within the pending window, already started, and not cancelled", async () => {
-    const { client, query } = fakeClient();
+  it("lets the database work out what is pending since the start of the window, so a clinic with thousands of paid visits never truncates the list", async () => {
+    const { client, rpc } = fakeClient();
     await loadPendingPayments(client as never, NOW);
-    expect(query.gte).toHaveBeenCalledWith(
-      "starts_at",
-      "2026-08-01T00:00:00+02:00",
-    );
-    expect(query.lte).toHaveBeenCalledWith("starts_at", NOW.toISOString());
-    expect(query.neq).toHaveBeenCalledWith("status", "cancelled");
-    expect(query.order).toHaveBeenCalledWith("starts_at", { ascending: true });
-  });
-
-  it("excludes an appointment that already has an active payment", async () => {
-    const { client } = fakeClient({
-      rows: [
-        {
-          id: "apt-1",
-          starts_at: "2026-09-27T09:00:00Z",
-          price_cents: 5500,
-          payment_status: "not_required",
-          payment_amount_cents: 0,
-          professional_id: "prof-1",
-          patient: { first_name: "Marta", last_name: "Paciente" },
-          service: { name: "Consulta" },
-          payments: [{ voided_at: null }],
-        },
-      ],
+    expect(rpc).toHaveBeenCalledWith("pending_payments", {
+      p_since: "2026-08-01T00:00:00+02:00",
     });
-    const result = await loadPendingPayments(client as never, NOW);
-    expect(result).toEqual({ ok: true, data: [] });
   });
 
-  it("keeps an appointment whose only payment was voided", async () => {
+  it("maps a pending appointment to a row that links to it in the agenda", async () => {
     const { client } = fakeClient({
       rows: [
         {
-          id: "apt-1",
+          appointment_id: "apt-1",
           starts_at: "2026-09-27T09:00:00Z",
-          price_cents: 5500,
-          payment_status: "not_required",
-          payment_amount_cents: 0,
+          patient_id: "pat-1",
+          patient_name: "Marta Paciente",
+          service_name: "Consulta",
           professional_id: "prof-1",
-          patient: { first_name: "Marta", last_name: "Paciente" },
-          service: { name: "Consulta" },
-          payments: [{ voided_at: "2026-09-27T10:00:00Z" }],
+          suggested_cents: 3500,
         },
       ],
       directory: [{ id: "prof-1", full_name: "Profesional Uno" }],
@@ -178,7 +66,7 @@ describe("loadPendingPayments", () => {
           patientName: "Marta Paciente",
           serviceName: "Consulta",
           professionalName: "Profesional Uno",
-          suggestedAmountCents: 5500,
+          suggestedAmountCents: 3500,
           href: "/?date=2026-09-27&appointment=apt-1",
         },
       ],
@@ -189,15 +77,13 @@ describe("loadPendingPayments", () => {
     const { client } = fakeClient({
       rows: [
         {
-          id: "apt-1",
+          appointment_id: "apt-1",
           starts_at: "2026-09-27T09:00:00Z",
-          price_cents: 5500,
-          payment_status: "not_required",
-          payment_amount_cents: 0,
+          patient_id: "pat-1",
+          patient_name: "Marta Paciente",
+          service_name: "Consulta",
           professional_id: "prof-1",
-          patient: { first_name: "Marta", last_name: "Paciente" },
-          service: { name: "Consulta" },
-          payments: [],
+          suggested_cents: 5500,
         },
       ],
     });
@@ -205,7 +91,7 @@ describe("loadPendingPayments", () => {
     expect(result.ok && result.data[0]?.professionalName).toBe("Profesional");
   });
 
-  it("reports failure when the appointments query fails", async () => {
+  it("reports failure when the pending query fails", async () => {
     const { client } = fakeClient({ rowsError: { code: "XX000" } });
     const result = await loadPendingPayments(client as never, NOW);
     expect(result).toEqual({ ok: false });

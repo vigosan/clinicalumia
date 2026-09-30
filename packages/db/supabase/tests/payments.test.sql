@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(64);
+select plan(80);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -327,6 +327,133 @@ reset role;
 
 select throws_ok($$ delete from public.appointments where id = '8a000000-0000-0000-0000-0000000000d1' $$, '23503', null,
   'an appointment with payments cannot be deleted, so money taken never loses its appointment');
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000001');
+select results_eq(
+  $$ select appointment_id from public.pending_payments(pg_temp.at_madrid(-3, '00:00'))
+     where appointment_id::text like '8a000000-%' $$,
+  $$ values ('8a000000-0000-0000-0000-0000000000d3'::uuid), ('8a000000-0000-0000-0000-0000000000d4'::uuid),
+            ('8a000000-0000-0000-0000-0000000000d5'::uuid), ('8a000000-0000-0000-0000-0000000000d7'::uuid),
+            ('8a000000-0000-0000-0000-0000000000d9'::uuid) $$,
+  'pending lists the employee''s own past, not cancelled appointments with no current payment, oldest first, so paid, future, cancelled and colleagues'' visits never show up');
+select results_eq(
+  $$ select starts_at, patient_id, patient_name, service_name, professional_id, suggested_cents
+     from public.pending_payments(pg_temp.at_madrid(-3, '00:00'))
+     where appointment_id = '8a000000-0000-0000-0000-0000000000d7' $$,
+  $$ values (pg_temp.at_madrid(-1, '14:00'), '8a000000-0000-0000-0000-0000000000c1'::uuid, 'Paula Cobros', 'Cobros con señal',
+             '8a000000-0000-0000-0000-000000000001'::uuid, 2000) $$,
+  'a pending row carries the patient, service, professional and the amount to propose, with a deposit paid online already subtracted');
+select results_eq(
+  $$ select appointment_id from public.pending_payments(pg_temp.at_madrid(-1, '12:00'))
+     where appointment_id::text like '8a000000-%' $$,
+  $$ values ('8a000000-0000-0000-0000-0000000000d5'::uuid), ('8a000000-0000-0000-0000-0000000000d7'::uuid),
+            ('8a000000-0000-0000-0000-0000000000d9'::uuid) $$,
+  'appointments that started before the window are left out, so the list stays bounded');
+reset role;
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000002');
+select results_eq(
+  $$ select appointment_id from public.pending_payments(pg_temp.at_madrid(-3, '00:00'))
+     where appointment_id::text like '8a000000-%' $$,
+  $$ values ('8a000000-0000-0000-0000-0000000000e1'::uuid) $$,
+  'another employee only sees her own pending appointment, never a colleague''s');
+reset role;
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000003');
+select is(
+  (select count(*) from public.pending_payments(pg_temp.at_madrid(-3, '00:00'))
+   where appointment_id::text like '8a000000-%'),
+  6::bigint,
+  'the owner sees every professional''s pending appointments');
+reset role;
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000001', 'aal1');
+select throws_ok($$ select * from public.pending_payments(pg_temp.at_madrid(-3, '00:00')) $$, '42501', null,
+  'a staff session without the second factor cannot list pending appointments');
+reset role;
+
+select pg_temp.act_as_patient('8a000000-0000-0000-0000-000000000010');
+select throws_ok($$ select * from public.pending_payments(pg_temp.at_madrid(-3, '00:00')) $$, '42501', null,
+  'a patient cannot list the clinic''s pending appointments');
+reset role;
+
+select set_config('request.jwt.claims', '', true);
+set local role anon;
+select throws_ok($$ select * from public.pending_payments(pg_temp.at_madrid(-3, '00:00')) $$, '42501', null,
+  'an anonymous visitor cannot list the clinic''s pending appointments');
+reset role;
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('8a000000-0000-0000-0000-0000000000f1', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-500, '09:00'), pg_temp.at_madrid(-500, '09:30')),
+  ('8a000000-0000-0000-0000-0000000000f2', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-500, '10:00'), pg_temp.at_madrid(-500, '10:30')),
+  ('8a000000-0000-0000-0000-0000000000f3', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-500, '11:00'), pg_temp.at_madrid(-500, '11:30')),
+  ('8a000000-0000-0000-0000-0000000000f4', '8a000000-0000-0000-0000-000000000002', '8a000000-0000-0000-0000-0000000000c1',
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-500, '12:00'), pg_temp.at_madrid(-500, '12:30')),
+  ('8a000000-0000-0000-0000-0000000000f5', '8a000000-0000-0000-0000-000000000002', '8a000000-0000-0000-0000-0000000000c1',
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-500, '13:00'), pg_temp.at_madrid(-500, '13:30'));
+insert into public.payments (appointment_id, amount_cents, method, vat, collected_at, collected_by, voided_at, voided_by, void_reason) values
+  ('8a000000-0000-0000-0000-0000000000f1', 4500, 'cash', 'standard_21', pg_temp.at_madrid(-500, '09:40'),
+   '8a000000-0000-0000-0000-000000000001', null, null, ''),
+  ('8a000000-0000-0000-0000-0000000000f2', 1000, 'cash', 'standard_21', pg_temp.at_madrid(-500, '10:40'),
+   '8a000000-0000-0000-0000-000000000001', null, null, ''),
+  ('8a000000-0000-0000-0000-0000000000f3', 2000, 'card', 'standard_21', pg_temp.at_madrid(-500, '11:40'),
+   '8a000000-0000-0000-0000-000000000001', pg_temp.at_madrid(-500, '11:50'), '8a000000-0000-0000-0000-000000000001', 'Error'),
+  ('8a000000-0000-0000-0000-0000000000f4', 3000, 'bizum', 'standard_21', pg_temp.at_madrid(-500, '12:40'),
+   '8a000000-0000-0000-0000-000000000002', null, null, ''),
+  ('8a000000-0000-0000-0000-0000000000f5', 700, 'transfer', 'standard_21', pg_temp.at_madrid(-500, '13:40'),
+   '8a000000-0000-0000-0000-000000000001', null, null, '');
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000001');
+select results_eq(
+  $$ select method::text, cents from public.payment_totals(pg_temp.at_madrid(-500, '00:00'), pg_temp.at_madrid(-499, '00:00')) $$,
+  $$ values ('cash', 5500::bigint), ('transfer', 700::bigint) $$,
+  'an employee''s totals add up her own appointments'' and the ones she collected, per method, leaving out voided payments and colleagues'' takings');
+reset role;
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000002');
+select results_eq(
+  $$ select method::text, cents from public.payment_totals(pg_temp.at_madrid(-500, '00:00'), pg_temp.at_madrid(-499, '00:00')) $$,
+  $$ values ('bizum', 3000::bigint), ('transfer', 700::bigint) $$,
+  'another employee''s totals cover her own appointments, even when a colleague took the money');
+reset role;
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000003');
+select results_eq(
+  $$ select method::text, cents from public.payment_totals(pg_temp.at_madrid(-500, '00:00'), pg_temp.at_madrid(-499, '00:00')) $$,
+  $$ values ('cash', 5500::bigint), ('bizum', 3000::bigint), ('transfer', 700::bigint) $$,
+  'the owner''s totals cover the whole clinic, in the order the methods are shown');
+select results_eq(
+  $$ select method::text, cents from public.payment_totals(pg_temp.at_madrid(-500, '00:00'), pg_temp.at_madrid(-499, '00:00'),
+       '8a000000-0000-0000-0000-000000000002') $$,
+  $$ values ('bizum', 3000::bigint), ('transfer', 700::bigint) $$,
+  'filtering the totals by a professional only adds up that professional''s appointments');
+select is(
+  (select count(*) from public.payment_totals(pg_temp.at_madrid(-501, '00:00'), pg_temp.at_madrid(-500, '00:00'))),
+  0::bigint,
+  'a range that does not cover the collection day adds nothing');
+reset role;
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000001', 'aal1');
+select throws_ok($$ select * from public.payment_totals(pg_temp.at_madrid(-500, '00:00'), pg_temp.at_madrid(-499, '00:00')) $$,
+  '42501', null,
+  'a staff session without the second factor cannot see the takings');
+reset role;
+
+select pg_temp.act_as_patient('8a000000-0000-0000-0000-000000000010');
+select throws_ok($$ select * from public.payment_totals(pg_temp.at_madrid(-500, '00:00'), pg_temp.at_madrid(-499, '00:00')) $$,
+  '42501', null,
+  'a patient cannot see the clinic''s takings');
+reset role;
+
+select set_config('request.jwt.claims', '', true);
+set local role anon;
+select throws_ok($$ select * from public.payment_totals(pg_temp.at_madrid(-500, '00:00'), pg_temp.at_madrid(-499, '00:00')) $$,
+  '42501', null,
+  'an anonymous visitor cannot see the clinic''s takings');
+reset role;
 
 select * from finish();
 rollback;

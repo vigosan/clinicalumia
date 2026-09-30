@@ -8,7 +8,6 @@ import {
   paymentError,
   paymentHistoryLines,
   paymentStatus,
-  totalsByMethod,
 } from "./payments";
 
 describe("parseAmount", () => {
@@ -156,49 +155,6 @@ describe("paymentStatus", () => {
     expect(
       paymentStatus({ appointment: cancelled, payment: null, now }),
     ).toEqual({ kind: "none", label: "" });
-  });
-});
-
-describe("totalsByMethod", () => {
-  it("sums only active payments per method, in a fixed method order, and gives a grand total", () => {
-    expect(
-      totalsByMethod([
-        { amount_cents: 4500, method: "cash", voided_at: null },
-        { amount_cents: 3000, method: "card", voided_at: null },
-        { amount_cents: 1000, method: "cash", voided_at: null },
-        {
-          amount_cents: 9999,
-          method: "bizum",
-          voided_at: "2026-09-30T10:00:00Z",
-        },
-      ]),
-    ).toEqual({
-      methods: [
-        { method: "cash", cents: 5500 },
-        { method: "card", cents: 3000 },
-      ],
-      total: 8500,
-    });
-  });
-
-  it("omits a method with no active payments instead of listing it at zero", () => {
-    expect(
-      totalsByMethod([
-        { amount_cents: 2000, method: "transfer", voided_at: null },
-      ]),
-    ).toEqual({ methods: [{ method: "transfer", cents: 2000 }], total: 2000 });
-  });
-
-  it("returns an empty list and a zero total when every payment was voided", () => {
-    expect(
-      totalsByMethod([
-        {
-          amount_cents: 4500,
-          method: "cash",
-          voided_at: "2026-09-30T10:00:00Z",
-        },
-      ]),
-    ).toEqual({ methods: [], total: 0 });
   });
 });
 

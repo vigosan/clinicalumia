@@ -106,28 +106,7 @@ export function paymentStatus({
   return { kind: "pending", label: "Pendiente de cobro" };
 }
 
-export type VoidablePayment = {
-  amount_cents: number;
-  method: PaymentMethod;
-  voided_at: string | null;
-};
-
 export type MethodTotal = { method: PaymentMethod; cents: number };
-
-export function totalsByMethod(payments: VoidablePayment[]): {
-  methods: MethodTotal[];
-  total: number;
-} {
-  const active = payments.filter((payment) => payment.voided_at === null);
-  const methods = METHOD_ORDER.map((method) => ({
-    method,
-    cents: active
-      .filter((payment) => payment.method === method)
-      .reduce((sum, payment) => sum + payment.amount_cents, 0),
-  })).filter((entry) => entry.cents > 0);
-  const total = methods.reduce((sum, entry) => sum + entry.cents, 0);
-  return { methods, total };
-}
 
 export type PaymentHistoryRow = {
   amount_cents: number;
