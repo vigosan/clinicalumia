@@ -388,6 +388,58 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
   );
 });
 
+test("una cita pasada sin cobro aparece en pendientes de cobro, desaparece al cobrarla, y una cancelada no aparece", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -3);
+  const cancelledDate = addDays(todayInMadrid(), -4);
+  const employee = await createEmployee("Profesional Pendientes");
+  const pendingAppointmentId = await createAppointment(employee.id, date);
+  const cancelledAppointmentId = await createAppointment(
+    employee.id,
+    cancelledDate,
+  );
+  const { error: cancelError } = await admin
+    .from("appointments")
+    .update({ status: "cancelled", cancelled_by: "clinic" })
+    .eq("id", cancelledAppointmentId);
+  expect(cancelError).toBeNull();
+  const pendingPatientName = await patientNameOf(pendingAppointmentId);
+  const cancelledPatientName = await patientNameOf(cancelledAppointmentId);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/cobros/pendientes`);
+
+  await expect(
+    page
+      .getByTestId("pending-payment-row")
+      .filter({ hasText: pendingPatientName }),
+  ).toHaveCount(1);
+  await expect(
+    page
+      .getByTestId("pending-payment-row")
+      .filter({ hasText: cancelledPatientName }),
+  ).toHaveCount(0);
+
+  await page
+    .getByTestId("pending-payment-row")
+    .filter({ hasText: pendingPatientName })
+    .getByTestId("pending-payment-collect")
+    .click();
+  await expect(page.getByTestId("appointment-panel")).toBeVisible();
+  await collect(page, "cash");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Efectivo · 55,00 €",
+  );
+
+  await page.goto(`${DASHBOARD}/cobros/pendientes`);
+  await expect(
+    page
+      .getByTestId("pending-payment-row")
+      .filter({ hasText: pendingPatientName }),
+  ).toHaveCount(0);
+});
+
 test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el selector de profesional", async ({
   page,
 }) => {

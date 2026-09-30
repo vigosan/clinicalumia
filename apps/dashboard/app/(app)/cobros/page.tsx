@@ -1,5 +1,6 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
+import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import {
@@ -50,7 +51,16 @@ export default async function CobrosPage({
 
   return (
     <>
-      <PageHeader title="Cobros" />
+      <PageHeader
+        title="Cobros"
+        actions={
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/cobros/pendientes" data-testid="payments-pending-link">
+              Pendientes de cobro
+            </Link>
+          </Button>
+        }
+      />
       <Card>
         <CobrosFilters
           params={params}
