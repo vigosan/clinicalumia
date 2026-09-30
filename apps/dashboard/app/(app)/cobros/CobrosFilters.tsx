@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import {
   type CobrosParams,
   cobrosListHref,
+  desdeChange,
+  hastaChange,
   type StaffOption,
 } from "@/lib/payments-load";
 
@@ -63,7 +65,10 @@ export function CobrosFilters({
           type="date"
           data-testid="payments-from"
           value={params.desde}
-          onChange={(event) => go({ desde: event.target.value })}
+          onChange={(event) => {
+            const next = desdeChange(params, event.target.value);
+            if (next) go(next);
+          }}
         />
       </Field>
       <Field label="Hasta">
@@ -71,7 +76,10 @@ export function CobrosFilters({
           type="date"
           data-testid="payments-to"
           value={params.hasta}
-          onChange={(event) => go({ hasta: event.target.value })}
+          onChange={(event) => {
+            const next = hastaChange(params, event.target.value);
+            if (next) go(next);
+          }}
         />
       </Field>
       {isOwner && (

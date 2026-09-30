@@ -1,4 +1,4 @@
-import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
@@ -13,7 +13,11 @@ import {
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
 import { formatEuros, methodLabel, totalsByMethod } from "@/lib/payments";
-import { cobrosListParams, loadCobros } from "@/lib/payments-load";
+import {
+  cobrosListParams,
+  formatPaymentMoment,
+  loadCobros,
+} from "@/lib/payments-load";
 import { CobrosFilters } from "./CobrosFilters";
 
 export default async function CobrosPage({
@@ -42,6 +46,7 @@ export default async function CobrosPage({
     })),
   );
   const state = patientsListState(!result.ok, payments.length);
+  const showDate = params.desde !== params.hasta;
 
   return (
     <>
@@ -93,7 +98,7 @@ export default async function CobrosPage({
                   className={payment.voidedAt ? "opacity-60" : undefined}
                 >
                   <TableCell>
-                    {madridDateTime(payment.collectedAt).time.slice(0, 5)}
+                    {formatPaymentMoment(payment.collectedAt, showDate)}
                   </TableCell>
                   <TableCell className="font-medium">
                     <Link href={`/patients/${payment.patientId}`}>

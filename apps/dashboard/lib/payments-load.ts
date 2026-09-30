@@ -1,6 +1,7 @@
 import {
   addDays,
   isValidDate,
+  madridDateTime,
   madridDayBounds,
 } from "@clinicalumia/api/madrid-time";
 import type { createClient } from "@clinicalumia/api/server";
@@ -50,6 +51,33 @@ export function cobrosListHref({
   const params = new URLSearchParams({ desde, hasta });
   if (profesionalId) params.set("profesional", profesionalId);
   return `/cobros?${params.toString()}`;
+}
+
+export function desdeChange(
+  params: CobrosParams,
+  value: string,
+): Pick<CobrosParams, "desde" | "hasta"> | null {
+  if (!value) return null;
+  return { desde: value, hasta: value > params.hasta ? value : params.hasta };
+}
+
+export function hastaChange(
+  params: CobrosParams,
+  value: string,
+): Pick<CobrosParams, "desde" | "hasta"> | null {
+  if (!value) return null;
+  return { hasta: value, desde: value < params.desde ? value : params.desde };
+}
+
+export function formatPaymentMoment(
+  instant: string,
+  includeDate: boolean,
+): string {
+  const { date, time } = madridDateTime(instant);
+  const hhmm = time.slice(0, 5);
+  return includeDate
+    ? `${date.slice(8, 10)}/${date.slice(5, 7)} ${hhmm}`
+    : hhmm;
 }
 
 export type StaffOption = {

@@ -72,6 +72,16 @@ async function createAppointment(professionalId: string, date: string) {
   return data!.id as string;
 }
 
+async function patientNameOf(appointmentId: string): Promise<string> {
+  const { data, error } = await admin
+    .from("appointments")
+    .select("patient:people(first_name, last_name)")
+    .eq("id", appointmentId)
+    .single();
+  expect(error).toBeNull();
+  return `${data!.patient!.first_name} ${data!.patient!.last_name}`;
+}
+
 async function openAppointment(page: Page, date: string, id: string) {
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${id}`);
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
@@ -305,6 +315,9 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
   const cashAppointmentId = await createAppointment(employee.id, date);
   const cardAppointmentId = await createAppointment(secondEmployee.id, date);
   const voidedAppointmentId = await createAppointment(otherEmployee.id, date);
+  const cashPatientName = await patientNameOf(cashAppointmentId);
+  const cardPatientName = await patientNameOf(cardAppointmentId);
+  const voidedPatientName = await patientNameOf(voidedAppointmentId);
 
   await signIn(page, DASHBOARD, "info@clinicalumia.es");
   await openAppointment(page, date, cashAppointmentId);
@@ -331,16 +344,37 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
 
   await page.goto(`${DASHBOARD}/cobros`);
   await expect(page.getByTestId("payments-list")).toBeVisible();
-  await expect(page.getByTestId("payment-row")).toHaveCount(3);
-  await expect(page.getByTestId("payment-voided")).toHaveText("Anulado");
+  await expect(
+    page.getByTestId("payment-row").filter({ hasText: cashPatientName }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByTestId("payment-row").filter({ hasText: cardPatientName }),
+  ).toHaveCount(1);
+  await expect(
+    page
+      .getByTestId("payment-row")
+      .filter({ hasText: voidedPatientName })
+      .getByTestId("payment-voided"),
+  ).toHaveText("Anulado");
+
+  await page.getByTestId("payments-professional").selectOption(employee.id);
+  await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="payments-total-method"][data-method="cash"]'),
   ).toHaveText("Efectivo: 55,00 €");
+  await expect(page.getByTestId("payments-total-amount")).toHaveText(
+    "Total: 55,00 €",
+  );
+
+  await page
+    .getByTestId("payments-professional")
+    .selectOption(secondEmployee.id);
+  await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="payments-total-method"][data-method="card"]'),
   ).toHaveText("Tarjeta: 55,00 €");
   await expect(page.getByTestId("payments-total-amount")).toHaveText(
-    "Total: 110,00 €",
+    "Total: 55,00 €",
   );
 
   await page
