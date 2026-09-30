@@ -149,6 +149,8 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   not_allowed:
     "Solo puede anular este cobro quien lo registró hoy o la propietaria.",
   already_voided: "Este cobro ya está anulado.",
+  appointment_not_found: "Esta cita ya no está disponible.",
+  payment_not_found: "Este cobro ya no está disponible.",
 };
 
 export function paymentError(error: DbError): string {

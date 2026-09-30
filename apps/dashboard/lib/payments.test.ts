@@ -262,6 +262,18 @@ describe("needsPaymentNote", () => {
 });
 
 describe("paymentError", () => {
+  it("says the appointment is no longer available when it was deleted or belongs to someone else, instead of a vague save failure", () => {
+    expect(
+      paymentError({ code: "P0001", message: "appointment_not_found" }),
+    ).toBe("Esta cita ya no está disponible.");
+  });
+
+  it("says the payment is no longer available when it cannot be found, instead of a vague save failure", () => {
+    expect(paymentError({ code: "P0001", message: "payment_not_found" })).toBe(
+      "Este cobro ya no está disponible.",
+    );
+  });
+
   it("maps each known code to its Spanish message", () => {
     expect(paymentError({ code: "P0001", message: "already_paid" })).toBe(
       "Esta cita ya está cobrada.",
@@ -308,9 +320,9 @@ describe("paymentError", () => {
   });
 
   it("falls back to a generic retry message for anything unrecognised", () => {
-    expect(
-      paymentError({ code: "P0001", message: "appointment_not_found" }),
-    ).toBe("No se ha podido guardar. Inténtalo de nuevo.");
+    expect(paymentError({ code: "P0001", message: "something_new" })).toBe(
+      "No se ha podido guardar. Inténtalo de nuevo.",
+    );
     expect(paymentError({})).toBe(
       "No se ha podido guardar. Inténtalo de nuevo.",
     );

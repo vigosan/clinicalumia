@@ -373,9 +373,15 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
   await expect(
     page
       .getByTestId("payment-row")
+      .filter({ hasText: cashPatientName })
+      .getByTestId("payment-state"),
+  ).toHaveText("Vigente");
+  await expect(
+    page
+      .getByTestId("payment-row")
       .filter({ hasText: voidedPatientName })
-      .getByTestId("payment-voided"),
-  ).toHaveText("Anulado");
+      .getByTestId("payment-state"),
+  ).toHaveText("Anulado · Cobrado por error");
 
   await page.getByTestId("payments-professional").selectOption(employee.id);
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
@@ -401,7 +407,9 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     .getByTestId("payments-professional")
     .selectOption(otherEmployee.id);
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
-  await expect(page.getByTestId("payment-voided")).toHaveText("Anulado");
+  await expect(page.getByTestId("payment-state")).toHaveText(
+    "Anulado · Cobrado por error",
+  );
   await expect(page.getByTestId("payments-total-method")).toHaveCount(0);
   await expect(page.getByTestId("payments-total-amount")).toHaveText(
     "Total: 0,00 €",

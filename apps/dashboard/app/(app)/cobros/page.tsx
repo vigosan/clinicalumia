@@ -18,6 +18,8 @@ import {
   cobrosListParams,
   formatPaymentMoment,
   loadCobros,
+  momentHeader,
+  paymentStateLabel,
 } from "@/lib/payments-load";
 import { CobrosFilters } from "./CobrosFilters";
 
@@ -85,7 +87,7 @@ export default async function CobrosPage({
           <Table aria-label="Cobros" data-testid="payments-list">
             <TableHead>
               <TableRow>
-                <TableHeaderCell>Hora</TableHeaderCell>
+                <TableHeaderCell>{momentHeader(showDate)}</TableHeaderCell>
                 <TableHeaderCell>Paciente</TableHeaderCell>
                 <TableHeaderCell>Servicio</TableHeaderCell>
                 <TableHeaderCell>Profesional</TableHeaderCell>
@@ -119,15 +121,8 @@ export default async function CobrosPage({
                   <TableCell>
                     {nameById.get(payment.collectedBy) ?? "Alguien"}
                   </TableCell>
-                  <TableCell>
-                    {payment.voidedAt && (
-                      <span
-                        data-testid="payment-voided"
-                        title={payment.voidReason}
-                      >
-                        Anulado
-                      </span>
-                    )}
+                  <TableCell data-testid="payment-state">
+                    {paymentStateLabel(payment)}
                   </TableCell>
                 </TableRow>
               ))}

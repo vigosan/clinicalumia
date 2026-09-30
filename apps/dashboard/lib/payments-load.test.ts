@@ -8,6 +8,8 @@ import {
   hastaChange,
   loadCobros,
   MAX_RANGE_DAYS,
+  momentHeader,
+  paymentStateLabel,
 } from "./payments-load";
 
 const TODAY = "2026-09-30";
@@ -160,6 +162,33 @@ describe("formatPaymentMoment", () => {
     expect(formatPaymentMoment("2026-09-30T08:00:00Z", true)).toBe(
       "30/09 10:00",
     );
+  });
+});
+
+describe("momentHeader", () => {
+  it("says the column is the time when the list covers one day", () => {
+    expect(momentHeader(false)).toBe("Hora");
+  });
+
+  it("says the column is the date and time when the list spans several days, so staff know the date is shown", () => {
+    expect(momentHeader(true)).toBe("Fecha y hora");
+  });
+});
+
+describe("paymentStateLabel", () => {
+  it("labels a payment that still counts as current, so the state column is never blank", () => {
+    expect(paymentStateLabel({ voidedAt: null, voidReason: "" })).toBe(
+      "Vigente",
+    );
+  });
+
+  it("shows why a payment was voided right in the list, instead of hiding it in a tooltip", () => {
+    expect(
+      paymentStateLabel({
+        voidedAt: "2026-09-30T10:00:00Z",
+        voidReason: "Cobrado por error",
+      }),
+    ).toBe("Anulado · Cobrado por error");
   });
 });
 

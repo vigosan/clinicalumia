@@ -81,6 +81,20 @@ export function formatPaymentMoment(
     : hhmm;
 }
 
+export function momentHeader(includeDate: boolean): string {
+  return includeDate ? "Fecha y hora" : "Hora";
+}
+
+export function paymentStateLabel({
+  voidedAt,
+  voidReason,
+}: {
+  voidedAt: string | null;
+  voidReason: string;
+}): string {
+  return voidedAt ? `Anulado · ${voidReason}` : "Vigente";
+}
+
 export type StaffOption = {
   id: string;
   fullName: string;
