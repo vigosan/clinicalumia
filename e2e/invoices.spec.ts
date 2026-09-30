@@ -417,50 +417,40 @@ test("el listado de facturas filtra por tipo, texto y profesional, cada profesio
 
   await signIn(page, DASHBOARD, "info@clinicalumia.es");
   await page.goto(`${DASHBOARD}/facturas`);
-  await expect(
-    page
-      .getByTestId("invoice-row")
-      .filter({ hasText: appointmentOne.patientName }),
-  ).toHaveCount(1);
-  await expect(
-    page
-      .getByTestId("invoice-row")
-      .filter({ hasText: appointmentTwo.patientName }),
-  ).toHaveCount(1);
+  const rowOne = page
+    .getByTestId("invoice-row")
+    .filter({ hasText: appointmentOne.patientName });
+  const rowTwo = page
+    .getByTestId("invoice-row")
+    .filter({ hasText: appointmentTwo.patientName });
 
-  await page.getByTestId("invoices-kind").selectOption("simplified");
-  await expect(
-    page
-      .getByTestId("invoice-row")
-      .filter({ hasText: appointmentOne.patientName }),
-  ).toHaveCount(1);
-  await page.getByTestId("invoices-kind").selectOption("rectifying");
-  await expect(
-    page
-      .getByTestId("invoice-row")
-      .filter({ hasText: appointmentOne.patientName }),
-  ).toHaveCount(0);
-  await page.getByTestId("invoices-kind").selectOption("");
-
-  await page.getByTestId("invoices-search").fill(appointmentOne.patientName);
-  await expect(page.getByTestId("invoice-row")).toHaveCount(1);
-  await expect(
-    page
-      .getByTestId("invoice-row")
-      .filter({ hasText: appointmentOne.patientName }),
-  ).toHaveCount(1);
-  await page.getByTestId("invoices-search").fill("");
-  await expect(page.getByTestId("invoice-row")).toHaveCount(2);
+  await page.getByTestId("invoices-professional").selectOption(employeeTwo.id);
+  await expect(rowTwo).toHaveCount(1);
+  await expect(rowOne).toHaveCount(0);
 
   await page.getByTestId("invoices-professional").selectOption(employeeOne.id);
+  await expect(rowOne).toHaveCount(1);
+  await expect(rowTwo).toHaveCount(0);
   await expect(page.getByTestId("invoice-row")).toHaveCount(1);
-  await expect(
-    page
-      .getByTestId("invoice-row")
-      .filter({ hasText: appointmentOne.patientName }),
-  ).toHaveCount(1);
 
-  await page.getByTestId("invoice-open").click();
+  await page.getByTestId("invoices-kind").selectOption("simplified");
+  await expect(rowOne).toHaveCount(1);
+  await page.getByTestId("invoices-kind").selectOption("rectifying");
+  await expect(rowOne).toHaveCount(0);
+  await page.getByTestId("invoices-kind").selectOption("");
+  await expect(rowOne).toHaveCount(1);
+
+  await page.getByTestId("invoices-professional").selectOption("");
+  await page.getByTestId("invoices-search").fill(appointmentOne.patientName);
+  await expect(rowOne).toHaveCount(1);
+  await expect(rowTwo).toHaveCount(0);
+  await page.getByTestId("invoices-search").fill(appointmentTwo.patientName);
+  await expect(rowTwo).toHaveCount(1);
+  await expect(rowOne).toHaveCount(0);
+  await page.getByTestId("invoices-search").fill(appointmentOne.patientName);
+  await expect(rowTwo).toHaveCount(0);
+  await expect(rowOne).toHaveCount(1);
+  await rowOne.getByTestId("invoice-open").click();
   await expect(page).toHaveURL(/\/facturas\/[0-9a-f-]+$/);
   await expect(page.getByTestId("invoice-code")).toHaveText(
     `Factura ${codeOne}`,
