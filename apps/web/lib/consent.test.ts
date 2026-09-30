@@ -77,6 +77,13 @@ describe("parseConsent", () => {
     expect(result).toHaveProperty("error");
   });
 
+  it("rejects a day that does not exist in that month, instead of silently storing another date", () => {
+    const result = parseConsent(form({ birthDate: "1990-02-30" }), today);
+    expect(result).toEqual({
+      error: "La fecha de nacimiento es obligatoria.",
+    });
+  });
+
   it("never assumes marketing consent: it is opt-in only (RGPD)", () => {
     const withoutBox = parseConsent(form(), today);
     const withBox = parseConsent(form({ marketing: "on" }), today);

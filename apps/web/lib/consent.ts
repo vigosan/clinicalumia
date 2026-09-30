@@ -54,7 +54,11 @@ export function parseConsent(
   if (!dni) return { error: "El DNI es obligatorio." };
 
   const birth = new Date(`${birthDate}T00:00:00Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || Number.isNaN(birth.getTime())) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) ||
+    Number.isNaN(birth.getTime()) ||
+    birth.toISOString().slice(0, 10) !== birthDate
+  ) {
     return { error: "La fecha de nacimiento es obligatoria." };
   }
   if (birth > today) {
