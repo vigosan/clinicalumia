@@ -154,8 +154,7 @@ async function loadAppointmentDetail(
         now,
       }).label,
       suggestedAmountCents: suggestedCents,
-      canCollect:
-        !activePayment && new Date(appt.starts_at).getTime() <= now.getTime(),
+      canCollect: !activePayment,
       activePaymentId: activePayment?.id ?? null,
       invoice: invoice && {
         ...invoice,

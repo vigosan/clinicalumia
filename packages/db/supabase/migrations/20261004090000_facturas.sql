@@ -495,7 +495,7 @@ begin
   if not public.is_active_staff() then
     raise exception 'payment_forbidden' using errcode = '42501';
   end if;
-  select starts_at, status, vat, professional_id, payment_status, payment_amount_cents into appointment
+  select status, vat, professional_id, payment_status, payment_amount_cents into appointment
   from public.appointments where id = p_appointment_id;
   if not found then
     raise exception 'appointment_not_found' using errcode = 'P0001';
@@ -508,9 +508,6 @@ begin
   end if;
   if p_method is null then
     raise exception 'invalid_method' using errcode = 'P0001';
-  end if;
-  if appointment.starts_at > now() then
-    raise exception 'appointment_not_started' using errcode = 'P0001';
   end if;
   if appointment.status = 'cancelled' and clean_note = '' then
     raise exception 'appointment_cancelled_needs_note' using errcode = 'P0001';
@@ -543,6 +540,30 @@ $$;
 
 revoke all on function public.collect_payment(uuid, integer, public.payment_method, text) from public, anon;
 grant execute on function public.collect_payment(uuid, integer, public.payment_method, text) to authenticated;
+
+create or replace function public.guard_invoiced_appointment_move()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if exists (
+    select 1 from public.payments p
+    join public.invoices i on i.payment_id = p.id
+    where p.appointment_id = new.id and p.voided_at is null
+  ) then
+    raise exception 'appointment_invoiced' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger appointments_invoiced_move
+  before update of starts_at, ends_at on public.appointments
+  for each row
+  when (new.starts_at is distinct from old.starts_at or new.ends_at is distinct from old.ends_at)
+  execute function public.guard_invoiced_appointment_move();
 
 create or replace function public.is_valid_spanish_tax_id(p_value text)
 returns boolean

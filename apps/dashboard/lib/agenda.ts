@@ -276,6 +276,8 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   appointment_cancelled_final:
     "Una cita cancelada no se puede reprogramar; crea una nueva.",
   appointment_in_past: "No se puede mover una cita que ya ha pasado.",
+  appointment_invoiced:
+    "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
   appointment_immutable_fields: "Esos datos de la cita no se pueden cambiar.",
   patient_not_bookable: "Esa persona no es paciente o está archivada.",
   service_inactive: "Ese servicio ya no está activo.",

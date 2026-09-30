@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(194);
+select plan(201);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1021,6 +1021,37 @@ select throws_ok(
   $$ select public.next_invoice_number('rectifying', make_timestamptz(pg_temp.this_year() + 71, 3, 1, 12, 0, 0, 'Europe/Madrid')) $$,
   'P0001', 'invoice_series_not_configured',
   'a year that follows an unconfirmed series is not confirmed either, so only an owner''s decision starts the numbering');
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('8b000000-0000-0000-0000-0000000001d1', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c1',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(5, '09:00'), pg_temp.at_madrid(5, '09:30')),
+  ('8b000000-0000-0000-0000-0000000001d2', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c1',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(5, '10:00'), pg_temp.at_madrid(5, '10:30'));
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001d1', 3000, 'card', ''), null,
+  'a session paid in advance gets its invoice at once');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001d2', 0, 'cash', 'Invitación'), null,
+  'a free session paid in advance issues no invoice');
+select throws_ok(
+  $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '09:00'), ends_at = pg_temp.at_madrid(6, '09:30')
+     where id = '8b000000-0000-0000-0000-0000000001d1' $$,
+  '23514', 'appointment_invoiced',
+  'an invoiced appointment cannot be moved, because its invoice states the session date');
+select lives_ok(
+  $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '10:00'), ends_at = pg_temp.at_madrid(6, '10:30')
+     where id = '8b000000-0000-0000-0000-0000000001d2' $$,
+  'an appointment charged without an invoice can still be moved, since no invoice would contradict it');
+select lives_ok(
+  $$ update public.appointments set notes = 'Trae el informe' where id = '8b000000-0000-0000-0000-0000000001d1' $$,
+  'other changes to an invoiced appointment are still allowed');
+select isnt(public.issue_rectifying_invoice((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000001d1')).id, 'Cambio de fecha'), null,
+  'the collector voids the charge with a rectifying invoice');
+select lives_ok(
+  $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '09:00'), ends_at = pg_temp.at_madrid(6, '09:30')
+     where id = '8b000000-0000-0000-0000-0000000001d1' $$,
+  'once the invoice is rectified the appointment can be moved and charged again');
+reset role;
 
 select * from finish();
 rollback;

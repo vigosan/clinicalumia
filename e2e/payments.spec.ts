@@ -270,7 +270,9 @@ test("una empleada no ve «Anular cobro» en el cobro que registró otra persona
   await expect(page.getByTestId("payment-void")).toHaveCount(0);
 });
 
-test("una cita futura no se puede cobrar todavía", async ({ page }) => {
+test("una cita futura se puede cobrar por adelantado y, ya facturada, no se puede mover sin anular antes el cobro", async ({
+  page,
+}) => {
   const date = addDays(todayInMadrid(), 5);
   const employee = await createEmployee("Profesional Cobro Futura");
   const appointmentId = await createAppointment(employee.id, date);
@@ -278,8 +280,22 @@ test("una cita futura no se puede cobrar todavía", async ({ page }) => {
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await openAppointment(page, date, appointmentId);
 
-  await expect(page.getByTestId("payment-collect")).toHaveCount(0);
   await expect(page.getByTestId("appointment-payment-status")).toHaveCount(0);
+  await collect(page, "card");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Tarjeta · 55,00 €",
+  );
+
+  await page.getByTestId("appointment-move-time").fill("12:00");
+  await page.getByTestId("appointment-move").click();
+  await page.getByTestId("appointment-confirm").click();
+  await expect(
+    page
+      .getByTestId("appointment-move-form")
+      .getByTestId("appointment-action-error"),
+  ).toHaveText(
+    "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
+  );
 });
 
 test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la otra se actualiza para mostrarla cobrada", async ({

@@ -269,6 +269,12 @@ describe("parseContactForm", () => {
 });
 
 describe("accountError", () => {
+  it("tells the patient to call when an already paid appointment can't be moved online, since changing it needs the clinic to correct the invoice", () => {
+    expect(accountError({ message: "appointment_invoiced" })).toBe(
+      "Esta cita ya está pagada; llama a la clínica para cambiarla.",
+    );
+  });
+
   it("maps every code from the brief", () => {
     expect(accountError({ message: "appointment_not_in_account" })).toBe(
       "Esa cita no está en tu cuenta.",

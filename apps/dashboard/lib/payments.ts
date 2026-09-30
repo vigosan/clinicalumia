@@ -142,7 +142,6 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   note_required: "Indica el motivo del cambio de importe.",
   appointment_cancelled_needs_note:
     "Indica por qué se cobra una cita cancelada.",
-  appointment_not_started: "Todavía no se puede cobrar esta cita.",
   invalid_amount: "Escribe un importe válido.",
   invalid_method: "Elige la forma de pago.",
   reason_required: "Indica el motivo de la anulación.",

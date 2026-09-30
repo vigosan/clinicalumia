@@ -62,7 +62,9 @@ insert into public.appointments (id, professional_id, patient_id, service_id, st
   ('8a000000-0000-0000-0000-0000000000d8', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
    '8a000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-1, '15:00'), pg_temp.at_madrid(-1, '15:30')),
   ('8a000000-0000-0000-0000-0000000000d9', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
-   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-1, '16:00'), pg_temp.at_madrid(-1, '16:30'));
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-1, '16:00'), pg_temp.at_madrid(-1, '16:30')),
+  ('8a000000-0000-0000-0000-0000000000d0', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(3, '09:00'), pg_temp.at_madrid(3, '09:30'));
 update public.appointments set status = 'cancelled', cancelled_by = 'clinic'
 where id = '8a000000-0000-0000-0000-0000000000d6';
 
@@ -91,9 +93,8 @@ select results_eq(
   $$ values (4500, 'card', 'standard_21', '', '8a000000-0000-0000-0000-000000000001'::uuid) $$,
   'the payment keeps the VAT treatment of the appointment and who took the money, for the accounts');
 
-select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000d2', 4500, 'cash', '') $$,
-  'P0001', 'appointment_not_started',
-  'an appointment that has not started yet cannot be charged, so nobody is charged for a visit that may not happen');
+select isnt(public.collect_payment('8a000000-0000-0000-0000-0000000000d0', 4500, 'cash', ''), null,
+  'a future appointment can be charged in advance, because patients often pay a session before it happens');
 
 select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000d3', 4000, 'cash', E' \n\t ') $$,
   'P0001', 'note_required',

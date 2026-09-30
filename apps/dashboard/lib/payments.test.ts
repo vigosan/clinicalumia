@@ -336,9 +336,6 @@ describe("paymentError", () => {
         message: "appointment_cancelled_needs_note",
       }),
     ).toBe("Indica por qué se cobra una cita cancelada.");
-    expect(
-      paymentError({ code: "P0001", message: "appointment_not_started" }),
-    ).toBe("Todavía no se puede cobrar esta cita.");
     expect(paymentError({ code: "P0001", message: "invalid_amount" })).toBe(
       "Escribe un importe válido.",
     );

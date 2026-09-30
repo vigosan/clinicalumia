@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(96);
+select plan(97);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -336,6 +336,13 @@ select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, p
 reset role;
 select is((select starts_at || '/' || ends_at from public.appointments where id = '87000000-0000-0000-0000-0000000000d5'),
   pg_temp.at_day3('10:30') || '/' || pg_temp.at_day3('12:00'), 'the 90-minute appointment moved whole');
+
+select pg_temp.act_as('87000000-0000-0000-0000-000000000002');
+select public.collect_payment('87000000-0000-0000-0000-0000000000d5', 3000, 'card', '');
+select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
+select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d5', pg_temp.at_day3('10:00')),
+  '23514', 'appointment_invoiced', 'an appointment already paid and invoiced cannot be moved from the web, since the invoice states its date');
+reset role;
 
 select set_config('request.jwt.claims', '', true);
 select set_config('lumia.booking_account', '', true);

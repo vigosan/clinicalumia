@@ -637,6 +637,14 @@ describe("appointmentError", () => {
     );
   });
 
+  it("explains how to change an invoiced appointment, since moving it would contradict the date on its invoice", () => {
+    expect(
+      appointmentError({ code: "23514", message: "appointment_invoiced" }),
+    ).toBe(
+      "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
+    );
+  });
+
   it("maps appointment_cancelled_final", () => {
     expect(
       appointmentError({
