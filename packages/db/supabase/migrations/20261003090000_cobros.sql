@@ -72,7 +72,7 @@ set search_path = ''
 as $$
 declare
   appointment record;
-  clean_note text := left(trim(coalesce(p_note, '')), 500);
+  clean_note text := left(btrim(coalesce(p_note, ''), E' \t\r\n'), 500);
   payment_id uuid;
 begin
   if not public.is_active_staff() then
@@ -85,6 +85,9 @@ begin
   end if;
   if p_amount_cents is null or p_amount_cents < 0 then
     raise exception 'invalid_amount' using errcode = 'P0001';
+  end if;
+  if p_method is null then
+    raise exception 'invalid_method' using errcode = 'P0001';
   end if;
   if appointment.starts_at > now() then
     raise exception 'appointment_not_started' using errcode = 'P0001';
@@ -120,7 +123,7 @@ set search_path = ''
 as $$
 declare
   payment record;
-  clean_reason text := left(trim(coalesce(p_reason, '')), 500);
+  clean_reason text := left(btrim(coalesce(p_reason, ''), E' \t\r\n'), 500);
 begin
   if not public.is_active_staff() then
     raise exception 'payment_forbidden' using errcode = '42501';

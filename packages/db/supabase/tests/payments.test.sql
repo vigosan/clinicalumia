@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(45);
+select plan(49);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -60,7 +60,9 @@ insert into public.appointments (id, professional_id, patient_id, service_id, st
   ('8a000000-0000-0000-0000-0000000000d7', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
    '8a000000-0000-0000-0000-0000000000b2', pg_temp.at_madrid(-1, '14:00'), pg_temp.at_madrid(-1, '14:30')),
   ('8a000000-0000-0000-0000-0000000000d8', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
-   '8a000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-1, '15:00'), pg_temp.at_madrid(-1, '15:30'));
+   '8a000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-1, '15:00'), pg_temp.at_madrid(-1, '15:30')),
+  ('8a000000-0000-0000-0000-0000000000d9', '8a000000-0000-0000-0000-000000000001', '8a000000-0000-0000-0000-0000000000c1',
+   '8a000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-1, '16:00'), pg_temp.at_madrid(-1, '16:30'));
 update public.appointments set status = 'cancelled', cancelled_by = 'clinic'
 where id = '8a000000-0000-0000-0000-0000000000d6';
 
@@ -93,9 +95,9 @@ select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-00000
   'P0001', 'appointment_not_started',
   'an appointment that has not started yet cannot be charged, so nobody is charged for a visit that may not happen');
 
-select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000d3', 4000, 'cash', '   ') $$,
+select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000d3', 4000, 'cash', E' \n\t ') $$,
   'P0001', 'note_required',
-  'charging a different amount than proposed must be explained, so discounts are never silent');
+  'charging a different amount than proposed must be explained, and blank lines or tabs are no explanation, so discounts are never silent');
 select isnt(public.collect_payment('8a000000-0000-0000-0000-0000000000d3', 4000, 'cash', '  Descuento de familia  '), null,
   'with a reason, a different amount is accepted');
 select is((select note from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d3'), 'Descuento de familia',
@@ -110,6 +112,9 @@ select isnt(public.collect_payment('8a000000-0000-0000-0000-0000000000d8', 0, 'c
 select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000d5', -1, 'cash', 'Error') $$,
   'P0001', 'invalid_amount',
   'a negative amount is never a payment');
+select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000d5', 4500, null, '') $$,
+  'P0001', 'invalid_method',
+  'a payment without a method cannot be reconciled with the card terminal, Bizum or the cash drawer');
 select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000ff', 4500, 'cash', '') $$,
   'P0001', 'appointment_not_found',
   'an unknown appointment cannot be charged');
@@ -137,9 +142,9 @@ select is((select count(*) from public.payments where appointment_id = '8a000000
   'both the voided and the new payment remain, so the history of the till is complete');
 
 select throws_ok($$ select public.void_payment(
-    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d3'), '   ') $$,
+    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d3'), E' \n\t ') $$,
   'P0001', 'reason_required',
-  'voiding money already taken must always be explained');
+  'voiding money already taken must always be explained, and blank lines or tabs are no explanation');
 select lives_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d3'), 'Cobrado por error') $$,
   'a payment can be voided with a reason');
@@ -156,7 +161,7 @@ select isnt(public.collect_payment('8a000000-0000-0000-0000-0000000000d5', 4500,
 reset role;
 set local role service_role;
 select set_config('request.jwt.claims', '', true);
-update public.payments set collected_at = now() - interval '1 day'
+update public.payments set collected_at = pg_temp.at_madrid(-1, '12:00')
 where appointment_id = '8a000000-0000-0000-0000-0000000000d5';
 reset role;
 
@@ -181,6 +186,11 @@ select lives_ok($$ select public.void_payment(
 select lives_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d5'), 'Revisión de caja') $$,
   'the owner can void a payment from a previous day');
+select isnt(public.collect_payment('8a000000-0000-0000-0000-0000000000d9', 4500, 'card', ''), null,
+  'the owner can also take payments at the desk');
+select lives_ok($$ select public.void_payment(
+    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d9'), 'Tarjeta rechazada') $$,
+  'the owner can void her own payment');
 select throws_ok($$ insert into public.payments (appointment_id, amount_cents, method, vat, collected_by)
     values ('8a000000-0000-0000-0000-0000000000d2', 1, 'cash', 'exempt', '8a000000-0000-0000-0000-000000000003') $$,
   '42501', null,
@@ -210,6 +220,8 @@ select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-00000
   'a patient cannot record a payment');
 select throws_ok($$ select public.void_payment('8a000000-0000-0000-0000-0000000000ff', 'x') $$, '42501', null,
   'a patient cannot void a payment');
+select throws_ok($$ select public.suggested_amount('8a000000-0000-0000-0000-0000000000d1') $$, '42501', null,
+  'a patient cannot look up what the clinic proposes to charge for an appointment');
 reset role;
 
 select set_config('request.jwt.claims', '', true);
