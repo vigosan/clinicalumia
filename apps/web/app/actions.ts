@@ -160,7 +160,8 @@ export async function sendConsent(
 
   try {
     await storeConsent({ admin: createAdminClient(), consent, signedAt, pdf });
-  } catch {
+  } catch (error) {
+    console.error("No se ha podido guardar el consentimiento", error);
     return {
       error: "No se ha podido guardar el consentimiento. Inténtalo de nuevo.",
     };

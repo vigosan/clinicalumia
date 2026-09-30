@@ -64,6 +64,19 @@ describe("sendConsent", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
+  it("logs why a consent could not be saved, so the clinic can find out why signatures are being lost", async () => {
+    const failure = new Error("db down");
+    storeConsent.mockRejectedValue(failure);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await sendConsent(undefined, consentForm());
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "No se ha podido guardar el consentimiento",
+      failure,
+    );
+  });
+
   it("ignores a filled honeypot field without storing or emailing anything", async () => {
     const result = await sendConsent(
       undefined,
