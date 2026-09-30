@@ -99,6 +99,7 @@ begin
       where g.guardian_id = holder.id
         and w.archived_at is null
         and w.birth_date = p_birth_date
+        and lower(public.f_unaccent(w.first_name)) = normalized_first_name
         and extract(year from age((now() at time zone 'Europe/Madrid')::date, w.birth_date)) < 18;
       if cardinality(ward_ids) = 1 then
         return query select ward_ids[1], 'auto_guardian'::public.consent_link_method;

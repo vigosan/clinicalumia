@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(63);
+select plan(64);
 
 create or replace function pg_temp.years_ago(years int) returns date language sql stable as $$
   select ((now() at time zone 'Europe/Madrid')::date - make_interval(years => years))::date
@@ -79,6 +79,8 @@ select results_eq(
   $$ select person_id, method::text from public.match_consent_person('89000011B', null, pg_temp.years_ago(10), 'Menor') $$,
   $$ values ('89000000-0000-0000-0000-0000000000b2'::uuid, 'auto_guardian') $$,
   'a minor''s consent signed with her guardian''s DNI links to that minor, the only ward with that birth date');
+select is((select count(*) from public.match_consent_person('89000011B', null, pg_temp.years_ago(10), 'Otro')), 0::bigint,
+  'a guardian''s DNI with the ward''s birth date but another first name may be a different child, so it stays pending');
 select is((select count(*) from public.match_consent_person('89000012B', null, pg_temp.years_ago(9), 'Mellizo')), 0::bigint,
   'a guardian with two wards born the same day cannot tell which one signed, so it stays pending');
 select results_eq(
