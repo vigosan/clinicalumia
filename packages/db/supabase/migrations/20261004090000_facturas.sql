@@ -92,6 +92,7 @@ create table public.invoice_series (
   format text not null check (public.format_invoice_code(format, year, 1) <> ''),
   next_number integer not null default 1 check (next_number >= 1),
   locked boolean not null default false,
+  configured boolean not null default false,
   primary key (code, year)
 );
 
@@ -118,7 +119,8 @@ as $$
 begin
   if tg_op = 'UPDATE' then
     if not old.locked
-      or (new.locked and new.next_number >= old.next_number and new.format = old.format) then
+      or (new.locked and new.next_number >= old.next_number and new.format = old.format
+        and new.configured = old.configured) then
       return new;
     end if;
   end if;
@@ -160,11 +162,12 @@ begin
   if found and existing.locked then
     raise exception 'series_locked' using errcode = 'P0001';
   end if;
-  insert into public.invoice_series (code, year, format, next_number)
-  values (p_code, p_year, p_format, p_next_number)
+  insert into public.invoice_series (code, year, format, next_number, configured)
+  values (p_code, p_year, p_format, p_next_number, true)
   on conflict (code, year) do update
     set format = excluded.format,
-        next_number = excluded.next_number;
+        next_number = excluded.next_number,
+        configured = true;
 end;
 $$;
 
@@ -298,8 +301,8 @@ declare
   invoice_year integer := extract(year from p_issued_at at time zone 'Europe/Madrid')::integer;
   series public.invoice_series;
 begin
-  insert into public.invoice_series (code, year, format)
-  select p_series, invoice_year, s.format
+  insert into public.invoice_series (code, year, format, configured)
+  select p_series, invoice_year, s.format, s.configured
   from public.invoice_series s
   where s.code = p_series
   order by s.year <= invoice_year desc, s.year desc
@@ -309,6 +312,9 @@ begin
   from public.invoice_series s
   where s.code = p_series and s.year = invoice_year
   for update;
+  if not series.configured then
+    raise exception 'invoice_series_not_configured' using errcode = 'P0001';
+  end if;
   update public.invoice_series s
   set next_number = series.next_number + 1,
       locked = true

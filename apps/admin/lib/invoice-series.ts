@@ -65,3 +65,28 @@ export function invoiceSeriesError(error: DbError, year: number): string {
     return "El siguiente número debe ser 1 o mayor.";
   return "No se ha podido guardar la numeración.";
 }
+
+export type SetupWarning = { id: string; text: string };
+
+export function invoiceSetupWarnings({
+  settings,
+  mainSeries,
+  year,
+}: {
+  settings: { legal_name: string; tax_id: string };
+  mainSeries: { configured: boolean } | undefined;
+  year: number;
+}): SetupWarning[] {
+  const warnings: SetupWarning[] = [];
+  if (!settings.legal_name.trim() || !settings.tax_id.trim())
+    warnings.push({
+      id: "clinic-fiscal-warning",
+      text: "Faltan la razón social o el NIF: sin estos datos no se pueden emitir facturas ni registrar cobros.",
+    });
+  if (!mainSeries?.configured)
+    warnings.push({
+      id: "invoice-series-warning",
+      text: `Confirma la numeración de facturas de ${year} en Facturación: hasta que la guardes, no se pueden registrar cobros.`,
+    });
+  return warnings;
+}

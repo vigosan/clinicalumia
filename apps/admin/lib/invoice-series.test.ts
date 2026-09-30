@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatInvoiceCode,
   invoiceSeriesError,
+  invoiceSetupWarnings,
   parseInvoiceSeries,
 } from "./invoice-series";
 
@@ -128,5 +129,55 @@ describe("invoiceSeriesError", () => {
     expect(invoiceSeriesError({ code: "500" }, 2026)).toBe(
       "No se ha podido guardar la numeración.",
     );
+  });
+});
+
+describe("invoiceSetupWarnings", () => {
+  const settings = {
+    legal_name: "Patricia Hernán Sánchez",
+    tax_id: "20449989E",
+  };
+
+  it("says nothing when the clinic can already issue invoices", () => {
+    expect(
+      invoiceSetupWarnings({
+        settings,
+        mainSeries: { configured: true },
+        year: 2026,
+      }),
+    ).toEqual([]);
+  });
+
+  it("warns that charges are refused until the owner confirms this year's numbering, so the first invoice never repeats a spreadsheet number", () => {
+    expect(
+      invoiceSetupWarnings({
+        settings,
+        mainSeries: { configured: false },
+        year: 2026,
+      }),
+    ).toEqual([
+      {
+        id: "invoice-series-warning",
+        text: "Confirma la numeración de facturas de 2026 en Facturación: hasta que la guardes, no se pueden registrar cobros.",
+      },
+    ]);
+    expect(
+      invoiceSetupWarnings({ settings, mainSeries: undefined, year: 2026 }),
+    ).toHaveLength(1);
+  });
+
+  it("warns about the missing legal name or tax id, without which no invoice can be issued", () => {
+    expect(
+      invoiceSetupWarnings({
+        settings: { legal_name: " ", tax_id: "20449989E" },
+        mainSeries: { configured: true },
+        year: 2026,
+      }),
+    ).toEqual([
+      {
+        id: "clinic-fiscal-warning",
+        text: "Faltan la razón social o el NIF: sin estos datos no se pueden emitir facturas ni registrar cobros.",
+      },
+    ]);
   });
 });

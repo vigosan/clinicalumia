@@ -80,6 +80,8 @@ update public.clinic_settings set
   website = 'https://www.clinicalumia.es',
   cancellation_hours = 24;
 
+update public.invoice_series set configured = true;
+
 insert into public.people (id, first_name, last_name, is_patient, phone, email) values
   ('a0000000-0000-0000-0000-000000000601', 'Lucía', 'Martínez Soler', false, '600111222', 'lucia.martinez@example.com')
 on conflict (id) do nothing;

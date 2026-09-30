@@ -1,6 +1,7 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import { invoiceSetupWarnings } from "@/lib/invoice-series";
 import { ClinicSettingsForm } from "./ClinicSettingsForm";
 import { InvoiceHeaderPreview } from "./InvoiceHeaderPreview";
 import { InvoiceSeriesForm } from "./InvoiceSeriesForm";
@@ -21,8 +22,11 @@ export default async function ClinicPage() {
     .eq("year", currentYear);
   const mainSeries = series?.find((row) => row.code === "main");
   const rectifyingSeries = series?.find((row) => row.code === "rectifying");
-  const missingFiscalData =
-    !settings!.legal_name.trim() || !settings!.tax_id.trim();
+  const warnings = invoiceSetupWarnings({
+    settings: settings!,
+    mainSeries,
+    year: currentYear,
+  });
 
   return (
     <>
@@ -30,16 +34,16 @@ export default async function ClinicPage() {
         title="Datos de la clínica"
         description="Aparecen en las facturas y definen las condiciones de reserva."
       />
-      {missingFiscalData && (
+      {warnings.map((warning) => (
         <p
+          key={warning.id}
           role="alert"
-          data-testid="clinic-fiscal-warning"
+          data-testid={warning.id}
           className="rounded-card border border-warning-800 bg-warning-100 p-4 text-[15px] font-medium text-ink-900"
         >
-          Faltan la razón social o el NIF: sin estos datos no se pueden emitir
-          facturas ni registrar cobros.
+          {warning.text}
         </p>
-      )}
+      ))}
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <ClinicSettingsForm settings={settings!} />
         <div className="flex flex-col gap-6">
@@ -47,6 +51,7 @@ export default async function ClinicPage() {
           <InvoiceHeaderPreview settings={settings!} />
         </div>
       </div>
+      <h2 className="text-lg font-bold text-ink-900">Facturación</h2>
       <div className="grid gap-6 sm:grid-cols-2">
         <InvoiceSeriesForm
           code="main"

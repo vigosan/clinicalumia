@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(189);
+select plan(194);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -122,7 +122,7 @@ set local session_replication_role = replica;
 delete from public.invoice_records;
 delete from public.invoices;
 set local session_replication_role = origin;
-update public.invoice_series set next_number = 1, locked = false where year = pg_temp.this_year();
+update public.invoice_series set next_number = 1, locked = false, configured = false where year = pg_temp.this_year();
 delete from public.invoice_series where year > pg_temp.this_year();
 update public.clinic_settings set
   legal_name = 'Clínica de Pruebas, S.L.',
@@ -179,6 +179,26 @@ select set_config('request.jwt.claims', '', true);
 update public.appointments set payment_status = 'paid'
 where id in ('8b000000-0000-0000-0000-0000000000d2', '8b000000-0000-0000-0000-0000000000d4');
 reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok($$ select public.collect_payment('8b000000-0000-0000-0000-0000000000d1', 4500, 'card', '') $$,
+  'P0001', 'invoice_series_not_configured',
+  'until the owner confirms the numbering, no invoice is issued, so the first one can never repeat a number of the clinic''s spreadsheet');
+reset role;
+select results_eq(
+  $$ select (select count(*) from public.payments where appointment_id = '8b000000-0000-0000-0000-0000000000d1'),
+            (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()) $$,
+  $$ values (0::bigint, 1) $$,
+  'the refused charge leaves no payment and consumes no number');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select public.set_invoice_series('main', '{n}/{aa}', pg_temp.this_year(), 1);
+select public.set_invoice_series('rectifying', 'R{n}/{aa}', pg_temp.this_year(), 1);
+reset role;
+select results_eq(
+  $$ select code::text, configured from public.invoice_series where year = pg_temp.this_year() order by code $$,
+  $$ values ('main', true), ('rectifying', true) $$,
+  'saving the numbering in the admin is what confirms it and enables issuing');
 
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
 select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000000d1', 4500, 'card', ''), null,
@@ -289,8 +309,8 @@ select throws_ok($$ select public.collect_payment('8b000000-0000-0000-0000-00000
 reset role;
 update public.clinic_settings set legal_name = 'Clínica de Pruebas, S.L.';
 
-insert into public.invoice_series (code, year, format, next_number) values
-  ('main', pg_temp.this_year() + 1, 'F{año}-{n:4}', 40);
+insert into public.invoice_series (code, year, format, next_number, configured) values
+  ('main', pg_temp.this_year() + 1, 'F{año}-{n:4}', 40, true);
 insert into public.payments (id, appointment_id, amount_cents, method, vat, collected_at, collected_by) values
   ('8b000000-0000-0000-0000-0000000000e6', '8b000000-0000-0000-0000-0000000000d6', 3000, 'card', 'exempt',
    make_timestamptz(pg_temp.this_year() + 1, 12, 31, 23, 30, 0, 'Europe/Madrid'), '8b000000-0000-0000-0000-000000000001'),
@@ -304,10 +324,10 @@ select is((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000000d6')).code, 'F'
 select is((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000000d7')).code, 'F' || (pg_temp.this_year() + 2) || '-0001',
   'an invoice on 1 January at 00:30 in Madrid, still 31 December in UTC, starts the new year''s series at 1');
 select results_eq(
-  $$ select year - pg_temp.this_year(), format, next_number, locked from public.invoice_series
+  $$ select year - pg_temp.this_year(), format, next_number, locked, configured from public.invoice_series
      where code = 'main' and year > pg_temp.this_year() order by year $$,
-  $$ values (1, 'F{año}-{n:4}', 41, true), (2, 'F{año}-{n:4}', 2, true) $$,
-  'an unconfigured new year gets its own series row with the previous format, and both years stay locked');
+  $$ values (1, 'F{año}-{n:4}', 41, true, true), (2, 'F{año}-{n:4}', 2, true, true) $$,
+  'a new year gets its own series row with the previous format and stays confirmed, so the clinic keeps invoicing on 1 January without touching the admin');
 select ok(
   (pg_temp.record_of('8b000000-0000-0000-0000-0000000000d7')).canonical like
     '%&FechaExpedicionFactura=01-01-' || (pg_temp.this_year() + 2) || '&%',
@@ -959,9 +979,9 @@ select lives_ok(
   $$ select public.set_invoice_series('main', 'X-{n:3}/{aa}', pg_temp.this_year() + 50, 7) $$,
   'the owner configures a fresh future year of the main series with a custom format and starting number');
 select results_eq(
-  $$ select format, next_number, locked from public.invoice_series
+  $$ select format, next_number, locked, configured from public.invoice_series
      where code = 'main' and year = pg_temp.this_year() + 50 $$,
-  $$ values ('X-{n:3}/{aa}', 7, false) $$,
+  $$ values ('X-{n:3}/{aa}', 7, false, true) $$,
   'the configured series is saved exactly as given and stays unlocked until its first invoice');
 select lives_ok(
   $$ select public.set_invoice_series('main', 'X-{n:4}/{aa}', pg_temp.this_year() + 50, 3) $$,
@@ -986,11 +1006,21 @@ select throws_ok(
   'P0001', 'invoice_series_immutable',
   'a locked series can never be unlocked again');
 select throws_ok(
+  $$ update public.invoice_series set configured = false where code = 'main' and year = pg_temp.this_year() + 50 $$,
+  'P0001', 'invoice_series_immutable',
+  'a series in use can never go back to unconfirmed');
+select throws_ok(
   $$ delete from public.invoice_series where code = 'main' and year = pg_temp.this_year() + 50 $$,
   'P0001', 'invoice_series_immutable',
   'a series row is never deleted, even by the database owner');
 select throws_ok($$ truncate public.invoice_series $$, 'P0001', 'invoice_series_immutable',
   'the series cannot be wiped in bulk either');
+
+insert into public.invoice_series (code, year, format) values ('rectifying', pg_temp.this_year() + 70, 'Z{n}/{aa}');
+select throws_ok(
+  $$ select public.next_invoice_number('rectifying', make_timestamptz(pg_temp.this_year() + 71, 3, 1, 12, 0, 0, 'Europe/Madrid')) $$,
+  'P0001', 'invoice_series_not_configured',
+  'a year that follows an unconfirmed series is not confirmed either, so only an owner''s decision starts the numbering');
 
 select * from finish();
 rollback;

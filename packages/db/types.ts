@@ -603,6 +603,7 @@ export type Database = {
       invoice_series: {
         Row: {
           code: Database["public"]["Enums"]["invoice_series_code"]
+          configured: boolean
           format: string
           locked: boolean
           next_number: number
@@ -610,6 +611,7 @@ export type Database = {
         }
         Insert: {
           code: Database["public"]["Enums"]["invoice_series_code"]
+          configured?: boolean
           format: string
           locked?: boolean
           next_number?: number
@@ -617,6 +619,7 @@ export type Database = {
         }
         Update: {
           code?: Database["public"]["Enums"]["invoice_series_code"]
+          configured?: boolean
           format?: string
           locked?: boolean
           next_number?: number

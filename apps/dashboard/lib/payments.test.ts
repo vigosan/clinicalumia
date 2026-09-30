@@ -270,6 +270,14 @@ describe("paymentError", () => {
     );
   });
 
+  it("tells the person who charges that the invoice numbering is not confirmed yet, because issuing before that could repeat a number of the clinic's spreadsheet", () => {
+    expect(
+      paymentError({ code: "P0001", message: "invoice_series_not_configured" }),
+    ).toBe(
+      "Falta configurar la numeración de facturas. Pide a la propietaria que la complete en el admin (Datos de la clínica → Facturación).",
+    );
+  });
+
   it("explains that a charge over 400 € cannot get a simplified invoice, so the person knows who can solve it", () => {
     expect(
       paymentError({ code: "P0001", message: "full_invoice_required" }),

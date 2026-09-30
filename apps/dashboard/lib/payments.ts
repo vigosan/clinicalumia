@@ -153,6 +153,8 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   payment_not_found: "Este cobro ya no está disponible.",
   clinic_fiscal_data_missing:
     "Faltan los datos fiscales de la clínica (razón social y NIF). Pide a la propietaria que los complete en el admin.",
+  invoice_series_not_configured:
+    "Falta configurar la numeración de facturas. Pide a la propietaria que la complete en el admin (Datos de la clínica → Facturación).",
   full_invoice_required:
     "Este importe supera los 400 € de una factura simplificada. Habla con la propietaria para emitir la factura completa.",
   invoice_already_rectified: "Esta factura ya está rectificada.",
