@@ -1069,7 +1069,10 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: undefined
       }
-      clinic_invoice_header: { Args: never; Returns: Json }
+      clinic_invoice_header: {
+        Args: { p_require_address: boolean }
+        Returns: Json
+      }
       collect_payment: {
         Args: {
           p_amount_cents: number
@@ -1134,6 +1137,10 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           total_cents: number
         }[]
+      }
+      invoice_formats_collide: {
+        Args: { p_format: string; p_other: string; p_year: number }
+        Returns: boolean
       }
       invoice_hash: { Args: { p_canonical: string }; Returns: string }
       is_active_staff: { Args: never; Returns: boolean }

@@ -4,6 +4,7 @@ import {
   invoiceSeriesError,
   invoiceSetupWarnings,
   parseInvoiceSeries,
+  seriesYearSummary,
 } from "./invoice-series";
 
 describe("formatInvoiceCode", () => {
@@ -119,6 +120,14 @@ describe("invoiceSeriesError", () => {
     ).toBe("El siguiente número debe ser 1 o mayor.");
   });
 
+  it("explains that both series cannot produce the same codes, since two invoices would share a number", () => {
+    expect(
+      invoiceSeriesError({ code: "P0001", message: "format_conflict" }, 2026),
+    ).toBe(
+      "Ese formato puede dar los mismos códigos que la otra serie. Usa una letra que las distinga, como R{n}/{aa}.",
+    );
+  });
+
   it("tells a non-owner she lacks permission", () => {
     expect(invoiceSeriesError({ code: "42501" }, 2026)).toBe(
       "No tienes permiso para hacer esto.",
@@ -136,6 +145,9 @@ describe("invoiceSetupWarnings", () => {
   const settings = {
     legal_name: "Patricia Hernán Sánchez",
     tax_id: "20449989E",
+    address_line: "Calle Montesa 7",
+    postal_code: "46800",
+    city: "Xàtiva",
   };
 
   it("says nothing when the clinic can already issue invoices", () => {
@@ -169,7 +181,7 @@ describe("invoiceSetupWarnings", () => {
   it("warns about the missing legal name or tax id, without which no invoice can be issued", () => {
     expect(
       invoiceSetupWarnings({
-        settings: { legal_name: " ", tax_id: "20449989E" },
+        settings: { ...settings, legal_name: " " },
         mainSeries: { configured: true },
         year: 2026,
       }),
@@ -179,5 +191,72 @@ describe("invoiceSetupWarnings", () => {
         text: "Faltan la razón social o el NIF: sin estos datos no se pueden emitir facturas ni registrar cobros.",
       },
     ]);
+  });
+});
+
+describe("invoiceSetupWarnings address", () => {
+  it("warns that full and rectifying invoices need the clinic's full address, so voiding an invoiced charge would fail without it", () => {
+    for (const missing of ["address_line", "postal_code", "city"]) {
+      expect(
+        invoiceSetupWarnings({
+          settings: {
+            legal_name: "Patricia Hernán Sánchez",
+            tax_id: "20449989E",
+            address_line: "Calle Montesa 7",
+            postal_code: "46800",
+            city: "Xàtiva",
+            [missing]: "",
+          },
+          mainSeries: { configured: true },
+          year: 2026,
+        }),
+      ).toEqual([
+        {
+          id: "clinic-address-warning",
+          text: "Falta la dirección completa (dirección, código postal y ciudad): sin ella no se pueden emitir facturas completas ni rectificativas, ni anular cobros facturados.",
+        },
+      ]);
+    }
+  });
+});
+
+describe("seriesYearSummary", () => {
+  it("shows the next code of a year in use, so the owner sees where the numbering goes", () => {
+    expect(
+      seriesYearSummary(2026, {
+        format: "{n}/{aa}",
+        next_number: 34,
+        locked: true,
+        configured: true,
+      }),
+    ).toBe("2026: próxima 34/26 · en uso");
+  });
+
+  it("marks a saved year that has not issued anything yet as confirmed", () => {
+    expect(
+      seriesYearSummary(2027, {
+        format: "{n}/{aa}",
+        next_number: 1,
+        locked: false,
+        configured: true,
+      }),
+    ).toBe("2027: próxima 1/27 · confirmada");
+  });
+
+  it("marks an unconfirmed year, since charges are refused until it is saved", () => {
+    expect(
+      seriesYearSummary(2026, {
+        format: "{n}/{aa}",
+        next_number: 1,
+        locked: false,
+        configured: false,
+      }),
+    ).toBe("2026: próxima 1/26 · sin confirmar");
+  });
+
+  it("explains that a year without its own row continues the previous format from 1", () => {
+    expect(seriesYearSummary(2027, undefined)).toBe(
+      "2027: seguirá el formato de 2026, empezando en 1",
+    );
   });
 });

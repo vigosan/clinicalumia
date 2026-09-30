@@ -61,6 +61,8 @@ export function invoiceSeriesError(error: DbError, year: number): string {
     return `La numeración de ${year} ya está en uso y no se puede cambiar.`;
   if (error.code === "P0001" && error.message === "format_invalid")
     return "El formato de la numeración no es válido.";
+  if (error.code === "P0001" && error.message === "format_conflict")
+    return "Ese formato puede dar los mismos códigos que la otra serie. Usa una letra que las distinga, como R{n}/{aa}.";
   if (error.code === "P0001" && error.message === "number_invalid")
     return "El siguiente número debe ser 1 o mayor.";
   return "No se ha podido guardar la numeración.";
@@ -73,7 +75,13 @@ export function invoiceSetupWarnings({
   mainSeries,
   year,
 }: {
-  settings: { legal_name: string; tax_id: string };
+  settings: {
+    legal_name: string;
+    tax_id: string;
+    address_line: string;
+    postal_code: string;
+    city: string;
+  };
   mainSeries: { configured: boolean } | undefined;
   year: number;
 }): SetupWarning[] {
@@ -83,10 +91,39 @@ export function invoiceSetupWarnings({
       id: "clinic-fiscal-warning",
       text: "Faltan la razón social o el NIF: sin estos datos no se pueden emitir facturas ni registrar cobros.",
     });
+  if (
+    !settings.address_line.trim() ||
+    !settings.postal_code.trim() ||
+    !settings.city.trim()
+  )
+    warnings.push({
+      id: "clinic-address-warning",
+      text: "Falta la dirección completa (dirección, código postal y ciudad): sin ella no se pueden emitir facturas completas ni rectificativas, ni anular cobros facturados.",
+    });
   if (!mainSeries?.configured)
     warnings.push({
       id: "invoice-series-warning",
       text: `Confirma la numeración de facturas de ${year} en Facturación: hasta que la guardes, no se pueden registrar cobros.`,
     });
   return warnings;
+}
+
+export type InvoiceSeriesRow = {
+  format: string;
+  next_number: number;
+  locked: boolean;
+  configured: boolean;
+};
+
+export function seriesYearSummary(
+  year: number,
+  row: InvoiceSeriesRow | undefined,
+): string {
+  if (!row) return `${year}: seguirá el formato de ${year - 1}, empezando en 1`;
+  const state = row.locked
+    ? "en uso"
+    : row.configured
+      ? "confirmada"
+      : "sin confirmar";
+  return `${year}: próxima ${formatInvoiceCode(row.format, year, row.next_number)} · ${state}`;
 }

@@ -151,7 +151,7 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   appointment_not_found: "Esta cita ya no está disponible.",
   payment_not_found: "Este cobro ya no está disponible.",
   clinic_fiscal_data_missing:
-    "Faltan los datos fiscales de la clínica (razón social y NIF). Pide a la propietaria que los complete en el admin.",
+    "Faltan datos de la clínica para la factura (razón social, NIF o dirección completa). Pide a la propietaria que los complete en el admin.",
   invoice_series_not_configured:
     "Falta configurar la numeración de facturas. Pide a la propietaria que la complete en el admin (Datos de la clínica → Facturación).",
   full_invoice_required:

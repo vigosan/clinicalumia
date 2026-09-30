@@ -16,12 +16,17 @@ export default async function ClinicPage() {
     .select("*")
     .single();
   const currentYear = Number(todayInMadrid().slice(0, 4));
+  const years = [currentYear, currentYear + 1];
   const { data: series } = await supabase
     .from("invoice_series")
     .select("*")
-    .eq("year", currentYear);
-  const mainSeries = series?.find((row) => row.code === "main");
-  const rectifyingSeries = series?.find((row) => row.code === "rectifying");
+    .in("year", years);
+  const rowsOf = (code: "main" | "rectifying") =>
+    (series ?? []).filter((row) => row.code === code);
+  const mainSeries = rowsOf("main").find((row) => row.year === currentYear);
+  const rectifyingSeries = rowsOf("rectifying").find(
+    (row) => row.year === currentYear,
+  );
   const warnings = invoiceSetupWarnings({
     settings: settings!,
     mainSeries,
@@ -59,7 +64,8 @@ export default async function ClinicPage() {
           format={mainSeries?.format ?? DEFAULT_FORMAT.main}
           year={mainSeries?.year ?? currentYear}
           nextNumber={mainSeries?.next_number ?? 1}
-          locked={mainSeries?.locked ?? false}
+          years={years}
+          rows={rowsOf("main")}
         />
         <InvoiceSeriesForm
           code="rectifying"
@@ -67,7 +73,8 @@ export default async function ClinicPage() {
           format={rectifyingSeries?.format ?? DEFAULT_FORMAT.rectifying}
           year={rectifyingSeries?.year ?? currentYear}
           nextNumber={rectifyingSeries?.next_number ?? 1}
-          locked={rectifyingSeries?.locked ?? false}
+          years={years}
+          rows={rowsOf("rectifying")}
         />
       </div>
     </>

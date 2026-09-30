@@ -70,6 +70,10 @@ Que cada cobro tenga su factura legal, con el estilo de LUMIA, sin trabajo extra
 ## 5. Admin
 
 - **"Datos de la clínica → Facturación":** los datos fiscales que ya existen (razón social, NIF, dirección, texto de exención y pie) más las series: formato, año y siguiente número de cada una, con una vista previa del próximo número. Si la serie ya está bloqueada, se explica por qué no se puede cambiar.
+- Se muestran las series del año en curso y del siguiente.
+- Hasta que la propietaria guarda la numeración por primera vez, no se emite ninguna factura (`invoice_series_not_configured`), para que la primera no repita un número de la hoja de cálculo. Los años siguientes heredan la confirmación del anterior.
+- Las dos series no pueden tener formatos que den los mismos códigos (`format_conflict`).
+- Las facturas completas y las rectificativas exigen la dirección completa de la clínica; la simplificada, solo la razón social y el NIF.
 
 ## 6. Seguridad y legalidad
 
@@ -104,3 +108,7 @@ Que cada cobro tenga su factura legal, con el estilo de LUMIA, sin trabajo extra
 - Envío a la AEAT con certificado (entrega de Verifactu).
 - Facturas en Mi cuenta.
 - Facturas agrupadas, a mutuas o empresas con retención (v2).
+
+## 9. Limitaciones conocidas
+
+- Los NIF que empiezan por K, L o M (españoles menores de 14 años sin DNI, residentes en el extranjero y extranjeros sin NIE) se validan con la regla del CIF, que no es la suya, así que alguno válido puede rechazarse. Los NIF extranjeros no se admiten todavía.

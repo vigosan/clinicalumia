@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(201);
+select plan(208);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -88,7 +88,7 @@ select results_eq(
   $$ select code::text, format from public.invoice_series where year = pg_temp.this_year() order by code $$,
   $$ values ('main', '{n}/{aa}'), ('rectifying', 'R{n}/{aa}') $$,
   'the series start with the clinic''s number/year format and an independent R series for rectifications');
-select throws_ok($$ update public.invoice_series set format = 'Factura {aa}' where code = 'main' and year = pg_temp.this_year() $$,
+select throws_ok($$ insert into public.invoice_series (code, year, format) values ('main', pg_temp.this_year() + 90, 'Factura {aa}') $$,
   'P0001', 'invoice_format_invalid',
   'a series can never be saved with a format that has no number in it');
 
@@ -121,9 +121,9 @@ select is(
 set local session_replication_role = replica;
 delete from public.invoice_records;
 delete from public.invoices;
-set local session_replication_role = origin;
 update public.invoice_series set next_number = 1, locked = false, configured = false where year = pg_temp.this_year();
 delete from public.invoice_series where year > pg_temp.this_year();
+set local session_replication_role = origin;
 update public.clinic_settings set
   legal_name = 'Clínica de Pruebas, S.L.',
   tax_id = 'B12345674',
@@ -606,7 +606,21 @@ select throws_ok(
   'P0001', 'clinic_fiscal_data_missing',
   'without the clinic''s legal name no full invoice can be issued either');
 reset role;
-update public.clinic_settings set legal_name = 'Clínica de Pruebas, S.L.', address_line = 'Avenida Nueva 5';
+update public.clinic_settings set legal_name = 'Clínica de Pruebas, S.L.', address_line = ' ';
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'clinic_fiscal_data_missing',
+  'a full invoice must state the clinic''s address, so it is refused without it');
+reset role;
+update public.clinic_settings set address_line = 'Calle Mayor 1', city = '';
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s5'), 'Error') $$,
+  'P0001', 'clinic_fiscal_data_missing',
+  'a rectifying invoice must state the clinic''s full address too');
+reset role;
+update public.clinic_settings set city = 'Xàtiva', address_line = 'Avenida Nueva 5';
 
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
 select throws_ok(
@@ -1051,6 +1065,33 @@ select lives_ok(
   $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '09:00'), ends_at = pg_temp.at_madrid(6, '09:30')
      where id = '8b000000-0000-0000-0000-0000000001d1' $$,
   'once the invoice is rectified the appointment can be moved and charged again');
+reset role;
+
+update public.clinic_settings set address_line = '', postal_code = '', city = '';
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('8b000000-0000-0000-0000-0000000001d3', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c1',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-1, '18:00'), pg_temp.at_madrid(-1, '18:30'));
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001d3', 3000, 'card', ''), null,
+  'a simplified invoice only needs the clinic''s name and tax id, so charging works before the address is filled in');
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select throws_ok(
+  $$ select public.set_invoice_series('rectifying', 'F{año}-{n:4}', pg_temp.this_year() + 1, 1) $$,
+  'P0001', 'format_conflict',
+  'the rectifying series cannot share the main series format, or two invoices of the year would get the same code');
+select throws_ok(
+  $$ select public.set_invoice_series('rectifying', 'F{año}-{n:2}', pg_temp.this_year() + 1, 1) $$,
+  'P0001', 'format_conflict',
+  'a format that differs only in padding still produces codes of the other series, such as 0040 against 40');
+select throws_ok(
+  $$ select public.set_invoice_series('rectifying', 'F{año}-9{n}', pg_temp.this_year() + 3, 1) $$,
+  'P0001', 'format_conflict',
+  'a prefix made of digits can still collide with the other series, since F-91 could come from either');
+select lives_ok(
+  $$ select public.set_invoice_series('rectifying', 'RX{n}/{aa}', pg_temp.this_year() + 1, 1) $$,
+  'a rectifying format with its own letters is accepted');
 reset role;
 
 select * from finish();

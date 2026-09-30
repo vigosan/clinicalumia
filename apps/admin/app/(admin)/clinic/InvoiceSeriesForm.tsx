@@ -8,6 +8,8 @@ import { startTransition, useActionState, useState } from "react";
 import {
   formatInvoiceCode,
   type InvoiceSeriesCode,
+  type InvoiceSeriesRow,
+  seriesYearSummary,
 } from "@/lib/invoice-series";
 import { type SaveInvoiceSeriesState, saveInvoiceSeries } from "./actions";
 
@@ -17,19 +19,22 @@ export function InvoiceSeriesForm({
   format: initialFormat,
   year: initialYear,
   nextNumber: initialNextNumber,
-  locked,
+  years,
+  rows,
 }: {
   code: InvoiceSeriesCode;
   title: string;
   format: string;
   year: number;
   nextNumber: number;
-  locked: boolean;
+  years: number[];
+  rows: (InvoiceSeriesRow & { year: number })[];
 }) {
   const [format, setFormat] = useState(initialFormat);
   const [year, setYear] = useState(initialYear);
   const [nextNumber, setNextNumber] = useState(initialNextNumber);
-  const isLockedYear = locked && year === initialYear;
+  const selectedRow = rows.find((row) => row.year === year);
+  const isLockedYear = selectedRow?.locked ?? false;
   const [state, formAction, pending] = useActionState<
     SaveInvoiceSeriesState,
     FormData
@@ -38,6 +43,19 @@ export function InvoiceSeriesForm({
   return (
     <Card className="flex flex-col gap-4">
       <h3 className="text-base font-bold text-ink-900">{title}</h3>
+      <ul className="flex flex-col gap-1 text-[13px] text-ink-800">
+        {years.map((listedYear) => (
+          <li
+            key={listedYear}
+            data-testid={`invoice-series-${code}-summary-${listedYear}`}
+          >
+            {seriesYearSummary(
+              listedYear,
+              rows.find((row) => row.year === listedYear),
+            )}
+          </li>
+        ))}
+      </ul>
       {isLockedYear && (
         <p
           data-testid={`invoice-series-${code}-locked`}
@@ -73,7 +91,17 @@ export function InvoiceSeriesForm({
               type="number"
               data-testid={`invoice-series-${code}-year`}
               value={year}
-              onChange={(event) => setYear(Number(event.target.value))}
+              onChange={(event) => {
+                const nextYear = Number(event.target.value);
+                const row = rows.find(
+                  (candidate) => candidate.year === nextYear,
+                );
+                setYear(nextYear);
+                if (row) {
+                  setFormat(row.format);
+                  setNextNumber(row.next_number);
+                }
+              }}
               required
             />
           </Field>

@@ -86,6 +86,32 @@ $$;
 revoke all on function public.invoice_alta_canonical(text, text, date, text, integer, integer, text, timestamptz)
   from public, anon, authenticated, service_role;
 
+create or replace function public.invoice_formats_collide(p_format text, p_other text, p_year integer)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  with years as (
+    select f.format, replace(replace(f.other, '{año}', p_year::text), '{aa}', lpad((p_year % 100)::text, 2, '0')) as other
+    from (values (p_format, p_other), (p_other, p_format)) as f(format, other)
+  ),
+  shapes as (
+    select y.format,
+      '^' || regexp_replace(substring(y.other from '^(.*?)\{n(?::[1-8])?\}'), '([^A-Za-z0-9])', '\\\1', 'g')
+        || '[0-9]+'
+        || regexp_replace(substring(y.other from '\{n(?::[1-8])?\}(.*)$'), '([^A-Za-z0-9])', '\\\1', 'g')
+        || '$' as other_shape
+    from years y
+  )
+  select exists (
+    select 1 from shapes, generate_series(1, 1000) as n
+    where public.format_invoice_code(shapes.format, p_year, n) ~ shapes.other_shape
+  )
+$$;
+
+revoke all on function public.invoice_formats_collide(text, text, integer) from public, anon, authenticated, service_role;
+
 create table public.invoice_series (
   code public.invoice_series_code not null,
   year integer not null check (year between 2000 and 2999),
@@ -148,6 +174,7 @@ set search_path = ''
 as $$
 declare
   existing public.invoice_series;
+  other_format text;
 begin
   if not public.is_owner() then
     raise exception 'invoice_forbidden' using errcode = '42501';
@@ -161,6 +188,14 @@ begin
   select * into existing from public.invoice_series where code = p_code and year = p_year for update;
   if found and existing.locked then
     raise exception 'series_locked' using errcode = 'P0001';
+  end if;
+  select s.format into other_format
+  from public.invoice_series s
+  where s.code <> p_code
+  order by s.year <= p_year desc, s.year desc
+  limit 1;
+  if other_format is not null and public.invoice_formats_collide(p_format, other_format, p_year) then
+    raise exception 'format_conflict' using errcode = 'P0001';
   end if;
   insert into public.invoice_series (code, year, format, next_number, configured)
   values (p_code, p_year, p_format, p_next_number, true)
@@ -365,7 +400,7 @@ $$;
 
 revoke all on function public.append_invoice_record(uuid, text) from public, anon, authenticated, service_role;
 
-create or replace function public.clinic_invoice_header()
+create or replace function public.clinic_invoice_header(p_require_address boolean)
 returns jsonb
 language plpgsql
 stable
@@ -376,7 +411,10 @@ declare
   settings public.clinic_settings;
 begin
   select * into settings from public.clinic_settings;
-  if btrim(settings.legal_name) = '' or btrim(settings.tax_id) = '' then
+  if btrim(settings.legal_name) = '' or btrim(settings.tax_id) = ''
+    or (p_require_address and (
+      btrim(settings.address_line) = '' or btrim(settings.postal_code) = '' or btrim(settings.city) = ''
+    )) then
     raise exception 'clinic_fiscal_data_missing' using errcode = 'P0001';
   end if;
   return jsonb_build_object(
@@ -396,7 +434,7 @@ begin
 end;
 $$;
 
-revoke all on function public.clinic_invoice_header() from public, anon, authenticated, service_role;
+revoke all on function public.clinic_invoice_header(boolean) from public, anon, authenticated, service_role;
 
 create or replace function public.issue_simplified_invoice(p_payment_id uuid)
 returns uuid
@@ -423,7 +461,7 @@ begin
   join public.services s on s.id = a.service_id
   join public.people pe on pe.id = a.patient_id
   where p.id = p_payment_id;
-  header := public.clinic_invoice_header();
+  header := public.clinic_invoice_header(false);
   select * into settings from public.clinic_settings;
   deposit_cents := case when payment.payment_status = 'paid' then payment.payment_amount_cents else 0 end;
   total_cents := payment.amount_cents + deposit_cents;
@@ -663,7 +701,7 @@ begin
   if not public.is_valid_spanish_tax_id(recipient->>'tax_id') then
     raise exception 'recipient_tax_id_invalid' using errcode = 'P0001';
   end if;
-  header := public.clinic_invoice_header();
+  header := public.clinic_invoice_header(true);
   if header->'issuer'->>'tax_id' is distinct from original.snapshot->'issuer'->>'tax_id' then
     raise exception 'clinic_tax_id_changed' using errcode = 'P0001';
   end if;
@@ -739,7 +777,7 @@ begin
   if not found then
     raise exception 'invoice_already_rectified' using errcode = 'P0001';
   end if;
-  header := public.clinic_invoice_header();
+  header := public.clinic_invoice_header(true);
   if header->'issuer'->>'tax_id' is distinct from original.snapshot->'issuer'->>'tax_id' then
     raise exception 'clinic_tax_id_changed' using errcode = 'P0001';
   end if;

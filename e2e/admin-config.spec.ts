@@ -248,6 +248,12 @@ test("the owner configures a future year of the main invoice series and sees the
   try {
     await loginAsOwner(page);
     await page.goto(`${ADMIN}/clinic`);
+    const currentYear = new Date().getFullYear();
+    for (const listedYear of [currentYear, currentYear + 1]) {
+      await expect(
+        page.getByTestId(`invoice-series-main-summary-${listedYear}`),
+      ).toContainText(`${listedYear}: `);
+    }
     const form = page.getByTestId("invoice-series-main-form");
     await form.getByTestId("invoice-series-main-year").fill(String(year));
     await form.getByTestId("invoice-series-main-format").fill("E2E-{n:3}/{aa}");

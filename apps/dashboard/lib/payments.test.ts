@@ -262,11 +262,11 @@ describe("needsPaymentNote", () => {
 });
 
 describe("paymentError", () => {
-  it("tells the person who charges that the clinic's fiscal data is missing, because without it no invoice can be issued and the charge is refused", () => {
+  it("tells the person who charges or corrects an invoice that the clinic's fiscal data or address is missing, because without it the invoice is refused", () => {
     expect(
       paymentError({ code: "P0001", message: "clinic_fiscal_data_missing" }),
     ).toBe(
-      "Faltan los datos fiscales de la clínica (razón social y NIF). Pide a la propietaria que los complete en el admin.",
+      "Faltan datos de la clínica para la factura (razón social, NIF o dirección completa). Pide a la propietaria que los complete en el admin.",
     );
   });
 
