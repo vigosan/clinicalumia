@@ -33,6 +33,7 @@ export default async function CobrosPage({
   const payments = result.ok ? result.data.payments : [];
   const staffOptions = result.ok ? result.data.staffOptions : [];
   const nameById = result.ok ? result.data.nameById : new Map<string, string>();
+  const isOwner = result.ok ? result.data.isOwner : false;
   const totals = totalsByMethod(
     payments.map((payment) => ({
       amount_cents: payment.amountCents,
@@ -46,7 +47,11 @@ export default async function CobrosPage({
     <>
       <PageHeader title="Cobros" />
       <Card>
-        <CobrosFilters params={params} staffOptions={staffOptions} />
+        <CobrosFilters
+          params={params}
+          staffOptions={staffOptions}
+          isOwner={isOwner}
+        />
       </Card>
       {state === "error" && (
         <Card

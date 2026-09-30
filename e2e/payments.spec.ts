@@ -353,3 +353,37 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     "Total: 0,00 €",
   );
 });
+
+test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el selector de profesional", async ({
+  page,
+}) => {
+  const date = todayInMadrid();
+  const employee = await createEmployee("Profesional Cobros Privados");
+  const colleague = await createEmployee("Profesional Cobros Privados Dos");
+  const ownAppointmentId = await createAppointment(employee.id, date);
+  const colleagueAppointmentId = await createAppointment(colleague.id, date);
+
+  await signIn(page, DASHBOARD, "info@clinicalumia.es");
+  await openAppointment(page, date, colleagueAppointmentId);
+  await collect(page, "card");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Tarjeta · 55,00 €",
+  );
+  await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, ownAppointmentId);
+  await collect(page, "cash");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Efectivo · 55,00 €",
+  );
+
+  await page.goto(`${DASHBOARD}/cobros`);
+  await expect(page.getByTestId("payments-list")).toBeVisible();
+  await expect(page.getByTestId("payment-row")).toHaveCount(1);
+  await expect(
+    page.locator('[data-testid="payments-total-method"][data-method="cash"]'),
+  ).toHaveText("Efectivo: 55,00 €");
+  await expect(page.getByTestId("payments-professional")).toHaveCount(0);
+});

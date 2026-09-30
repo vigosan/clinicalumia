@@ -103,6 +103,7 @@ function fakeClient({
   directoryError = null,
   specialties = [],
   specialtiesError = null,
+  userId = "self-1",
 }: {
   payments?: unknown[];
   paymentsError?: { code?: string } | null;
@@ -110,6 +111,7 @@ function fakeClient({
   directoryError?: { code?: string } | null;
   specialties?: unknown[];
   specialtiesError?: { code?: string } | null;
+  userId?: string | null;
 } = {}) {
   const rpc = vi.fn((name: string) => {
     if (name === "list_payments")
@@ -122,7 +124,12 @@ function fakeClient({
     Promise.resolve({ data: specialties, error: specialtiesError }),
   );
   const from = vi.fn(() => ({ select }));
-  return { client: { rpc, from }, rpc, from, select };
+  const auth = {
+    getUser: vi.fn(() =>
+      Promise.resolve({ data: { user: userId ? { id: userId } : null } }),
+    ),
+  };
+  return { client: { rpc, from, auth }, rpc, from, select, auth };
 }
 
 describe("loadCobros", () => {
@@ -136,7 +143,21 @@ describe("loadCobros", () => {
     expect(rpc).toHaveBeenCalledWith("list_payments", {
       p_start: "2026-09-30T00:00:00+02:00",
       p_end: "2026-10-01T00:00:00+02:00",
+      p_professional_id: undefined,
     });
+  });
+
+  it("passes the chosen professional to the database, so filtering happens in the query itself", async () => {
+    const { client, rpc } = fakeClient();
+    await loadCobros(client as never, {
+      desde: "2026-09-30",
+      hasta: "2026-09-30",
+      profesionalId: "prof-2",
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      "list_payments",
+      expect.objectContaining({ p_professional_id: "prof-2" }),
+    );
   });
 
   it("builds the professional filter options with their specialty, sorted by name", async () => {
@@ -178,8 +199,49 @@ describe("loadCobros", () => {
           ["prof-1", "Ana Profesional"],
           ["prof-2", "Zoe Profesional"],
         ]),
+        isOwner: false,
       },
     });
+  });
+
+  it("knows the signed-in staff member is the owner, so the page can show the professional filter", async () => {
+    const { client } = fakeClient({
+      directory: [
+        {
+          id: "self-1",
+          full_name: "Propietaria",
+          role: "owner",
+          specialty_id: null,
+        },
+      ],
+      userId: "self-1",
+    });
+    const result = await loadCobros(client as never, {
+      desde: "2026-09-30",
+      hasta: "2026-09-30",
+      profesionalId: null,
+    });
+    expect(result.ok && result.data.isOwner).toBe(true);
+  });
+
+  it("knows the signed-in staff member is not the owner, so the page hides the professional filter", async () => {
+    const { client } = fakeClient({
+      directory: [
+        {
+          id: "self-1",
+          full_name: "Empleada",
+          role: "employee",
+          specialty_id: null,
+        },
+      ],
+      userId: "self-1",
+    });
+    const result = await loadCobros(client as never, {
+      desde: "2026-09-30",
+      hasta: "2026-09-30",
+      profesionalId: null,
+    });
+    expect(result.ok && result.data.isOwner).toBe(false);
   });
 
   it("maps a payment row and keeps voided payments in the list", async () => {
@@ -225,50 +287,9 @@ describe("loadCobros", () => {
         ],
         staffOptions: [],
         nameById: new Map(),
+        isOwner: false,
       },
     });
-  });
-
-  it("filters the payments to the chosen professional, so the totals reflect just their takings", async () => {
-    const { client } = fakeClient({
-      payments: [
-        {
-          id: "pay-1",
-          collected_at: "2026-09-30T09:00:00Z",
-          amount_cents: 4500,
-          method: "cash",
-          collected_by: "prof-1",
-          voided_at: null,
-          void_reason: "",
-          professional_id: "prof-1",
-          patient_id: "pat-1",
-          patient_name: "Marta Paciente",
-          service_name: "Consulta",
-        },
-        {
-          id: "pay-2",
-          collected_at: "2026-09-30T10:00:00Z",
-          amount_cents: 3000,
-          method: "card",
-          collected_by: "prof-2",
-          voided_at: null,
-          void_reason: "",
-          professional_id: "prof-2",
-          patient_id: "pat-2",
-          patient_name: "Otro Paciente",
-          service_name: "Consulta",
-        },
-      ],
-    });
-    const result = await loadCobros(client as never, {
-      desde: "2026-09-30",
-      hasta: "2026-09-30",
-      profesionalId: "prof-2",
-    });
-    expect(result.ok).toBe(true);
-    expect(result.ok && result.data.payments.map((p) => p.id)).toEqual([
-      "pay-2",
-    ]);
   });
 
   it("reports failure when any of the reads fails, instead of showing a partial or wrong reconciliation", async () => {

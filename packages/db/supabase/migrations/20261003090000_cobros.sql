@@ -27,8 +27,19 @@ alter table public.payments enable row level security;
 revoke all on public.payments from anon, authenticated;
 grant select on public.payments to authenticated;
 
-create policy "payments_select_active_staff" on public.payments
-  for select to authenticated using (public.is_active_staff());
+create policy "payments_select_own_or_owner" on public.payments
+  for select to authenticated
+  using (
+    public.is_active_staff()
+    and (
+      collected_by = auth.uid()
+      or exists (
+        select 1 from public.appointments a
+        where a.id = payments.appointment_id
+          and (public.is_owner() or a.professional_id = auth.uid())
+      )
+    )
+  );
 
 create or replace function public.suggested_amount(p_appointment_id uuid)
 returns integer
@@ -43,9 +54,12 @@ begin
   if not public.is_active_staff() then
     raise exception 'payment_forbidden' using errcode = '42501';
   end if;
-  select price_cents, payment_status, payment_amount_cents into appointment
+  select price_cents, payment_status, payment_amount_cents, professional_id into appointment
   from public.appointments where id = p_appointment_id;
   if not found then
+    raise exception 'appointment_not_found' using errcode = 'P0001';
+  end if;
+  if not (public.is_owner() or appointment.professional_id = auth.uid()) then
     raise exception 'appointment_not_found' using errcode = 'P0001';
   end if;
   return greatest(
@@ -78,9 +92,12 @@ begin
   if not public.is_active_staff() then
     raise exception 'payment_forbidden' using errcode = '42501';
   end if;
-  select starts_at, status, vat into appointment
+  select starts_at, status, vat, professional_id into appointment
   from public.appointments where id = p_appointment_id;
   if not found then
+    raise exception 'appointment_not_found' using errcode = 'P0001';
+  end if;
+  if not (public.is_owner() or appointment.professional_id = auth.uid()) then
     raise exception 'appointment_not_found' using errcode = 'P0001';
   end if;
   if p_amount_cents is null or p_amount_cents < 0 then
@@ -128,9 +145,20 @@ begin
   if not public.is_active_staff() then
     raise exception 'payment_forbidden' using errcode = '42501';
   end if;
-  select collected_at, collected_by, voided_at into payment
-  from public.payments where id = p_payment_id for update;
+  select p.collected_at, p.collected_by, p.voided_at, a.professional_id
+  into payment
+  from public.payments p
+  join public.appointments a on a.id = p.appointment_id
+  where p.id = p_payment_id
+  for update of p;
   if not found then
+    raise exception 'payment_not_found' using errcode = 'P0001';
+  end if;
+  if not (
+    public.is_owner()
+    or payment.collected_by = auth.uid()
+    or payment.professional_id = auth.uid()
+  ) then
     raise exception 'payment_not_found' using errcode = 'P0001';
   end if;
   if clean_reason = '' then
@@ -159,7 +187,11 @@ $$;
 revoke all on function public.void_payment(uuid, text) from public, anon;
 grant execute on function public.void_payment(uuid, text) to authenticated;
 
-create or replace function public.list_payments(p_start timestamptz, p_end timestamptz)
+create or replace function public.list_payments(
+  p_start timestamptz,
+  p_end timestamptz,
+  p_professional_id uuid default null
+)
 returns table (
   id uuid,
   collected_at timestamptz,
@@ -200,9 +232,11 @@ begin
     join public.people pe on pe.id = a.patient_id
     join public.services s on s.id = a.service_id
     where p.collected_at >= p_start and p.collected_at < p_end
+      and (p_professional_id is null or a.professional_id = p_professional_id)
+      and (public.is_owner() or a.professional_id = auth.uid() or p.collected_by = auth.uid())
     order by p.collected_at asc;
 end;
 $$;
 
-revoke all on function public.list_payments(timestamptz, timestamptz) from public, anon;
-grant execute on function public.list_payments(timestamptz, timestamptz) to authenticated;
+revoke all on function public.list_payments(timestamptz, timestamptz, uuid) from public, anon;
+grant execute on function public.list_payments(timestamptz, timestamptz, uuid) to authenticated;

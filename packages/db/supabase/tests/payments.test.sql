@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(57);
+select plan(64);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -175,8 +175,14 @@ reset role;
 select pg_temp.act_as('8a000000-0000-0000-0000-000000000002');
 select throws_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d4'), 'No me cuadra') $$,
-  'P0001', 'not_allowed',
-  'an employee cannot void a payment another employee took');
+  'P0001', 'payment_not_found',
+  'an employee who is neither the professional nor the collector cannot even find a colleague''s payment to void it');
+select throws_ok($$ select public.suggested_amount('8a000000-0000-0000-0000-0000000000d2') $$,
+  'P0001', 'appointment_not_found',
+  'an employee cannot see the proposed amount for a colleague''s appointment, so a stranger cannot learn it exists');
+select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-0000000000d2', 4500, 'cash', '') $$,
+  'P0001', 'appointment_not_found',
+  'an employee cannot charge a colleague''s appointment, only its own professional or the owner can');
 reset role;
 
 insert into public.people (id, first_name, last_name, birth_date, is_patient) values
@@ -197,32 +203,32 @@ where appointment_id = '8a000000-0000-0000-0000-0000000000e1';
 reset role;
 
 select pg_temp.act_as('8a000000-0000-0000-0000-000000000001');
+select is(
+  (select count(*) from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1'),
+  0::bigint,
+  'the payments table hides a colleague''s payment from an employee who is neither its professional nor its collector');
+select is(
+  (select count(*) from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'))
+   where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1')),
+  0::bigint,
+  'list_payments leaves out a colleague''s payment for an employee with no relationship to that appointment');
+reset role;
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000002');
 select results_eq(
   $$ select patient_name, service_name, professional_id, amount_cents, method::text, voided_at
      from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'))
      where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1') $$,
   $$ values ('Marta ListaCobros', 'Cobros con IVA', '8a000000-0000-0000-0000-000000000002'::uuid, 4500, 'transfer', null::timestamptz) $$,
-  'an employee reconciling the till sees a colleague''s payment in full, with the patient and service, not just her own appointments');
+  'an employee sees her own appointment''s payment in full, with the patient and service');
 select is(
   (select count(*) from public.list_payments(pg_temp.at_madrid(-2, '00:00'), pg_temp.at_madrid(-1, '00:00'))
    where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1')),
   0::bigint,
   'a range that does not cover the collection day leaves the payment out');
-reset role;
-
-select pg_temp.act_as('8a000000-0000-0000-0000-000000000002');
 select lives_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1'), 'Pagó en efectivo') $$,
-  'otra empleada voids her own payment the same day, for the list_payments scenario below');
-reset role;
-
-select pg_temp.act_as('8a000000-0000-0000-0000-000000000001');
-select results_eq(
-  $$ select voided_at is not null, void_reason
-     from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'))
-     where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1') $$,
-  $$ values (true, 'Pagó en efectivo') $$,
-  'a voided payment still appears in the list, with who and why, so the till shows it was cancelled rather than hiding it');
+  'otra empleada voids her own payment the same day, for the owner''s view below');
 reset role;
 
 select pg_temp.act_as('8a000000-0000-0000-0000-000000000001', 'aal1');
@@ -245,6 +251,24 @@ select throws_ok($$ select * from public.list_payments(pg_temp.at_madrid(0, '00:
 reset role;
 
 select pg_temp.act_as('8a000000-0000-0000-0000-000000000003');
+select is(public.suggested_amount('8a000000-0000-0000-0000-0000000000d2'), 4500,
+  'the owner can see the proposed amount for any professional''s appointment');
+select results_eq(
+  $$ select patient_name, voided_at is not null, void_reason
+     from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'))
+     where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1') $$,
+  $$ values ('Marta ListaCobros', true, 'Pagó en efectivo') $$,
+  'the owner sees any employee''s voided payment in the list, with who and why');
+select is(
+  (select count(*) from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'), '8a000000-0000-0000-0000-000000000001')
+   where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1')),
+  0::bigint,
+  'filtering the list by a different professional leaves out a payment that is not theirs');
+select is(
+  (select count(*) from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'), '8a000000-0000-0000-0000-000000000002')
+   where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1')),
+  1::bigint,
+  'filtering the list by the right professional includes the payment');
 select lives_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d4'), 'Revisión de caja') $$,
   'the owner can void a payment taken by anyone');

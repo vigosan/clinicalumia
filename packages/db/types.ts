@@ -921,7 +921,7 @@ export type Database = {
         Returns: undefined
       }
       list_payments: {
-        Args: { p_end: string; p_start: string }
+        Args: { p_end: string; p_professional_id?: string; p_start: string }
         Returns: {
           amount_cents: number
           collected_at: string

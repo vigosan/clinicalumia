@@ -15,9 +15,11 @@ import {
 export function CobrosFilters({
   params,
   staffOptions,
+  isOwner,
 }: {
   params: CobrosParams;
   staffOptions: StaffOption[];
+  isOwner: boolean;
 }) {
   const router = useRouter();
   const isSingleDay = params.desde === params.hasta;
@@ -72,22 +74,24 @@ export function CobrosFilters({
           onChange={(event) => go({ hasta: event.target.value })}
         />
       </Field>
-      <Field label="Profesional">
-        <Select
-          data-testid="payments-professional"
-          value={params.profesionalId ?? ""}
-          onChange={(event) =>
-            go({ profesionalId: event.target.value || null })
-          }
-        >
-          <option value="">Todo el equipo</option>
-          {staffOptions.map((staff) => (
-            <option key={staff.id} value={staff.id}>
-              {staff.fullName} · {staff.specialtyName ?? "Sin especialidad"}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {isOwner && (
+        <Field label="Profesional">
+          <Select
+            data-testid="payments-professional"
+            value={params.profesionalId ?? ""}
+            onChange={(event) =>
+              go({ profesionalId: event.target.value || null })
+            }
+          >
+            <option value="">Todo el equipo</option>
+            {staffOptions.map((staff) => (
+              <option key={staff.id} value={staff.id}>
+                {staff.fullName} · {staff.specialtyName ?? "Sin especialidad"}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
     </div>
   );
 }

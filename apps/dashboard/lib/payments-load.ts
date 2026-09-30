@@ -76,6 +76,7 @@ export type CobrosData = {
   payments: PaymentRow[];
   staffOptions: StaffOption[];
   nameById: Map<string, string>;
+  isOwner: boolean;
 };
 
 export type LoadCobrosResult = { ok: true; data: CobrosData } | { ok: false };
@@ -91,13 +92,22 @@ export async function loadCobros(
     { data: rows, error: paymentsError },
     { data: directory, error: directoryError },
     { data: specialties, error: specialtiesError },
+    {
+      data: { user },
+    },
   ] = await Promise.all([
-    supabase.rpc("list_payments", { p_start: start, p_end: end }),
+    supabase.rpc("list_payments", {
+      p_start: start,
+      p_end: end,
+      p_professional_id: profesionalId ?? undefined,
+    }),
     supabase.rpc("staff_directory"),
     supabase.from("specialties").select("id, name"),
+    supabase.auth.getUser(),
   ]);
 
-  if (paymentsError || directoryError || specialtiesError) return { ok: false };
+  if (paymentsError || directoryError || specialtiesError || !user)
+    return { ok: false };
 
   const specialtyNameById = new Map(
     (specialties ?? []).map((specialty) => [specialty.id, specialty.name]),
@@ -116,21 +126,23 @@ export async function loadCobros(
     staffOptions.map((option) => [option.id, option.fullName]),
   );
 
-  const payments: PaymentRow[] = (rows ?? [])
-    .filter((row) => !profesionalId || row.professional_id === profesionalId)
-    .map((row) => ({
-      id: row.id,
-      amountCents: row.amount_cents,
-      method: row.method as PaymentMethod,
-      collectedAt: row.collected_at,
-      collectedBy: row.collected_by,
-      voidedAt: row.voided_at,
-      voidReason: row.void_reason,
-      professionalId: row.professional_id,
-      patientId: row.patient_id,
-      patientName: row.patient_name,
-      serviceName: row.service_name,
-    }));
+  const isOwner =
+    (directory ?? []).find((profile) => profile.id === user.id)?.role ===
+    "owner";
 
-  return { ok: true, data: { payments, staffOptions, nameById } };
+  const payments: PaymentRow[] = (rows ?? []).map((row) => ({
+    id: row.id,
+    amountCents: row.amount_cents,
+    method: row.method as PaymentMethod,
+    collectedAt: row.collected_at,
+    collectedBy: row.collected_by,
+    voidedAt: row.voided_at,
+    voidReason: row.void_reason,
+    professionalId: row.professional_id,
+    patientId: row.patient_id,
+    patientName: row.patient_name,
+    serviceName: row.service_name,
+  }));
+
+  return { ok: true, data: { payments, staffOptions, nameById, isOwner } };
 }
