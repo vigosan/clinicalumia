@@ -66,6 +66,7 @@ export default async function ClinicPage() {
           nextNumber={mainSeries?.next_number ?? 1}
           years={years}
           rows={rowsOf("main")}
+          otherRows={rowsOf("rectifying")}
         />
         <InvoiceSeriesForm
           code="rectifying"
@@ -75,6 +76,7 @@ export default async function ClinicPage() {
           nextNumber={rectifyingSeries?.next_number ?? 1}
           years={years}
           rows={rowsOf("rectifying")}
+          otherRows={rowsOf("main")}
         />
       </div>
     </>

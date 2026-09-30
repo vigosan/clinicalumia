@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
-import { deleteInvoiceSeries } from "./invoices";
+import { deleteInvoiceSeries, lockNextYearInvoiceSeries } from "./invoices";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -276,5 +276,52 @@ test("the owner configures a future year of the main invoice series and sees the
     });
   } finally {
     deleteInvoiceSeries("main", year);
+  }
+});
+
+test("the owner sees why a format is refused before saving, and a year already in use cannot be edited", async ({
+  page,
+}) => {
+  const year = lockNextYearInvoiceSeries("rectifying", "E2E-L{n}/{aa}");
+  try {
+    await loginAsOwner(page);
+    await page.goto(`${ADMIN}/clinic`);
+    await expect(
+      page.getByTestId(`invoice-series-rectifying-summary-${year}`),
+    ).toHaveText(`${year}: próxima E2E-L6/${String(year).slice(-2)} · en uso`);
+
+    const main = page.getByTestId("invoice-series-main-form");
+    await main.getByTestId("invoice-series-main-year").fill(String(year + 4));
+    await main.getByTestId("invoice-series-main-format").fill("F-{n}");
+    await expect(page.getByTestId("invoice-series-main-preview")).toHaveText(
+      "Falta el año ({aa} o {año}).",
+    );
+    await expect(main.getByTestId("invoice-series-main-submit")).toBeDisabled();
+    await main.getByTestId("invoice-series-main-format").fill("E2E-L{n}/{aa}");
+    await expect(page.getByTestId("invoice-series-main-preview")).toHaveText(
+      "Da los mismos códigos que la otra serie. Usa una letra que las distinga, como R{n}/{aa}.",
+    );
+    await expect(main.getByTestId("invoice-series-main-submit")).toBeDisabled();
+
+    const rectifying = page.getByTestId("invoice-series-rectifying-form");
+    await rectifying
+      .getByTestId("invoice-series-rectifying-year")
+      .fill(String(year));
+    await expect(
+      page.getByTestId("invoice-series-rectifying-locked"),
+    ).toHaveText(
+      `La numeración de ${year} ya está en uso y no se puede cambiar.`,
+    );
+    await expect(
+      rectifying.getByTestId("invoice-series-rectifying-format"),
+    ).toBeDisabled();
+    await expect(
+      rectifying.getByTestId("invoice-series-rectifying-next-number"),
+    ).toBeDisabled();
+    await expect(
+      rectifying.getByTestId("invoice-series-rectifying-submit"),
+    ).toBeDisabled();
+  } finally {
+    deleteInvoiceSeries("rectifying", year);
   }
 });

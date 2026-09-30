@@ -9,6 +9,7 @@ import {
   formatInvoiceCode,
   type InvoiceSeriesCode,
   type InvoiceSeriesRow,
+  invoiceFormatProblem,
   seriesYearSummary,
 } from "@/lib/invoice-series";
 import { type SaveInvoiceSeriesState, saveInvoiceSeries } from "./actions";
@@ -21,6 +22,7 @@ export function InvoiceSeriesForm({
   nextNumber: initialNextNumber,
   years,
   rows,
+  otherRows,
 }: {
   code: InvoiceSeriesCode;
   title: string;
@@ -29,12 +31,20 @@ export function InvoiceSeriesForm({
   nextNumber: number;
   years: number[];
   rows: (InvoiceSeriesRow & { year: number })[];
+  otherRows: { year: number; format: string }[];
 }) {
   const [format, setFormat] = useState(initialFormat);
   const [year, setYear] = useState(initialYear);
   const [nextNumber, setNextNumber] = useState(initialNextNumber);
   const selectedRow = rows.find((row) => row.year === year);
   const isLockedYear = selectedRow?.locked ?? false;
+  const otherFormat =
+    otherRows
+      .filter((row) => row.year <= year)
+      .sort((a, b) => b.year - a.year)[0]?.format ?? null;
+  const problem = isLockedYear
+    ? null
+    : invoiceFormatProblem(format, otherFormat, year);
   const [state, formAction, pending] = useActionState<
     SaveInvoiceSeriesState,
     FormData
@@ -75,7 +85,7 @@ export function InvoiceSeriesForm({
       >
         <input type="hidden" name="code" value={code} />
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label={`Formato de ${title.toLowerCase()}`}>
+          <Field label="Formato">
             <Input
               name="format"
               data-testid={`invoice-series-${code}-format`}
@@ -85,7 +95,7 @@ export function InvoiceSeriesForm({
               required
             />
           </Field>
-          <Field label={`Año de ${title.toLowerCase()}`}>
+          <Field label="Año">
             <Input
               name="year"
               type="number"
@@ -105,7 +115,7 @@ export function InvoiceSeriesForm({
               required
             />
           </Field>
-          <Field label={`Siguiente número de ${title.toLowerCase()}`}>
+          <Field label="Siguiente número">
             <Input
               name="next_number"
               type="number"
@@ -120,9 +130,10 @@ export function InvoiceSeriesForm({
         </div>
         <p
           data-testid={`invoice-series-${code}-preview`}
-          className="text-[13px] text-ink-800"
+          className={`text-[13px] ${problem ? "text-danger-600" : "text-ink-800"}`}
         >
-          {`La próxima factura será ${formatInvoiceCode(format, year, nextNumber)}.`}
+          {problem ??
+            `La próxima factura será ${formatInvoiceCode(format, year, nextNumber)}.`}
         </p>
 
         {state && "error" in state && (
@@ -147,7 +158,7 @@ export function InvoiceSeriesForm({
         <div>
           <Button
             type="submit"
-            disabled={pending || isLockedYear}
+            disabled={pending || isLockedYear || problem !== null}
             data-testid={`invoice-series-${code}-submit`}
           >
             {pending ? "Guardando…" : "Guardar"}

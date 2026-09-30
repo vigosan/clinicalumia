@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatInvoiceCode,
+  invoiceFormatProblem,
   invoiceSeriesError,
   invoiceSetupWarnings,
   parseInvoiceSeries,
@@ -258,5 +259,62 @@ describe("seriesYearSummary", () => {
     expect(seriesYearSummary(2027, undefined)).toBe(
       "2027: seguirá el formato de 2026, empezando en 1",
     );
+  });
+});
+
+describe("invoiceFormatProblem", () => {
+  it("accepts the clinic's formats, so the owner can save them", () => {
+    expect(invoiceFormatProblem("{n}/{aa}", "R{n}/{aa}", 2026)).toBeNull();
+    expect(invoiceFormatProblem("F{año}-{n:4}", null, 2026)).toBeNull();
+  });
+
+  it("names the missing year, since the database refuses a format without it", () => {
+    expect(invoiceFormatProblem("F-{n}", null, 2026)).toBe(
+      "Falta el año ({aa} o {año}).",
+    );
+  });
+
+  it("names the missing number, or the extra one, since each invoice needs exactly one", () => {
+    expect(invoiceFormatProblem("F{aa}", null, 2026)).toBe(
+      "Falta el número ({n} o {n:4}).",
+    );
+    expect(invoiceFormatProblem("{n}-{n:2}/{aa}", null, 2026)).toBe(
+      "Solo puede haber un número ({n} o {n:4}).",
+    );
+  });
+
+  it("rejects unknown markers and paddings outside 1 to 8, as the database does", () => {
+    for (const format of ["{x}/{n}/{aa}", "{n:0}/{aa}", "{n:9}/{aa}"]) {
+      expect(invoiceFormatProblem(format, null, 2026)).toBe(
+        "Solo se admiten {n}, {n:1} a {n:8}, {aa} y {año}.",
+      );
+    }
+  });
+
+  it("rejects characters the codes cannot carry", () => {
+    expect(invoiceFormatProblem("{n}#{aa}", null, 2026)).toBe(
+      "Usa solo letras, números y los signos / _ . -",
+    );
+  });
+
+  it("rejects a format longer than 30 characters", () => {
+    expect(invoiceFormatProblem(`${"a".repeat(31)}{n}{aa}`, null, 2026)).toBe(
+      "El formato no puede pasar de 30 caracteres.",
+    );
+  });
+
+  it("asks for a format when the field is empty", () => {
+    expect(invoiceFormatProblem("  ", null, 2026)).toBe("Escribe el formato.");
+  });
+
+  it("refuses a format that can give the other series' codes, so no two invoices share a code", () => {
+    const conflict =
+      "Da los mismos códigos que la otra serie. Usa una letra que las distinga, como R{n}/{aa}.";
+    expect(invoiceFormatProblem("{n}/{aa}", "{n}/{aa}", 2026)).toBe(conflict);
+    expect(invoiceFormatProblem("{n:3}/{aa}", "{n}/{aa}", 2026)).toBe(conflict);
+    expect(invoiceFormatProblem("F{año}-9{n}", "F{año}-{n:4}", 2026)).toBe(
+      conflict,
+    );
+    expect(invoiceFormatProblem("{n}/{año}", "{n}/{aa}", 2026)).toBeNull();
   });
 });

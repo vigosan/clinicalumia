@@ -66,3 +66,37 @@ export function deleteInvoiceSeries(code: "main" | "rectifying", year: number) {
     },
   );
 }
+
+export function lockNextYearInvoiceSeries(
+  code: "main" | "rectifying",
+  format: string,
+) {
+  const year = new Date().getFullYear() + 1;
+  if (!/^[A-Za-z0-9/_.{}:ñ-]+$/.test(format))
+    throw new Error("Formato no válido para la prueba");
+  execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "supabase_db_clinicalumia",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-q",
+    ],
+    {
+      input: [
+        "begin;",
+        `insert into public.invoice_series (code, year, format, next_number, configured) values ('${code}', ${year}, '${format}', 5, true);`,
+        `select public.next_invoice_number('${code}', make_timestamptz(${year}, 6, 1, 12, 0, 0, 'Europe/Madrid'));`,
+        "commit;",
+      ].join("\n"),
+    },
+  );
+  return year;
+}

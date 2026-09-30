@@ -31,6 +31,56 @@ export function formatInvoiceCode(
   return result;
 }
 
+const NUMBER_MARKER = /\{n(?::[1-8])?\}/g;
+const KNOWN_MARKERS = /\{(?:año|aa|n|n:[1-8])\}/g;
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[^A-Za-z0-9]/g, "\\$&");
+}
+
+function codeShape(format: string, year: number): RegExp {
+  const withYear = format
+    .replaceAll("{año}", String(year))
+    .replaceAll("{aa}", String(year % 100).padStart(2, "0"));
+  const [prefix = "", suffix = ""] = withYear.split(/\{n(?::[1-8])?\}/);
+  return new RegExp(`^${escapeRegExp(prefix)}[0-9]+${escapeRegExp(suffix)}$`);
+}
+
+function formatsCollide(format: string, other: string, year: number) {
+  const shape = codeShape(format, year);
+  const otherShape = codeShape(other, year);
+  for (let number = 1; number <= 1000; number++) {
+    if (
+      otherShape.test(formatInvoiceCode(format, year, number)) ||
+      shape.test(formatInvoiceCode(other, year, number))
+    )
+      return true;
+  }
+  return false;
+}
+
+export function invoiceFormatProblem(
+  format: string,
+  otherFormat: string | null,
+  year: number,
+): string | null {
+  const trimmed = format.trim();
+  if (!trimmed) return "Escribe el formato.";
+  if (trimmed.length > 30) return "El formato no puede pasar de 30 caracteres.";
+  const rest = trimmed.replace(KNOWN_MARKERS, "");
+  if (/[{}]/.test(rest))
+    return "Solo se admiten {n}, {n:1} a {n:8}, {aa} y {año}.";
+  if (!/^[A-Za-z0-9/_.-]*$/.test(rest))
+    return "Usa solo letras, números y los signos / _ . -";
+  const numbers = trimmed.match(NUMBER_MARKER)?.length ?? 0;
+  if (numbers === 0) return "Falta el número ({n} o {n:4}).";
+  if (numbers > 1) return "Solo puede haber un número ({n} o {n:4}).";
+  if (!/\{(?:año|aa)\}/.test(trimmed)) return "Falta el año ({aa} o {año}).";
+  if (otherFormat && formatsCollide(trimmed, otherFormat, year))
+    return "Da los mismos códigos que la otra serie. Usa una letra que las distinga, como R{n}/{aa}.";
+  return null;
+}
+
 export function parseInvoiceSeries(
   formData: FormData,
 ): { ok: true; series: InvoiceSeriesInput } | { error: string } {

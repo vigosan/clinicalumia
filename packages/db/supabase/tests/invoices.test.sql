@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(208);
+select plan(209);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1002,7 +1002,11 @@ select lives_ok(
   'an unlocked series can be reconfigured, even lowering its next number, since nothing has used it yet');
 reset role;
 
-select (public.next_invoice_number('main', make_timestamptz(pg_temp.this_year() + 50, 6, 1, 12, 0, 0, 'Europe/Madrid'))).*;
+select results_eq(
+  $$ select invoice_number, invoice_code
+     from public.next_invoice_number('main', make_timestamptz(pg_temp.this_year() + 50, 6, 1, 12, 0, 0, 'Europe/Madrid')) $$,
+  $$ values (3, 'X-0003/' || right((pg_temp.this_year() + 50)::text, 2)) $$,
+  'the next invoice of a configured year takes exactly the format and number the owner saved');
 
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
 select throws_ok(
