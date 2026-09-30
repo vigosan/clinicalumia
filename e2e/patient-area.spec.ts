@@ -8,6 +8,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { collectAsStaff, deleteInvoicesOfAppointments } from "./invoices";
 import {
   latestCodeFor,
   latestEmailAttachments,
@@ -455,6 +456,36 @@ test("the cancel page of an appointment outside the window only gives the phone,
     "Fuera de plazo: llama al 614 552 808",
   );
   await expect(page.getByTestId("cancel-confirm")).toHaveCount(0);
+});
+
+test("an appointment already paid and invoiced is changed only by phone: Mi cuenta and the cancel page give the phone instead of the buttons", async ({
+  page,
+}) => {
+  const { email, place, web } = await patientWithAppointments("pagada");
+  collectAsStaff(place.professionalId, web.id, 4500);
+  try {
+    await page.goto(`${WEB}/mi-cuenta`);
+    await enterWithCode(page, email);
+    const paid = page.locator(`[data-appointment-id="${web.id}"]`);
+    await expect(paid).toContainText(
+      "Esta cita ya está pagada. Para cambiarla o cancelarla, llama a la clínica al 614 552 808.",
+    );
+    await expect(paid.getByTestId("account-reschedule")).toHaveCount(0);
+    await expect(paid.getByTestId("account-cancel")).toHaveCount(0);
+
+    await page.goto(`${WEB}/mi-cuenta/citas/${web.id}/cancelar`);
+    await expect(page.getByTestId("cancel-summary")).toContainText(
+      "Esta cita ya está pagada. Para cambiarla o cancelarla, llama a la clínica al 614 552 808.",
+    );
+    await expect(page.getByTestId("cancel-confirm")).toHaveCount(0);
+  } finally {
+    deleteInvoicesOfAppointments([web.id]);
+    const { error } = await admin
+      .from("payments")
+      .delete()
+      .eq("appointment_id", web.id);
+    expect(error).toBeNull();
+  }
 });
 
 test("the cancel page of another account's appointment does not exist for this account", async ({

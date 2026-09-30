@@ -39,6 +39,7 @@ function appointment(overrides: Partial<AppointmentRow> = {}): AppointmentRow {
     change_deadline: madridInstant("2026-10-06", "18:00"),
     can_change: true,
     can_reschedule: true,
+    invoiced: false,
     ...overrides,
   };
 }
@@ -51,6 +52,13 @@ describe("changeWindowText", () => {
     });
     expect(changeWindowText(row)).toBe(
       "Puedes cambiarla o cancelarla hasta el martes 6 a las 18:00",
+    );
+  });
+
+  it("tells the patient an already paid appointment is changed by phone, instead of pretending the deadline passed", () => {
+    const row = appointment({ can_change: false, invoiced: true });
+    expect(changeWindowText(row)).toBe(
+      `Esta cita ya está pagada. Para cambiarla o cancelarla, llama a la clínica al ${site.phone.display}.`,
     );
   });
 
@@ -271,7 +279,7 @@ describe("parseContactForm", () => {
 describe("accountError", () => {
   it("tells the patient to call when an already paid appointment can't be moved online, since changing it needs the clinic to correct the invoice", () => {
     expect(accountError({ message: "appointment_invoiced" })).toBe(
-      "Esta cita ya está pagada; llama a la clínica para cambiarla.",
+      `Esta cita ya está pagada. Para cambiarla o cancelarla, llama a la clínica al ${site.phone.display}.`,
     );
   });
 

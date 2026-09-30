@@ -694,8 +694,8 @@ select is(pg_get_function_result('public.my_people()'::regprocedure),
   'TABLE(id uuid, first_name text, last_name text, birth_date date, is_minor boolean, is_patient boolean, relation text)',
   'my_people never exposes an email or a phone, so a shared email does not leak contact data');
 select is(pg_get_function_result('public.my_appointments()'::regprocedure),
-  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean, can_reschedule boolean)',
-  'my_appointments never exposes notes or payment data');
+  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean, can_reschedule boolean, invoiced boolean)',
+  'my_appointments never exposes notes or payment amounts, only whether the appointment is invoiced');
 select is(has_function_privilege('anon', 'public.my_people()', 'execute'), false,
   'an anonymous visitor cannot list anybody''s people');
 select is(has_function_privilege('anon', 'public.my_appointments()', 'execute'), false,

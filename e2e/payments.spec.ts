@@ -270,7 +270,7 @@ test("una empleada no ve «Anular cobro» en el cobro que registró otra persona
   await expect(page.getByTestId("payment-void")).toHaveCount(0);
 });
 
-test("una cita futura se puede cobrar por adelantado y, ya facturada, no se puede mover sin anular antes el cobro", async ({
+test("una cita futura se puede cobrar por adelantado y, ya facturada, no se puede mover sin anular antes el cobro y al cancelarla se avisa de la factura", async ({
   page,
 }) => {
   const date = addDays(todayInMadrid(), 5);
@@ -295,6 +295,11 @@ test("una cita futura se puede cobrar por adelantado y, ya facturada, no se pued
       .getByTestId("appointment-action-error"),
   ).toHaveText(
     "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
+  );
+
+  await page.getByTestId("appointment-cancel").click();
+  await expect(page.getByTestId("cancel-invoiced-warning")).toHaveText(
+    "Esta cita está cobrada y facturada. Si hay que devolver el importe, anula el cobro (se emitirá una rectificativa).",
   );
 });
 

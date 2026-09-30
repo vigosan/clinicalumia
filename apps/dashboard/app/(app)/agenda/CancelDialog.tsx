@@ -9,7 +9,13 @@ import { useRef, useState, useTransition } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { cancelAppointment } from "../appointments/actions";
 
-export function CancelDialog({ appointmentId }: { appointmentId: string }) {
+export function CancelDialog({
+  appointmentId,
+  invoiced,
+}: {
+  appointmentId: string;
+  invoiced: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [by, setBy] = useState<"patient" | "clinic">("patient");
   const [reason, setReason] = useState("");
@@ -53,6 +59,16 @@ export function CancelDialog({ appointmentId }: { appointmentId: string }) {
       closeOnConfirm={false}
       onConfirm={handleConfirm}
     >
+      {invoiced && (
+        <p
+          role="alert"
+          data-testid="cancel-invoiced-warning"
+          className="text-[13px] text-ink-900"
+        >
+          Esta cita está cobrada y facturada. Si hay que devolver el importe,
+          anula el cobro (se emitirá una rectificativa).
+        </p>
+      )}
       <Field label="Cancelada por">
         <Select
           data-testid="cancel-by"

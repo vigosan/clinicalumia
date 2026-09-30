@@ -23,6 +23,7 @@ export type AppointmentRow = {
   change_deadline: string;
   can_change: boolean;
   can_reschedule: boolean;
+  invoiced: boolean;
 };
 
 export function splitAppointments(
@@ -53,9 +54,13 @@ function changeDeadlineText(instant: string): string {
   return `el ${weekday} ${day} a las ${time}`;
 }
 
+const PAID_APPOINTMENT_TEXT = `Esta cita ya está pagada. Para cambiarla o cancelarla, llama a la clínica al ${site.phone.display}.`;
+
 export function changeWindowText(
-  row: Pick<AppointmentRow, "can_change" | "change_deadline">,
+  row: Pick<AppointmentRow, "can_change" | "change_deadline"> &
+    Partial<Pick<AppointmentRow, "invoiced">>,
 ): string {
+  if (row.invoiced) return PAID_APPOINTMENT_TEXT;
   if (!row.can_change) return `Fuera de plazo: llama al ${site.phone.display}`;
   return `Puedes cambiarla o cancelarla hasta ${changeDeadlineText(row.change_deadline)}`;
 }
@@ -103,8 +108,7 @@ const ACCOUNT_MESSAGE_BY_CODE: Record<string, string> = {
   appointment_not_in_account: "Esa cita no está en tu cuenta.",
   outside_change_window: `Ya no se puede cambiar desde la web. Llama al ${site.phone.display}.`,
   slot_not_available: "Ese hueco ya no está libre. Elige otro.",
-  appointment_invoiced:
-    "Esta cita ya está pagada; llama a la clínica para cambiarla.",
+  appointment_invoiced: PAID_APPOINTMENT_TEXT,
   person_not_in_account: "Esa persona no está en tu cuenta.",
   invalid_phone: "Escribe un teléfono válido.",
   address_too_long: "La dirección es demasiado larga.",

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(97);
+select plan(100);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -86,8 +86,8 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 select is(pg_get_function_result('public.my_appointments()'::regprocedure),
-  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean, can_reschedule boolean)',
-  'my_appointments gives the web what it needs to offer changes, and still never exposes notes, reasons or payment data');
+  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean, can_reschedule boolean, invoiced boolean)',
+  'my_appointments gives the web what it needs to offer changes, and only says whether an appointment is already invoiced, never notes, reasons or amounts');
 select is((select prosecdef from pg_proc where oid = 'public.reschedule_my_appointment(uuid, timestamptz)'::regprocedure), true,
   'reschedule runs as definer because patients cannot touch appointments directly');
 select is((select prosecdef from pg_proc where oid = 'public.cancel_my_appointment(uuid)'::regprocedure), true,
@@ -340,8 +340,16 @@ select is((select starts_at || '/' || ends_at from public.appointments where id 
 select pg_temp.act_as('87000000-0000-0000-0000-000000000002');
 select public.collect_payment('87000000-0000-0000-0000-0000000000d5', 3000, 'card', '');
 select pg_temp.act_as_patient('87000000-0000-0000-0000-000000000010');
+select results_eq(
+  $$ select can_change, can_reschedule, invoiced from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d5' $$,
+  $$ values (false, false, true) $$,
+  'the web stops offering changes for an appointment already paid and invoiced, and can say why');
 select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, '87000000-0000-0000-0000-0000000000d5', pg_temp.at_day3('10:00')),
-  '23514', 'appointment_invoiced', 'an appointment already paid and invoiced cannot be moved from the web, since the invoice states its date');
+  'P0001', 'appointment_invoiced', 'an appointment already paid and invoiced cannot be moved from the web, since the invoice states its date');
+select throws_ok(format($$ select public.cancel_my_appointment(%L) $$, '87000000-0000-0000-0000-0000000000d5'),
+  'P0001', 'appointment_invoiced', 'nor cancelled from the web, since returning the money needs the clinic to issue a rectifying invoice');
+select is((select invoiced from public.my_appointments() where id = '87000000-0000-0000-0000-0000000000d6'), false,
+  'an appointment without an invoice is not marked as invoiced');
 reset role;
 
 select set_config('request.jwt.claims', '', true);

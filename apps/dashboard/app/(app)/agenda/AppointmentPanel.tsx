@@ -230,7 +230,10 @@ export function AppointmentPanel({
         appointment.canRestore) && (
         <div className="flex flex-wrap gap-2 border-line border-t pt-4">
           {appointment.canCancel && (
-            <CancelDialog appointmentId={appointment.id} />
+            <CancelDialog
+              appointmentId={appointment.id}
+              invoiced={appointment.invoice !== null}
+            />
           )}
           {appointment.canMarkNoShow && (
             <ConfirmDialog

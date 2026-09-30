@@ -1018,6 +1018,10 @@ export type Database = {
         Args: { p_invoice_id: string; p_type: string }
         Returns: undefined
       }
+      appointment_is_invoiced: {
+        Args: { p_appointment_id: string }
+        Returns: boolean
+      }
       available_slots: {
         Args: {
           p_from: string
@@ -1228,6 +1232,7 @@ export type Database = {
           change_deadline: string
           ends_at: string
           id: string
+          invoiced: boolean
           origin: Database["public"]["Enums"]["appointment_origin"]
           person_id: string
           person_name: string
