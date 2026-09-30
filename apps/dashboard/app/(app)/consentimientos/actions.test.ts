@@ -15,6 +15,9 @@ vi.mock("@clinicalumia/api/server", () => ({
 
 const { revalidatePath } = await import("next/cache");
 const { linkConsent, unlinkConsent } = await import("./actions");
+const { consentLinkErrorCode, CONSENT_LINK_ERROR_MESSAGES } = await import(
+  "@/lib/consent-link-error"
+);
 
 beforeEach(() => {
   rpcResult.error = null;
@@ -73,6 +76,24 @@ describe("linkConsent", () => {
     expect(await linkConsent(CONSENT_ID, PERSON_ID)).toEqual({
       error: "No se ha podido guardar.",
     });
+  });
+
+  it("returns only messages from the shared map, so creating a record from a consent can redirect with the matching code", async () => {
+    const cases = [
+      [{ code: "42501", message: "consent_forbidden" }, "permission"],
+      [{ code: "P0001", message: "person_not_found" }, "person-not-found"],
+      [{ code: "P0001", message: "consent_not_found" }, "consent-not-found"],
+      [{ code: "P0001", message: "consent_already_linked" }, "already-linked"],
+      [{ code: "XX000", message: "boom" }, "unknown"],
+    ] as const;
+    for (const [error, code] of cases) {
+      rpcResult.error = error;
+      const result = await linkConsent(CONSENT_ID, PERSON_ID);
+      expect(result).toEqual({ error: CONSENT_LINK_ERROR_MESSAGES[code] });
+      expect(consentLinkErrorCode((result as { error: string }).error)).toBe(
+        code,
+      );
+    }
   });
 
   it("rejects ids that are not uuids without asking the database", async () => {

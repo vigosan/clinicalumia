@@ -4,16 +4,20 @@ import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
 import { isUuid } from "@/lib/agenda";
+import {
+  CONSENT_LINK_ERROR_MESSAGES,
+  type ConsentLinkErrorCode,
+} from "@/lib/consent-link-error";
 
-function consentError(error: { code?: string; message?: string }): string {
-  if (error.code === "42501") return "No tienes permiso para hacer esto.";
-  if (error.message === "person_not_found")
-    return "Esa ficha ya no existe o está archivada.";
-  if (error.message === "consent_not_found")
-    return "Ese consentimiento ya no existe.";
-  if (error.message === "consent_already_linked")
-    return "Este consentimiento ya está asociado.";
-  return "No se ha podido guardar.";
+function consentError(error: {
+  code?: string;
+  message?: string;
+}): ConsentLinkErrorCode {
+  if (error.code === "42501") return "permission";
+  if (error.message === "person_not_found") return "person-not-found";
+  if (error.message === "consent_not_found") return "consent-not-found";
+  if (error.message === "consent_already_linked") return "already-linked";
+  return "unknown";
 }
 
 function revalidateConsent(consentId: string) {
@@ -26,7 +30,7 @@ export async function linkConsent(
   personId: string,
 ): Promise<ActionResult> {
   if (!isUuid(consentId) || !isUuid(personId))
-    return { error: "No se ha podido guardar." };
+    return { error: CONSENT_LINK_ERROR_MESSAGES.unknown };
   const supabase = await createClient();
   const { error } = await supabase.rpc("link_consent", {
     p_consent_id: consentId,
@@ -35,19 +39,19 @@ export async function linkConsent(
   if (error) {
     if (error.message === "consent_already_linked")
       revalidateConsent(consentId);
-    return { error: consentError(error) };
+    return { error: CONSENT_LINK_ERROR_MESSAGES[consentError(error)] };
   }
   revalidateConsent(consentId);
   return { ok: true };
 }
 
 export async function unlinkConsent(consentId: string): Promise<ActionResult> {
-  if (!isUuid(consentId)) return { error: "No se ha podido guardar." };
+  if (!isUuid(consentId)) return { error: CONSENT_LINK_ERROR_MESSAGES.unknown };
   const supabase = await createClient();
   const { error } = await supabase.rpc("unlink_consent", {
     p_consent_id: consentId,
   });
-  if (error) return { error: consentError(error) };
+  if (error) return { error: CONSENT_LINK_ERROR_MESSAGES[consentError(error)] };
   revalidateConsent(consentId);
   return { ok: true };
 }
