@@ -1135,6 +1135,7 @@ export type Database = {
       invoice_hash: { Args: { p_canonical: string }; Returns: string }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      is_valid_invoice_format: { Args: { p_format: string }; Returns: boolean }
       is_valid_spanish_tax_id: { Args: { p_value: string }; Returns: boolean }
       issue_full_invoice: {
         Args: { p_invoice_id: string; p_recipient: Json }
@@ -1316,6 +1317,15 @@ export type Database = {
       revoke_user_sessions: { Args: { target: string }; Returns: undefined }
       set_employee_schedule: {
         Args: { blocks: Json; target: string }
+        Returns: undefined
+      }
+      set_invoice_series: {
+        Args: {
+          p_code: Database["public"]["Enums"]["invoice_series_code"]
+          p_format: string
+          p_next_number: number
+          p_year: number
+        }
         Returns: undefined
       }
       staff_directory: {

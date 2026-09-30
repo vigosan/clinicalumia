@@ -3,6 +3,21 @@ create type public.invoice_kind as enum ('simplified', 'full', 'rectifying');
 create type public.invoice_status as enum ('issued', 'replaced');
 create type public.invoice_record_kind as enum ('alta', 'anulacion');
 
+create or replace function public.is_valid_invoice_format(p_format text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select p_format is not null
+    and char_length(p_format) between 1 and 30
+    and p_format ~ '\{(año|aa)\}'
+    and (select count(*) from regexp_matches(p_format, '\{n(:[1-8])?\}', 'g')) = 1
+    and regexp_replace(p_format, '\{(año|aa|n|n:[1-8])\}', '', 'g') ~ '^[A-Za-z0-9/_.-]*$'
+$$;
+
+revoke all on function public.is_valid_invoice_format(text) from public, anon, authenticated, service_role;
+
 create or replace function public.format_invoice_code(p_format text, p_year integer, p_number integer)
 returns text
 language plpgsql
@@ -13,14 +28,14 @@ declare
   result text;
   width text;
 begin
-  if p_format is null or p_format !~ '\{n(:[1-9])?\}' then
+  if not public.is_valid_invoice_format(p_format) then
     raise exception 'invoice_format_invalid' using errcode = 'P0001';
   end if;
   result := replace(
     replace(replace(p_format, '{año}', p_year::text), '{aa}', lpad((p_year % 100)::text, 2, '0')),
     '{n}', p_number::text
   );
-  for width in select m[1] from regexp_matches(result, '\{n:([1-9])\}', 'g') as m loop
+  for width in select m[1] from regexp_matches(result, '\{n:([1-8])\}', 'g') as m loop
     result := replace(result, '{n:' || width || '}',
       lpad(p_number::text, greatest(width::integer, length(p_number::text)), '0'));
   end loop;
@@ -74,7 +89,7 @@ revoke all on function public.invoice_alta_canonical(text, text, date, text, int
 create table public.invoice_series (
   code public.invoice_series_code not null,
   year integer not null check (year between 2000 and 2999),
-  format text not null check (char_length(format) <= 40 and public.format_invoice_code(format, year, 1) <> ''),
+  format text not null check (public.format_invoice_code(format, year, 1) <> ''),
   next_number integer not null default 1 check (next_number >= 1),
   locked boolean not null default false,
   primary key (code, year)
@@ -86,11 +101,75 @@ insert into public.invoice_series (code, year, format) values
 
 alter table public.invoice_series enable row level security;
 
-revoke all on public.invoice_series from anon, authenticated;
-grant select on public.invoice_series to authenticated;
+revoke all on public.invoice_series from anon, authenticated, service_role;
+grant select on public.invoice_series to authenticated, service_role;
 
 create policy "invoice_series_select_active_staff" on public.invoice_series
   for select to authenticated using (public.is_active_staff());
+
+comment on column public.clinic_settings.invoice_prefix is 'no se usa; sustituido por invoice_series (pieza 5a)';
+comment on column public.clinic_settings.rectifying_prefix is 'no se usa; sustituido por invoice_series (pieza 5a)';
+
+create or replace function public.invoice_series_guard()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    if not old.locked
+      or (new.locked and new.next_number >= old.next_number and new.format = old.format) then
+      return new;
+    end if;
+  end if;
+  raise exception 'invoice_series_immutable' using errcode = 'P0001';
+end;
+$$;
+
+create trigger invoice_series_immutable
+  before update or delete on public.invoice_series
+  for each row execute function public.invoice_series_guard();
+create trigger invoice_series_no_truncate
+  before truncate on public.invoice_series
+  for each statement execute function public.invoice_series_guard();
+
+create or replace function public.set_invoice_series(
+  p_code public.invoice_series_code,
+  p_format text,
+  p_year integer,
+  p_next_number integer
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  existing public.invoice_series;
+begin
+  if not public.is_owner() then
+    raise exception 'invoice_forbidden' using errcode = '42501';
+  end if;
+  if not public.is_valid_invoice_format(p_format) then
+    raise exception 'format_invalid' using errcode = 'P0001';
+  end if;
+  if p_next_number is null or p_next_number < 1 then
+    raise exception 'number_invalid' using errcode = 'P0001';
+  end if;
+  select * into existing from public.invoice_series where code = p_code and year = p_year for update;
+  if found and existing.locked then
+    raise exception 'series_locked' using errcode = 'P0001';
+  end if;
+  insert into public.invoice_series (code, year, format, next_number)
+  values (p_code, p_year, p_format, p_next_number)
+  on conflict (code, year) do update
+    set format = excluded.format,
+        next_number = excluded.next_number;
+end;
+$$;
+
+revoke all on function public.set_invoice_series(public.invoice_series_code, text, integer, integer) from public, anon;
+grant execute on function public.set_invoice_series(public.invoice_series_code, text, integer, integer) to authenticated;
 
 create table public.invoices (
   id uuid primary key default gen_random_uuid(),

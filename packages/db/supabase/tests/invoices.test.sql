@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(170);
+select plan(189);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -73,6 +73,16 @@ select is(public.format_invoice_code('F{año}-{n:4}', 2026, 12345), 'F2026-12345
   'a number longer than its padding is never cut, so two invoices can never share a code');
 select throws_ok($$ select public.format_invoice_code('F{año}', 2026, 1) $$, 'P0001', 'invoice_format_invalid',
   'a format without the number would give every invoice of the year the same code');
+select throws_ok($$ select public.format_invoice_code('{n:0}/{aa}', 2026, 1) $$, 'P0001', 'invoice_format_invalid',
+  'a zero-width padding is not a valid placeholder');
+select throws_ok($$ select public.format_invoice_code('{n:9}/{aa}', 2026, 1) $$, 'P0001', 'invoice_format_invalid',
+  'padding wider than 8 digits is refused, since Verifactu codes stay short');
+select throws_ok($$ select public.format_invoice_code('{x}/{n}/{aa}', 2026, 1) $$, 'P0001', 'invoice_format_invalid',
+  'an unknown placeholder is refused rather than left untouched in the code');
+select throws_ok($$ select public.format_invoice_code('{n}#{aa}', 2026, 1) $$, 'P0001', 'invoice_format_invalid',
+  'a character outside letters, digits and the usual separators is refused');
+select throws_ok($$ select public.format_invoice_code(repeat('a', 31) || '{n}{aa}', 2026, 1) $$, 'P0001', 'invoice_format_invalid',
+  'a format longer than 30 characters is refused');
 
 select results_eq(
   $$ select code::text, format from public.invoice_series where year = pg_temp.this_year() order by code $$,
@@ -395,6 +405,10 @@ select throws_ok($$ insert into public.invoice_records (invoice_id, kind, genera
   'the service key cannot append records to the chain');
 select throws_ok($$ select public.issue_simplified_invoice('8b000000-0000-0000-0000-0000000000e6') $$, '42501', null,
   'the service key cannot issue invoices outside a payment');
+select throws_ok($$ update public.invoice_series set next_number = 1 $$, '42501', null,
+  'the service key cannot rewrite the invoice numbering either');
+select throws_ok($$ delete from public.invoice_series $$, '42501', null,
+  'the service key cannot delete the invoice numbering rows');
 reset role;
 
 select lives_ok(
@@ -920,6 +934,63 @@ select pg_temp.act_as_patient('8b000000-0000-0000-0000-000000000010');
 select throws_ok($$ select public.record_invoice_email(pg_temp.id_of('f9'), 'x@y.test') $$, '42501', null,
   'a patient cannot record invoice emails');
 reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.set_invoice_series('main', 'X{n}/{aa}', pg_temp.this_year() + 50, 1) $$,
+  '42501', null,
+  'a professional cannot configure the invoice numbering, only the owner can');
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select throws_ok(
+  $$ select public.set_invoice_series('main', 'Factura {aa}', pg_temp.this_year() + 50, 1) $$,
+  'P0001', 'format_invalid',
+  'the owner cannot configure a series with a format that has no number placeholder');
+select throws_ok(
+  $$ select public.set_invoice_series('main', '{n:0}/{aa}', pg_temp.this_year() + 50, 1) $$,
+  'P0001', 'format_invalid',
+  'a zero-width placeholder is refused when configuring the series too');
+select throws_ok(
+  $$ select public.set_invoice_series('main', '{n}/{aa}', pg_temp.this_year() + 50, 0) $$,
+  'P0001', 'number_invalid',
+  'the next number configured for a series must be at least 1');
+select lives_ok(
+  $$ select public.set_invoice_series('main', 'X-{n:3}/{aa}', pg_temp.this_year() + 50, 7) $$,
+  'the owner configures a fresh future year of the main series with a custom format and starting number');
+select results_eq(
+  $$ select format, next_number, locked from public.invoice_series
+     where code = 'main' and year = pg_temp.this_year() + 50 $$,
+  $$ values ('X-{n:3}/{aa}', 7, false) $$,
+  'the configured series is saved exactly as given and stays unlocked until its first invoice');
+select lives_ok(
+  $$ select public.set_invoice_series('main', 'X-{n:4}/{aa}', pg_temp.this_year() + 50, 3) $$,
+  'an unlocked series can be reconfigured, even lowering its next number, since nothing has used it yet');
+reset role;
+
+select (public.next_invoice_number('main', make_timestamptz(pg_temp.this_year() + 50, 6, 1, 12, 0, 0, 'Europe/Madrid'))).*;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select throws_ok(
+  $$ select public.set_invoice_series('main', 'X-{n:4}/{aa}', pg_temp.this_year() + 50, 9) $$,
+  'P0001', 'series_locked',
+  'once the future series has issued its first invoice, the owner can no longer change its numbering');
+reset role;
+
+select throws_ok(
+  $$ update public.invoice_series set next_number = 1 where code = 'main' and year = pg_temp.this_year() + 50 $$,
+  'P0001', 'invoice_series_immutable',
+  'a locked series''s next number can never be rewound, even by a direct update');
+select throws_ok(
+  $$ update public.invoice_series set locked = false where code = 'main' and year = pg_temp.this_year() + 50 $$,
+  'P0001', 'invoice_series_immutable',
+  'a locked series can never be unlocked again');
+select throws_ok(
+  $$ delete from public.invoice_series where code = 'main' and year = pg_temp.this_year() + 50 $$,
+  'P0001', 'invoice_series_immutable',
+  'a series row is never deleted, even by the database owner');
+select throws_ok($$ truncate public.invoice_series $$, 'P0001', 'invoice_series_immutable',
+  'the series cannot be wiped in bulk either');
 
 select * from finish();
 rollback;

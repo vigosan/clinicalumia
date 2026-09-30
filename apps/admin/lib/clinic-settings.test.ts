@@ -16,8 +16,6 @@ function form(values: Record<string, string>) {
     vat_exemption_text:
       "Operación exenta de IVA según el artículo 20.Uno.3º de la Ley 37/1992, del Impuesto sobre el Valor Añadido.",
     invoice_footer: "",
-    invoice_prefix: "",
-    rectifying_prefix: "R",
     cancellation_hours: "24",
     booking_min_notice_hours: "24",
     booking_horizon_days: "60",
@@ -46,8 +44,6 @@ describe("parseClinicSettings", () => {
         vat_exemption_text:
           "Operación exenta de IVA según el artículo 20.Uno.3º de la Ley 37/1992, del Impuesto sobre el Valor Añadido.",
         invoice_footer: "",
-        invoice_prefix: "",
-        rectifying_prefix: "R",
         cancellation_hours: 24,
         booking_min_notice_hours: 24,
         booking_horizon_days: 60,

@@ -15,8 +15,6 @@ export type ClinicSettingsInput = {
   website: string;
   vat_exemption_text: string;
   invoice_footer: string;
-  invoice_prefix: string;
-  rectifying_prefix: string;
   cancellation_hours: number;
   booking_min_notice_hours: number;
   booking_horizon_days: number;
@@ -40,8 +38,6 @@ export function parseClinicSettings(
   const website = text(formData, "website");
   const vatExemptionText = text(formData, "vat_exemption_text");
   const invoiceFooter = text(formData, "invoice_footer");
-  const invoicePrefix = text(formData, "invoice_prefix");
-  const rectifyingPrefix = text(formData, "rectifying_prefix");
   const cancellationHoursText = text(formData, "cancellation_hours");
   const cancellationHours = Number(cancellationHoursText);
   const bookingMinNoticeHoursText = text(formData, "booking_min_notice_hours");
@@ -106,8 +102,6 @@ export function parseClinicSettings(
           : website,
       vat_exemption_text: vatExemptionText,
       invoice_footer: invoiceFooter,
-      invoice_prefix: invoicePrefix,
-      rectifying_prefix: rectifyingPrefix,
       cancellation_hours: cancellationHours,
       booking_min_notice_hours: bookingMinNoticeHours,
       booking_horizon_days: bookingHorizonDays,

@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
+import { deleteInvoiceSeries } from "./invoices";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -238,4 +239,36 @@ test("uploading a logo over 2 MB shows a clear error instead of crashing", async
     "El logo no puede pesar más de 2 MB.",
   );
   expect(pageErrors).toHaveLength(0);
+});
+
+test("the owner configures a future year of the main invoice series and sees the preview and the saved numbering", async ({
+  page,
+}) => {
+  const year = new Date().getFullYear() + 5;
+  try {
+    await loginAsOwner(page);
+    await page.goto(`${ADMIN}/clinic`);
+    const form = page.getByTestId("invoice-series-main-form");
+    await form.getByTestId("invoice-series-main-year").fill(String(year));
+    await form.getByTestId("invoice-series-main-format").fill("E2E-{n:3}/{aa}");
+    await form.getByTestId("invoice-series-main-next-number").fill("7");
+    await expect(page.getByTestId("invoice-series-main-preview")).toHaveText(
+      `La próxima factura será E2E-007/${String(year).slice(-2)}.`,
+    );
+    await form.getByTestId("invoice-series-main-submit").click();
+    await expect(page.getByTestId("invoice-series-main-saved")).toBeVisible();
+    const { data: saved } = await admin
+      .from("invoice_series")
+      .select("format, next_number, locked")
+      .eq("code", "main")
+      .eq("year", year)
+      .single();
+    expect(saved).toEqual({
+      format: "E2E-{n:3}/{aa}",
+      next_number: 7,
+      locked: false,
+    });
+  } finally {
+    deleteInvoiceSeries("main", year);
+  }
 });

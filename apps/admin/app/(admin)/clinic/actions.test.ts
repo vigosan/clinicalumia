@@ -12,6 +12,11 @@ const selectSingle = vi.fn(
 );
 const upload = vi.fn(async () => ({ error: null }));
 const remove = vi.fn(async () => ({ error: null }));
+const rpc = vi.fn(
+  async (): Promise<{ error: null | { code?: string; message?: string } }> => ({
+    error: null,
+  }),
+);
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
@@ -21,13 +26,16 @@ vi.mock("@clinicalumia/api/server", () => ({
       select: () => ({ eq: () => ({ single: selectSingle }) }),
     }),
     storage: { from: () => ({ upload, remove }) },
+    rpc,
   }),
 }));
 vi.mock("@clinicalumia/api/auth", () => ({
   requireOwner: async () => ownerResult,
 }));
 
-const { saveClinicSettings, uploadLogo } = await import("./actions");
+const { saveClinicSettings, uploadLogo, saveInvoiceSeries } = await import(
+  "./actions"
+);
 
 function clinicForm(overrides: Record<string, string> = {}) {
   const data = new FormData();
@@ -43,8 +51,6 @@ function clinicForm(overrides: Record<string, string> = {}) {
     website: "https://www.clinicalumia.es",
     vat_exemption_text: "Exento",
     invoice_footer: "",
-    invoice_prefix: "",
-    rectifying_prefix: "R",
     cancellation_hours: "24",
     booking_min_notice_hours: "24",
     booking_horizon_days: "60",
@@ -155,5 +161,72 @@ describe("uploadLogo", () => {
     await uploadLogo(undefined, logoForm(pngFile(100)));
     expect(remove).toHaveBeenCalledTimes(1);
     expect(remove).toHaveBeenCalledWith(["logo-111.png"]);
+  });
+});
+
+function invoiceSeriesForm(overrides: Record<string, string> = {}) {
+  const data = new FormData();
+  const defaults: Record<string, string> = {
+    code: "main",
+    format: "{n}/{aa}",
+    year: "2026",
+    next_number: "35",
+  };
+  for (const [key, value] of Object.entries({ ...defaults, ...overrides })) {
+    data.set(key, value);
+  }
+  return data;
+}
+
+describe("saveInvoiceSeries", () => {
+  beforeEach(() => {
+    ownerResult = owner;
+    rpc.mockClear();
+    rpc.mockImplementation(async () => ({ error: null }));
+  });
+
+  it("refuses to save for a non-owner and never calls the numbering function", async () => {
+    ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
+    expect(await saveInvoiceSeries(undefined, invoiceSeriesForm())).toEqual({
+      error: "No tienes permiso para hacer esto.",
+    });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("returns the parser's error for an invalid form without touching the database", async () => {
+    expect(
+      await saveInvoiceSeries(
+        undefined,
+        invoiceSeriesForm({ next_number: "0" }),
+      ),
+    ).toEqual({ error: "El siguiente número debe ser 1 o mayor." });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("calls set_invoice_series with the parsed series", async () => {
+    await saveInvoiceSeries(undefined, invoiceSeriesForm());
+    expect(rpc).toHaveBeenCalledWith("set_invoice_series", {
+      p_code: "main",
+      p_format: "{n}/{aa}",
+      p_year: 2026,
+      p_next_number: 35,
+    });
+  });
+
+  it("names the locked year in the error, instead of a generic database message", async () => {
+    rpc.mockImplementation(async () => ({
+      error: { code: "P0001", message: "series_locked" },
+    }));
+    expect(
+      await saveInvoiceSeries(undefined, invoiceSeriesForm({ year: "2026" })),
+    ).toEqual({
+      error: "La numeración de 2026 ya está en uso y no se puede cambiar.",
+    });
+  });
+
+  it("confirms the save", async () => {
+    expect(await saveInvoiceSeries(undefined, invoiceSeriesForm())).toEqual({
+      ok: true,
+    });
   });
 });

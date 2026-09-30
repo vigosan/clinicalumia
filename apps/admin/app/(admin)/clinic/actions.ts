@@ -4,6 +4,7 @@ import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import { parseClinicSettings } from "@/lib/clinic-settings";
+import { invoiceSeriesError, parseInvoiceSeries } from "@/lib/invoice-series";
 import { LOGO_EXTENSIONS, validateLogoFile } from "@/lib/logo";
 
 export type SaveClinicSettingsState =
@@ -11,6 +12,10 @@ export type SaveClinicSettingsState =
   | { ok: true }
   | undefined;
 export type UploadLogoState = { error: string } | { ok: true } | undefined;
+export type SaveInvoiceSeriesState =
+  | { error: string }
+  | { ok: true }
+  | undefined;
 
 export async function saveClinicSettings(
   _prev: SaveClinicSettingsState,
@@ -28,6 +33,29 @@ export async function saveClinicSettings(
     .update(parsed.settings)
     .eq("id", true);
   if (error) return { error: "No se han podido guardar los datos." };
+
+  revalidatePath("/clinic");
+  return { ok: true };
+}
+
+export async function saveInvoiceSeries(
+  _prev: SaveInvoiceSeriesState,
+  formData: FormData,
+): Promise<SaveInvoiceSeriesState> {
+  const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
+  const parsed = parseInvoiceSeries(formData);
+  if ("error" in parsed) return parsed;
+
+  const { error } = await supabase.rpc("set_invoice_series", {
+    p_code: parsed.series.code,
+    p_format: parsed.series.format,
+    p_year: parsed.series.year,
+    p_next_number: parsed.series.next_number,
+  });
+  if (error) return { error: invoiceSeriesError(error, parsed.series.year) };
 
   revalidatePath("/clinic");
   return { ok: true };

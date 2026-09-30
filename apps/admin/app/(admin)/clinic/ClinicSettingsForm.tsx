@@ -20,8 +20,6 @@ type ClinicSettings = {
   website: string;
   vat_exemption_text: string;
   invoice_footer: string;
-  invoice_prefix: string;
-  rectifying_prefix: string;
   cancellation_hours: number;
   booking_min_notice_hours: number;
   booking_horizon_days: number;
@@ -101,23 +99,6 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
 
       <Card className="flex flex-col gap-4">
         <h2 className="text-lg font-bold text-ink-900">Facturas y reservas</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Prefijo de las facturas"
-            hint="Opcional. La numeración será AAAA-0001 precedida de este prefijo."
-          >
-            <Input
-              name="invoice_prefix"
-              defaultValue={settings.invoice_prefix}
-            />
-          </Field>
-          <Field label="Prefijo de las rectificativas">
-            <Input
-              name="rectifying_prefix"
-              defaultValue={settings.rectifying_prefix}
-            />
-          </Field>
-        </div>
         <Field label="Texto de exención de IVA">
           <Textarea
             name="vat_exemption_text"

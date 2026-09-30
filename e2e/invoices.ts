@@ -35,3 +35,34 @@ export function deleteInvoicesOfAppointments(appointmentIds: string[]) {
     },
   );
 }
+
+export function deleteInvoiceSeries(code: "main" | "rectifying", year: number) {
+  if (code !== "main" && code !== "rectifying")
+    throw new Error("Serie no válida");
+  if (!Number.isInteger(year) || year <= new Date().getFullYear())
+    throw new Error("Solo se borran series de años futuros de prueba");
+  execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "supabase_db_clinicalumia",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-q",
+    ],
+    {
+      input: [
+        "begin;",
+        "set local session_replication_role = replica;",
+        `delete from public.invoice_series where code = '${code}' and year = ${year};`,
+        "commit;",
+      ].join("\n"),
+    },
+  );
+}
