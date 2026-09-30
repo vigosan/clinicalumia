@@ -329,6 +329,88 @@ export type Database = {
         }
         Relationships: []
       }
+      consents: {
+        Row: {
+          birth_date: string
+          created_at: string
+          email: string | null
+          first_name: string
+          guardian_name: string
+          id: string
+          last_name: string
+          link_method: Database["public"]["Enums"]["consent_link_method"] | null
+          linked_at: string | null
+          linked_by: string | null
+          marketing: boolean
+          media_for_training: boolean
+          pdf_path: string
+          person_id: string | null
+          privacy_accepted: boolean
+          signed_at: string
+          sources: string[]
+          tax_id: string
+        }
+        Insert: {
+          birth_date: string
+          created_at?: string
+          email?: string | null
+          first_name: string
+          guardian_name?: string
+          id?: string
+          last_name: string
+          link_method?:
+            | Database["public"]["Enums"]["consent_link_method"]
+            | null
+          linked_at?: string | null
+          linked_by?: string | null
+          marketing: boolean
+          media_for_training: boolean
+          pdf_path: string
+          person_id?: string | null
+          privacy_accepted?: boolean
+          signed_at: string
+          sources?: string[]
+          tax_id: string
+        }
+        Update: {
+          birth_date?: string
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          guardian_name?: string
+          id?: string
+          last_name?: string
+          link_method?:
+            | Database["public"]["Enums"]["consent_link_method"]
+            | null
+          linked_at?: string | null
+          linked_by?: string | null
+          marketing?: boolean
+          media_for_training?: boolean
+          pdf_path?: string
+          person_id?: string | null
+          privacy_accepted?: boolean
+          signed_at?: string
+          sources?: string[]
+          tax_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consents_linked_by_fkey"
+            columns: ["linked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_schedules: {
         Row: {
           ends_at: string
@@ -758,6 +840,17 @@ export type Database = {
       }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      link_consent: {
+        Args: { p_consent_id: string; p_person_id: string }
+        Returns: undefined
+      }
+      match_consent_person: {
+        Args: { p_birth_date: string; p_email: string; p_tax_id: string }
+        Returns: {
+          method: Database["public"]["Enums"]["consent_link_method"]
+          person_id: string
+        }[]
+      }
       my_appointments: {
         Args: never
         Returns: {
@@ -844,6 +937,7 @@ export type Database = {
           specialty_id: string
         }[]
       }
+      unlink_consent: { Args: { p_consent_id: string }; Returns: undefined }
       update_my_contact: {
         Args: { p_address: string; p_person_id: string; p_phone: string }
         Returns: undefined
@@ -862,6 +956,11 @@ export type Database = {
       appointment_origin: "staff" | "web"
       appointment_status: "scheduled" | "cancelled" | "no_show"
       booking_payment: "none" | "fixed" | "percent" | "full"
+      consent_link_method:
+        | "auto_tax_id"
+        | "auto_guardian"
+        | "auto_email"
+        | "manual"
       guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
       payment_status: "not_required" | "pending" | "paid" | "refunded"
       reminder_channel: "email" | "sms"
@@ -1011,6 +1110,12 @@ export const Constants = {
       appointment_origin: ["staff", "web"],
       appointment_status: ["scheduled", "cancelled", "no_show"],
       booking_payment: ["none", "fixed", "percent", "full"],
+      consent_link_method: [
+        "auto_tax_id",
+        "auto_guardian",
+        "auto_email",
+        "manual",
+      ],
       guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
       payment_status: ["not_required", "pending", "paid", "refunded"],
       reminder_channel: ["email", "sms"],
