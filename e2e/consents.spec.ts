@@ -463,7 +463,7 @@ test("a patient who signs at the web with the DNI and birth date of their record
   ]);
 });
 
-test("a consent from someone new waits as pending until staff create the record from it, and cancelling keeps it pending", async ({
+test("a consent from someone new waits as pending until staff create the record from it, without copying a DNI that may be the guardian's, and cancelling keeps it pending", async ({
   page,
 }) => {
   const surname = `Nueva${uniqueSuffix()}`;
@@ -495,7 +495,10 @@ test("a consent from someone new waits as pending until staff create the record 
   await expect(form.getByLabel("Fecha de nacimiento")).toHaveValue(
     "2015-06-20",
   );
-  await expect(form.getByLabel("DNI/NIE")).toHaveValue(taxId);
+  await expect(form.getByLabel("DNI/NIE")).toHaveValue("");
+  await expect(form).toContainText(
+    `El DNI del consentimiento puede ser del tutor: ${taxId}`,
+  );
   await expect(form.getByLabel("Email")).toHaveValue(email);
   await expect(form.getByLabel("Es paciente")).toBeChecked();
   await expect(form).toContainText("Firmado por: Carmen Tutora");
@@ -511,10 +514,11 @@ test("a consent from someone new waits as pending until staff create the record 
   await expect(page).toHaveURL(`${DASHBOARD}/consentimientos/${consent.id}`);
   const { data: person } = await admin
     .from("people")
-    .select("id")
-    .eq("tax_id", taxId)
+    .select("id, tax_id")
+    .eq("last_name", surname)
     .single();
   createdPersonIds.push(person!.id);
+  expect(person!.tax_id).toBeNull();
   await expect(page.getByTestId("consent-status")).toHaveText(
     `Asociado a Martina ${surname}`,
   );

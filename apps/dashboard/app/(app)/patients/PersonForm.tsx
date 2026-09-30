@@ -227,10 +227,20 @@ export function PersonForm({
             defaultValue={person?.birth_date ?? consent?.birth_date ?? ""}
           />
         </Field>
-        <Field label="DNI/NIE">
+        <Field
+          label="DNI/NIE"
+          hint={
+            consent?.guardian_name
+              ? `El DNI del consentimiento puede ser del tutor: ${consent.tax_id}`
+              : undefined
+          }
+        >
           <Input
             name="tax_id"
-            defaultValue={person?.tax_id ?? consent?.tax_id ?? ""}
+            defaultValue={
+              person?.tax_id ??
+              (consent && !consent.guardian_name ? consent.tax_id : "")
+            }
             onBlur={handleDuplicateFieldBlur}
           />
         </Field>
