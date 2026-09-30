@@ -5,7 +5,11 @@ import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
 import { loadInvoicePdf } from "@/lib/invoice-pdf";
-import { normalizeEmail, type RecipientDraft } from "@/lib/invoices";
+import {
+  invoiceEmailHtml,
+  normalizeEmail,
+  type RecipientDraft,
+} from "@/lib/invoices";
 import { paymentError } from "@/lib/payments";
 
 export async function issueFullInvoice(
@@ -59,12 +63,7 @@ export async function sendInvoiceEmail(
     await sendEmail({
       to: email,
       subject: `Factura ${invoice.code} · Clínica LUMIA`,
-      html: `
-        <p>Hola:</p>
-        <p>Te enviamos adjunta la factura ${invoice.code} de Clínica LUMIA.</p>
-        <p>Gracias por tu confianza.</p>
-        <p>Clínica LUMIA</p>
-      `,
+      html: invoiceEmailHtml(invoice.code),
       attachments: [
         {
           filename: invoice.fileName,
@@ -73,7 +72,8 @@ export async function sendInvoiceEmail(
         },
       ],
     });
-  } catch {
+  } catch (error) {
+    console.error("No se ha podido enviar la factura por email", error);
     return { error: "No se ha podido enviar el email. Inténtalo de nuevo." };
   }
 
@@ -81,6 +81,7 @@ export async function sendInvoiceEmail(
     p_invoice_id: invoiceId,
     p_email: email,
   });
-  if (error) return { error: paymentError(error) };
+  if (error)
+    console.error("No se ha podido registrar el envío de la factura", error);
   return { ok: true, email };
 }

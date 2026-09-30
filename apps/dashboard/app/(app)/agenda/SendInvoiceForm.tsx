@@ -25,15 +25,18 @@ export function SendInvoiceForm({
     event.preventDefault();
     if (!submitGateRef.current.tryStart()) return;
     startTransition(async () => {
-      const result = await sendInvoiceEmail(invoiceId, email);
-      submitGateRef.current.finish();
-      if ("error" in result) {
-        setError(result.error);
-        return;
+      try {
+        const result = await sendInvoiceEmail(invoiceId, email);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        setError(null);
+        setSentTo(result.email);
+        setOpen(false);
+      } finally {
+        submitGateRef.current.finish();
       }
-      setError(null);
-      setSentTo(result.email);
-      setOpen(false);
     });
   }
 

@@ -208,6 +208,7 @@ export function AppointmentPanel({
             />
             {appointment.invoice.kind === "simplified" && (
               <FullInvoiceForm
+                key={`full-${appointment.invoice.id}`}
                 invoiceId={appointment.invoice.id}
                 recipient={appointment.invoice.recipient}
               />

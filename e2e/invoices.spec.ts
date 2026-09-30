@@ -50,6 +50,7 @@ async function createAppointment(
   professionalId: string,
   date: string,
   patient: { email?: string; tax_id?: string } = {},
+  hour = 10,
 ) {
   const lastName = `Factura${uniqueSuffix()}`;
   const { data: person, error: personError } = await admin
@@ -72,8 +73,8 @@ async function createAppointment(
       professional_id: professionalId,
       patient_id: person!.id,
       service_id: PSICOLOGIA_SERVICE_ID,
-      starts_at: `${date} 10:00:00 Europe/Madrid`,
-      ends_at: `${date} 11:00:00 Europe/Madrid`,
+      starts_at: `${date} ${hour}:00:00 Europe/Madrid`,
+      ends_at: `${date} ${hour + 1}:00:00 Europe/Madrid`,
     })
     .select("id")
     .single();
@@ -260,6 +261,53 @@ test("«Factura completa» rechaza un NIF inválido y, con uno válido, emite la
   expect(invoices[1]?.code).not.toBe(simplifiedCode);
   await expect(page.getByTestId("invoice-code")).toHaveText(
     `Factura ${invoices[1]?.code}`,
+  );
+});
+
+test("al pasar a otra cita, el formulario de factura completa se cierra y no arrastra los datos de la anterior", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Factura Cambio Cita");
+  const first = await createAppointment(
+    employee.id,
+    date,
+    { tax_id: "12345678Z" },
+    10,
+  );
+  const second = await createAppointment(
+    employee.id,
+    date,
+    { tax_id: "X1234567L" },
+    12,
+  );
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, second.id);
+  await collectAndReadCode(page);
+  await openAppointment(page, date, first.id);
+  await collectAndReadCode(page);
+
+  await page.getByTestId("invoice-full").click();
+  await expect(page.getByTestId("invoice-full-name")).toHaveValue(
+    first.patientName,
+  );
+
+  await page
+    .locator(
+      `[data-testid="appointment-block"][data-appointment="${second.id}"]`,
+    )
+    .filter({ visible: true })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`appointment=${second.id}`));
+  await expect(page.getByTestId("invoice-full-form")).toHaveCount(0);
+
+  await page.getByTestId("invoice-full").click();
+  await expect(page.getByTestId("invoice-full-name")).toHaveValue(
+    second.patientName,
+  );
+  await expect(page.getByTestId("invoice-full-tax-id")).toHaveValue(
+    "X1234567L",
   );
 });
 

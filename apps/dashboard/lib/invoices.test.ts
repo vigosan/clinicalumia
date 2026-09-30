@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   currentInvoice,
+  invoiceEmailHtml,
   normalizeEmail,
   proposedInvoiceEmail,
   recipientDraft,
@@ -111,5 +112,17 @@ describe("normalizeEmail", () => {
     expect(normalizeEmail("ana@correo")).toBeNull();
     expect(normalizeEmail("")).toBeNull();
     expect(normalizeEmail("ana @correo.test")).toBeNull();
+  });
+});
+
+describe("invoiceEmailHtml", () => {
+  it("names the invoice in the body", () => {
+    expect(invoiceEmailHtml("34/26")).toContain("la factura 34/26");
+  });
+
+  it("escapes the invoice code, since the series format is editable and must never inject markup into the email", () => {
+    const html = invoiceEmailHtml('<a href="x">1</a>');
+    expect(html).not.toContain("<a href");
+    expect(html).toContain("&lt;a href=&quot;x&quot;&gt;1&lt;/a&gt;");
   });
 });

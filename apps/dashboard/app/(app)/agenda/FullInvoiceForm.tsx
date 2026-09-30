@@ -12,16 +12,40 @@ const FIELDS: {
   key: keyof RecipientDraft;
   label: string;
   testId: string;
+  autoComplete: string;
+  inputMode?: "numeric";
 }[] = [
-  { key: "name", label: "Nombre o razón social", testId: "invoice-full-name" },
-  { key: "taxId", label: "NIF", testId: "invoice-full-tax-id" },
-  { key: "address", label: "Dirección", testId: "invoice-full-address" },
+  {
+    key: "name",
+    label: "Nombre o razón social",
+    testId: "invoice-full-name",
+    autoComplete: "name",
+  },
+  {
+    key: "taxId",
+    label: "NIF",
+    testId: "invoice-full-tax-id",
+    autoComplete: "off",
+  },
+  {
+    key: "address",
+    label: "Dirección",
+    testId: "invoice-full-address",
+    autoComplete: "street-address",
+  },
   {
     key: "postalCode",
     label: "Código postal",
     testId: "invoice-full-postal-code",
+    autoComplete: "postal-code",
+    inputMode: "numeric",
   },
-  { key: "city", label: "Ciudad", testId: "invoice-full-city" },
+  {
+    key: "city",
+    label: "Ciudad",
+    testId: "invoice-full-city",
+    autoComplete: "address-level2",
+  },
 ];
 
 export function FullInvoiceForm({
@@ -41,14 +65,17 @@ export function FullInvoiceForm({
     event.preventDefault();
     if (!submitGateRef.current.tryStart()) return;
     startTransition(async () => {
-      const result = await issueFullInvoice(invoiceId, draft);
-      submitGateRef.current.finish();
-      if ("error" in result) {
-        setError(result.error);
-        return;
+      try {
+        const result = await issueFullInvoice(invoiceId, draft);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        setError(null);
+        setOpen(false);
+      } finally {
+        submitGateRef.current.finish();
       }
-      setError(null);
-      setOpen(false);
     });
   }
 
@@ -78,6 +105,9 @@ export function FullInvoiceForm({
         <Field key={field.key} label={field.label}>
           <Input
             data-testid={field.testId}
+            required
+            autoComplete={field.autoComplete}
+            inputMode={field.inputMode}
             value={draft[field.key]}
             onChange={(event) =>
               setDraft({ ...draft, [field.key]: event.target.value })
@@ -107,7 +137,10 @@ export function FullInvoiceForm({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setError(null);
+            setOpen(false);
+          }}
         >
           Volver
         </Button>

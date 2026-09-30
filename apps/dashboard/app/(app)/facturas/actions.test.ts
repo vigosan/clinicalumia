@@ -42,7 +42,10 @@ const { issueFullInvoice, issueRectifyingInvoice, sendInvoiceEmail } =
 
 const DETAIL = { id: INVOICE_ID, code: "34/26" };
 
+const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
 beforeEach(() => {
+  consoleError.mockClear();
   for (const key of Object.keys(rpcResults)) delete rpcResults[key];
   rpcResults.invoice_detail = { data: DETAIL, error: null };
   rpc.mockClear();
@@ -160,8 +163,9 @@ describe("sendInvoiceEmail", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  it("does not record a send that failed, so the log only lists emails that left", async () => {
-    vi.mocked(sendEmail).mockRejectedValueOnce(new Error("Mailpit caído"));
+  it("does not record a send that failed, so the log only lists emails that left, and logs why it failed", async () => {
+    const failure = new Error("Mailpit caído");
+    vi.mocked(sendEmail).mockRejectedValueOnce(failure);
     const result = await sendInvoiceEmail(INVOICE_ID, "ana@correo.test");
     expect(result).toEqual({
       error: "No se ha podido enviar el email. Inténtalo de nuevo.",
@@ -169,6 +173,23 @@ describe("sendInvoiceEmail", () => {
     expect(rpc).not.toHaveBeenCalledWith(
       "record_invoice_email",
       expect.anything(),
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      "No se ha podido enviar la factura por email",
+      failure,
+    );
+  });
+
+  it("confirms the send even if recording it fails, because the email already left and resending would duplicate it", async () => {
+    rpcResults.record_invoice_email = {
+      data: null,
+      error: { code: "P0001", message: "invoice_not_found" },
+    };
+    const result = await sendInvoiceEmail(INVOICE_ID, "ana@correo.test");
+    expect(result).toEqual({ ok: true, email: "ana@correo.test" });
+    expect(consoleError).toHaveBeenCalledWith(
+      "No se ha podido registrar el envío de la factura",
+      rpcResults.record_invoice_email.error,
     );
   });
 });

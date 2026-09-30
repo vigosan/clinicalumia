@@ -96,8 +96,21 @@ describe("GET /facturas/[id]/pdf", () => {
     await get(INVOICE_ID);
     expect(fetchMock).toHaveBeenCalledWith(
       "http://storage.test/branding/logo.png",
+      { signal: expect.any(AbortSignal) },
     );
     expect(renderInvoicePdf).toHaveBeenCalledWith(detail.data, { logo: PNG });
+  });
+
+  it("uses the default LUMIA logo when the storage does not answer in time, so a slow bucket never blocks the invoice", async () => {
+    settings.data = { logo_path: "logo.png" };
+    fetchMock.mockRejectedValue(
+      new DOMException("The operation timed out.", "TimeoutError"),
+    );
+    const response = await get(INVOICE_ID);
+    expect(response.status).toBe(200);
+    expect(renderInvoicePdf).toHaveBeenCalledWith(detail.data, {
+      logo: undefined,
+    });
   });
 
   it("uses the default LUMIA logo when the clinic's logo is an SVG or WebP the PDF cannot draw", async () => {

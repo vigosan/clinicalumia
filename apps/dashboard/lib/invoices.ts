@@ -65,6 +65,24 @@ export function proposedInvoiceEmail({
   return patient.email ?? guardian?.email ?? "";
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+export function invoiceEmailHtml(code: string): string {
+  return `
+    <p>Hola:</p>
+    <p>Te enviamos adjunta la factura ${escapeHtml(code)} de Clínica LUMIA.</p>
+    <p>Gracias por tu confianza.</p>
+    <p>Clínica LUMIA</p>
+  `;
+}
+
 export function normalizeEmail(input: string): string | null {
   const email = input.trim().toLowerCase();
   return EMAIL.test(email) ? email : null;

@@ -4,6 +4,8 @@ import type { DbError } from "./payments";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
+const LOGO_TIMEOUT_MS = 3000;
+
 export type InvoicePdf = { code: string; fileName: string; pdf: Uint8Array };
 
 function isPngOrJpeg(bytes: Uint8Array): boolean {
@@ -23,7 +25,9 @@ async function clinicLogo(supabase: Client): Promise<Uint8Array | undefined> {
   const { publicUrl } = supabase.storage
     .from("branding")
     .getPublicUrl(data.logo_path).data;
-  const response = await fetch(publicUrl).catch(() => null);
+  const response = await fetch(publicUrl, {
+    signal: AbortSignal.timeout(LOGO_TIMEOUT_MS),
+  }).catch(() => null);
   if (!response?.ok) return undefined;
   const bytes = new Uint8Array(await response.arrayBuffer());
   return isPngOrJpeg(bytes) ? bytes : undefined;
