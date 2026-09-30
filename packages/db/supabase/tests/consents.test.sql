@@ -1,6 +1,10 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(56);
+select plan(61);
+
+create or replace function pg_temp.years_ago(years int) returns date language sql stable as $$
+  select ((now() at time zone 'Europe/Madrid')::date - make_interval(years => years))::date
+$$;
 
 insert into auth.users (id, email) values
   ('89000000-0000-0000-0000-000000000001', 'empleada-consentimientos@test.local'),
@@ -19,13 +23,13 @@ insert into public.people (id, first_name, last_name, birth_date, tax_id, email,
   ('89000000-0000-0000-0000-0000000000a6', 'Gemela', 'Dos', '2012-07-07', null, 'familia-consentimientos@test.local', true, null),
   ('89000000-0000-0000-0000-0000000000a7', 'Borrable', 'Ficha', '1995-05-05', null, null, true, null),
   ('89000000-0000-0000-0000-0000000000b1', 'Tutor', 'Uno', '1980-01-01', '89000011B', null, false, null),
-  ('89000000-0000-0000-0000-0000000000b2', 'Menor', 'Uno', '2016-05-05', null, null, true, null),
+  ('89000000-0000-0000-0000-0000000000b2', 'Menor', 'Uno', pg_temp.years_ago(10), null, null, true, null),
   ('89000000-0000-0000-0000-0000000000b3', 'Tutora', 'Dos', '1979-01-01', '89000012B', null, false, null),
-  ('89000000-0000-0000-0000-0000000000b4', 'Mellizo', 'Uno', '2017-06-06', null, null, true, null),
-  ('89000000-0000-0000-0000-0000000000b5', 'Mellizo', 'Dos', '2017-06-06', null, null, true, null),
+  ('89000000-0000-0000-0000-0000000000b4', 'Mellizo', 'Uno', pg_temp.years_ago(9), null, null, true, null),
+  ('89000000-0000-0000-0000-0000000000b5', 'Mellizo', 'Dos', pg_temp.years_ago(9), null, null, true, null),
   ('89000000-0000-0000-0000-0000000000b6', 'Tutor', 'Tres', null, '89000013B', null, false, null),
-  ('89000000-0000-0000-0000-0000000000b7', 'Menor', 'Archivada', '2015-01-01', null, null, true, now()),
-  ('89000000-0000-0000-0000-0000000000b8', 'Menor', 'Activa', '2015-01-01', null, null, true, null),
+  ('89000000-0000-0000-0000-0000000000b7', 'Menor', 'Archivada', pg_temp.years_ago(11), null, null, true, now()),
+  ('89000000-0000-0000-0000-0000000000b8', 'Menor', 'Activa', pg_temp.years_ago(11), null, null, true, null),
   ('89000000-0000-0000-0000-0000000000b9', 'Tutora', 'Cuatro', '1975-01-01', '89000014B', null, false, null),
   ('89000000-0000-0000-0000-0000000000ba', 'Hija', 'Adulta', '2000-01-01', null, null, true, null),
   ('89000000-0000-0000-0000-0000000000a8', 'Gemelo', 'Registrado', '2013-08-08', '89000003A', 'otra-familia-consentimientos@test.local', true, null);
@@ -59,59 +63,65 @@ select enum_has_labels('public', 'consent_link_method', array['auto_tax_id', 'au
   'a consent records whether its person was found by DNI, by a guardian''s DNI, by email or chosen by the team');
 
 select results_eq(
-  $$ select person_id, method::text from public.match_consent_person('89000001A', null, '1985-03-03') $$,
+  $$ select person_id, method::text from public.match_consent_person('89000001A', null, '1985-03-03', 'Adulta') $$,
   $$ values ('89000000-0000-0000-0000-0000000000a1'::uuid, 'auto_tax_id') $$,
   'a DNI and birth date that both match an adult link the consent to her');
-select is((select count(*) from public.match_consent_person('89000001A', null, '1985-03-04')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89000001A', null, '1985-03-04', 'Adulta')), 0::bigint,
   'a DNI that matches someone with a different birth date may be a typo of another person''s DNI, so it stays pending');
-select is((select count(*) from public.match_consent_person('89000001A', 'email-consentimientos@test.local', '1990-02-02')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89000001A', 'email-consentimientos@test.local', '1990-02-02', 'Por')), 0::bigint,
   'a DNI that belongs to someone else never falls through to the email rule, so a typo cannot link the consent by email');
 select results_eq(
-  $$ select person_id, method::text from public.match_consent_person(' 8900 0001-a ', null, '1985-03-03') $$,
+  $$ select person_id, method::text from public.match_consent_person(' 8900 0001-a ', null, '1985-03-03', 'Adulta') $$,
   $$ values ('89000000-0000-0000-0000-0000000000a1'::uuid, 'auto_tax_id') $$,
   'a DNI typed in lowercase with spaces or a hyphen is normalized like the person''s record, so it still matches');
 
 select results_eq(
-  $$ select person_id, method::text from public.match_consent_person('89000011B', null, '2016-05-05') $$,
+  $$ select person_id, method::text from public.match_consent_person('89000011B', null, pg_temp.years_ago(10), 'Menor') $$,
   $$ values ('89000000-0000-0000-0000-0000000000b2'::uuid, 'auto_guardian') $$,
   'a minor''s consent signed with her guardian''s DNI links to that minor, the only ward with that birth date');
-select is((select count(*) from public.match_consent_person('89000012B', null, '2017-06-06')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89000012B', null, pg_temp.years_ago(9), 'Mellizo')), 0::bigint,
   'a guardian with two wards born the same day cannot tell which one signed, so it stays pending');
 select results_eq(
-  $$ select person_id, method::text from public.match_consent_person('89000013B', null, '2015-01-01') $$,
+  $$ select person_id, method::text from public.match_consent_person('89000013B', null, pg_temp.years_ago(11), 'Menor') $$,
   $$ values ('89000000-0000-0000-0000-0000000000b8'::uuid, 'auto_guardian') $$,
   'an archived ward does not count, so the guardian''s only active ward with that birth date is linked');
-select is((select count(*) from public.match_consent_person('89000014B', null, '2000-01-01')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89000014B', null, '2000-01-01', 'Hija')), 0::bigint,
   'a ward who is already an adult signs for herself, so a consent with her parent''s DNI is not linked to her');
 
 select results_eq(
-  $$ select person_id, method::text from public.match_consent_person('89999999Z', 'Email-Consentimientos@test.local', '1990-02-02') $$,
+  $$ select person_id, method::text from public.match_consent_person('89999999Z', 'Email-Consentimientos@test.local', '1990-02-02', 'Por') $$,
   $$ values ('89000000-0000-0000-0000-0000000000a4'::uuid, 'auto_email') $$,
   'with no DNI match, a single person with the same email, in any case, and birth date is linked by email');
-select is((select count(*) from public.match_consent_person('89999999Z', 'familia-consentimientos@test.local', '2012-07-07')), 0::bigint,
+select results_eq(
+  $$ select person_id, method::text from public.match_consent_person('89999999Z', 'email-consentimientos@test.local', '1990-02-02', ' PÓR ') $$,
+  $$ values ('89000000-0000-0000-0000-0000000000a4'::uuid, 'auto_email') $$,
+  'a first name typed with other accents, case or spaces is still the same person');
+select is((select count(*) from public.match_consent_person('89999999Z', 'email-consentimientos@test.local', '1990-02-02', 'Otra')), 0::bigint,
+  'a sibling without a DNI who shares the family email and birth date but has another first name is never linked to her twin');
+select is((select count(*) from public.match_consent_person('89999999Z', 'familia-consentimientos@test.local', '2012-07-07', 'Gemela')), 0::bigint,
   'twins sharing a family email and birth date cannot be told apart, so the consent stays pending');
-select is((select count(*) from public.match_consent_person('89999998Z', 'otra-familia-consentimientos@test.local', '2013-08-08')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89999998Z', 'otra-familia-consentimientos@test.local', '2013-08-08', 'Gemelo')), 0::bigint,
   'a person with a DNI on record would have matched by DNI if she had signed, so a twin signing with her own DNI is never linked to her by the shared email');
-select is((select count(*) from public.match_consent_person('89999999Z', 'email-consentimientos@test.local', '1990-02-03')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89999999Z', 'email-consentimientos@test.local', '1990-02-03', 'Por')), 0::bigint,
   'an email match with a different birth date is not safe enough to link');
-select is((select count(*) from public.match_consent_person('89999999Z', null, '1990-02-02')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89999999Z', null, '1990-02-02', 'Por')), 0::bigint,
   'with no DNI match and no email there is nothing to match on');
 
-select is((select count(*) from public.match_consent_person('89000002A', null, '1970-01-01')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89000002A', null, '1970-01-01', 'Archivada')), 0::bigint,
   'an archived person is never linked automatically, even with her DNI and birth date');
-select is((select count(*) from public.match_consent_person('89999999Z', 'archivada-consentimientos@test.local', '1971-01-01')), 0::bigint,
+select is((select count(*) from public.match_consent_person('89999999Z', 'archivada-consentimientos@test.local', '1971-01-01', 'Archivada')), 0::bigint,
   'an archived person is never linked automatically by email either');
 
-select is(has_function_privilege('authenticated', 'public.match_consent_person(text, text, date)', 'execute'), false,
+select is(has_function_privilege('authenticated', 'public.match_consent_person(text, text, date, text)', 'execute'), false,
   'a signed-in user cannot probe which person owns a DNI');
-select is(has_function_privilege('anon', 'public.match_consent_person(text, text, date)', 'execute'), false,
+select is(has_function_privilege('anon', 'public.match_consent_person(text, text, date, text)', 'execute'), false,
   'an anonymous visitor cannot probe which person owns a DNI');
-select is(has_function_privilege('service_role', 'public.match_consent_person(text, text, date)', 'execute'), true,
+select is(has_function_privilege('service_role', 'public.match_consent_person(text, text, date, text)', 'execute'), true,
   'the web server, with the service role, can match a signed consent to its person');
 
 set local role service_role;
 select results_eq(
-  $$ select person_id, method::text from public.match_consent_person('89000001A', null, '1985-03-03') $$,
+  $$ select person_id, method::text from public.match_consent_person('89000001A', null, '1985-03-03', 'Adulta') $$,
   $$ values ('89000000-0000-0000-0000-0000000000a1'::uuid, 'auto_tax_id') $$,
   'the service role reads people through the function even though it runs the match outside any staff session');
 reset role;
@@ -173,6 +183,8 @@ select is((select count(*) from storage.objects where bucket_id = 'consents'), 0
   'an employee who has not passed the second factor cannot see consent PDFs');
 select throws_ok($$ select public.link_consent('89000000-0000-0000-0000-0000000000f1', '89000000-0000-0000-0000-0000000000a1') $$,
   '42501', null, 'an employee without the second factor cannot link a consent');
+select throws_ok($$ select public.unlink_consent('89000000-0000-0000-0000-0000000000f1') $$,
+  '42501', null, 'an employee without the second factor cannot unlink a consent');
 reset role;
 select set_config('request.jwt.claims', '', true);
 
@@ -191,6 +203,10 @@ select results_eq(
   $$ select person_id, link_method::text, linked_by, linked_at is not null from public.consents where id = '89000000-0000-0000-0000-0000000000f1' $$,
   $$ values ('89000000-0000-0000-0000-0000000000a1'::uuid, 'manual', '89000000-0000-0000-0000-000000000001'::uuid, true) $$,
   'a manual link records who linked it and when, so the team can audit it');
+select throws_ok($$ select public.link_consent('89000000-0000-0000-0000-0000000000f1', '89000000-0000-0000-0000-0000000000a4') $$,
+  'P0001', 'consent_already_linked', 'a consent already linked must be unlinked first, so a link is never silently overwritten');
+select is((select person_id from public.consents where id = '89000000-0000-0000-0000-0000000000f1'), '89000000-0000-0000-0000-0000000000a1'::uuid,
+  'the refused relink leaves the original link untouched');
 select throws_ok($$ select public.link_consent('89000000-0000-0000-0000-0000000000f1', '89000000-0000-0000-0000-0000000000a2') $$,
   'P0001', 'person_not_found', 'a consent cannot be linked to an archived person');
 select throws_ok($$ select public.link_consent('89000000-0000-0000-0000-0000000000f1', '89000000-0000-0000-0000-00000000ffff') $$,

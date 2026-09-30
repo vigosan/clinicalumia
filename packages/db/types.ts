@@ -845,7 +845,12 @@ export type Database = {
         Returns: undefined
       }
       match_consent_person: {
-        Args: { p_birth_date: string; p_email: string; p_tax_id: string }
+        Args: {
+          p_birth_date: string
+          p_email: string
+          p_first_name: string
+          p_tax_id: string
+        }
         Returns: {
           method: Database["public"]["Enums"]["consent_link_method"]
           person_id: string

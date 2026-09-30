@@ -60,7 +60,7 @@ on conflict (id) do nothing;
 create policy "consents_select_active_staff" on storage.objects
   for select to authenticated using (bucket_id = 'consents' and public.is_active_staff());
 
-create or replace function public.match_consent_person(p_tax_id text, p_email text, p_birth_date date)
+create or replace function public.match_consent_person(p_tax_id text, p_email text, p_birth_date date, p_first_name text)
 returns table (person_id uuid, method public.consent_link_method)
 language plpgsql
 stable
@@ -70,6 +70,7 @@ as $$
 declare
   normalized_tax_id text := nullif(upper(regexp_replace(coalesce(p_tax_id, ''), '[\s.\-]', '', 'g')), '');
   normalized_email text := nullif(lower(trim(coalesce(p_email, ''))), '');
+  normalized_first_name text := lower(public.f_unaccent(trim(coalesce(p_first_name, ''))));
   holder public.people;
   ward_ids uuid[];
   email_ids uuid[];
@@ -111,6 +112,7 @@ begin
   where p.email = normalized_email
     and p.birth_date = p_birth_date
     and p.tax_id is null
+    and lower(public.f_unaccent(p.first_name)) = normalized_first_name
     and p.archived_at is null;
   if cardinality(email_ids) = 1 then
     return query select email_ids[1], 'auto_email'::public.consent_link_method;
@@ -118,8 +120,8 @@ begin
 end;
 $$;
 
-revoke all on function public.match_consent_person(text, text, date) from public, anon, authenticated;
-grant execute on function public.match_consent_person(text, text, date) to service_role;
+revoke all on function public.match_consent_person(text, text, date, text) from public, anon, authenticated;
+grant execute on function public.match_consent_person(text, text, date, text) to service_role;
 
 create or replace function public.link_consent(p_consent_id uuid, p_person_id uuid)
 returns void
@@ -127,6 +129,8 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  current_person_id uuid;
 begin
   if not public.is_active_staff() then
     raise exception 'consent_forbidden' using errcode = '42501';
@@ -134,15 +138,19 @@ begin
   if not exists (select 1 from public.people where id = p_person_id and archived_at is null) then
     raise exception 'person_not_found' using errcode = 'P0001';
   end if;
+  select person_id into current_person_id from public.consents where id = p_consent_id for update;
+  if not found then
+    raise exception 'consent_not_found' using errcode = 'P0001';
+  end if;
+  if current_person_id is not null then
+    raise exception 'consent_already_linked' using errcode = 'P0001';
+  end if;
   update public.consents
   set person_id = p_person_id,
       linked_at = now(),
       linked_by = auth.uid(),
       link_method = 'manual'
   where id = p_consent_id;
-  if not found then
-    raise exception 'consent_not_found' using errcode = 'P0001';
-  end if;
 end;
 $$;
 
