@@ -541,6 +541,70 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount_cents: number
+          appointment_id: string
+          collected_at: string
+          collected_by: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          note: string
+          vat: Database["public"]["Enums"]["vat_treatment"]
+          void_reason: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount_cents: number
+          appointment_id: string
+          collected_at?: string
+          collected_by: string
+          id?: string
+          method: Database["public"]["Enums"]["payment_method"]
+          note?: string
+          vat: Database["public"]["Enums"]["vat_treatment"]
+          void_reason?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          appointment_id?: string
+          collected_at?: string
+          collected_by?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          note?: string
+          vat?: Database["public"]["Enums"]["vat_treatment"]
+          void_reason?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_collected_by_fkey"
+            columns: ["collected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           address: string
@@ -821,6 +885,15 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: undefined
       }
+      collect_payment: {
+        Args: {
+          p_amount_cents: number
+          p_appointment_id: string
+          p_method: Database["public"]["Enums"]["payment_method"]
+          p_note: string
+        }
+        Returns: string
+      }
       complete_my_birth_date: {
         Args: { p_birth_date: string; p_person_id: string }
         Returns: undefined
@@ -945,9 +1018,14 @@ export type Database = {
           specialty_id: string
         }[]
       }
+      suggested_amount: { Args: { p_appointment_id: string }; Returns: number }
       unlink_consent: { Args: { p_consent_id: string }; Returns: undefined }
       update_my_contact: {
         Args: { p_address: string; p_person_id: string; p_phone: string }
+        Returns: undefined
+      }
+      void_payment: {
+        Args: { p_payment_id: string; p_reason: string }
         Returns: undefined
       }
     }
@@ -970,6 +1048,7 @@ export type Database = {
         | "auto_email"
         | "manual"
       guardian_relationship: "madre" | "padre" | "tutor_legal" | "otro"
+      payment_method: "cash" | "card" | "bizum" | "transfer"
       payment_status: "not_required" | "pending" | "paid" | "refunded"
       reminder_channel: "email" | "sms"
       reminder_status: "pending" | "sent" | "failed"
@@ -1125,6 +1204,7 @@ export const Constants = {
         "manual",
       ],
       guardian_relationship: ["madre", "padre", "tutor_legal", "otro"],
+      payment_method: ["cash", "card", "bizum", "transfer"],
       payment_status: ["not_required", "pending", "paid", "refunded"],
       reminder_channel: ["email", "sms"],
       reminder_status: ["pending", "sent", "failed"],
