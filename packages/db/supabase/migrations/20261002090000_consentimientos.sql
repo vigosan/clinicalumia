@@ -93,7 +93,8 @@ begin
       join public.people w on w.id = g.minor_id
       where g.guardian_id = holder.id
         and w.archived_at is null
-        and w.birth_date = p_birth_date;
+        and w.birth_date = p_birth_date
+        and extract(year from age((now() at time zone 'Europe/Madrid')::date, w.birth_date)) < 18;
       if cardinality(ward_ids) = 1 then
         return query select ward_ids[1], 'auto_guardian'::public.consent_link_method;
       end if;
@@ -109,6 +110,7 @@ begin
   from public.people p
   where p.email = normalized_email
     and p.birth_date = p_birth_date
+    and p.tax_id is null
     and p.archived_at is null;
   if cardinality(email_ids) = 1 then
     return query select email_ids[1], 'auto_email'::public.consent_link_method;

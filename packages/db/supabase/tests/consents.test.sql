@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(54);
+select plan(56);
 
 insert into auth.users (id, email) values
   ('89000000-0000-0000-0000-000000000001', 'empleada-consentimientos@test.local'),
@@ -25,13 +25,17 @@ insert into public.people (id, first_name, last_name, birth_date, tax_id, email,
   ('89000000-0000-0000-0000-0000000000b5', 'Mellizo', 'Dos', '2017-06-06', null, null, true, null),
   ('89000000-0000-0000-0000-0000000000b6', 'Tutor', 'Tres', null, '89000013B', null, false, null),
   ('89000000-0000-0000-0000-0000000000b7', 'Menor', 'Archivada', '2015-01-01', null, null, true, now()),
-  ('89000000-0000-0000-0000-0000000000b8', 'Menor', 'Activa', '2015-01-01', null, null, true, null);
+  ('89000000-0000-0000-0000-0000000000b8', 'Menor', 'Activa', '2015-01-01', null, null, true, null),
+  ('89000000-0000-0000-0000-0000000000b9', 'Tutora', 'Cuatro', '1975-01-01', '89000014B', null, false, null),
+  ('89000000-0000-0000-0000-0000000000ba', 'Hija', 'Adulta', '2000-01-01', null, null, true, null),
+  ('89000000-0000-0000-0000-0000000000a8', 'Gemelo', 'Registrado', '2013-08-08', '89000003A', 'otra-familia-consentimientos@test.local', true, null);
 insert into public.guardianships (minor_id, guardian_id, relationship, is_primary) values
   ('89000000-0000-0000-0000-0000000000b2', '89000000-0000-0000-0000-0000000000b1', 'padre', true),
   ('89000000-0000-0000-0000-0000000000b4', '89000000-0000-0000-0000-0000000000b3', 'madre', true),
   ('89000000-0000-0000-0000-0000000000b5', '89000000-0000-0000-0000-0000000000b3', 'madre', true),
   ('89000000-0000-0000-0000-0000000000b7', '89000000-0000-0000-0000-0000000000b6', 'padre', true),
-  ('89000000-0000-0000-0000-0000000000b8', '89000000-0000-0000-0000-0000000000b6', 'padre', true);
+  ('89000000-0000-0000-0000-0000000000b8', '89000000-0000-0000-0000-0000000000b6', 'padre', true),
+  ('89000000-0000-0000-0000-0000000000ba', '89000000-0000-0000-0000-0000000000b9', 'madre', true);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -77,6 +81,8 @@ select results_eq(
   $$ select person_id, method::text from public.match_consent_person('89000013B', null, '2015-01-01') $$,
   $$ values ('89000000-0000-0000-0000-0000000000b8'::uuid, 'auto_guardian') $$,
   'an archived ward does not count, so the guardian''s only active ward with that birth date is linked');
+select is((select count(*) from public.match_consent_person('89000014B', null, '2000-01-01')), 0::bigint,
+  'a ward who is already an adult signs for herself, so a consent with her parent''s DNI is not linked to her');
 
 select results_eq(
   $$ select person_id, method::text from public.match_consent_person('89999999Z', 'Email-Consentimientos@test.local', '1990-02-02') $$,
@@ -84,6 +90,8 @@ select results_eq(
   'with no DNI match, a single person with the same email, in any case, and birth date is linked by email');
 select is((select count(*) from public.match_consent_person('89999999Z', 'familia-consentimientos@test.local', '2012-07-07')), 0::bigint,
   'twins sharing a family email and birth date cannot be told apart, so the consent stays pending');
+select is((select count(*) from public.match_consent_person('89999998Z', 'otra-familia-consentimientos@test.local', '2013-08-08')), 0::bigint,
+  'a person with a DNI on record would have matched by DNI if she had signed, so a twin signing with her own DNI is never linked to her by the shared email');
 select is((select count(*) from public.match_consent_person('89999999Z', 'email-consentimientos@test.local', '1990-02-03')), 0::bigint,
   'an email match with a different birth date is not safe enough to link');
 select is((select count(*) from public.match_consent_person('89999999Z', null, '1990-02-02')), 0::bigint,
