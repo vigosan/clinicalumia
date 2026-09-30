@@ -129,8 +129,9 @@ select throws_ok($$ select public.collect_payment('8a000000-0000-0000-0000-00000
   'P0001', 'already_paid',
   'an appointment is charged only once, so two receptionists cannot take the money twice');
 
-select lives_ok($$ select public.void_payment(
-    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d1'), 'Método equivocado') $$,
+select lives_ok($$ select public.issue_rectifying_invoice(
+    (select i.id from public.invoices i join public.payments p on p.id = i.payment_id
+     where p.appointment_id = '8a000000-0000-0000-0000-0000000000d1' and p.voided_at is null), 'Método equivocado') $$,
   'the employee who took a payment can void it the same day to fix a mistake');
 select results_eq(
   $$ select voided_by, void_reason from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d1' $$,
@@ -145,8 +146,9 @@ select throws_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d3'), E' \n\t ') $$,
   'P0001', 'reason_required',
   'voiding money already taken must always be explained, and blank lines or tabs are no explanation');
-select lives_ok($$ select public.void_payment(
-    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d3'), 'Cobrado por error') $$,
+select lives_ok($$ select public.issue_rectifying_invoice(
+    (select i.id from public.invoices i join public.payments p on p.id = i.payment_id
+     where p.appointment_id = '8a000000-0000-0000-0000-0000000000d3' and p.voided_at is null), 'Cobrado por error') $$,
   'a payment can be voided with a reason');
 select throws_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d3'), 'Otra vez') $$,
@@ -226,8 +228,9 @@ select is(
    where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1')),
   0::bigint,
   'a range that does not cover the collection day leaves the payment out');
-select lives_ok($$ select public.void_payment(
-    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1'), 'Pagó en efectivo') $$,
+select lives_ok($$ select public.issue_rectifying_invoice(
+    (select i.id from public.invoices i join public.payments p on p.id = i.payment_id
+     where p.appointment_id = '8a000000-0000-0000-0000-0000000000e1' and p.voided_at is null), 'Pagó en efectivo') $$,
   'otra empleada voids her own payment the same day, for the owner''s view below');
 reset role;
 
@@ -272,13 +275,15 @@ select is(
 select lives_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d4'), 'Revisión de caja') $$,
   'the owner can void a payment taken by anyone');
-select lives_ok($$ select public.void_payment(
-    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d5'), 'Revisión de caja') $$,
+select lives_ok($$ select public.issue_rectifying_invoice(
+    (select i.id from public.invoices i join public.payments p on p.id = i.payment_id
+     where p.appointment_id = '8a000000-0000-0000-0000-0000000000d5' and p.voided_at is null), 'Revisión de caja') $$,
   'the owner can void a payment from a previous day');
 select isnt(public.collect_payment('8a000000-0000-0000-0000-0000000000d9', 4500, 'card', ''), null,
   'the owner can also take payments at the desk');
-select lives_ok($$ select public.void_payment(
-    (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d9'), 'Tarjeta rechazada') $$,
+select lives_ok($$ select public.issue_rectifying_invoice(
+    (select i.id from public.invoices i join public.payments p on p.id = i.payment_id
+     where p.appointment_id = '8a000000-0000-0000-0000-0000000000d9' and p.voided_at is null), 'Tarjeta rechazada') $$,
   'the owner can void her own payment');
 select throws_ok($$ insert into public.payments (appointment_id, amount_cents, method, vat, collected_by)
     values ('8a000000-0000-0000-0000-0000000000d2', 1, 'cash', 'exempt', '8a000000-0000-0000-0000-000000000003') $$,

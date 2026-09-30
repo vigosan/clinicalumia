@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(77);
+select plan(156);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -45,6 +45,22 @@ create or replace function pg_temp.madrid_iso(p_at timestamptz) returns text lan
   select to_char(p_at at time zone 'Europe/Madrid', 'YYYY-MM-DD"T"HH24:MI:SS')
     || case when (p_at at time zone 'Europe/Madrid') - (p_at at time zone 'UTC') = interval '2 hours'
          then '+02:00' else '+01:00' end
+$$;
+
+create or replace function pg_temp.inv(p_code text) returns public.invoices language sql stable as $$
+  select i.* from public.invoices i where i.code = p_code
+$$;
+
+create or replace function pg_temp.rec(p_code text) returns public.invoice_records language sql stable as $$
+  select r.* from public.invoice_records r where r.invoice_id = (pg_temp.inv(p_code)).id
+$$;
+
+create or replace function pg_temp.id_of(p_name text) returns uuid language sql stable as $$
+  select current_setting('test.' || p_name)::uuid
+$$;
+
+create or replace function pg_temp.today() returns date language sql stable as $$
+  select (now() at time zone 'Europe/Madrid')::date
 $$;
 
 select is(public.format_invoice_code('{n}/{aa}', 2026, 34), '34/26',
@@ -449,6 +465,392 @@ select throws_ok($$ select count(*) from public.invoice_records $$, '42501', nul
 select throws_ok($$ select public.format_invoice_code('{n}', 2026, 1) $$, '42501', null,
   'an anonymous visitor has no use for the numbering');
 reset role;
+
+select is(public.is_valid_spanish_tax_id('12345678Z'), true,
+  'a DNI with the right control letter is a valid recipient tax id');
+select is(public.is_valid_spanish_tax_id(' 12.345.678-z '), true,
+  'a DNI typed with dots, dashes, spaces or lower case is accepted like in the patient form');
+select is(public.is_valid_spanish_tax_id('12345678A'), false,
+  'a DNI with the wrong control letter is a typo, and a full invoice with a wrong tax id is worthless for the recipient');
+select is(public.is_valid_spanish_tax_id('X1234567L'), true,
+  'a foreign resident can ask for a full invoice with a NIE');
+select is(public.is_valid_spanish_tax_id('Y1234567L'), false,
+  'a NIE with a wrong control letter is rejected');
+select is(public.is_valid_spanish_tax_id('A12345674'), true,
+  'a company such as an insurer can be the recipient with its CIF');
+select is(public.is_valid_spanish_tax_id('A12345675'), false,
+  'a CIF with a wrong control digit is rejected');
+select is(public.is_valid_spanish_tax_id('Q1234567D'), true,
+  'public bodies and associations use a CIF with a control letter');
+select is(public.is_valid_spanish_tax_id('Q12345674'), false,
+  'those CIF types only accept the control letter, never the digit');
+select is(public.is_valid_spanish_tax_id(''), false,
+  'an empty tax id is not a tax id');
+
+insert into public.services (id, specialty_id, name, duration_minutes, price_cents, vat, booking_payment, booking_payment_value) values
+  ('8b000000-0000-0000-0000-0000000000b4', '8b000000-0000-0000-0000-0000000000aa', 'Tratamiento intensivo', 60, 45000, 'standard_21', 'none', 0);
+insert into public.people (id, first_name, last_name, birth_date, is_patient) values
+  ('8b000000-0000-0000-0000-0000000000c3', 'Ana', 'Pérez Gil', '1995-05-05', true);
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('8b000000-0000-0000-0000-0000000000f1', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c1',
+   '8b000000-0000-0000-0000-0000000000b1', pg_temp.at_madrid(-1, '15:00'), pg_temp.at_madrid(-1, '15:30')),
+  ('8b000000-0000-0000-0000-0000000000f2', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c3',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-1, '16:00'), pg_temp.at_madrid(-1, '16:30')),
+  ('8b000000-0000-0000-0000-0000000000f3', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c1',
+   '8b000000-0000-0000-0000-0000000000b4', pg_temp.at_madrid(-1, '17:00'), pg_temp.at_madrid(-1, '18:00')),
+  ('8b000000-0000-0000-0000-0000000000f4', '8b000000-0000-0000-0000-000000000002', '8b000000-0000-0000-0000-0000000000c2',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-1, '18:00'), pg_temp.at_madrid(-1, '18:30')),
+  ('8b000000-0000-0000-0000-0000000000f5', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c3',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-1, '19:00'), pg_temp.at_madrid(-1, '19:30'));
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok($$ select public.collect_payment('8b000000-0000-0000-0000-0000000000f3', 40001, 'card', 'Ajuste') $$,
+  'P0001', 'full_invoice_required',
+  'a simplified invoice is only legal up to 400 € including VAT, so a larger charge cannot be taken as a simplified one');
+reset role;
+select is((select count(*) from public.payments where appointment_id = '8b000000-0000-0000-0000-0000000000f3'), 0::bigint,
+  'the refused charge leaves no payment behind, so there is never money without its invoice');
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000000f3', 40000, 'card', 'Descuento'), null,
+  'exactly 400 € can still be invoiced as a simplified invoice');
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000000f1', 4500, 'card', ''), null,
+  'the employee charges a session that will later need a full invoice');
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000000f2', 3000, 'cash', ''), null,
+  'the employee charges an exempt session');
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000000f5', 3000, 'cash', ''), null,
+  'the employee charges another exempt session');
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000002');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000000f4', 3000, 'bizum', ''), null,
+  'a colleague charges her own appointment');
+reset role;
+
+select results_eq(
+  $$ select code from public.invoices i join public.payments p on p.id = i.payment_id
+     where p.appointment_id in ('8b000000-0000-0000-0000-0000000000f1', '8b000000-0000-0000-0000-0000000000f2',
+       '8b000000-0000-0000-0000-0000000000f3', '8b000000-0000-0000-0000-0000000000f4', '8b000000-0000-0000-0000-0000000000f5')
+     order by i.number $$,
+  $$ values ('4/' || pg_temp.yy()), ('5/' || pg_temp.yy()), ('6/' || pg_temp.yy()), ('7/' || pg_temp.yy()), ('8/' || pg_temp.yy()) $$,
+  'the refused 400+ € charge consumed no number, so the next charges keep the series without gaps');
+
+select set_config('test.s4', (pg_temp.inv('4/' || pg_temp.yy())).id::text, true);
+select set_config('test.s5', (pg_temp.inv('5/' || pg_temp.yy())).id::text, true);
+select set_config('test.s6', (pg_temp.inv('6/' || pg_temp.yy())).id::text, true);
+select set_config('test.s7', (pg_temp.inv('7/' || pg_temp.yy())).id::text, true);
+select set_config('test.s8', (pg_temp.inv('8/' || pg_temp.yy())).id::text, true);
+
+set local role service_role;
+select set_config('request.jwt.claims', '', true);
+update public.payments set collected_at = pg_temp.at_madrid(-1, '20:00')
+where appointment_id = '8b000000-0000-0000-0000-0000000000f5';
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"name": "Tutor Ñandú García", "tax_id": "12345678A", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'recipient_tax_id_invalid',
+  'a full invoice with a wrong tax id would be useless for the recipient''s tax return, so it is refused');
+reset role;
+select results_eq(
+  $$ select (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()),
+            (select count(*) from public.invoices where kind = 'full'),
+            (select count(*) from public.invoice_records) $$,
+  $$ values (9, 0::bigint, 10::bigint) $$,
+  'the refused full invoice consumed no number and left no record, so neither the series nor the chain has holes');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'recipient_invalid',
+  'a full invoice must name its recipient');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "  ", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'recipient_invalid',
+  'a full invoice must carry the recipient''s address');
+select throws_ok($$ select public.issue_full_invoice(pg_temp.id_of('s5'), null) $$,
+  'P0001', 'recipient_invalid',
+  'a full invoice without recipient data is just a simplified one');
+select throws_ok($$ select public.issue_full_invoice(pg_temp.id_of('s5'), '"Tutor"') $$,
+  'P0001', 'recipient_invalid',
+  'the recipient must come as its separate fields, not as loose text');
+select throws_ok(
+  $$ select public.issue_full_invoice('8b000000-0000-0000-0000-00000000ffff',
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_not_found',
+  'an unknown invoice cannot be replaced');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s8'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_not_found',
+  'an employee cannot turn a colleague''s invoice into a full one, nor learn that it exists');
+select isnt(
+  public.issue_full_invoice(pg_temp.id_of('s5'),
+    '{"name": "  Tutor Ñandú García ", "tax_id": " 12345678z ", "address": "Calle Luna 3, 2º", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'the employee issues the full invoice the patient''s tutor asked for');
+reset role;
+select set_config('test.f9', (pg_temp.inv('9/' || pg_temp.yy())).id::text, true);
+
+select results_eq(
+  $$ select series::text, kind::text, status::text, total_cents, replaces_invoice_id, rectifies_invoice_id, reason,
+            payment_id = (select payment_id from public.invoices where id = pg_temp.id_of('s5'))
+     from pg_temp.inv('9/' || pg_temp.yy()) $$,
+  $$ values ('main', 'full', 'issued', 4500, pg_temp.id_of('s5'), null::uuid, '', true) $$,
+  'the full invoice is a new invoice of the main series for the same payment, pointing to the simplified one it replaces');
+select is((pg_temp.inv('5/' || pg_temp.yy())).status::text, 'replaced',
+  'the simplified invoice is marked replaced, so the operation is never counted twice');
+select is((pg_temp.inv('9/' || pg_temp.yy())).snapshot->'recipient',
+  jsonb_build_object('name', 'Tutor Ñandú García', 'tax_id', '12345678Z', 'address', 'Calle Luna 3, 2º',
+    'postal_code', '46800', 'city', 'Xàtiva'),
+  'the recipient is frozen trimmed and with the tax id normalised, as it will be printed');
+select is((pg_temp.inv('9/' || pg_temp.yy())).snapshot - 'recipient', (pg_temp.inv('5/' || pg_temp.yy())).snapshot - 'recipient',
+  'the full invoice keeps exactly the concept, amounts, VAT and payments of the simplified one it replaces');
+select ok(
+  (pg_temp.rec('9/' || pg_temp.yy())).canonical like
+    'IDEmisorFactura=B12345674&NumSerieFactura=9/' || pg_temp.yy() || '&FechaExpedicionFactura='
+    || to_char(pg_temp.today(), 'DD-MM-YYYY') || '&TipoFactura=F3&CuotaTotal=7.81&ImporteTotal=45.00&Huella='
+    || (pg_temp.rec('8/' || pg_temp.yy())).hash || '&%',
+  'the full invoice is declared as F3, replacing a simplified one, and chains the previous record');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_already_replaced',
+  'a simplified invoice is replaced only once, so one operation never has two full invoices');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('f9'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_not_simplified',
+  'only a simplified invoice can be replaced by a full one');
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select isnt(
+  public.issue_full_invoice(pg_temp.id_of('s4'),
+    '{"name": "Mutua Ejemplo, S.A.", "tax_id": "a-12.345.674", "address": "Avenida del Puerto 10", "postal_code": "46021", "city": "Valencia"}'),
+  null,
+  'the owner issues a full invoice to a company with its CIF');
+reset role;
+select results_eq(
+  $$ select code, snapshot->'recipient'->>'tax_id' from public.invoices where replaces_invoice_id = pg_temp.id_of('s4') $$,
+  $$ values ('10/' || pg_temp.yy(), 'A12345674') $$,
+  'the company invoice takes the next number and stores the CIF normalised');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s5'), E' \n\t ') $$,
+  'P0001', 'reason_required',
+  'a rectifying invoice must say why the original was wrong');
+select throws_ok($$ select public.issue_rectifying_invoice('8b000000-0000-0000-0000-00000000ffff', 'Error') $$,
+  'P0001', 'invoice_not_found',
+  'an unknown invoice cannot be rectified');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s8'), 'Error') $$,
+  'P0001', 'invoice_not_found',
+  'an employee cannot rectify a colleague''s invoice, nor learn that it exists');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s7'), 'Error') $$,
+  'P0001', 'not_allowed',
+  'like voiding, an employee cannot rectify her own payment from a previous day once the till is closed');
+select isnt(public.issue_rectifying_invoice(pg_temp.id_of('s5'), '  Cobro duplicado  '), null,
+  'the employee rectifies the invoice of today''s payment she took by mistake');
+reset role;
+select set_config('test.r1', (pg_temp.inv('R1/' || pg_temp.yy())).id::text, true);
+
+select results_eq(
+  $$ select series::text, kind::text, status::text, total_cents, rectifies_invoice_id, replaces_invoice_id, reason
+     from pg_temp.inv('R1/' || pg_temp.yy()) $$,
+  $$ values ('rectifying', 'rectifying', 'issued', -4500, pg_temp.id_of('f9'), null::uuid, 'Cobro duplicado') $$,
+  'the rectifying invoice has its own R series, cancels the full amount in negative and rectifies the current invoice, the full one, even when asked from the simplified');
+select results_eq(
+  $$ select snapshot->'totals', snapshot->'lines'->0->'base_cents', snapshot->'lines'->0->'vat_cents',
+            snapshot->'lines'->0->'total_cents', snapshot->'payments', snapshot->'recipient', snapshot->'rectifies',
+            snapshot->>'reason'
+     from pg_temp.inv('R1/' || pg_temp.yy()) $$,
+  $$ values (jsonb_build_object('base_cents', -3719, 'vat_cents', -781, 'total_cents', -4500),
+             '-3719'::jsonb, '-781'::jsonb, '-4500'::jsonb,
+             jsonb_build_array(jsonb_build_object('method', 'card', 'amount_cents', -4500)),
+             (pg_temp.inv('9/' || pg_temp.yy())).snapshot->'recipient',
+             jsonb_build_object('code', '9/' || pg_temp.yy(), 'issued_on', to_char(pg_temp.today(), 'YYYY-MM-DD')),
+             'Cobro duplicado') $$,
+  'the rectifying invoice freezes negative base, VAT and payments, the same recipient, and the number and date of the invoice it rectifies, as the law requires');
+select ok(
+  (pg_temp.rec('R1/' || pg_temp.yy())).canonical like
+    'IDEmisorFactura=B12345674&NumSerieFactura=R1/' || pg_temp.yy() || '&FechaExpedicionFactura='
+    || to_char(pg_temp.today(), 'DD-MM-YYYY') || '&TipoFactura=R1&CuotaTotal=-7.81&ImporteTotal=-45.00&Huella='
+    || (pg_temp.rec('10/' || pg_temp.yy())).hash || '&%',
+  'rectifying a full invoice is declared as R1 with negative amounts and chains the previous record');
+select results_eq(
+  $$ select voided_at is not null, voided_by, void_reason from public.payments
+     where appointment_id = '8b000000-0000-0000-0000-0000000000f1' $$,
+  $$ values (true, '8b000000-0000-0000-0000-000000000001'::uuid, 'Cobro duplicado') $$,
+  'issuing the rectifying invoice voids the payment with the same reason, so the till and the invoices agree');
+select is((pg_temp.inv('9/' || pg_temp.yy())).status::text, 'issued',
+  'the rectified invoice stays issued; the rectifying one compensates it');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('f9'), 'Otra vez') $$,
+  'P0001', 'invoice_already_rectified',
+  'an invoice is rectified only once, so the amount is never cancelled twice');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('r1'), 'Otra vez') $$,
+  'P0001', 'invoice_already_rectified',
+  'a rectifying invoice cannot be used to rectify the same payment again');
+select isnt(public.issue_rectifying_invoice(pg_temp.id_of('s6'), 'Paciente equivocado'), null,
+  'the employee rectifies a simplified invoice');
+select throws_ok(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s6'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_already_rectified',
+  'a cancelled operation cannot get a full invoice afterwards');
+reset role;
+select ok(
+  (pg_temp.rec('R2/' || pg_temp.yy())).canonical like
+    '%&NumSerieFactura=R2/' || pg_temp.yy() || '&%&TipoFactura=R5&CuotaTotal=0.00&ImporteTotal=-30.00&Huella='
+    || (pg_temp.rec('R1/' || pg_temp.yy())).hash || '&%',
+  'rectifying a simplified invoice is declared as R5, takes the next R number and chains the previous record');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select isnt(public.issue_rectifying_invoice(pg_temp.id_of('s7'), 'Revisión de caja'), null,
+  'the owner can rectify a payment from a previous day');
+select throws_ok($$ select public.void_payment(
+    (select payment_id from public.invoices where id = pg_temp.id_of('s4')), 'Revisión de caja') $$,
+  'P0001', 'invoice_requires_rectification',
+  'an invoiced payment cannot just be voided: the invoice must be rectified first, so no invoice is left without its money');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select lives_ok($$ select public.void_payment(
+    (select id from public.payments where appointment_id = '8b000000-0000-0000-0000-0000000000d3'), 'Registrado por error') $$,
+  'a zero payment without invoice can still be voided directly');
+reset role;
+select is((select voided_at is null from public.payments where id = (select payment_id from public.invoices where id = pg_temp.id_of('s4'))), true,
+  'the refused void leaves the invoiced payment untouched');
+
+select results_eq(
+  $$ select count(*) filter (where previous_hash = ''),
+            count(*) filter (where previous_hash <> '' and not exists (
+              select 1 from public.invoice_records p where p.hash = r.previous_hash)),
+            count(*) filter (where not exists (
+              select 1 from public.invoice_records n where n.previous_hash = r.hash)),
+            count(*) = (select count(*) from public.invoices)
+     from public.invoice_records r $$,
+  $$ values (1::bigint, 0::bigint, 1::bigint, true) $$,
+  'after simplified, full and rectifying invoices of both series there is still one single chain with one record per invoice');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select results_eq(
+  $$ select count(*), max(total_count) from public.list_invoices(pg_temp.today(), pg_temp.today(), null, null, null, 100, 0) $$,
+  $$ values (12::bigint, 12::bigint) $$,
+  'the professional lists every invoice of her appointments today but not the colleague''s one');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000002');
+select results_eq(
+  $$ select code from public.list_invoices(pg_temp.today(), pg_temp.today(), null, null, null, 100, 0) $$,
+  $$ values ('8/' || pg_temp.yy()) $$,
+  'the colleague lists only the invoice of her own appointment');
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select results_eq(
+  $$ select code, total_count from public.list_invoices(pg_temp.today(), pg_temp.today(), 'rectifying', null, null, 100, 0) $$,
+  $$ values ('R3/' || pg_temp.yy(), 3::bigint), ('R2/' || pg_temp.yy(), 3::bigint), ('R1/' || pg_temp.yy(), 3::bigint) $$,
+  'the owner filters by kind and sees the newest first');
+select results_eq(
+  $$ select code, total_count from public.list_invoices(pg_temp.today(), pg_temp.today(), 'simplified', null, null, 3, 0) $$,
+  $$ values ('8/' || pg_temp.yy(), 8::bigint), ('7/' || pg_temp.yy(), 8::bigint), ('6/' || pg_temp.yy(), 8::bigint) $$,
+  'the first page brings only its rows and the total count, so the list is never cut at a thousand rows');
+select results_eq(
+  $$ select code, total_count from public.list_invoices(pg_temp.today(), pg_temp.today(), 'simplified', null, null, 3, 6) $$,
+  $$ values ('2/' || pg_temp.yy(), 8::bigint), ('1/' || pg_temp.yy(), 8::bigint) $$,
+  'the last page brings the remaining rows with the same total count');
+select results_eq(
+  $$ select code from public.list_invoices(null, null, null, 'nandu', null, 100, 0) $$,
+  $$ values ('R1/' || pg_temp.yy()), ('9/' || pg_temp.yy()) $$,
+  'searching the recipient ignores accents and case');
+select results_eq(
+  $$ select code from public.list_invoices(null, null, null, 'PEREZ', null, 100, 0) $$,
+  $$ values ('R3/' || pg_temp.yy()), ('R2/' || pg_temp.yy()), ('7/' || pg_temp.yy()), ('6/' || pg_temp.yy()) $$,
+  'searching the patient name ignores accents and case');
+select results_eq(
+  $$ select code from public.list_invoices(null, null, null, 'r2/', null, 100, 0) $$,
+  $$ values ('R2/' || pg_temp.yy()) $$,
+  'searching by invoice number finds it');
+select results_eq(
+  $$ select code from public.list_invoices(null, null, null, '%', null, 100, 0) $$,
+  $$ select code from public.invoices where false $$,
+  'a percent sign is searched literally, not as a wildcard that lists everything');
+select results_eq(
+  $$ select code from public.list_invoices(null, null, null, null, '8b000000-0000-0000-0000-000000000002', 100, 0) $$,
+  $$ values ('8/' || pg_temp.yy()) $$,
+  'the owner filters by professional');
+select results_eq(
+  $$ select code from public.list_invoices(make_date(pg_temp.this_year() + 1, 12, 31), make_date(pg_temp.this_year() + 1, 12, 31), null, null, null, 100, 0) $$,
+  $$ values ('F' || (pg_temp.this_year() + 1) || '-0040') $$,
+  'the date filter uses the Madrid day, so an invoice at 23:30 on 31 December is on that day');
+select results_eq(
+  $$ select code from public.list_invoices(make_date(pg_temp.this_year() + 2, 1, 1), make_date(pg_temp.this_year() + 2, 1, 1), null, null, null, 100, 0) $$,
+  $$ values ('F' || (pg_temp.this_year() + 2) || '-0001') $$,
+  'an invoice at 00:30 on 1 January in Madrid is on 1 January even though it is still 31 December in UTC');
+select results_eq(
+  $$ select code, kind::text, status::text, total_cents, recipient_name, patient_id, patient_name, professional_id, rectified
+     from public.list_invoices(null, null, null, null, null, 100, 0)
+     where code in ('5/' || pg_temp.yy(), '9/' || pg_temp.yy())
+     order by code $$,
+  $$ values ('5/' || pg_temp.yy(), 'simplified', 'replaced', 4500, null::text, '8b000000-0000-0000-0000-0000000000c1'::uuid,
+             'Lucía Martínez López', '8b000000-0000-0000-0000-000000000001'::uuid, false),
+            ('9/' || pg_temp.yy(), 'full', 'issued', 4500, 'Tutor Ñandú García', '8b000000-0000-0000-0000-0000000000c1'::uuid,
+             'Lucía Martínez López', '8b000000-0000-0000-0000-000000000001'::uuid, true) $$,
+  'each row says whether the invoice was replaced or rectified, to whom it was issued and for which patient');
+select results_eq(
+  $$ select code, kind::text, status::text, snapshot = (pg_temp.inv(code)).snapshot, related, qr
+     from public.invoice_detail(pg_temp.id_of('f9')) $$,
+  $$ values ('9/' || pg_temp.yy(), 'full', 'issued', true,
+       jsonb_build_object(
+         'replaces', jsonb_build_object('id', pg_temp.id_of('s5'), 'code', '5/' || pg_temp.yy()),
+         'replaced_by', null,
+         'rectifies', null,
+         'rectified_by', jsonb_build_object('id', pg_temp.id_of('r1'), 'code', 'R1/' || pg_temp.yy())),
+       jsonb_build_object('nif', 'B12345674', 'code', '9/' || pg_temp.yy(),
+         'issued_on', to_char(pg_temp.today(), 'DD-MM-YYYY'), 'total_cents', 4500)) $$,
+  'the detail gives the frozen invoice, the invoices it replaces and that rectify it, and the data for the AEAT QR');
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select results_eq(
+  $$ select related->'rectifies'->>'code', qr->'total_cents', reason from public.invoice_detail(pg_temp.id_of('r1')) $$,
+  $$ values ('9/' || pg_temp.yy(), '-4500'::jsonb, 'Cobro duplicado') $$,
+  'the professional opens the rectifying invoice, with its negative total in the QR and what it rectifies');
+select is((select related->'replaced_by'->>'code' from public.invoice_detail(pg_temp.id_of('s5'))), '9/' || pg_temp.yy(),
+  'the replaced simplified invoice points to the full one that replaces it');
+select throws_ok($$ select * from public.invoice_detail(pg_temp.id_of('s8')) $$, 'P0001', 'invoice_not_found',
+  'a professional cannot open a colleague''s invoice by its address');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000002');
+select throws_ok($$ select * from public.invoice_detail(pg_temp.id_of('f9')) $$, 'P0001', 'invoice_not_found',
+  'nor can the colleague open hers');
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001', 'aal1');
+select throws_ok($$ select * from public.list_invoices(null, null, null, null, null, 100, 0) $$, '42501', null,
+  'a staff session without the second factor cannot list invoices');
+reset role;
+select pg_temp.act_as_patient('8b000000-0000-0000-0000-000000000010');
+select throws_ok($$ select * from public.list_invoices(null, null, null, null, null, 100, 0) $$, '42501', null,
+  'a patient cannot list the clinic''s invoices');
+select throws_ok($$ select * from public.invoice_detail(pg_temp.id_of('f9')) $$, '42501', null,
+  'a patient cannot open the clinic''s invoices');
+select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s4'), 'x') $$, '42501', null,
+  'a patient cannot rectify invoices');
+reset role;
+select is(
+  has_function_privilege('anon', 'public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer)', 'execute')
+  or has_function_privilege('anon', 'public.invoice_detail(uuid)', 'execute')
+  or has_function_privilege('anon', 'public.issue_full_invoice(uuid, jsonb)', 'execute')
+  or has_function_privilege('anon', 'public.issue_rectifying_invoice(uuid, text)', 'execute'),
+  false,
+  'an anonymous visitor can neither read nor issue invoices');
 
 select * from finish();
 rollback;

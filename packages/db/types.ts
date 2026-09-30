@@ -1073,9 +1073,37 @@ export type Database = {
         }
         Returns: string
       }
+      invoice_detail: {
+        Args: { p_invoice_id: string }
+        Returns: {
+          appointment_id: string
+          code: string
+          id: string
+          issued_at: string
+          kind: Database["public"]["Enums"]["invoice_kind"]
+          patient_id: string
+          payment_id: string
+          professional_id: string
+          qr: Json
+          reason: string
+          related: Json
+          snapshot: Json
+          status: Database["public"]["Enums"]["invoice_status"]
+          total_cents: number
+        }[]
+      }
       invoice_hash: { Args: { p_canonical: string }; Returns: string }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      is_valid_spanish_tax_id: { Args: { p_value: string }; Returns: boolean }
+      issue_full_invoice: {
+        Args: { p_invoice_id: string; p_recipient: Json }
+        Returns: string
+      }
+      issue_rectifying_invoice: {
+        Args: { p_invoice_id: string; p_reason: string }
+        Returns: string
+      }
       issue_simplified_invoice: {
         Args: { p_payment_id: string }
         Returns: string
@@ -1083,6 +1111,32 @@ export type Database = {
       link_consent: {
         Args: { p_consent_id: string; p_person_id: string }
         Returns: undefined
+      }
+      list_invoices: {
+        Args: {
+          p_end?: string
+          p_kind?: Database["public"]["Enums"]["invoice_kind"]
+          p_limit?: number
+          p_offset?: number
+          p_professional_id?: string
+          p_query?: string
+          p_start?: string
+        }
+        Returns: {
+          code: string
+          id: string
+          issued_at: string
+          kind: Database["public"]["Enums"]["invoice_kind"]
+          patient_id: string
+          patient_name: string
+          payment_id: string
+          professional_id: string
+          recipient_name: string
+          rectified: boolean
+          status: Database["public"]["Enums"]["invoice_status"]
+          total_cents: number
+          total_count: number
+        }[]
       }
       list_payments: {
         Args: { p_end: string; p_professional_id?: string; p_start: string }

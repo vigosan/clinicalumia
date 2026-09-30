@@ -105,10 +105,19 @@ create table public.invoices (
   reason text not null default '' check (char_length(reason) <= 500),
   snapshot jsonb not null,
   total_cents integer not null,
-  status public.invoice_status not null default 'issued'
+  status public.invoice_status not null default 'issued',
+  constraint invoices_kind_shape check (
+    (kind = 'rectifying') = (series = 'rectifying')
+    and (kind = 'rectifying') = (rectifies_invoice_id is not null)
+    and (kind = 'rectifying') = (reason <> '')
+    and (kind = 'rectifying') = (total_cents < 0)
+    and (kind = 'full') = (replaces_invoice_id is not null)
+  )
 );
 
 create unique index invoices_one_simplified_per_payment on public.invoices(payment_id) where kind = 'simplified';
+create unique index invoices_one_replacement on public.invoices(replaces_invoice_id) where replaces_invoice_id is not null;
+create unique index invoices_one_rectification on public.invoices(rectifies_invoice_id) where rectifies_invoice_id is not null;
 create index invoices_payment_idx on public.invoices(payment_id);
 create index invoices_issued_at_idx on public.invoices(issued_at);
 
@@ -405,6 +414,12 @@ begin
   if exists (select 1 from public.payments where appointment_id = p_appointment_id and voided_at is null) then
     raise exception 'already_paid' using errcode = 'P0001';
   end if;
+  if appointment.payment_status = 'paid' then
+    deposit_cents := appointment.payment_amount_cents;
+  end if;
+  if p_amount_cents + deposit_cents > 40000 then
+    raise exception 'full_invoice_required' using errcode = 'P0001';
+  end if;
   begin
     insert into public.payments (appointment_id, amount_cents, method, vat, note, collected_by)
     values (p_appointment_id, p_amount_cents, p_method, appointment.vat, clean_note, auth.uid())
@@ -412,9 +427,6 @@ begin
   exception when unique_violation then
     raise exception 'already_paid' using errcode = 'P0001';
   end;
-  if appointment.payment_status = 'paid' then
-    deposit_cents := appointment.payment_amount_cents;
-  end if;
   if p_amount_cents + deposit_cents > 0 then
     perform public.issue_simplified_invoice(payment_id);
   end if;
@@ -424,3 +436,421 @@ $$;
 
 revoke all on function public.collect_payment(uuid, integer, public.payment_method, text) from public, anon;
 grant execute on function public.collect_payment(uuid, integer, public.payment_method, text) to authenticated;
+
+create or replace function public.is_valid_spanish_tax_id(p_value text)
+returns boolean
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  id text := upper(regexp_replace(coalesce(p_value, ''), '[\s.-]', '', 'g'));
+  letters constant text := 'TRWAGMYFPDXBNJZSQVHLCKE';
+  cif_letters constant text := 'JABCDEFGHI';
+  total integer := 0;
+  digit integer;
+  control integer;
+begin
+  if id ~ '^[0-9]{8}[A-Z]$' then
+    return right(id, 1) = substr(letters, left(id, 8)::integer % 23 + 1, 1);
+  end if;
+  if id ~ '^[XYZ][0-9]{7}[A-Z]$' then
+    return right(id, 1) = substr(letters, ((strpos('XYZ', left(id, 1)) - 1)::text || substr(id, 2, 7))::integer % 23 + 1, 1);
+  end if;
+  if id !~ '^[ABCDEFGHJKLMNPQRSUVW][0-9]{7}[0-9A-J]$' then
+    return false;
+  end if;
+  for position in 1..7 loop
+    digit := substr(id, position + 1, 1)::integer;
+    if position % 2 = 1 then
+      total := total + (digit * 2) / 10 + (digit * 2) % 10;
+    else
+      total := total + digit;
+    end if;
+  end loop;
+  control := (10 - total % 10) % 10;
+  if strpos('PQRSNW', left(id, 1)) > 0 then
+    return right(id, 1) = substr(cif_letters, control + 1, 1);
+  end if;
+  if strpos('ABEH', left(id, 1)) > 0 then
+    return right(id, 1) = control::text;
+  end if;
+  return right(id, 1) in (control::text, substr(cif_letters, control + 1, 1));
+end;
+$$;
+
+revoke all on function public.is_valid_spanish_tax_id(text) from public, anon, authenticated, service_role;
+
+create or replace function public.issue_full_invoice(p_invoice_id uuid, p_recipient jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  original record;
+  recipient jsonb;
+  numbering record;
+  issued timestamptz := now();
+  invoice_id uuid;
+begin
+  if not public.is_active_staff() then
+    raise exception 'invoice_forbidden' using errcode = '42501';
+  end if;
+  select i.id, i.kind, i.status, i.payment_id, i.snapshot, i.total_cents, p.collected_by, a.professional_id
+  into original
+  from public.invoices i
+  join public.payments p on p.id = i.payment_id
+  join public.appointments a on a.id = p.appointment_id
+  where i.id = p_invoice_id
+  for update of p;
+  if not found or not (public.is_owner() or original.professional_id = auth.uid() or original.collected_by = auth.uid()) then
+    raise exception 'invoice_not_found' using errcode = 'P0001';
+  end if;
+  if original.kind <> 'simplified' then
+    raise exception 'invoice_not_simplified' using errcode = 'P0001';
+  end if;
+  if original.status = 'replaced' then
+    raise exception 'invoice_already_replaced' using errcode = 'P0001';
+  end if;
+  if exists (select 1 from public.invoices r where r.rectifies_invoice_id = original.id) then
+    raise exception 'invoice_already_rectified' using errcode = 'P0001';
+  end if;
+  if p_recipient is null or jsonb_typeof(p_recipient) <> 'object' then
+    raise exception 'recipient_invalid' using errcode = 'P0001';
+  end if;
+  recipient := jsonb_build_object(
+    'name', btrim(coalesce(p_recipient->>'name', '')),
+    'tax_id', upper(regexp_replace(coalesce(p_recipient->>'tax_id', ''), '[\s.-]', '', 'g')),
+    'address', btrim(coalesce(p_recipient->>'address', '')),
+    'postal_code', btrim(coalesce(p_recipient->>'postal_code', '')),
+    'city', btrim(coalesce(p_recipient->>'city', ''))
+  );
+  if exists (select 1 from jsonb_each_text(recipient) e where e.value = '' or char_length(e.value) > 200) then
+    raise exception 'recipient_invalid' using errcode = 'P0001';
+  end if;
+  if not public.is_valid_spanish_tax_id(recipient->>'tax_id') then
+    raise exception 'recipient_tax_id_invalid' using errcode = 'P0001';
+  end if;
+  select * into numbering from public.next_invoice_number('main', issued);
+  insert into public.invoices (series, number, code, kind, issued_at, payment_id, replaces_invoice_id, snapshot, total_cents)
+  values (
+    'main',
+    numbering.invoice_number,
+    numbering.invoice_code,
+    'full',
+    issued,
+    original.payment_id,
+    original.id,
+    original.snapshot || jsonb_build_object('recipient', recipient),
+    original.total_cents
+  )
+  returning id into invoice_id;
+  update public.invoices set status = 'replaced' where id = original.id;
+  perform public.append_invoice_record(invoice_id, 'F3');
+  return invoice_id;
+end;
+$$;
+
+revoke all on function public.issue_full_invoice(uuid, jsonb) from public, anon;
+grant execute on function public.issue_full_invoice(uuid, jsonb) to authenticated;
+
+create or replace function public.issue_rectifying_invoice(p_invoice_id uuid, p_reason text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  clean_reason text := left(btrim(coalesce(p_reason, ''), E' \t\r\n'), 500);
+  target record;
+  original public.invoices;
+  numbering record;
+  issued timestamptz := now();
+  invoice_id uuid;
+begin
+  if not public.is_active_staff() then
+    raise exception 'invoice_forbidden' using errcode = '42501';
+  end if;
+  if clean_reason = '' then
+    raise exception 'reason_required' using errcode = 'P0001';
+  end if;
+  select i.payment_id, p.collected_at, p.collected_by, a.professional_id
+  into target
+  from public.invoices i
+  join public.payments p on p.id = i.payment_id
+  join public.appointments a on a.id = p.appointment_id
+  where i.id = p_invoice_id
+  for update of p;
+  if not found or not (public.is_owner() or target.professional_id = auth.uid() or target.collected_by = auth.uid()) then
+    raise exception 'invoice_not_found' using errcode = 'P0001';
+  end if;
+  if not (
+    public.is_owner()
+    or (
+      target.collected_by = auth.uid()
+      and (target.collected_at at time zone 'Europe/Madrid')::date = (now() at time zone 'Europe/Madrid')::date
+    )
+  ) then
+    raise exception 'not_allowed' using errcode = 'P0001';
+  end if;
+  select i.* into original
+  from public.invoices i
+  where i.payment_id = target.payment_id
+    and i.kind <> 'rectifying'
+    and i.status = 'issued'
+    and not exists (select 1 from public.invoices r where r.rectifies_invoice_id = i.id);
+  if not found then
+    raise exception 'invoice_already_rectified' using errcode = 'P0001';
+  end if;
+  select * into numbering from public.next_invoice_number('rectifying', issued);
+  insert into public.invoices (series, number, code, kind, issued_at, payment_id, rectifies_invoice_id, reason, snapshot, total_cents)
+  values (
+    'rectifying',
+    numbering.invoice_number,
+    numbering.invoice_code,
+    'rectifying',
+    issued,
+    original.payment_id,
+    original.id,
+    clean_reason,
+    original.snapshot || jsonb_build_object(
+      'lines', (
+        select jsonb_agg(l.line || jsonb_build_object(
+          'base_cents', -(l.line->>'base_cents')::integer,
+          'vat_cents', -(l.line->>'vat_cents')::integer,
+          'total_cents', -(l.line->>'total_cents')::integer
+        ) order by l.position)
+        from jsonb_array_elements(original.snapshot->'lines') with ordinality as l(line, position)
+      ),
+      'totals', jsonb_build_object(
+        'base_cents', -(original.snapshot->'totals'->>'base_cents')::integer,
+        'vat_cents', -(original.snapshot->'totals'->>'vat_cents')::integer,
+        'total_cents', -(original.snapshot->'totals'->>'total_cents')::integer
+      ),
+      'payments', (
+        select jsonb_agg(t.payment || jsonb_build_object('amount_cents', -(t.payment->>'amount_cents')::integer) order by t.position)
+        from jsonb_array_elements(original.snapshot->'payments') with ordinality as t(payment, position)
+      ),
+      'rectifies', jsonb_build_object(
+        'code', original.code,
+        'issued_on', to_char(original.issued_at at time zone 'Europe/Madrid', 'YYYY-MM-DD')
+      ),
+      'reason', clean_reason
+    ),
+    -original.total_cents
+  )
+  returning id into invoice_id;
+  perform public.append_invoice_record(invoice_id, case when original.kind = 'simplified' then 'R5' else 'R1' end);
+  update public.payments
+  set voided_at = now(),
+      voided_by = auth.uid(),
+      void_reason = clean_reason
+  where id = original.payment_id;
+  return invoice_id;
+end;
+$$;
+
+revoke all on function public.issue_rectifying_invoice(uuid, text) from public, anon;
+grant execute on function public.issue_rectifying_invoice(uuid, text) to authenticated;
+
+create or replace function public.void_payment(p_payment_id uuid, p_reason text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  payment record;
+  clean_reason text := left(btrim(coalesce(p_reason, ''), E' \t\r\n'), 500);
+begin
+  if not public.is_active_staff() then
+    raise exception 'payment_forbidden' using errcode = '42501';
+  end if;
+  select p.collected_at, p.collected_by, p.voided_at, a.professional_id
+  into payment
+  from public.payments p
+  join public.appointments a on a.id = p.appointment_id
+  where p.id = p_payment_id
+  for update of p;
+  if not found then
+    raise exception 'payment_not_found' using errcode = 'P0001';
+  end if;
+  if not (
+    public.is_owner()
+    or payment.collected_by = auth.uid()
+    or payment.professional_id = auth.uid()
+  ) then
+    raise exception 'payment_not_found' using errcode = 'P0001';
+  end if;
+  if clean_reason = '' then
+    raise exception 'reason_required' using errcode = 'P0001';
+  end if;
+  if payment.voided_at is not null then
+    raise exception 'already_voided' using errcode = 'P0001';
+  end if;
+  if not (
+    public.is_owner()
+    or (
+      payment.collected_by = auth.uid()
+      and (payment.collected_at at time zone 'Europe/Madrid')::date = (now() at time zone 'Europe/Madrid')::date
+    )
+  ) then
+    raise exception 'not_allowed' using errcode = 'P0001';
+  end if;
+  if exists (
+    select 1 from public.invoices i
+    where i.payment_id = p_payment_id
+      and i.kind <> 'rectifying'
+      and i.status = 'issued'
+      and not exists (select 1 from public.invoices r where r.rectifies_invoice_id = i.id)
+  ) then
+    raise exception 'invoice_requires_rectification' using errcode = 'P0001';
+  end if;
+  update public.payments
+  set voided_at = now(),
+      voided_by = auth.uid(),
+      void_reason = clean_reason
+  where id = p_payment_id;
+end;
+$$;
+
+revoke all on function public.void_payment(uuid, text) from public, anon;
+grant execute on function public.void_payment(uuid, text) to authenticated;
+
+create or replace function public.list_invoices(
+  p_start date default null,
+  p_end date default null,
+  p_kind public.invoice_kind default null,
+  p_query text default null,
+  p_professional_id uuid default null,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  code text,
+  kind public.invoice_kind,
+  status public.invoice_status,
+  issued_at timestamptz,
+  total_cents integer,
+  recipient_name text,
+  patient_id uuid,
+  patient_name text,
+  professional_id uuid,
+  payment_id uuid,
+  rectified boolean,
+  total_count bigint
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  needle text := lower(public.f_unaccent(btrim(coalesce(p_query, ''))));
+begin
+  if not public.is_active_staff() then
+    raise exception 'invoice_forbidden' using errcode = '42501';
+  end if;
+  return query
+    select
+      i.id,
+      i.code,
+      i.kind,
+      i.status,
+      i.issued_at,
+      i.total_cents,
+      i.snapshot->'recipient'->>'name',
+      a.patient_id,
+      pe.first_name || ' ' || pe.last_name,
+      a.professional_id,
+      i.payment_id,
+      exists (select 1 from public.invoices r where r.rectifies_invoice_id = i.id),
+      count(*) over ()
+    from public.invoices i
+    join public.payments p on p.id = i.payment_id
+    join public.appointments a on a.id = p.appointment_id
+    join public.people pe on pe.id = a.patient_id
+    where (p_start is null or i.issued_at >= p_start::timestamp at time zone 'Europe/Madrid')
+      and (p_end is null or i.issued_at < (p_end + 1)::timestamp at time zone 'Europe/Madrid')
+      and (p_kind is null or i.kind = p_kind)
+      and (p_professional_id is null or a.professional_id = p_professional_id)
+      and (needle = '' or position(needle in lower(public.f_unaccent(
+        i.code || ' ' || coalesce(i.snapshot->'recipient'->>'name', '') || ' ' || pe.first_name || ' ' || pe.last_name
+      ))) > 0)
+      and (public.is_owner() or a.professional_id = auth.uid() or p.collected_by = auth.uid())
+    order by i.issued_at desc, i.series desc, i.number desc
+    limit least(greatest(coalesce(p_limit, 25), 1), 100)
+    offset greatest(coalesce(p_offset, 0), 0);
+end;
+$$;
+
+revoke all on function public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer) from public, anon;
+grant execute on function public.list_invoices(date, date, public.invoice_kind, text, uuid, integer, integer) to authenticated;
+
+create or replace function public.invoice_detail(p_invoice_id uuid)
+returns table (
+  id uuid,
+  code text,
+  kind public.invoice_kind,
+  status public.invoice_status,
+  issued_at timestamptz,
+  total_cents integer,
+  reason text,
+  payment_id uuid,
+  appointment_id uuid,
+  patient_id uuid,
+  professional_id uuid,
+  snapshot jsonb,
+  related jsonb,
+  qr jsonb
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_active_staff() then
+    raise exception 'invoice_forbidden' using errcode = '42501';
+  end if;
+  return query
+    select
+      i.id,
+      i.code,
+      i.kind,
+      i.status,
+      i.issued_at,
+      i.total_cents,
+      i.reason,
+      i.payment_id,
+      a.id,
+      a.patient_id,
+      a.professional_id,
+      i.snapshot,
+      jsonb_build_object(
+        'replaces', (select jsonb_build_object('id', o.id, 'code', o.code) from public.invoices o where o.id = i.replaces_invoice_id),
+        'replaced_by', (select jsonb_build_object('id', o.id, 'code', o.code) from public.invoices o where o.replaces_invoice_id = i.id),
+        'rectifies', (select jsonb_build_object('id', o.id, 'code', o.code) from public.invoices o where o.id = i.rectifies_invoice_id),
+        'rectified_by', (select jsonb_build_object('id', o.id, 'code', o.code) from public.invoices o where o.rectifies_invoice_id = i.id)
+      ),
+      jsonb_build_object(
+        'nif', i.snapshot->'issuer'->>'tax_id',
+        'code', i.code,
+        'issued_on', to_char(i.issued_at at time zone 'Europe/Madrid', 'DD-MM-YYYY'),
+        'total_cents', i.total_cents
+      )
+    from public.invoices i
+    join public.payments p on p.id = i.payment_id
+    join public.appointments a on a.id = p.appointment_id
+    where i.id = p_invoice_id
+      and (public.is_owner() or a.professional_id = auth.uid() or p.collected_by = auth.uid());
+  if not found then
+    raise exception 'invoice_not_found' using errcode = 'P0001';
+  end if;
+end;
+$$;
+
+revoke all on function public.invoice_detail(uuid) from public, anon;
+grant execute on function public.invoice_detail(uuid) to authenticated;
