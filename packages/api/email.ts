@@ -6,7 +6,11 @@ const MAILPIT_SEND = "http://127.0.0.1:54324/api/v1/send";
 
 export class EmailRateLimitError extends Error {}
 
-type Attachment = { filename: string; content: string; contentType: string };
+type Attachment = {
+  filename: string;
+  content: string | Uint8Array;
+  contentType: string;
+};
 type Email = {
   to: string | string[];
   subject: string;

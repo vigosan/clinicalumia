@@ -1,9 +1,12 @@
 "use server";
 
+import { createAdminClient } from "@clinicalumia/api/admin";
+import { sendEmail } from "@clinicalumia/api/email";
 import { Resend } from "resend";
 import { parseConsent } from "@/lib/consent";
 import { consentTitle } from "@/lib/consent-legal";
 import { buildConsentPdf } from "@/lib/consent-pdf";
+import { storeConsent } from "@/lib/consent-store";
 import { site } from "@/lib/site";
 
 export type CollaboratorFormState =
@@ -148,15 +151,6 @@ export async function sendConsent(
   if ("error" in result) return result;
   const { consent } = result;
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const to = process.env.CONSENT_TO_EMAIL ?? site.email;
-  const from =
-    process.env.CONSENT_FROM_EMAIL ?? "Lumia <onboarding@resend.dev>";
-
-  if (!apiKey) {
-    return { error: "Servicio no configurado. Inténtalo más tarde." };
-  }
-
   let pdf: Uint8Array;
   try {
     pdf = await buildConsentPdf(consent, signedAt);
@@ -164,22 +158,29 @@ export async function sendConsent(
     return { error: "No se ha podido leer la firma. Vuelve a firmar." };
   }
 
+  try {
+    await storeConsent({ admin: createAdminClient(), consent, signedAt, pdf });
+  } catch {
+    return {
+      error: "No se ha podido guardar el consentimiento. Inténtalo de nuevo.",
+    };
+  }
+
+  const to = process.env.CONSENT_TO_EMAIL ?? site.email;
   const fullName = `${consent.firstName} ${consent.lastName}`;
   const fileName = `consentimiento-${consent.dni}-${signedAt.toISOString().slice(0, 10)}.pdf`;
-  const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({
-    from,
-    to,
-    subject: `${consentTitle} — ${fullName}`,
-    text: `${fullName} (DNI ${consent.dni}) ha firmado el consentimiento de protección de datos. Se adjunta el documento firmado.`,
-    html: `<p>${escapeHtml(fullName)} (DNI ${escapeHtml(consent.dni)}) ha firmado el consentimiento de protección de datos. Se adjunta el documento firmado.</p>`,
-    attachments: [{ filename: fileName, content: Buffer.from(pdf) }],
-  });
 
-  if (error) {
-    return {
-      error: "No se ha podido enviar el consentimiento. Inténtalo de nuevo.",
-    };
+  try {
+    await sendEmail({
+      to,
+      subject: `${consentTitle} — ${fullName}`,
+      html: `<p>${escapeHtml(fullName)} (DNI ${escapeHtml(consent.dni)}) ha firmado el consentimiento de protección de datos. Se adjunta el documento firmado.</p>`,
+      attachments: [
+        { filename: fileName, content: pdf, contentType: "application/pdf" },
+      ],
+    });
+  } catch (error) {
+    console.error("No se ha podido enviar el consentimiento por email", error);
   }
 
   return { ok: true };

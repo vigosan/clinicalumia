@@ -214,6 +214,48 @@ describe("sendEmail", () => {
     ]);
   });
 
+  it("sends a binary attachment to Resend byte for byte, so a PDF is not corrupted by being read as text", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    resendSend.mockResolvedValue({ data: { id: "1" }, error: null });
+    const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0xff, 0x00, 0x80]);
+
+    await sendEmail({
+      ...message,
+      attachments: [
+        {
+          filename: "consentimiento.pdf",
+          content: pdf,
+          contentType: "application/pdf",
+        },
+      ],
+    });
+
+    const sent = resendSend.mock.calls[0]![0].attachments[0];
+    expect(Buffer.from(sent.content, "base64")).toEqual(Buffer.from(pdf));
+  });
+
+  it("sends a binary attachment to Mailpit byte for byte, so a PDF is not corrupted by being read as text", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0xff, 0x00, 0x80]);
+
+    await sendEmail({
+      ...message,
+      attachments: [
+        {
+          filename: "consentimiento.pdf",
+          content: pdf,
+          contentType: "application/pdf",
+        },
+      ],
+    });
+
+    const [, init] = fetchMock.mock.lastCall ?? [];
+    const sent = JSON.parse(init.body).Attachments[0];
+    expect(Buffer.from(sent.Content, "base64")).toEqual(Buffer.from(pdf));
+  });
+
   it("sends one email to every guardian through Resend, so a reminder reaches all of them without being sent twice", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("RESEND_API_KEY", "re_test");
