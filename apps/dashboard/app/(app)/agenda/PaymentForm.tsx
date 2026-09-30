@@ -8,8 +8,8 @@ import { useRef, useState, useTransition } from "react";
 import {
   METHOD_ORDER,
   methodLabel,
+  needsPaymentNote,
   type PaymentMethod,
-  parseAmount,
 } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { collectPayment } from "../payments/actions";
@@ -33,9 +33,12 @@ export function PaymentForm({
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
 
-  const parsed = parseAmount(amount);
-  const needsNote =
-    cancelled || !("cents" in parsed) || parsed.cents !== suggestedAmountCents;
+  const needsNote = needsPaymentNote({
+    cancelled,
+    amount,
+    suggestedAmountCents,
+    error,
+  });
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

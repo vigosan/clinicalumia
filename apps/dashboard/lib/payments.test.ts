@@ -4,6 +4,7 @@ import {
   canVoidPayment,
   formatEuros,
   methodLabel,
+  needsPaymentNote,
   parseAmount,
   paymentError,
   paymentHistoryLines,
@@ -218,6 +219,45 @@ describe("paymentHistoryLines", () => {
     expect(lines).toEqual([
       "Cobrada · 45,00 € · Tarjeta por Laura Ejemplo el 25/10 a las 23:30",
     ]);
+  });
+});
+
+describe("needsPaymentNote", () => {
+  const base = {
+    cancelled: false,
+    amount: "55,00",
+    suggestedAmountCents: 5500,
+    error: null,
+  };
+
+  it("asks for no reason when charging exactly what is proposed", () => {
+    expect(needsPaymentNote(base)).toBe(false);
+  });
+
+  it("asks for a reason when the amount differs from the proposal", () => {
+    expect(needsPaymentNote({ ...base, amount: "50" })).toBe(true);
+  });
+
+  it("asks for a reason when charging a cancelled appointment", () => {
+    expect(needsPaymentNote({ ...base, cancelled: true })).toBe(true);
+  });
+
+  it("asks for a reason when the database says one is required, since the proposal on screen may be out of date and otherwise there would be nowhere to type it", () => {
+    expect(
+      needsPaymentNote({
+        ...base,
+        error: paymentError({ code: "P0001", message: "note_required" }),
+      }),
+    ).toBe(true);
+  });
+
+  it("does not ask for a reason because of an unrelated error", () => {
+    expect(
+      needsPaymentNote({
+        ...base,
+        error: paymentError({ code: "P0001", message: "already_paid" }),
+      }),
+    ).toBe(false);
   });
 });
 

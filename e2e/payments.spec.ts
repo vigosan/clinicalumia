@@ -175,6 +175,39 @@ test("cobrar un importe distinto del propuesto pide el motivo y con él se regis
   );
 });
 
+test("si la señal se paga en la web mientras el formulario está abierto, aparece el campo de motivo para poder explicar la diferencia", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -4);
+  const employee = await createEmployee("Profesional Cobro Señal Pagada");
+  const appointmentId = await createAppointment(employee.id, date);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointmentId);
+
+  await page.getByTestId("payment-collect").click();
+  await expect(page.getByTestId("payment-note")).toHaveCount(0);
+
+  const { error } = await admin
+    .from("appointments")
+    .update({ payment_status: "paid" })
+    .eq("id", appointmentId);
+  expect(error).toBeNull();
+
+  await page.getByTestId("payment-submit").click();
+  await expect(page.getByTestId("payment-error")).toHaveText(
+    "Indica el motivo del cambio de importe.",
+  );
+  await expect(page.getByTestId("payment-note")).toBeVisible();
+
+  await page.getByTestId("payment-note").fill("Precio antiguo");
+  await page.getByTestId("payment-submit").click();
+
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pagada · Efectivo · 55,00 €",
+  );
+});
+
 test("anular un cobro con motivo lo deja pendiente y se puede volver a cobrar con Bizum", async ({
   page,
 }) => {
@@ -244,7 +277,7 @@ test("una cita futura no se puede cobrar todavía", async ({ page }) => {
   await expect(page.getByTestId("appointment-payment-status")).toHaveCount(0);
 });
 
-test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la otra ve que ya está cobrada", async ({
+test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la otra se actualiza para mostrarla cobrada", async ({
   browser,
 }) => {
   const date = addDays(todayInMadrid(), -7);
@@ -271,26 +304,13 @@ test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la 
       second.getByTestId("payment-submit").click(),
     ]);
 
-    const outcomes = await Promise.all(
-      [first, second].map((page) =>
-        Promise.race([
-          page
-            .getByTestId("payment-error")
-            .waitFor()
-            .then(() => "rechazado"),
-          page
-            .getByTestId("appointment-payment-status")
-            .filter({ hasText: "Pagada · Efectivo · 55,00 €" })
-            .waitFor()
-            .then(() => "cobrado"),
-        ]),
-      ),
-    );
-    expect([...outcomes].sort()).toEqual(["cobrado", "rechazado"]);
-    const loser = outcomes[0] === "rechazado" ? first : second;
-    await expect(loser.getByTestId("payment-error")).toHaveText(
-      "Esta cita ya está cobrada.",
-    );
+    for (const page of [first, second]) {
+      await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+        "Pagada · Efectivo · 55,00 €",
+      );
+      await expect(page.getByTestId("payment-form")).toHaveCount(0);
+      await expect(page.getByTestId("payment-collect")).toHaveCount(0);
+    }
 
     const { data: payments, error } = await admin
       .from("payments")

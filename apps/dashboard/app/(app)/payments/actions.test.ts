@@ -59,7 +59,7 @@ describe("collectPayment", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("tells the slower of two people collecting at once that the appointment is already paid, and leaves the agenda untouched", async () => {
+  it("tells the slower of two people collecting at once that the appointment is already paid, and refreshes the agenda so their tab stops offering to charge it", async () => {
     rpcResult.error = { code: "P0001", message: "already_paid" };
     const result = await collectPayment("appt-1", {
       amount: "55",
@@ -67,6 +67,19 @@ describe("collectPayment", () => {
       note: "",
     });
     expect(result).toEqual({ error: "Esta cita ya está cobrada." });
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+  });
+
+  it("leaves the agenda untouched on an error the person can fix in the form, so what they typed is kept", async () => {
+    rpcResult.error = { code: "P0001", message: "note_required" };
+    const result = await collectPayment("appt-1", {
+      amount: "50",
+      method: "cash",
+      note: "",
+    });
+    expect(result).toEqual({
+      error: "Indica el motivo del cambio de importe.",
+    });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

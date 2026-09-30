@@ -21,7 +21,11 @@ export async function collectPayment(
     p_method: method,
     p_note: input.note.trim(),
   });
-  if (error) return { error: paymentError(error) };
+  if (error) {
+    if (error.code === "P0001" && error.message === "already_paid")
+      revalidatePath("/");
+    return { error: paymentError(error) };
+  }
 
   revalidatePath("/");
   return { ok: true };

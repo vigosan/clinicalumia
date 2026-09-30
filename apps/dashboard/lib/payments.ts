@@ -160,6 +160,26 @@ export function paymentError(error: DbError): string {
   return "No se ha podido guardar. Inténtalo de nuevo.";
 }
 
+export function needsPaymentNote({
+  cancelled,
+  amount,
+  suggestedAmountCents,
+  error,
+}: {
+  cancelled: boolean;
+  amount: string;
+  suggestedAmountCents: number;
+  error: string | null;
+}): boolean {
+  const parsed = parseAmount(amount);
+  return (
+    cancelled ||
+    !("cents" in parsed) ||
+    parsed.cents !== suggestedAmountCents ||
+    error === paymentError({ code: "P0001", message: "note_required" })
+  );
+}
+
 export function canVoidPayment({
   payment,
   userId,
