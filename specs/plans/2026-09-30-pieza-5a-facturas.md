@@ -211,6 +211,8 @@ git commit -m "Listar las facturas y verlas en la ficha del paciente"
 - Produces:
   - Por serie ("Facturas" y "Rectificativas"): el formato, el año y el siguiente número, con una vista previa ("La próxima factura será 35/26").
   - Si la serie está bloqueada: "La numeración de 2026 ya está en uso y no se puede cambiar."
+  - Se quitan del formulario de "Datos de la clínica" los campos antiguos "Prefijo de factura" y "Prefijo de rectificativa" (`invoice_prefix` y `rectifying_prefix`), que quedan sustituidos por las series. Las columnas se dejan sin usar y se anota que no se usan.
+  - Si faltan la razón social o el NIF, un aviso bien visible en "Datos de la clínica" (`clinic-fiscal-warning`): "Faltan la razón social o el NIF: sin estos datos no se pueden emitir facturas ni registrar cobros."
   - Errores: `series_locked`, `format_invalid` y `number_invalid`.
 
 - [ ] **Step 1: tests que fallan.**
