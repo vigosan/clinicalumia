@@ -366,18 +366,17 @@ test("an unknown consent id shows the not-found page instead of an empty detail"
   page,
 }) => {
   await loginAsThrowawayEmployee(page);
-  const response = await page.goto(
-    `${DASHBOARD}/consentimientos/${randomUUID()}`,
-  );
-  expect(response?.status()).toBe(404);
+  await page.goto(`${DASHBOARD}/consentimientos/${randomUUID()}`);
+  await expect(page.getByTestId("not-found")).toBeVisible();
+  await expect(page.getByTestId("consent-details")).toHaveCount(0);
 });
 
 test("an address that is not a consent id shows the not-found page instead of a load error", async ({
   page,
 }) => {
   await loginAsThrowawayEmployee(page);
-  const response = await page.goto(`${DASHBOARD}/consentimientos/no-es-un-id`);
-  expect(response?.status()).toBe(404);
+  await page.goto(`${DASHBOARD}/consentimientos/no-es-un-id`);
+  await expect(page.getByTestId("not-found")).toBeVisible();
 });
 
 test("the search box follows the address when staff navigate, so it never shows a filter that is not applied", async ({

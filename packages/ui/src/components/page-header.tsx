@@ -1,17 +1,25 @@
 import type { ReactNode } from "react";
+import { Breadcrumbs, type Crumb } from "./breadcrumbs";
 
 export function PageHeader({
   title,
   description,
   actions,
+  breadcrumbs,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  breadcrumbs?: Crumb[];
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-6">
-      <div className="flex flex-col gap-1.5">
+      <div className="flex min-w-0 flex-col gap-1.5">
+        {breadcrumbs && (
+          <div className="mb-1.5">
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
+        )}
         <h1 className="break-words text-title font-bold text-ink-900">
           {title}
         </h1>

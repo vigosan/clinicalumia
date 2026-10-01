@@ -149,7 +149,8 @@ test("una profesional genera su enlace de calendario, que muestra sus citas solo
   const professional = await professionalWithAppointment();
   await signIn(page, DASHBOARD, professional.email, professional.password);
 
-  await page.getByRole("link", { name: "Mi calendario" }).click();
+  await page.getByTestId("user-menu").click();
+  await page.getByRole("menuitem", { name: "Ver citas en mi móvil" }).click();
   await page.getByTestId("calendar-generate").click();
   const link = page.getByTestId("calendar-url");
   await expect(link).toHaveText(

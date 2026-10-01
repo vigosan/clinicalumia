@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { signIn } from "./auth";
+import { logOut, signIn } from "./auth";
 import { deleteInvoicesOfAppointments } from "./invoices";
 
 const DASHBOARD = "http://localhost:3001";
@@ -512,7 +512,7 @@ test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el sel
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
     "Cobrada · 55,00 € · Tarjeta",
   );
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
 
   await signIn(page, DASHBOARD, employee.email, employee.password);

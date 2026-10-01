@@ -50,6 +50,10 @@ export default async function ConsentPage({
   return (
     <>
       <PageHeader
+        breadcrumbs={[
+          { label: "Consentimientos", href: "/consentimientos" },
+          { label: `${consent.first_name} ${consent.last_name}` },
+        ]}
         title={`${consent.first_name} ${consent.last_name}`}
         description={`Firmado el ${formatSignedAt(consent.signed_at)}`}
       />

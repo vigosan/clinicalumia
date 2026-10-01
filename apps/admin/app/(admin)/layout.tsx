@@ -1,6 +1,5 @@
 import { createClient } from "@clinicalumia/api/server";
 import { AppShell } from "@clinicalumia/ui/app-shell";
-import { Button } from "@clinicalumia/ui/button";
 import logo from "@clinicalumia/ui/logo-dark.png";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -51,13 +50,7 @@ export default async function AdminLayout({
         { href: "/clinic", label: "Datos de la clínica" },
       ]}
       user={{ name: profile.full_name, detail: "Propietaria" }}
-      logout={
-        <form action={logout}>
-          <Button type="submit" variant="ghost" size="sm" data-testid="logout">
-            Salir
-          </Button>
-        </form>
-      }
+      logout={logout}
     >
       {children}
     </AppShell>

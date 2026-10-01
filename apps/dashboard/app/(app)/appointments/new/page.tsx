@@ -108,7 +108,24 @@ export default async function NewAppointmentPage({
 
   return (
     <>
-      <PageHeader title="Nueva cita" />
+      <PageHeader
+        breadcrumbs={
+          patient && !params.date
+            ? [
+                { label: "Pacientes", href: "/patients" },
+                {
+                  label: `${patient.first_name} ${patient.last_name}`,
+                  href: `/patients/${patient.id}`,
+                },
+                { label: "Nueva cita" },
+              ]
+            : [
+                { label: "Agenda", href: `/?date=${initialDate}` },
+                { label: "Nueva cita" },
+              ]
+        }
+        title="Nueva cita"
+      />
       <Card>
         <AppointmentForm
           professionals={professionals}

@@ -3,12 +3,22 @@ import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import type { Metadata } from "next";
 import { isUuid } from "@/lib/agenda";
+import { newPersonBreadcrumbs } from "@/lib/breadcrumbs";
 import { type ConsentPrefill, PersonForm } from "../PersonForm";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const metadata: Metadata = { title: "Nueva ficha" };
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ guardianOf?: string; consentimiento?: string }>;
+}): Promise<Metadata> {
+  const { guardianOf, consentimiento } = await searchParams;
+  if (guardianOf) return { title: "Nuevo tutor/a" };
+  if (consentimiento) return { title: "Crear ficha" };
+  return { title: "Nuevo paciente" };
+}
 
 export default async function NewPersonPage({
   searchParams,
@@ -61,6 +71,17 @@ export default async function NewPersonPage({
   return (
     <>
       <PageHeader
+        breadcrumbs={newPersonBreadcrumbs({
+          minor: guardianOfProp && {
+            id: guardianOfProp.id,
+            name: guardianOfProp.minorName,
+          },
+          returnTo,
+          consent: consent && {
+            id: consent.id,
+            name: `${consent.first_name} ${consent.last_name}`,
+          },
+        })}
         title={title}
         description={
           guardianOfProp ? `Tutor/a de ${guardianOfProp.minorName}` : undefined

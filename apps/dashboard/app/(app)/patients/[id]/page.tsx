@@ -18,7 +18,22 @@ import { PersonActions } from "./PersonActions";
 
 const PATIENT_INVOICES_LIMIT = 20;
 
-export const metadata: Metadata = { title: "Ficha" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: person } = await supabase
+    .from("people")
+    .select("first_name, last_name")
+    .eq("id", id)
+    .maybeSingle();
+  return {
+    title: person ? `${person.first_name} ${person.last_name}` : "Ficha",
+  };
+}
 
 export default async function PatientPage({
   params,
@@ -202,6 +217,10 @@ export default async function PatientPage({
   return (
     <>
       <PageHeader
+        breadcrumbs={[
+          { label: "Pacientes", href: "/patients" },
+          { label: `${person.first_name} ${person.last_name}` },
+        ]}
         title={`${person.first_name} ${person.last_name}`}
         description={
           [

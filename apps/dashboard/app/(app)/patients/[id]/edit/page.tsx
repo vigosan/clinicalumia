@@ -26,6 +26,14 @@ export default async function EditPersonPage({
   return (
     <>
       <PageHeader
+        breadcrumbs={[
+          { label: "Pacientes", href: "/patients" },
+          {
+            label: `${person.first_name} ${person.last_name}`,
+            href: `/patients/${person.id}`,
+          },
+          { label: "Editar" },
+        ]}
         title="Editar ficha"
         description={`${person.first_name} ${person.last_name}`}
       />

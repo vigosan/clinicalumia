@@ -1,6 +1,5 @@
 import { createClient } from "@clinicalumia/api/server";
 import { AppShell } from "@clinicalumia/ui/app-shell";
-import { Button } from "@clinicalumia/ui/button";
 import logo from "@clinicalumia/ui/logo-dark.png";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -43,24 +42,24 @@ export default async function DashboardLayout({
       }
       section="Clínica"
       nav={[
-        { href: "/", label: "Agenda" },
+        { href: "/", label: "Agenda", match: ["/appointments"] },
         { href: "/patients", label: "Pacientes" },
         { href: "/consentimientos", label: "Consentimientos" },
         { href: "/cobros", label: "Cobros" },
         { href: "/facturas", label: "Facturas" },
-        { href: "/mi-calendario", label: "Mi calendario" },
       ]}
       user={{
         name: profile.full_name,
         detail: profile.role === "owner" ? "Propietaria" : "Equipo",
       }}
-      logout={
-        <form action={logout}>
-          <Button type="submit" variant="ghost" size="sm" data-testid="logout">
-            Cerrar sesión
-          </Button>
-        </form>
-      }
+      menu={[
+        {
+          href: "/mi-calendario",
+          label: "Ver citas en mi móvil",
+          testId: "user-menu-calendar",
+        },
+      ]}
+      logout={logout}
     >
       {children}
     </AppShell>

@@ -49,7 +49,7 @@ test("an invited employee sets a password and lands in the dashboard", async ({
   await page.fill('[name="confirmation"]', "lumia-segura-2026");
   await page.getByTestId("password-submit").click();
   await completeTwoFactorStep(page);
-  await expect(page.getByTestId("logout")).toBeVisible();
+  await expect(page.getByTestId("user-menu")).toBeVisible();
   await expect(
     page.getByRole("complementary").getByText("Empleada de prueba"),
   ).toBeVisible();

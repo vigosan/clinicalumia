@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import {
+  logOut,
   signIn,
   submitTotpCode,
   totpCode,
@@ -58,7 +59,7 @@ test("a wrong six-digit code shows the error and keeps you at the challenge", as
 }) => {
   const { email, password } = await createEmployee();
   await signIn(page, "http://localhost:3001", email, password);
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
 
   await loginToChallenge(page, email, password);
@@ -76,7 +77,7 @@ test("recovering a password with a factor already active asks for the code befor
   const { email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
 
   await page.goto("/login");
@@ -100,13 +101,13 @@ test("recovering a password with a factor already active asks for the code befor
   await page.fill('[name="password"]', newPassword);
   await page.fill('[name="confirmation"]', newPassword);
   await page.getByTestId("password-submit").click();
-  await expect(page.getByTestId("logout")).toBeVisible();
+  await expect(page.getByTestId("user-menu")).toBeVisible();
 
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
   await loginToChallenge(page, email, newPassword);
   await submitTotpCode(page, secret!);
-  await expect(page.getByTestId("logout")).toBeVisible();
+  await expect(page.getByTestId("user-menu")).toBeVisible();
 });
 
 test("an open redirect on the challenge's next lands you at this app's home", async ({
@@ -116,7 +117,7 @@ test("an open redirect on the challenge's next lands you at this app's home", as
   const { email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
 
   await loginToChallenge(page, email, password);
@@ -124,7 +125,7 @@ test("an open redirect on the challenge's next lands you at this app's home", as
   await submitTotpCode(page, secret!);
 
   await expect(page).toHaveURL("http://localhost:3001/");
-  await expect(page.getByTestId("logout")).toBeVisible();
+  await expect(page.getByTestId("user-menu")).toBeVisible();
 });
 
 test("a session that only passed the password sees no specialties until it passes the code", async ({
@@ -134,7 +135,7 @@ test("a session that only passed the password sees no specialties until it passe
   const { email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
 
   const supabase = createClient(API_URL, anonKey);
@@ -183,7 +184,7 @@ test("a password-only (aal1) session on a factored account can't change the pass
   const { id, email, password } = await createEmployee();
   const secret = await signIn(page, "http://localhost:3001", email, password);
   expect(secret).toBeTruthy();
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
 
   const attacker = createClient(API_URL, anonKey);
@@ -238,5 +239,5 @@ test("a password-only (aal1) session on a factored account can't change the pass
   await page.fill('[name="password"]', password);
   await page.getByTestId("login-submit").click();
   await submitTotpCode(page, secret!);
-  await expect(page.getByTestId("logout")).toBeVisible();
+  await expect(page.getByTestId("user-menu")).toBeVisible();
 });

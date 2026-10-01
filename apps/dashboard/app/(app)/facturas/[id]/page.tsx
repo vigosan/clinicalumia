@@ -132,7 +132,13 @@ export default async function InvoiceDetailPage({
 
   return (
     <>
-      <PageHeader title={`Factura ${detail.code}`} />
+      <PageHeader
+        breadcrumbs={[
+          { label: "Facturas", href: "/facturas" },
+          { label: detail.code },
+        ]}
+        title={`Factura ${detail.code}`}
+      />
       <Card className="flex flex-col gap-2">
         <p data-testid="invoice-code">Factura {detail.code}</p>
         <p>{invoiceKindLabel(detail.kind)}</p>

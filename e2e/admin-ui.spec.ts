@@ -135,7 +135,12 @@ test("the section menu marks the current page and stays usable on a phone", asyn
     "page",
   );
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(nav.getByRole("link", { name: "Especialidades" })).toBeVisible();
+  await page.getByTestId("nav-toggle").click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Menú" })
+      .getByRole("link", { name: "Especialidades" }),
+  ).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );

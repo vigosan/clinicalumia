@@ -30,7 +30,13 @@ export default async function PendingPaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Pendientes de cobro" />
+      <PageHeader
+        breadcrumbs={[
+          { label: "Cobros", href: "/cobros" },
+          { label: "Pendientes" },
+        ]}
+        title="Pendientes de cobro"
+      />
       {state === "error" && (
         <Card
           role="alert"

@@ -126,10 +126,15 @@ export async function signIn(
     await expect(page).toHaveURL(
       (url) => !/^\/(login|auth)(\/|$)/.test(url.pathname),
     );
-    await expect(page.getByTestId("logout")).toBeVisible();
+    await expect(page.getByTestId("user-menu")).toBeVisible();
 
     return secret;
   } finally {
     releaseLock();
   }
+}
+
+export async function logOut(page: Page) {
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("logout").click();
 }

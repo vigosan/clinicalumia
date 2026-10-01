@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { signIn } from "./auth";
+import { logOut, signIn } from "./auth";
 import { deleteInvoicesOfAppointments } from "./invoices";
 import { latestEmailAttachments } from "./mail";
 
@@ -371,7 +371,7 @@ test("una profesional no puede abrir el PDF de la factura de una compañera", as
   await openAppointment(page, date, appointment.id);
   await collectAndReadCode(page);
   const [invoice] = await invoicesOf(appointment.id);
-  await page.getByTestId("logout").click();
+  await logOut(page);
   await expect(page).toHaveURL(/\/login$/);
 
   await signIn(page, DASHBOARD, colleague.email, colleague.password);
@@ -394,7 +394,7 @@ test("el listado de facturas filtra por tipo, texto y profesional, cada profesio
   await signIn(page, DASHBOARD, employeeOne.email, employeeOne.password);
   await openAppointment(page, date, appointmentOne.id);
   const codeOne = await collectAndReadCode(page);
-  await page.getByTestId("logout").click();
+  await logOut(page);
 
   await signIn(page, DASHBOARD, employeeTwo.email, employeeTwo.password);
   await openAppointment(page, date, appointmentTwo.id);
@@ -413,7 +413,7 @@ test("el listado de facturas filtra por tipo, texto y profesional, cada profesio
       .filter({ hasText: appointmentOne.patientName }),
   ).toHaveCount(0);
   await expect(page.getByTestId("invoices-professional")).toHaveCount(0);
-  await page.getByTestId("logout").click();
+  await logOut(page);
 
   await signIn(page, DASHBOARD, "info@clinicalumia.es");
   await page.goto(`${DASHBOARD}/facturas`);
