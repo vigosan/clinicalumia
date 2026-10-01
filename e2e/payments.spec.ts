@@ -418,10 +418,8 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="payments-total-method"][data-method="cash"]'),
-  ).toHaveText("Efectivo: 55,00 €");
-  await expect(page.getByTestId("payments-total-amount")).toHaveText(
-    "Total: 55,00 €",
-  );
+  ).toContainText("55,00 €");
+  await expect(page.getByTestId("payments-total-amount")).toHaveText("55,00 €");
 
   await selectOption(
     page.getByTestId("payments-professional"),
@@ -430,10 +428,8 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="payments-total-method"][data-method="card"]'),
-  ).toHaveText("Tarjeta: 55,00 €");
-  await expect(page.getByTestId("payments-total-amount")).toHaveText(
-    "Total: 55,00 €",
-  );
+  ).toContainText("55,00 €");
+  await expect(page.getByTestId("payments-total-amount")).toHaveText("55,00 €");
 
   await selectOption(
     page.getByTestId("payments-professional"),
@@ -444,12 +440,10 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     "Anulado · Cobrado por error",
   );
   await expect(page.getByTestId("payments-total-method")).toHaveCount(0);
-  await expect(page.getByTestId("payments-total-amount")).toHaveText(
-    "Total: 0,00 €",
-  );
+  await expect(page.getByTestId("payments-total-amount")).toHaveText("0,00 €");
 });
 
-test("una cita pasada sin cobro aparece en pendientes de cobro, desaparece al cobrarla, y una cancelada no aparece", async ({
+test("la pestaña Pendientes cuenta las citas sin cobrar, se cobra desde ella sin salir de Cobros, y una cancelada no aparece", async ({
   page,
 }) => {
   const date = addDays(todayInMadrid(), -3);
@@ -471,6 +465,10 @@ test("una cita pasada sin cobro aparece en pendientes de cobro, desaparece al co
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/cobros/pendientes`);
 
+  await expect(page).toHaveURL(`${DASHBOARD}/cobros?tab=pendientes`);
+  const pendingTab = page.getByTestId("payments-tab-pendientes");
+  await expect(pendingTab).toHaveAttribute("aria-selected", "true");
+  await expect(pendingTab).toHaveText("Pendientes (1)");
   await expect(
     page
       .getByTestId("pending-payment-row")
@@ -487,18 +485,213 @@ test("una cita pasada sin cobro aparece en pendientes de cobro, desaparece al co
     .filter({ hasText: pendingPatientName })
     .getByTestId("pending-payment-collect")
     .click();
-  await expect(page.getByTestId("appointment-panel")).toBeVisible();
-  await collect(page, "cash");
-  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Cobrada · 55,00 € · Efectivo",
+  const dialog = page.getByTestId("payment-register-dialog");
+  await expect(dialog.getByTestId("payment-selected")).toContainText(
+    pendingPatientName,
+  );
+  await expect(dialog.getByTestId("payment-change-appointment")).toHaveCount(0);
+  await dialog.getByTestId("payment-method-cash").check();
+  await dialog.getByTestId("payment-submit").click();
+
+  await expect(page.getByTestId("toast")).toContainText(
+    "Cobro registrado · 55,00 € en efectivo",
+  );
+  await expect(dialog).toHaveCount(0);
+  await expect(pendingTab).toHaveText("Pendientes (0)");
+  await expect(page.getByTestId("pending-payment-row")).toHaveCount(0);
+  await expect(page.getByTestId("payments-pending-empty")).toBeVisible();
+});
+
+test("«Registrar cobro» en /cobros pone primero las citas de hoy, busca por paciente y, al cobrar, avisa y actualiza la lista y los totales", async ({
+  page,
+}) => {
+  const today = todayInMadrid();
+  const employee = await createEmployee("Profesional Registrar Cobro");
+  const todayAppointmentId = await createAppointment(employee.id, today);
+  const pastAppointmentId = await createAppointment(
+    employee.id,
+    addDays(today, -2),
+  );
+  const todayPatientName = await patientNameOf(todayAppointmentId);
+  const pastPatientName = await patientNameOf(pastAppointmentId);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/cobros`);
+  await expect(page.getByTestId("payments-empty")).toContainText(
+    "usa «Registrar cobro» o revisa «Pendientes»",
   );
 
-  await page.goto(`${DASHBOARD}/cobros/pendientes`);
+  await page.getByTestId("payments-register").click();
+  const dialog = page.getByTestId("payment-register-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId("payment-candidate-search")).toBeFocused();
+  await expect(
+    dialog
+      .getByTestId("payment-candidates-today")
+      .getByTestId("payment-candidate"),
+  ).toHaveText([new RegExp(todayPatientName)]);
+  await expect(
+    dialog
+      .getByTestId("payment-candidates-earlier")
+      .getByTestId("payment-candidate"),
+  ).toHaveText([new RegExp(pastPatientName)]);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("payments-register")).toBeFocused();
+
+  await page.getByTestId("payments-register").click();
+  await dialog
+    .getByTestId("payment-candidate-search")
+    .fill(pastPatientName.toLowerCase());
+  await expect(dialog.getByTestId("payment-candidate")).toHaveText([
+    new RegExp(pastPatientName),
+  ]);
+  await dialog.getByTestId("payment-candidate-search").fill("zzz-nadie");
+  await expect(dialog.getByTestId("payment-candidates-empty")).toBeVisible();
+  await dialog.getByTestId("payment-candidate-search").fill("");
+
+  await dialog
+    .getByTestId("payment-candidate")
+    .filter({ hasText: todayPatientName })
+    .click();
+  await expect(dialog.getByTestId("payment-selected")).toContainText(
+    todayPatientName,
+  );
+  await dialog.getByTestId("payment-change-appointment").click();
+  await expect(dialog.getByTestId("payment-candidate-search")).toBeVisible();
+  await dialog
+    .getByTestId("payment-candidate")
+    .filter({ hasText: todayPatientName })
+    .click();
+  await expect(dialog.getByTestId("payment-amount")).toHaveValue("55,00");
+  await dialog.getByTestId("payment-method-card").check();
+  await dialog.getByTestId("payment-submit").click();
+
+  await expect(page.getByTestId("toast")).toContainText(
+    "Cobro registrado · 55,00 € con tarjeta",
+  );
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByTestId("payment-row").filter({ hasText: todayPatientName }),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('[data-testid="payments-total-method"][data-method="card"]'),
+  ).toContainText("55,00 €");
+  await expect(page.getByTestId("payments-total-amount")).toHaveText("55,00 €");
+  const { data: payments, error } = await admin
+    .from("payments")
+    .select("method, amount_cents, collected_by")
+    .eq("appointment_id", todayAppointmentId);
+  expect(error).toBeNull();
+  expect(payments).toEqual([
+    { method: "card", amount_cents: 5500, collected_by: employee.id },
+  ]);
+
+  await page.getByTestId("payments-register").click();
+  await expect(
+    dialog
+      .getByTestId("payment-candidate")
+      .filter({ hasText: todayPatientName }),
+  ).toHaveCount(0);
+});
+
+test("en «Registrar cobro» y en Pendientes un empleado solo ve las citas de las que es profesional", async ({
+  page,
+}) => {
+  const today = todayInMadrid();
+  const employee = await createEmployee("Profesional Cobro Propio");
+  const colleague = await createEmployee("Profesional Cobro Ajeno");
+  const ownAppointmentId = await createAppointment(employee.id, today);
+  const colleagueTodayId = await createAppointment(colleague.id, today);
+  const colleaguePastId = await createAppointment(
+    colleague.id,
+    addDays(today, -2),
+  );
+  const ownPatientName = await patientNameOf(ownAppointmentId);
+  const colleagueTodayName = await patientNameOf(colleagueTodayId);
+  const colleaguePastName = await patientNameOf(colleaguePastId);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/cobros`);
+  await page.getByTestId("payments-register").click();
+  const dialog = page.getByTestId("payment-register-dialog");
+  await expect(
+    dialog.getByTestId("payment-candidate").filter({ hasText: ownPatientName }),
+  ).toHaveCount(1);
+  await expect(
+    dialog
+      .getByTestId("payment-candidate")
+      .filter({ hasText: colleagueTodayName }),
+  ).toHaveCount(0);
+  await expect(
+    dialog
+      .getByTestId("payment-candidate")
+      .filter({ hasText: colleaguePastName }),
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  await page.getByTestId("payments-tab-pendientes").click();
+  await expect(page).toHaveURL(`${DASHBOARD}/cobros?tab=pendientes`);
   await expect(
     page
       .getByTestId("pending-payment-row")
-      .filter({ hasText: pendingPatientName }),
+      .filter({ hasText: colleaguePastName }),
   ).toHaveCount(0);
+
+  await logOut(page);
+  await signIn(page, DASHBOARD, "info@clinicalumia.es");
+  await page.goto(`${DASHBOARD}/cobros`);
+  await page.getByTestId("payments-register").click();
+  await dialog.getByTestId("payment-candidate-search").fill(colleagueTodayName);
+  await expect(dialog.getByTestId("payment-candidate")).toHaveText([
+    new RegExp(colleagueTodayName),
+  ]);
+});
+
+test("desde la ficha se ve si cada cita está cobrada, se cobra una pendiente con «Cobrar» y aparece en la tarjeta Cobros", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -3);
+  const employee = await createEmployee("Profesional Cobro Ficha");
+  const appointmentId = await createAppointment(employee.id, date);
+  const { data: appointment, error } = await admin
+    .from("appointments")
+    .select("patient_id")
+    .eq("id", appointmentId)
+    .single();
+  expect(error).toBeNull();
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/patients/${appointment!.patient_id}`);
+
+  await expect(page.getByTestId("patient-appointment")).toContainText(
+    "Realizada · Pendiente de cobro",
+  );
+  const card = page.getByTestId("patient-payments");
+  await expect(card.getByTestId("patient-payment")).toHaveCount(0);
+  await card
+    .getByTestId("patient-pending-payment")
+    .getByTestId("patient-collect")
+    .click();
+
+  const dialog = page.getByTestId("payment-register-dialog");
+  await expect(dialog.getByTestId("payment-amount")).toHaveValue("55,00");
+  await dialog.getByTestId("payment-method-bizum").check();
+  await dialog.getByTestId("payment-submit").click();
+
+  await expect(page.getByTestId("toast")).toContainText(
+    "Cobro registrado · 55,00 € por Bizum",
+  );
+  await expect(page.getByTestId("patient-appointment")).toContainText(
+    "Realizada · Cobrada · 55,00 € · Bizum",
+  );
+  await expect(card.getByTestId("patient-pending-payment")).toHaveCount(0);
+  await expect(card.getByTestId("patient-payment")).toHaveCount(1);
+  await expect(card.getByTestId("patient-payment")).toContainText(
+    "55,00 € · Bizum",
+  );
+  await expect(card.getByTestId("patient-payment")).toContainText("Válido");
 });
 
 test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el selector de profesional", async ({
@@ -531,7 +724,7 @@ test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el sel
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="payments-total-method"][data-method="cash"]'),
-  ).toHaveText("Efectivo: 55,00 €");
+  ).toContainText("55,00 €");
   await expect(page.getByTestId("payments-professional")).toHaveCount(0);
 });
 

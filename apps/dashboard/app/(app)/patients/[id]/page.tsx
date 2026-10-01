@@ -10,11 +10,17 @@ import { cache } from "react";
 import { guardianErrorMessage } from "@/lib/guardian-error";
 import type { InvoiceRow } from "@/lib/invoices-load";
 import type { PatientAppointmentSource } from "@/lib/patient-appointments";
-import { splitPatientAppointments } from "@/lib/patient-appointments";
+import {
+  patientAppointmentsToCollect,
+  patientPaymentRows,
+  splitPatientAppointments,
+} from "@/lib/patient-appointments";
+import type { PaymentCandidate } from "@/lib/payment-candidates";
 import { ConsentsSection, type PatientConsent } from "./ConsentsSection";
 import { GuardiansSection } from "./GuardiansSection";
 import { PatientAppointments } from "./PatientAppointments";
 import { PatientInvoices } from "./PatientInvoices";
+import { PatientPayments } from "./PatientPayments";
 import { PersonActions } from "./PersonActions";
 
 const PATIENT_INVOICES_LIMIT = 20;
@@ -141,7 +147,7 @@ export default async function PatientPage({
     supabase
       .from("appointments")
       .select(
-        "id, starts_at, status, cancelled_by, professional_id, service:services(name)",
+        "id, starts_at, status, cancelled_by, professional_id, service:services(name), payments(id, amount_cents, method, note, collected_at, voided_at)",
       )
       .eq("patient_id", id),
     supabase.rpc("staff_directory"),
@@ -188,10 +194,43 @@ export default async function PatientPage({
           professionalNameById.get(row.professional_id) ?? "Profesional",
         status: row.status,
         cancelledBy: row.cancelled_by,
+        payments: row.payments.map((payment) => ({
+          id: payment.id,
+          amountCents: payment.amount_cents,
+          method: payment.method,
+          note: payment.note,
+          collectedAt: payment.collected_at,
+          voidedAt: payment.voided_at,
+        })),
       }));
 
+  const now = new Date();
   const { upcoming, upcomingTruncated, past, pastTruncated } =
-    splitPatientAppointments(appointmentSources, new Date());
+    splitPatientAppointments(appointmentSources, now);
+
+  const appointmentsToCollect = patientAppointmentsToCollect(
+    appointmentSources,
+    now,
+  );
+  const suggestedAmounts = await Promise.all(
+    appointmentsToCollect.map((appointment) =>
+      supabase.rpc("suggested_amount", { p_appointment_id: appointment.id }),
+    ),
+  );
+  const paymentsFailed =
+    appointmentsFailed ||
+    suggestedAmounts.some((result) => result.error || result.data === null);
+  const toCollect: PaymentCandidate[] = appointmentsToCollect.map(
+    (appointment, index) => ({
+      id: appointment.id,
+      startsAt: appointment.startsAt,
+      patientName: `${person.first_name} ${person.last_name}`,
+      serviceName: appointment.serviceName,
+      professionalName: appointment.professionalName,
+      suggestedAmountCents: suggestedAmounts[index]?.data ?? 0,
+    }),
+  );
+  const patientPayments = patientPaymentRows(appointmentSources);
 
   const { data: consentRows, error: consentsError } = await supabase
     .from("consents")
@@ -304,6 +343,17 @@ export default async function PatientPage({
               ? `/appointments/new?patient=${id}`
               : null
           }
+        />
+      </Card>
+
+      <Card className="flex flex-col gap-2" data-testid="patient-payments">
+        <h2 className="text-lg font-bold text-ink-900">Cobros</h2>
+        <PatientPayments
+          error={paymentsFailed}
+          toCollect={toCollect}
+          payments={patientPayments.rows}
+          truncated={patientPayments.truncated}
+          now={now.toISOString()}
         />
       </Card>
 

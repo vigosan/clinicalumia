@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   appointmentStatusLabel,
   type PatientAppointmentSource,
+  type PatientPaymentSource,
+  patientAppointmentsToCollect,
+  patientPaymentRows,
   splitPatientAppointments,
 } from "./patient-appointments";
 
@@ -15,6 +18,21 @@ function appointment(
     professionalName: "Laura Ejemplo",
     status: "scheduled",
     cancelledBy: null,
+    payments: [],
+    ...overrides,
+  };
+}
+
+function payment(
+  overrides: Partial<PatientPaymentSource>,
+): PatientPaymentSource {
+  return {
+    id: "pay-1",
+    amountCents: 4500,
+    method: "cash",
+    note: "",
+    collectedAt: "2026-10-05T14:00:00Z",
+    voidedAt: null,
     ...overrides,
   };
 }
@@ -128,5 +146,142 @@ describe("splitPatientAppointments", () => {
     expect(result.upcoming).toHaveLength(20);
     expect(result.upcomingTruncated).toBe(true);
     expect(result.pastTruncated).toBe(false);
+  });
+});
+
+describe("payment state on the record", () => {
+  const now = new Date("2026-10-10T10:00:00Z");
+  const past = "2026-10-05T10:00:00Z";
+
+  function labelOf(source: PatientAppointmentSource): string | undefined {
+    const result = splitPatientAppointments([source], now);
+    return [...result.upcoming, ...result.past][0]?.statusLabel;
+  }
+
+  it("flags a visit that took place without payment, so nobody forgets to charge it", () => {
+    expect(labelOf(appointment({ startsAt: past }))).toBe(
+      "Realizada · Pendiente de cobro",
+    );
+  });
+
+  it("shows amount and method of the valid payment", () => {
+    expect(
+      labelOf(appointment({ startsAt: past, payments: [payment({})] })),
+    ).toBe("Realizada · Cobrada · 45,00 € · Efectivo");
+  });
+
+  it("ignores a voided payment, because the visit is unpaid again", () => {
+    expect(
+      labelOf(
+        appointment({
+          startsAt: past,
+          payments: [payment({ voidedAt: "2026-10-06T10:00:00Z" })],
+        }),
+      ),
+    ).toBe("Realizada · Pendiente de cobro");
+  });
+
+  it("says «Sin cargo» for a visit registered at 0 €", () => {
+    expect(
+      labelOf(
+        appointment({
+          startsAt: past,
+          payments: [payment({ amountCents: 0 })],
+        }),
+      ),
+    ).toBe("Realizada · Sin cargo");
+  });
+
+  it("adds nothing to a future visit that is not paid yet", () => {
+    expect(labelOf(appointment({ startsAt: "2026-10-20T10:00:00Z" }))).toBe(
+      "Programada",
+    );
+  });
+});
+
+describe("patientAppointmentsToCollect", () => {
+  const now = new Date("2026-10-10T10:00:00Z");
+
+  it("offers «Cobrar» for unpaid visits up to the end of today, most recent first, including later today when the patient pays on arrival", () => {
+    const rows = patientAppointmentsToCollect(
+      [
+        appointment({ id: "old", startsAt: "2026-10-01T10:00:00Z" }),
+        appointment({ id: "later-today", startsAt: "2026-10-10T16:00:00Z" }),
+        appointment({ id: "tomorrow", startsAt: "2026-10-11T10:00:00Z" }),
+        appointment({
+          id: "paid",
+          startsAt: "2026-10-05T10:00:00Z",
+          payments: [payment({})],
+        }),
+        appointment({
+          id: "cancelled",
+          startsAt: "2026-10-06T10:00:00Z",
+          status: "cancelled",
+          cancelledBy: "clinic",
+        }),
+      ],
+      now,
+    );
+    expect(rows.map((row) => row.id)).toEqual(["later-today", "old"]);
+  });
+
+  it("keeps a no-show collectable, as the clinic may still charge it", () => {
+    const rows = patientAppointmentsToCollect(
+      [
+        appointment({
+          id: "no-show",
+          status: "no_show",
+          startsAt: "2026-10-05T10:00:00Z",
+        }),
+      ],
+      now,
+    );
+    expect(rows.map((row) => row.id)).toEqual(["no-show"]);
+  });
+});
+
+describe("patientPaymentRows", () => {
+  it("lists every payment newest first with amount, method, whether it is still valid and the visit it paid, which may be another day", () => {
+    const rows = patientPaymentRows([
+      appointment({
+        id: "a1",
+        startsAt: "2026-10-05T10:00:00Z",
+        payments: [
+          payment({
+            id: "voided",
+            collectedAt: "2026-10-05T10:30:00Z",
+            voidedAt: "2026-10-05T11:00:00Z",
+          }),
+          payment({
+            id: "valid",
+            method: "card",
+            collectedAt: "2026-10-07T11:30:00Z",
+          }),
+        ],
+      }),
+    ]);
+    expect(rows.rows).toEqual([
+      {
+        id: "valid",
+        date: "07/10/2026",
+        appointmentDate: "05/10/2026",
+        serviceName: "Sesión",
+        amountLabel: "45,00 € · Tarjeta",
+        stateLabel: "Válido",
+        voided: false,
+        href: "/?date=2026-10-05&appointment=a1",
+      },
+      {
+        id: "voided",
+        date: "05/10/2026",
+        appointmentDate: "05/10/2026",
+        serviceName: "Sesión",
+        amountLabel: "45,00 € · Efectivo",
+        stateLabel: "Anulado",
+        voided: true,
+        href: "/?date=2026-10-05&appointment=a1",
+      },
+    ]);
+    expect(rows.truncated).toBe(false);
   });
 });

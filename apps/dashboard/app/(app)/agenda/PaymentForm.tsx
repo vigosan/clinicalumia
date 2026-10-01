@@ -27,12 +27,16 @@ export function PaymentForm({
   appointmentId,
   suggestedAmountCents,
   cancelled,
+  initiallyOpen = false,
+  onSuccess,
 }: {
   appointmentId: string;
   suggestedAmountCents: number;
   cancelled: boolean;
+  initiallyOpen?: boolean;
+  onSuccess?: (payment: { amount: string; method: PaymentMethod }) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [amount, setAmount] = useState(
     (suggestedAmountCents / 100).toFixed(2).replace(".", ","),
   );
@@ -65,6 +69,7 @@ export function PaymentForm({
       }
       setError(null);
       setOpen(false);
+      onSuccess?.({ amount, method });
     });
   }
 
