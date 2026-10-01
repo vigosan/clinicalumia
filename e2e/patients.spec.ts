@@ -145,7 +145,7 @@ test("adding an adult from «Nuevo paciente» takes you to their record as a pat
 
   await page.getByLabel("Nombre").fill("Persona");
   await page.getByLabel("Apellidos").fill(lastName);
-  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
   await expect(page.getByLabel(/es paciente/i)).toHaveCount(0);
   await expect(page.getByTestId("person-submit")).toHaveText("Crear ficha");
   await page.getByTestId("person-submit").click();
@@ -156,14 +156,35 @@ test("adding an adult from «Nuevo paciente» takes you to their record as a pat
 
   const { data } = await admin
     .from("people")
-    .select("first_name, last_name, is_patient")
+    .select("first_name, last_name, is_patient, birth_date")
     .eq("id", id)
     .single();
   expect(data).toEqual({
     first_name: "Persona",
     last_name: lastName,
     is_patient: true,
+    birth_date: "1990-01-01",
   });
+});
+
+test("una fecha de nacimiento que no existe no deja guardar la ficha, en vez de guardarla sin fecha", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+
+  await page.getByLabel("Nombre").fill("Persona");
+  await page.getByLabel("Apellidos").fill(`Invalida${Date.now()}`);
+  const birthDate = page.getByLabel("Fecha de nacimiento");
+  await birthDate.pressSequentially("31021990");
+  await expect(birthDate).toHaveValue("31/02/1990");
+  await page.getByTestId("person-submit").click();
+
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/new`);
+  expect(
+    await birthDate.evaluate((input: HTMLInputElement) => input.validity.valid),
+  ).toBe(false);
+  await expect(birthDate).toHaveAttribute("aria-invalid", "true");
 });
 
 test("double-clicking Guardar on a new unique person creates exactly one row, not two", async ({
@@ -176,7 +197,7 @@ test("double-clicking Guardar on a new unique person creates exactly one row, no
 
   await page.getByLabel("Nombre").fill("Persona");
   await page.getByLabel("Apellidos").fill(lastName);
-  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
   await page
     .getByLabel("Teléfono")
     .fill(`6${String(Date.now() % 1e8).padStart(8, "0")}`);
@@ -204,7 +225,7 @@ test('adding someone with Lucía\'s phone shows the duplicate warning, and "Usar
 
   await page.getByLabel("Nombre").fill("Otra");
   await page.getByLabel("Apellidos").fill(lastName);
-  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
   const phone = page.getByLabel("Teléfono");
   await phone.fill("+34 600 111 222");
   await phone.blur();
@@ -243,7 +264,7 @@ test("submitting right after typing the seed phone, before the debounced check w
 
   await page.getByLabel("Nombre").fill("Otra");
   await page.getByLabel("Apellidos").fill(lastName);
-  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
   await page.getByLabel("Teléfono").fill("+34 600 111 222");
   await page.getByTestId("person-submit").click();
 
@@ -269,7 +290,7 @@ test("adding someone with the seed DNI written with dots and lowercase reports t
 
   await page.getByLabel("Nombre").fill("Otro");
   await page.getByLabel("Apellidos").fill(lastName);
-  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
   const taxId = page.getByLabel("DNI/NIE");
   await taxId.fill("11.223.344-b");
   await taxId.blur();
@@ -333,7 +354,7 @@ test('creating a minor patient shows "Menor sin tutor/a", and adding their guard
   await page.goto(`${DASHBOARD}/patients/new`);
   await page.getByLabel("Nombre").fill("Hijo");
   await page.getByLabel("Apellidos").fill(minorLastName);
-  await page.getByLabel("Fecha de nacimiento").fill("2015-01-01");
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/2015");
   await page.getByTestId("person-submit").click();
 
   await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
@@ -354,7 +375,7 @@ test('creating a minor patient shows "Menor sin tutor/a", and adding their guard
   await page.getByTestId("guardian-primary").check();
   await expect(page.getByTestId("person-is-patient")).not.toBeChecked();
   await page.getByTestId("person-is-patient").click();
-  await page.getByLabel("Fecha de nacimiento").fill("1985-03-04");
+  await page.getByLabel("Fecha de nacimiento").fill("04/03/1985");
   await page.getByTestId("person-submit").click();
 
   await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);

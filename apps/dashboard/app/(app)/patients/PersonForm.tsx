@@ -1,7 +1,9 @@
 "use client";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
+import { DateInput } from "@clinicalumia/ui/date-input";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
@@ -222,9 +224,9 @@ export function PersonForm({
           />
         </Field>
         <Field label="Fecha de nacimiento">
-          <Input
+          <DateInput
             name="birth_date"
-            type="date"
+            max={todayInMadrid()}
             defaultValue={person?.birth_date ?? consent?.birth_date ?? ""}
           />
         </Field>

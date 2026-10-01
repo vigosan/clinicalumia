@@ -54,22 +54,6 @@ export function cobrosListHref({
   return `/cobros?${params.toString()}`;
 }
 
-export function desdeChange(
-  params: CobrosParams,
-  value: string,
-): Pick<CobrosParams, "desde" | "hasta"> | null {
-  if (!value) return null;
-  return { desde: value, hasta: value > params.hasta ? value : params.hasta };
-}
-
-export function hastaChange(
-  params: CobrosParams,
-  value: string,
-): Pick<CobrosParams, "desde" | "hasta"> | null {
-  if (!value) return null;
-  return { hasta: value, desde: value < params.desde ? value : params.desde };
-}
-
 export function formatPaymentMoment(
   instant: string,
   includeDate: boolean,

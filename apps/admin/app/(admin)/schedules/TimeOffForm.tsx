@@ -1,6 +1,8 @@
 "use client";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { startTransition, useActionState, useEffect, useRef } from "react";
@@ -32,10 +34,10 @@ export function TimeOffForm({ profileId }: { profileId: string }) {
     >
       <input type="hidden" name="profile_id" value={profileId} />
       <Field label="Desde">
-        <Input type="date" name="starts_on" required />
+        <DatePicker name="starts_on" today={todayInMadrid()} required />
       </Field>
       <Field label="Hasta">
-        <Input type="date" name="ends_on" required />
+        <DatePicker name="ends_on" today={todayInMadrid()} required />
       </Field>
       <Field label="Motivo">
         <Input name="reason" />

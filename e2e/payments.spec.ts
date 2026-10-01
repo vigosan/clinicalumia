@@ -3,6 +3,7 @@ import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { logOut, signIn } from "./auth";
+import { pickTime } from "./date-time";
 import { deleteInvoicesOfAppointments } from "./invoices";
 import { selectOption } from "./select";
 
@@ -287,7 +288,7 @@ test("una cita futura se puede cobrar por adelantado y, ya facturada, no se pued
     "Cobrada · 55,00 € · Tarjeta",
   );
 
-  await page.getByTestId("appointment-move-time").fill("12:00");
+  await pickTime(page.getByTestId("appointment-move-time"), "12:00");
   await page.getByTestId("appointment-move").click();
   await page.getByTestId("appointment-confirm").click();
   await expect(
@@ -532,4 +533,39 @@ test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el sel
     page.locator('[data-testid="payments-total-method"][data-method="cash"]'),
   ).toHaveText("Efectivo: 55,00 €");
   await expect(page.getByTestId("payments-professional")).toHaveCount(0);
+});
+
+test("los atajos de fechas de Cobros eligen los días de Madrid y el calendario elige un rango con dos clics", async ({
+  page,
+}) => {
+  const today = todayInMadrid();
+  const yesterday = addDays(today, -1);
+  const monthStart = `${today.slice(0, 7)}-01`;
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/cobros`);
+  const range = page.getByTestId("payments-range");
+
+  await range.click();
+  await page.getByTestId("payments-range-preset-ayer").click();
+  await expect(page).toHaveURL(
+    `${DASHBOARD}/cobros?desde=${yesterday}&hasta=${yesterday}`,
+  );
+
+  await range.click();
+  await page.getByTestId("payments-range-preset-mes").click();
+  await expect(page).toHaveURL(
+    new RegExp(
+      `/cobros\\?desde=${monthStart}&hasta=${today.slice(0, 7)}-\\d\\d$`,
+    ),
+  );
+
+  await range.click();
+  const calendar = page.getByRole("dialog");
+  await calendar.locator(`[data-day="${today}"] button`).click();
+  await expect(calendar).toContainText("Elige el último día");
+  await calendar.locator(`[data-day="${monthStart}"] button`).click();
+  await expect(page).toHaveURL(
+    `${DASHBOARD}/cobros?desde=${monthStart}&hasta=${today}`,
+  );
 });

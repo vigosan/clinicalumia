@@ -2,7 +2,7 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
-import { Input } from "@clinicalumia/ui/input";
+import { TimeSelect } from "@clinicalumia/ui/time-select";
 import { useState, useTransition } from "react";
 import { type ScheduleBlock, WEEKDAYS } from "@/lib/schedule";
 import { saveSchedule } from "./actions";
@@ -68,37 +68,31 @@ export function ScheduleEditor({
                     key={row.key}
                     className="flex flex-wrap items-center gap-2"
                   >
-                    <Input
-                      type="time"
+                    <TimeSelect
                       aria-label={`${label}, inicio del tramo ${position + 1}`}
                       data-testid="schedule-start"
                       className="w-32"
                       value={row.starts_at}
-                      onChange={(event) =>
+                      onValueChange={(next) =>
                         update(
                           day,
                           dayRows.map((r) =>
-                            r.key === row.key
-                              ? { ...r, starts_at: event.target.value }
-                              : r,
+                            r.key === row.key ? { ...r, starts_at: next } : r,
                           ),
                         )
                       }
                     />
                     <span className="text-ink-800">a</span>
-                    <Input
-                      type="time"
+                    <TimeSelect
                       aria-label={`${label}, fin del tramo ${position + 1}`}
                       data-testid="schedule-end"
                       className="w-32"
                       value={row.ends_at}
-                      onChange={(event) =>
+                      onValueChange={(next) =>
                         update(
                           day,
                           dayRows.map((r) =>
-                            r.key === row.key
-                              ? { ...r, ends_at: event.target.value }
-                              : r,
+                            r.key === row.key ? { ...r, ends_at: next } : r,
                           ),
                         )
                       }

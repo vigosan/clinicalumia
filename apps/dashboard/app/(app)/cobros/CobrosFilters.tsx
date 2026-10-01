@@ -1,16 +1,15 @@
 "use client";
 
-import { addDays } from "@clinicalumia/api/madrid-time";
+import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { DateRangePicker } from "@clinicalumia/ui/date-range-picker";
 import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { madridRangePresets } from "@/lib/date-presets";
 import {
   type CobrosParams,
   cobrosListHref,
-  desdeChange,
-  hastaChange,
   type StaffOption,
 } from "@/lib/payments-load";
 
@@ -60,26 +59,14 @@ export function CobrosFilters({
           </Link>
         </div>
       )}
-      <Field label="Desde">
-        <Input
-          type="date"
-          data-testid="payments-from"
-          value={params.desde}
-          onChange={(event) => {
-            const next = desdeChange(params, event.target.value);
-            if (next) go(next);
-          }}
-        />
-      </Field>
-      <Field label="Hasta">
-        <Input
-          type="date"
-          data-testid="payments-to"
-          value={params.hasta}
-          onChange={(event) => {
-            const next = hastaChange(params, event.target.value);
-            if (next) go(next);
-          }}
+      <Field label="Fechas">
+        <DateRangePicker
+          data-testid="payments-range"
+          from={params.desde}
+          to={params.hasta}
+          today={todayInMadrid()}
+          presets={madridRangePresets()}
+          onChange={({ from, to }) => go({ desde: from, hasta: to })}
         />
       </Field>
       {isOwner && (

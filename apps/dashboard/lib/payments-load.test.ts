@@ -3,9 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   cobrosListHref,
   cobrosListParams,
-  desdeChange,
   formatPaymentMoment,
-  hastaChange,
   loadCobros,
   MAX_RANGE_DAYS,
   momentHeader,
@@ -98,58 +96,6 @@ describe("cobrosListHref", () => {
     ).toBe(
       `/cobros?desde=${TODAY}&hasta=${TODAY}&profesional=a0000000-0000-0000-0000-000000000001`,
     );
-  });
-});
-
-describe("desdeChange", () => {
-  const params = {
-    desde: "2026-09-01",
-    hasta: "2026-09-10",
-    profesionalId: null,
-  };
-
-  it("keeps hasta when the new desde is still before it", () => {
-    expect(desdeChange(params, "2026-09-05")).toEqual({
-      desde: "2026-09-05",
-      hasta: "2026-09-10",
-    });
-  });
-
-  it("pulls hasta forward to match, instead of leaving an invalid range that reverts the whole filter to today", () => {
-    expect(desdeChange(params, "2026-09-15")).toEqual({
-      desde: "2026-09-15",
-      hasta: "2026-09-15",
-    });
-  });
-
-  it("ignores a cleared input, so the range keeps whatever was there before", () => {
-    expect(desdeChange(params, "")).toBeNull();
-  });
-});
-
-describe("hastaChange", () => {
-  const params = {
-    desde: "2026-09-01",
-    hasta: "2026-09-10",
-    profesionalId: null,
-  };
-
-  it("keeps desde when the new hasta is still after it", () => {
-    expect(hastaChange(params, "2026-09-08")).toEqual({
-      hasta: "2026-09-08",
-      desde: "2026-09-01",
-    });
-  });
-
-  it("pulls desde back to match, instead of leaving an invalid range that reverts the whole filter to today", () => {
-    expect(hastaChange(params, "2026-08-20")).toEqual({
-      hasta: "2026-08-20",
-      desde: "2026-08-20",
-    });
-  });
-
-  it("ignores a cleared input, so the range keeps whatever was there before", () => {
-    expect(hastaChange(params, "")).toBeNull();
   });
 });
 

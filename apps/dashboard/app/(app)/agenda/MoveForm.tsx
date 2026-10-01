@@ -1,8 +1,10 @@
 "use client";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
+import { TimeSelect } from "@clinicalumia/ui/time-select";
 import {
   startTransition,
   useActionState,
@@ -12,6 +14,7 @@ import {
 } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { moveAppointment } from "../appointments/actions";
+import { DurationField } from "../appointments/DurationField";
 
 export function MoveForm({
   appointmentId,
@@ -81,40 +84,34 @@ export function MoveForm({
       <input type="hidden" name="patient_id" value={patientId} />
       <input type="hidden" name="service_id" value={serviceId} />
       <input type="hidden" name="professional_id" value={professionalId} />
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Fecha">
-          <Input
-            name="date"
-            type="date"
-            data-testid="appointment-move-date"
-            defaultValue={initialDate}
-            onChange={resetConfirmation}
-          />
-        </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <Field label="Fecha">
+            <DatePicker
+              name="date"
+              data-testid="appointment-move-date"
+              today={todayInMadrid()}
+              defaultValue={initialDate}
+              onValueChange={resetConfirmation}
+            />
+          </Field>
+        </div>
         <Field label="Hora">
-          <Input
+          <TimeSelect
             name="time"
-            type="time"
             data-testid="appointment-move-time"
             defaultValue={initialTime}
-            onChange={resetConfirmation}
+            onValueChange={resetConfirmation}
           />
         </Field>
-        <Field label="Duración (minutos)">
-          <Input
-            name="duration_minutes"
-            type="number"
-            step={5}
-            min={5}
-            max={480}
-            data-testid="appointment-move-duration"
-            value={duration}
-            onChange={(event) => {
-              setDuration(event.target.value);
-              resetConfirmation();
-            }}
-          />
-        </Field>
+        <DurationField
+          testId="appointment-move-duration"
+          value={duration}
+          onValueChange={(next) => {
+            setDuration(next);
+            resetConfirmation();
+          }}
+        />
       </div>
 
       {warnings.length > 0 && (

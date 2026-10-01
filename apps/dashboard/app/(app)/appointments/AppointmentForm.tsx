@@ -1,10 +1,12 @@
 "use client";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
 import { Textarea } from "@clinicalumia/ui/textarea";
+import { TimeSelect } from "@clinicalumia/ui/time-select";
 import Link from "next/link";
 import {
   startTransition,
@@ -15,6 +17,7 @@ import {
 } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { createAppointment } from "./actions";
+import { DurationField } from "./DurationField";
 import { type PatientOption, PatientPicker } from "./PatientPicker";
 
 export type Professional = {
@@ -186,44 +189,36 @@ export function AppointmentForm({
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Fecha">
-          <Input
+          <DatePicker
             name="date"
-            type="date"
             data-testid="appointment-date"
-            defaultValue={initialDate}
-            onChange={(event) => {
-              setDate(event.target.value);
+            today={todayInMadrid()}
+            value={date}
+            onValueChange={(next) => {
+              setDate(next);
               resetConfirmation();
             }}
           />
         </Field>
         <Field label="Hora">
-          <Input
+          <TimeSelect
             name="time"
-            type="time"
             data-testid="appointment-time"
-            defaultValue={initialTime}
-            onChange={(event) => {
-              setTime(event.target.value);
+            value={time}
+            onValueChange={(next) => {
+              setTime(next);
               resetConfirmation();
             }}
           />
         </Field>
-        <Field label="Duración (minutos)">
-          <Input
-            name="duration_minutes"
-            type="number"
-            step={5}
-            min={5}
-            max={480}
-            data-testid="appointment-duration"
-            value={duration}
-            onChange={(event) => {
-              setDuration(event.target.value);
-              resetConfirmation();
-            }}
-          />
-        </Field>
+        <DurationField
+          testId="appointment-duration"
+          value={duration}
+          onValueChange={(next) => {
+            setDuration(next);
+            resetConfirmation();
+          }}
+        />
       </div>
 
       <Field label="Notas">

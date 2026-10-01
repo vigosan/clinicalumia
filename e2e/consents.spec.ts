@@ -493,7 +493,7 @@ test("a consent from someone new waits as pending until staff create the record 
   await expect(form.getByLabel("Nombre")).toHaveValue("Martina");
   await expect(form.getByLabel("Apellidos")).toHaveValue(surname);
   await expect(form.getByLabel("Fecha de nacimiento")).toHaveValue(
-    "2015-06-20",
+    "20/06/2015",
   );
   await expect(form.getByLabel("DNI/NIE")).toHaveValue("");
   await expect(form).toContainText(

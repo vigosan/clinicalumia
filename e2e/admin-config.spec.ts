@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
+import { pickTime } from "./date-time";
 import {
   deleteInvoiceSeries,
   lockNextYearInvoiceSeries,
@@ -114,11 +115,11 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
     await expect(page).toHaveURL(`${ADMIN}/schedules?employee=${employeeId}`);
     const saturday = page.getByTestId("schedule-day-6");
     await page.getByTestId("schedule-add-6").click();
-    await saturday.getByTestId("schedule-start").last().fill("10:00");
-    await saturday.getByTestId("schedule-end").last().fill("12:00");
+    await pickTime(saturday.getByTestId("schedule-start").last(), "10:00");
+    await pickTime(saturday.getByTestId("schedule-end").last(), "12:00");
     await page.getByTestId("schedule-add-6").click();
-    await saturday.getByTestId("schedule-start").last().fill("11:00");
-    await saturday.getByTestId("schedule-end").last().fill("13:00");
+    await pickTime(saturday.getByTestId("schedule-start").last(), "11:00");
+    await pickTime(saturday.getByTestId("schedule-end").last(), "13:00");
     await page.getByTestId("schedule-save").click();
     await expect(page.getByTestId("schedule-error")).toContainText(
       "El sábado tiene dos tramos que se solapan.",

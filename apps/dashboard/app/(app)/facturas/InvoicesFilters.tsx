@@ -1,10 +1,13 @@
 "use client";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { DateRangePicker } from "@clinicalumia/ui/date-range-picker";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { madridRangePresets } from "@/lib/date-presets";
 import {
   INVOICE_KIND_OPTIONS,
   type InvoiceKindFilter,
@@ -51,20 +54,14 @@ export function InvoicesFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-4">
-      <Field label="Desde">
-        <Input
-          type="date"
-          data-testid="invoices-from"
-          value={params.desde}
-          onChange={(event) => go({ desde: event.target.value })}
-        />
-      </Field>
-      <Field label="Hasta">
-        <Input
-          type="date"
-          data-testid="invoices-to"
-          value={params.hasta}
-          onChange={(event) => go({ hasta: event.target.value })}
+      <Field label="Fechas">
+        <DateRangePicker
+          data-testid="invoices-range"
+          from={params.desde}
+          to={params.hasta}
+          today={todayInMadrid()}
+          presets={madridRangePresets()}
+          onChange={({ from, to }) => go({ desde: from, hasta: to })}
         />
       </Field>
       <Field label="Tipo">

@@ -1,0 +1,95 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { cn } from "../lib/cn";
+import { fieldControl } from "./input";
+
+function toDisplay(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+}
+
+function mask(text: string): string {
+  const digits = text.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function toIso(display: string, min: string, max?: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display);
+  if (!match) return null;
+  const [, day, month, year] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  const iso = `${year}-${month}-${day}`;
+  if (date.toISOString().slice(0, 10) !== iso) return null;
+  if (iso < min || (max && iso > max)) return null;
+  return iso;
+}
+
+export function DateInput({
+  name,
+  defaultValue = "",
+  min = "1900-01-01",
+  max,
+  id,
+  className,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+  "data-testid": testId,
+}: {
+  name: string;
+  defaultValue?: string;
+  min?: string;
+  max?: string;
+  id?: string;
+  className?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+  "data-testid"?: string;
+}) {
+  const [text, setText] = useState(toDisplay(defaultValue));
+  const [touched, setTouched] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const iso = toIso(text, min, max);
+  const invalid = text !== "" && iso === null;
+
+  useEffect(() => {
+    inputRef.current?.setCustomValidity(
+      invalid ? "Escribe una fecha válida, como 05/03/1990." : "",
+    );
+  }, [invalid]);
+
+  useEffect(() => {
+    const form = inputRef.current?.form;
+    if (!form) return;
+    function handleReset() {
+      setText(toDisplay(defaultValue));
+      setTouched(false);
+    }
+    form.addEventListener("reset", handleReset);
+    return () => form.removeEventListener("reset", handleReset);
+  }, [defaultValue]);
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        autoComplete="bday"
+        placeholder="dd/mm/aaaa"
+        maxLength={10}
+        id={id}
+        aria-invalid={ariaInvalid || (touched && invalid) || undefined}
+        aria-describedby={ariaDescribedBy}
+        data-testid={testId}
+        value={text}
+        onChange={(event) => setText(mask(event.target.value))}
+        onBlur={() => setTouched(true)}
+        className={cn(fieldControl, "tabular-nums", className)}
+      />
+      <input type="hidden" name={name} value={iso ?? ""} />
+    </>
+  );
+}

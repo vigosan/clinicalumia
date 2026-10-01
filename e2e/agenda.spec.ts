@@ -7,6 +7,7 @@ import {
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
+import { pickDate, pickTime } from "./date-time";
 import { selectOption } from "./select";
 
 const DASHBOARD = "http://localhost:3001";
@@ -781,7 +782,7 @@ test("«Nuevo paciente» desde el formulario de cita vuelve con el paciente nuev
   const lastName = `PruebaVolver${Date.now()}`;
   await page.getByLabel("Nombre").fill("Persona");
   await page.getByLabel("Apellidos").fill(lastName);
-  await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
   await page.getByTestId("person-submit").click();
 
   await page.waitForURL(/\/appointments\/new\?/);
@@ -1019,7 +1020,7 @@ test("abrir una cita del test, moverla a otra hora, la agenda la muestra en su s
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
-  await page.getByTestId("appointment-move-time").fill("14:00");
+  await pickTime(page.getByTestId("appointment-move-time"), "14:00");
   await page.getByTestId("appointment-move").click();
 
   await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
@@ -1067,8 +1068,8 @@ test("mover una cita a otro día hace que el historial muestre la fecha en «Mov
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
-  await page.getByTestId("appointment-move-date").fill(nextDate);
-  await page.getByTestId("appointment-move-time").fill("16:00");
+  await pickDate(page.getByTestId("appointment-move-date"), nextDate);
+  await pickTime(page.getByTestId("appointment-move-time"), "16:00");
   await page.getByTestId("appointment-move").click();
 
   await page.waitForURL(new RegExp(`appointment=${appointmentId}`));
@@ -1106,9 +1107,11 @@ test("mover una cita de duración personalizada conserva esa duración, y cambia
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
-  await expect(page.getByTestId("appointment-move-duration")).toHaveValue("90");
+  await expect(page.getByTestId("appointment-move-duration")).toHaveText(
+    "1 h 30 min",
+  );
 
-  await page.getByTestId("appointment-move-time").fill("14:00");
+  await pickTime(page.getByTestId("appointment-move-time"), "14:00");
   await page.getByTestId("appointment-move").click();
   await expect(page.getByTestId("appointment-panel-date")).toContainText(
     "14:00",
@@ -1126,8 +1129,9 @@ test("mover una cita de duración personalizada conserva esa duración, y cambia
     60_000;
   expect(movedMinutes).toBe(90);
 
-  await page.getByTestId("appointment-move-time").fill("16:00");
-  await page.getByTestId("appointment-move-duration").fill("30");
+  await pickTime(page.getByTestId("appointment-move-time"), "16:00");
+  await selectOption(page.getByTestId("appointment-move-duration"), "other");
+  await page.getByTestId("appointment-move-duration-minutes").fill("50");
   await page.getByTestId("appointment-move").click();
   await expect(page.getByTestId("appointment-panel-date")).toContainText(
     "16:00",
@@ -1143,7 +1147,7 @@ test("mover una cita de duración personalizada conserva esa duración, y cambia
     (new Date(afterDurationChange.data!.ends_at).getTime() -
       new Date(afterDurationChange.data!.starts_at).getTime()) /
     60_000;
-  expect(finalMinutes).toBe(30);
+  expect(finalMinutes).toBe(50);
 });
 
 test("cancelar como «paciente» con motivo la quita de la agenda y el historial dice «Cancelada (paciente) por»", async ({
