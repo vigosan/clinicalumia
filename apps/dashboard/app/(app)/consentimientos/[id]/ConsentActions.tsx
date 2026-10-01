@@ -79,7 +79,7 @@ export function ConsentActions({
               data-testid="consent-link"
               onClick={handleLink}
             >
-              {pending ? "Asociando…" : "Asociar"}
+              {pending ? "Asociando…" : "Asociar a esta ficha"}
             </Button>
             <Button asChild variant="secondary" size="sm">
               <Link

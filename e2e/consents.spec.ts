@@ -260,7 +260,7 @@ test("staff see a pending consent first, link it by hand to the right record and
     rows
       .filter({ hasText: `Asociada ${surname}` })
       .getByTestId("consent-status"),
-  ).toHaveText(`Asociado a Ficha ${surname}`);
+  ).toHaveText(`Asociado a la ficha de Ficha ${surname}`);
 
   await rows
     .filter({ hasText: `Pendiente ${surname}` })
@@ -271,10 +271,10 @@ test("staff see a pending consent first, link it by hand to the right record and
     pending.taxId,
   );
   await expect(page.getByTestId("consent-details")).toContainText(
-    "Publicidad: sí",
+    "Publicidad: Sí",
   );
   await expect(page.getByTestId("consent-details")).toContainText(
-    "Imágenes para formación: no",
+    "Imágenes para formación: No",
   );
 
   const picker = page.getByTestId("consent-link-picker");
@@ -286,7 +286,7 @@ test("staff see a pending consent first, link it by hand to the right record and
   await page.getByTestId("consent-link").click();
 
   await expect(page.getByTestId("consent-status")).toHaveText(
-    `Asociado a Ficha ${surname}`,
+    `Asociado a la ficha de Ficha ${surname}`,
   );
   await expect(
     page.getByTestId("consent-status").getByRole("link"),
@@ -357,7 +357,7 @@ test("a consent linked to an archived record still says whose it is", async ({
   await page.goto(`${DASHBOARD}/consentimientos/${consent.id}`);
 
   await expect(page.getByTestId("consent-status")).toHaveText(
-    `Asociado a Ficha ${surname} (archivada)`,
+    `Asociado a la ficha de Ficha ${surname} (ficha archivada)`,
   );
   await expect(page.getByTestId("consent-unlink")).toBeVisible();
 });
@@ -443,8 +443,8 @@ test("a patient who signs at the web with the DNI and birth date of their record
     .getByTestId("patient-consent");
   await expect(item).toHaveCount(1);
   await expect(item).toContainText(todayInMadrid());
-  await expect(item).toContainText("Publicidad: sí");
-  await expect(item).toContainText("Imágenes para formación: no");
+  await expect(item).toContainText("Publicidad: Sí");
+  await expect(item).toContainText("Imágenes para formación: No");
   const pdfLink = item.getByTestId("patient-consent-pdf");
   await expect(pdfLink).toHaveText("Ver PDF");
   await expect(pdfLink).toHaveAttribute("target", "_blank");
@@ -497,10 +497,12 @@ test("a consent from someone new waits as pending until staff create the record 
   );
   await expect(form.getByLabel("DNI/NIE")).toHaveValue("");
   await expect(form).toContainText(
-    `El DNI del consentimiento puede ser del tutor: ${taxId}`,
+    `El DNI del consentimiento puede ser del tutor/a: ${taxId}`,
   );
   await expect(form.getByLabel("Email")).toHaveValue(email);
-  await expect(form.getByLabel("Es paciente")).toBeChecked();
+  await expect(
+    form.getByLabel("También es paciente (recibe tratamiento)"),
+  ).toBeChecked();
   await expect(form).toContainText("Firmado por: Carmen Tutora");
 
   await form.getByRole("link", { name: "Cancelar" }).click();
@@ -520,7 +522,7 @@ test("a consent from someone new waits as pending until staff create the record 
   createdPersonIds.push(person!.id);
   expect(person!.tax_id).toBeNull();
   await expect(page.getByTestId("consent-status")).toHaveText(
-    `Asociado a Martina ${surname}`,
+    `Asociado a la ficha de Martina ${surname}`,
   );
   const { data: linked } = await admin
     .from("consents")
@@ -535,8 +537,8 @@ test("a consent from someone new waits as pending until staff create the record 
     .getByTestId("patient-consents")
     .getByTestId("patient-consent");
   await expect(item).toHaveCount(1);
-  await expect(item).toContainText("Publicidad: no");
-  await expect(item).toContainText("Imágenes para formación: sí");
+  await expect(item).toContainText("Publicidad: No");
+  await expect(item).toContainText("Imágenes para formación: Sí");
 });
 
 test("a DNI that belongs to a record with another birth date stays pending, and creating a record from it warns about the existing one", async ({
@@ -572,7 +574,7 @@ test("a DNI that belongs to a record with another birth date stays pending, and 
 
   await expect(page).toHaveURL(`${DASHBOARD}/consentimientos/${consent.id}`);
   await expect(page.getByTestId("consent-status")).toHaveText(
-    `Asociado a Rosa ${surname}`,
+    `Asociado a la ficha de Rosa ${surname}`,
   );
   const { count } = await admin
     .from("people")
@@ -625,6 +627,6 @@ test("if someone links the consent while staff are creating the record, the reco
     "Este consentimiento ya está asociado.",
   );
   await expect(page.getByTestId("consent-status")).toHaveText(
-    `Asociado a Otra ${surname}`,
+    `Asociado a la ficha de Otra ${surname}`,
   );
 });

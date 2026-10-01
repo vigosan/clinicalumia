@@ -92,7 +92,7 @@ export function paymentStateLabel({
   voidedAt: string | null;
   voidReason: string;
 }): string {
-  return voidedAt ? `Anulado · ${voidReason}` : "Vigente";
+  return voidedAt ? `Anulado · ${voidReason}` : "Válido";
 }
 
 export type StaffOption = {

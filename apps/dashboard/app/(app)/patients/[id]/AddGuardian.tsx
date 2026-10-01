@@ -106,14 +106,14 @@ export function AddGuardian({
         data-testid="guardian-add"
         onClick={() => setOpen(true)}
       >
-        Añadir tutor
+        Añadir tutor/a
       </Button>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <Field label="Buscar persona">
+      <Field label="Buscar tutor/a existente">
         <Input
           data-testid="guardian-search"
           value={query}
@@ -148,11 +148,11 @@ export function AddGuardian({
       )}
       {!selected && !searchFailed && searched && candidates.length === 0 && (
         <p className="text-sm text-ink-800" data-testid="guardian-search-empty">
-          No hay nadie con esos datos.
+          No hay ninguna ficha con esos datos.
         </p>
       )}
       <Button asChild variant="ghost" size="sm">
-        <Link href={`/patients/new?guardianOf=${minorId}`}>Nueva persona</Link>
+        <Link href={`/patients/new?guardianOf=${minorId}`}>Nuevo tutor/a</Link>
       </Button>
       {selected && (
         <>
@@ -187,7 +187,7 @@ export function AddGuardian({
             data-testid="guardian-save"
             onClick={handleSave}
           >
-            {pending ? "Guardando…" : "Guardar"}
+            {pending ? "Guardando…" : "Añadir tutor/a"}
           </Button>
         </>
       )}
@@ -199,7 +199,7 @@ export function AddGuardian({
           data-testid="guardian-close"
           onClick={reset}
         >
-          Cerrar
+          Cancelar
         </Button>
       </div>
     </div>

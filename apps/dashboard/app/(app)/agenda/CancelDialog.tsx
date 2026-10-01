@@ -69,7 +69,7 @@ export function CancelDialog({
           anula el cobro (se emitirá una rectificativa).
         </p>
       )}
-      <Field label="Cancelada por">
+      <Field label="¿Quién cancela?">
         <Select
           data-testid="cancel-by"
           value={by}

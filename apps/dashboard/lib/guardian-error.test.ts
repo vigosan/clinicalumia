@@ -3,17 +3,17 @@ import { guardianErrorCode, guardianErrorMessage } from "./guardian-error";
 
 describe("guardianErrorCode", () => {
   it("maps the minor-guardian message to its code", () => {
-    expect(guardianErrorCode("Un tutor tiene que ser mayor de edad.")).toBe(
+    expect(guardianErrorCode("El tutor/a tiene que ser mayor de edad.")).toBe(
       "minor-guardian",
     );
   });
 
   it("maps the already-has-a-primary message to its code", () => {
-    expect(guardianErrorCode("Ya tiene un tutor principal.")).toBe("primary");
+    expect(guardianErrorCode("Ya tiene tutor/a principal.")).toBe("primary");
   });
 
   it("maps the already-a-guardian message to its code", () => {
-    expect(guardianErrorCode("Ya es tutor de este menor.")).toBe("already");
+    expect(guardianErrorCode("Ya es tutor/a de este menor.")).toBe("already");
   });
 
   it("maps any other message to unknown, so free text never reaches the url", () => {
@@ -23,9 +23,7 @@ describe("guardianErrorCode", () => {
 
 describe("guardianErrorMessage", () => {
   it("maps a known code back to its fixed spanish message", () => {
-    expect(guardianErrorMessage("primary")).toBe(
-      "Ya tiene un tutor principal.",
-    );
+    expect(guardianErrorMessage("primary")).toBe("Ya tiene tutor/a principal.");
   });
 
   it("ignores a code that is not in the fixed list, since it could be arbitrary user input", () => {

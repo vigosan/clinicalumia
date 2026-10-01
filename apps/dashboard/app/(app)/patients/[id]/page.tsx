@@ -4,6 +4,7 @@ import { createClient } from "@clinicalumia/api/server";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { guardianErrorMessage } from "@/lib/guardian-error";
 import type { InvoiceRow } from "@/lib/invoices-load";
@@ -16,6 +17,8 @@ import { PatientInvoices } from "./PatientInvoices";
 import { PersonActions } from "./PersonActions";
 
 const PATIENT_INVOICES_LIMIT = 20;
+
+export const metadata: Metadata = { title: "Ficha" };
 
 export default async function PatientPage({
   params,
@@ -201,9 +204,15 @@ export default async function PatientPage({
       <PageHeader
         title={`${person.first_name} ${person.last_name}`}
         description={
-          person.birth_date
-            ? `${ageOn(person.birth_date, today)} años`
-            : undefined
+          [
+            person.birth_date
+              ? `${ageOn(person.birth_date, today)} años`
+              : null,
+            person.is_patient ? "Paciente" : null,
+            wards.length > 0 ? "Tutor/a" : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined
         }
         actions={
           <PersonActions
@@ -217,10 +226,10 @@ export default async function PatientPage({
         {minor && <Badge tone="warning">Menor</Badge>}
         {minor && !guardianDataError && guardians.length === 0 && (
           <Badge tone="warning" data-testid="patient-no-guardian">
-            Menor sin tutor
+            Menor sin tutor/a
           </Badge>
         )}
-        {person.archived_at && <Badge tone="neutral">Archivada</Badge>}
+        {person.archived_at && <Badge tone="neutral">Ficha archivada</Badge>}
       </div>
       {guardianDataError && (
         <Card
@@ -263,13 +272,18 @@ export default async function PatientPage({
       <ConsentsSection consents={consents} error={Boolean(consentsError)} />
 
       <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-bold text-ink-900">Historial</h2>
+        <h2 className="text-lg font-bold text-ink-900">Citas</h2>
         <PatientAppointments
           error={appointmentsFailed}
           upcoming={upcoming}
           upcomingTruncated={upcomingTruncated}
           past={past}
           pastTruncated={pastTruncated}
+          newAppointmentHref={
+            person.is_patient && !person.archived_at
+              ? `/appointments/new?patient=${id}`
+              : null
+          }
         />
       </Card>
 

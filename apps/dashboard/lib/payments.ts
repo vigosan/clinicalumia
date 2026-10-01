@@ -92,12 +92,12 @@ export function paymentStatus({
     if (payment.amount_cents === 0) {
       return {
         kind: "free",
-        label: payment.note ? `Sin cobro · ${payment.note}` : "Sin cobro",
+        label: payment.note ? `Sin cargo · ${payment.note}` : "Sin cargo",
       };
     }
     return {
       kind: "paid",
-      label: `Pagada · ${methodLabel(payment.method)} · ${formatEuros(payment.amount_cents)}`,
+      label: `Cobrada · ${formatEuros(payment.amount_cents)} · ${methodLabel(payment.method)}`,
     };
   }
   if (appointment.status === "cancelled") return { kind: "none", label: "" };

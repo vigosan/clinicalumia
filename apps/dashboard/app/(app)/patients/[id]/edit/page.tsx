@@ -1,8 +1,11 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PersonForm } from "../../PersonForm";
+
+export const metadata: Metadata = { title: "Editar ficha" };
 
 export default async function EditPersonPage({
   params,
@@ -23,7 +26,7 @@ export default async function EditPersonPage({
   return (
     <>
       <PageHeader
-        title="Editar persona"
+        title="Editar ficha"
         description={`${person.first_name} ${person.last_name}`}
       />
       <Card>

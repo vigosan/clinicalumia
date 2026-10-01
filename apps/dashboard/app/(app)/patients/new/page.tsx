@@ -1,11 +1,14 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import type { Metadata } from "next";
 import { isUuid } from "@/lib/agenda";
 import { type ConsentPrefill, PersonForm } from "../PersonForm";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const metadata: Metadata = { title: "Nueva ficha" };
 
 export default async function NewPersonPage({
   searchParams,
@@ -49,12 +52,18 @@ export default async function NewPersonPage({
     consent = data ?? undefined;
   }
 
+  const title = guardianOfProp
+    ? "Nuevo tutor/a"
+    : consent
+      ? "Crear ficha desde consentimiento"
+      : "Nuevo paciente";
+
   return (
     <>
       <PageHeader
-        title="Nueva persona"
+        title={title}
         description={
-          guardianOfProp ? `Tutor de ${guardianOfProp.minorName}` : undefined
+          guardianOfProp ? `Tutor/a de ${guardianOfProp.minorName}` : undefined
         }
       />
       <Card>

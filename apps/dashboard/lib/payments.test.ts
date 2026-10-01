@@ -107,7 +107,7 @@ describe("paymentStatus", () => {
         payment: { amount_cents: 4500, method: "cash", note: "" },
         now,
       }),
-    ).toEqual({ kind: "paid", label: "Pagada · Efectivo · 45,00 €" });
+    ).toEqual({ kind: "paid", label: "Cobrada · 45,00 € · Efectivo" });
   });
 
   it("shows the reason instead of an amount for a free service", () => {
@@ -117,7 +117,7 @@ describe("paymentStatus", () => {
         payment: { amount_cents: 0, method: "cash", note: "Revisión gratuita" },
         now,
       }),
-    ).toEqual({ kind: "free", label: "Sin cobro · Revisión gratuita" });
+    ).toEqual({ kind: "free", label: "Sin cargo · Revisión gratuita" });
   });
 
   it("says pending when the appointment already started and has no payment", () => {

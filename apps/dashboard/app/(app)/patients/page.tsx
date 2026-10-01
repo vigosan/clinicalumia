@@ -18,9 +18,12 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
 import { SearchBox } from "./SearchBox";
+
+export const metadata: Metadata = { title: "Pacientes" };
 
 export default async function PatientsPage({
   searchParams,
@@ -57,7 +60,7 @@ export default async function PatientsPage({
         title="Pacientes"
         actions={
           <Button asChild data-testid="patient-new">
-            <Link href="/patients/new">Nueva persona</Link>
+            <Link href="/patients/new">Nuevo paciente</Link>
           </Button>
         }
       />
@@ -78,7 +81,11 @@ export default async function PatientsPage({
           className="text-center text-sm text-ink-800"
           data-testid="patients-empty"
         >
-          No se ha encontrado a nadie con esos datos.
+          {q
+            ? "No hay pacientes ni tutores con esos datos."
+            : showArchived
+              ? "No hay fichas archivadas."
+              : "Todavía no hay pacientes."}
         </Card>
       )}
       {state === "list" && (
@@ -112,7 +119,7 @@ export default async function PatientsPage({
                           </Badge>
                         )}
                         {!person.is_patient && (
-                          <Badge tone="outline">Tutora/Tutor</Badge>
+                          <Badge tone="outline">Tutor/a</Badge>
                         )}
                       </div>
                     </TableCell>

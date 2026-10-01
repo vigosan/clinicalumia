@@ -36,9 +36,9 @@ export function appointmentStatusLabel(
       ? "Cancelada por el paciente"
       : "Cancelada por la clínica";
   }
-  if (appointment.status === "no_show") return "No se presentó";
+  if (appointment.status === "no_show") return "No presentada";
   return new Date(appointment.startsAt).getTime() <= now.getTime()
-    ? "Hecha"
+    ? "Realizada"
     : "Programada";
 }
 

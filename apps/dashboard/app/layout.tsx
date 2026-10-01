@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Clínica Lumia",
+  title: { template: "%s · LUMIA", default: "LUMIA" },
   description: "Panel de gestión de la Clínica Lumia",
   robots: { index: false, follow: false },
 };

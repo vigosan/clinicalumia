@@ -29,7 +29,7 @@ describe("wardsLabel", () => {
 
   it("falls back to a generic wording for otro", () => {
     expect(wardsLabel([{ name: "Iris Roca Sanz", relationship: "otro" }])).toBe(
-      "tutor de Iris Roca Sanz",
+      "tutor/a de Iris Roca Sanz",
     );
   });
 

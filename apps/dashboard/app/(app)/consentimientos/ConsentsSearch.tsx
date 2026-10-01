@@ -50,7 +50,7 @@ export function ConsentsSearch({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
       <div className="min-w-0 flex-1">
-        <Field label="Buscar por nombre o DNI">
+        <Field label="Buscar por nombre o DNI/NIE">
           <Input
             data-testid="consents-search"
             value={query}

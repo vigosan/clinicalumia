@@ -1,9 +1,12 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { publicOrigin } from "@/lib/public-origin";
 import { CalendarLink } from "./CalendarLink";
+
+export const metadata: Metadata = { title: "Calendario del móvil" };
 
 export default async function MyCalendarPage() {
   const supabase = await createClient();
@@ -17,8 +20,8 @@ export default async function MyCalendarPage() {
   return (
     <>
       <PageHeader
-        title="Mi calendario"
-        description="Ve tus citas en el calendario del móvil o del ordenador. De cada cita solo aparece el nombre del paciente y el servicio."
+        title="Tus citas en el calendario del móvil"
+        description="Suscríbete una vez y tus citas de LUMIA aparecerán en Google Calendar o en el iPhone. Solo se ve el nombre del paciente y el servicio. Las citas se siguen dando y cambiando en la Agenda."
       />
       <Card>
         <CalendarLink url={url} />

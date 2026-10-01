@@ -204,7 +204,7 @@ export function parseAppointmentForm(
 
   if (!patientId) return { error: "Elige un paciente." };
   if (!serviceId) return { error: "Elige un servicio." };
-  if (!professionalId) return { error: "Elige profesional." };
+  if (!professionalId) return { error: "Elige un profesional." };
   if (!date || !time) return { error: "Indica fecha y hora." };
   if (!isValidDate(date) || !isValidTime(time))
     return { error: "Indica fecha y hora." };
@@ -279,7 +279,7 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   appointment_invoiced:
     "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
   appointment_immutable_fields: "Esos datos de la cita no se pueden cambiar.",
-  patient_not_bookable: "Esa persona no es paciente o está archivada.",
+  patient_not_bookable: "Esa ficha no es de paciente o está archivada.",
   service_inactive: "Ese servicio ya no está activo.",
   professional_inactive: "Ese profesional no está activo.",
   service_not_for_professional:

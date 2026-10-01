@@ -166,7 +166,7 @@ export function AppointmentPanel({
 
       <div className="flex flex-col gap-1 border-line border-t pt-4">
         <h2 className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-          Pago
+          Cobro
         </h2>
         <p className="text-ink-900">{formatPrice(appointment.priceCents)}</p>
         {appointment.paymentStatus && (
@@ -245,12 +245,12 @@ export function AppointmentPanel({
                   disabled={pending}
                   data-testid="appointment-no-show"
                 >
-                  No se presentó
+                  Marcar como no presentada
                 </Button>
               }
               title="¿Marcar como no presentada?"
               description="Podrás deshacerlo después."
-              confirmLabel="Marcar"
+              confirmLabel="Marcar como no presentada"
               onConfirm={handleNoShow}
             />
           )}
@@ -263,7 +263,7 @@ export function AppointmentPanel({
               data-testid="appointment-restore"
               onClick={handleRestore}
             >
-              Deshacer
+              Deshacer «no presentada»
             </Button>
           )}
         </div>
@@ -272,7 +272,7 @@ export function AppointmentPanel({
       {appointment.canMove && (
         <div className="flex flex-col gap-3 border-line border-t pt-4">
           <h2 className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-            Mover
+            Cambiar fecha u hora
           </h2>
           <MoveForm
             appointmentId={appointment.id}

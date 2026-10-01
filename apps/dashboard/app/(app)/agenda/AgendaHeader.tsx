@@ -80,12 +80,17 @@ export function AgendaHeader({
         >
           ›
         </Link>
-        <h1
-          data-testid="agenda-title"
-          className="font-bold text-title text-ink-900"
-        >
-          {titleFor(date, view)}
-        </h1>
+        <div className="flex flex-col">
+          <p className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
+            Agenda
+          </p>
+          <h1
+            data-testid="agenda-title"
+            className="font-bold text-title text-ink-900"
+          >
+            {titleFor(date, view)}
+          </h1>
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <Button
@@ -139,7 +144,7 @@ export function AgendaHeader({
               professional: isOwner ? undefined : selfId,
             })}
           >
-            + Nueva cita
+            Nueva cita
           </Link>
         </Button>
       </div>

@@ -49,7 +49,7 @@ export function GuardiansSection({
         <>
           <h2 className="text-lg font-bold text-ink-900">Tutores</h2>
           {guardians.length === 0 ? (
-            <p className="text-sm text-ink-800">No tiene ningún tutor.</p>
+            <p className="text-sm text-ink-800">No tiene tutor/a.</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {guardians.map((guardian) => (
@@ -89,7 +89,7 @@ export function GuardiansSection({
       )}
       {!isMinorPerson && wards.length > 0 && (
         <>
-          <h2 className="text-lg font-bold text-ink-900">A su cargo</h2>
+          <h2 className="text-lg font-bold text-ink-900">Menores a su cargo</h2>
           <ul className="flex flex-col gap-2">
             {wards.map((ward) => (
               <li

@@ -178,7 +178,7 @@ describe("momentHeader", () => {
 describe("paymentStateLabel", () => {
   it("labels a payment that still counts as current, so the state column is never blank", () => {
     expect(paymentStateLabel({ voidedAt: null, voidReason: "" })).toBe(
-      "Vigente",
+      "Válido",
     );
   });
 

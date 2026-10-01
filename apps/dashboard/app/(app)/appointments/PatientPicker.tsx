@@ -117,7 +117,7 @@ export function PatientPicker({
       )}
       {!searchFailed && searched && results.length === 0 && (
         <p className="text-sm text-ink-800" data-testid="patient-search-empty">
-          No hay nadie con esos datos.
+          No hay pacientes con esos datos.
         </p>
       )}
       {!hideNewPerson && (
@@ -129,7 +129,7 @@ export function PatientPicker({
                 : "/patients/new"
             }
           >
-            Nueva persona
+            Nuevo paciente
           </Link>
         </Button>
       )}

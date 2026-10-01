@@ -10,6 +10,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   consentsListHref,
@@ -23,6 +24,8 @@ import {
 } from "@/lib/consents";
 import { patientsListState } from "@/lib/patients-list-state";
 import { ConsentsSearch } from "./ConsentsSearch";
+
+export const metadata: Metadata = { title: "Consentimientos" };
 
 export default async function ConsentsPage({
   searchParams,
@@ -45,7 +48,10 @@ export default async function ConsentsPage({
 
   return (
     <>
-      <PageHeader title="Consentimientos" />
+      <PageHeader
+        title="Consentimientos"
+        description="Formularios firmados en la web. Asócialos a la ficha del paciente."
+      />
       <Card>
         <ConsentsSearch
           defaultQuery={params.q}
@@ -74,10 +80,10 @@ export default async function ConsentsPage({
           <Table aria-label="Consentimientos" data-testid="consents-list">
             <TableHead>
               <TableRow>
-                <TableHeaderCell>Fecha</TableHeaderCell>
-                <TableHeaderCell>Nombre</TableHeaderCell>
-                <TableHeaderCell>DNI</TableHeaderCell>
-                <TableHeaderCell>Estado</TableHeaderCell>
+                <TableHeaderCell>Firmado</TableHeaderCell>
+                <TableHeaderCell>Paciente</TableHeaderCell>
+                <TableHeaderCell>DNI/NIE</TableHeaderCell>
+                <TableHeaderCell>Ficha</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -96,7 +102,7 @@ export default async function ConsentsPage({
                   <TableCell data-testid="consent-status">
                     {consent.person ? (
                       <>
-                        Asociado a{" "}
+                        Asociado a la ficha de{" "}
                         <Link href={`/patients/${consent.person.id}`}>
                           {linkedPersonLabel(consent.person)}
                         </Link>

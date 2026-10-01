@@ -231,7 +231,7 @@ export function PersonForm({
           label="DNI/NIE"
           hint={
             consent?.guardian_name
-              ? `El DNI del consentimiento puede ser del tutor: ${consent.tax_id}`
+              ? `El DNI del consentimiento puede ser del tutor/a: ${consent.tax_id}`
               : undefined
           }
         >
@@ -261,11 +261,15 @@ export function PersonForm({
         </Field>
       </div>
 
-      <CheckboxField
-        name="is_patient"
-        label="Es paciente"
-        defaultChecked={person?.is_patient ?? !guardianOf}
-      />
+      {person || guardianOf || consent ? (
+        <CheckboxField
+          name="is_patient"
+          label="También es paciente (recibe tratamiento)"
+          defaultChecked={person?.is_patient ?? !guardianOf}
+        />
+      ) : (
+        <input type="hidden" name="is_patient" value="on" />
+      )}
 
       {guardianOf && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -325,7 +329,7 @@ export function PersonForm({
           disabled={pending || checking || usingExisting}
           data-testid="person-submit"
         >
-          {pending ? "Guardando…" : "Guardar"}
+          {pending ? "Guardando…" : person ? "Guardar cambios" : "Crear ficha"}
         </Button>
         <Button asChild variant="secondary">
           <Link href={cancelHref}>Cancelar</Link>

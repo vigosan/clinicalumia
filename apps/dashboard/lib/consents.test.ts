@@ -86,7 +86,7 @@ describe("linkedPersonLabel", () => {
         last_name: "Martínez",
         archived_at: "2026-09-01T00:00:00Z",
       }),
-    ).toBe("Lucía Martínez (archivada)");
+    ).toBe("Lucía Martínez (ficha archivada)");
   });
 });
 

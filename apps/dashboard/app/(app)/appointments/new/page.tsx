@@ -6,8 +6,11 @@ import {
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import type { Metadata } from "next";
 import { isUuid } from "@/lib/agenda";
 import { AppointmentForm } from "../AppointmentForm";
+
+export const metadata: Metadata = { title: "Nueva cita" };
 
 export default async function NewAppointmentPage({
   searchParams,

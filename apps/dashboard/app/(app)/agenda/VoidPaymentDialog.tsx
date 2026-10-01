@@ -79,7 +79,7 @@ export function VoidPaymentDialog({
       confirmDisabled={pending}
       onConfirm={handleConfirm}
     >
-      <Field label="Motivo">
+      <Field label="Motivo de la anulación">
         <Textarea
           data-testid="payment-void-reason"
           value={reason}

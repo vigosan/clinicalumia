@@ -178,7 +178,7 @@ export function AppointmentForm({
             resetConfirmation();
           }}
         >
-          <option value="">Selecciona un servicio</option>
+          <option value="">Elige un servicio</option>
           {filteredServices.map((service) => (
             <option key={service.id} value={service.id}>
               {service.name}
@@ -271,10 +271,10 @@ export function AppointmentForm({
           disabled={pending}
           data-testid="appointment-submit"
         >
-          {pending ? "Guardando…" : "Guardar"}
+          {pending ? "Guardando…" : "Dar cita"}
         </Button>
         <Button asChild variant="secondary">
-          <Link href="/">Cancelar</Link>
+          <Link href={`/?date=${initialDate}`}>Cancelar</Link>
         </Button>
       </div>
     </form>

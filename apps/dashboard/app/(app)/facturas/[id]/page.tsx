@@ -4,6 +4,7 @@ import { createClient } from "@clinicalumia/api/server";
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/agenda";
@@ -40,6 +41,8 @@ function ErrorCard() {
     </Card>
   );
 }
+
+export const metadata: Metadata = { title: "Factura" };
 
 export default async function InvoiceDetailPage({
   params,

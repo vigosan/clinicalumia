@@ -5,9 +5,9 @@ export type GuardianErrorCode =
   | "unknown";
 
 const MESSAGE_BY_CODE: Record<GuardianErrorCode, string> = {
-  "minor-guardian": "Un tutor tiene que ser mayor de edad.",
-  primary: "Ya tiene un tutor principal.",
-  already: "Ya es tutor de este menor.",
+  "minor-guardian": "El tutor/a tiene que ser mayor de edad.",
+  primary: "Ya tiene tutor/a principal.",
+  already: "Ya es tutor/a de este menor.",
   unknown: "No se ha podido guardar.",
 };
 

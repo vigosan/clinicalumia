@@ -11,6 +11,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
 import { formatEuros, methodLabel } from "@/lib/payments";
@@ -22,6 +23,8 @@ import {
   paymentStateLabel,
 } from "@/lib/payments-load";
 import { CobrosFilters } from "./CobrosFilters";
+
+export const metadata: Metadata = { title: "Cobros" };
 
 export default async function CobrosPage({
   searchParams,
@@ -50,6 +53,7 @@ export default async function CobrosPage({
     <>
       <PageHeader
         title="Cobros"
+        description="Dinero recibido por las citas."
         actions={
           <Button asChild variant="secondary" size="sm">
             <Link href="/cobros/pendientes" data-testid="payments-pending-link">
@@ -79,7 +83,8 @@ export default async function CobrosPage({
           className="text-center text-sm text-ink-800"
           data-testid="payments-empty"
         >
-          No hay cobros en estas fechas.
+          No hay cobros en estas fechas. Los cobros se registran desde cada
+          cita: usa «Cobrar» o revisa «Pendientes de cobro».
         </Card>
       )}
       {state === "list" && (
@@ -92,8 +97,8 @@ export default async function CobrosPage({
                 <TableHeaderCell>Servicio</TableHeaderCell>
                 <TableHeaderCell>Profesional</TableHeaderCell>
                 <TableHeaderCell>Importe</TableHeaderCell>
-                <TableHeaderCell>Forma</TableHeaderCell>
-                <TableHeaderCell>Quién cobró</TableHeaderCell>
+                <TableHeaderCell>Forma de pago</TableHeaderCell>
+                <TableHeaderCell>Cobrado por</TableHeaderCell>
                 <TableHeaderCell>Estado</TableHeaderCell>
               </TableRow>
             </TableHead>

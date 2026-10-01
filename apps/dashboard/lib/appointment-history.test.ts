@@ -93,13 +93,17 @@ describe("historyLine", () => {
   it("names the actor for restored", () => {
     const restored = event({ kind: "restored", actor_id: "actor-2" });
     const line = historyLine(restored, 0, [restored], appointment, nameById);
-    expect(line).toBe("Restaurada por Patricia el 28/09 a las 10:12");
+    expect(line).toBe(
+      "Se deshizo «no presentada» por Patricia el 28/09 a las 10:12",
+    );
   });
 
   it("falls back to Alguien when the actor has no profile in the directory", () => {
     const restored = event({ kind: "restored", actor_id: "missing-actor" });
     const line = historyLine(restored, 0, [restored], appointment, nameById);
-    expect(line).toBe("Restaurada por Alguien el 28/09 a las 10:12");
+    expect(line).toBe(
+      "Se deshizo «no presentada» por Alguien el 28/09 a las 10:12",
+    );
   });
 
   it("shows only the time for a same-day move", () => {

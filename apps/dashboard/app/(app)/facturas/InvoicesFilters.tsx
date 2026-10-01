@@ -83,7 +83,7 @@ export function InvoicesFilters({
         </Select>
       </Field>
       <div className="min-w-0 flex-1">
-        <Field label="Buscar por número o nombre">
+        <Field label="Buscar por código o nombre">
           <Input
             data-testid="invoices-search"
             value={query}

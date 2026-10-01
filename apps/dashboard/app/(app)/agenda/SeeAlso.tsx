@@ -36,7 +36,7 @@ export function SeeAlso({
       data-testid="see-also"
       className="flex flex-wrap items-center gap-4 text-sm"
     >
-      <span className="font-medium text-ink-900">Ver también</span>
+      <span className="font-medium text-ink-900">Ver también la agenda de</span>
       {candidates.map((candidate) => (
         <div key={candidate.id} data-testid="see-also-option">
           <CheckboxField

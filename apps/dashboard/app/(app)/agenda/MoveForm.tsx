@@ -134,7 +134,7 @@ export function MoveForm({
             data-testid="appointment-confirm"
             onClick={handleConfirm}
           >
-            Mover igualmente
+            Guardar igualmente
           </Button>
         </div>
       )}
@@ -156,7 +156,7 @@ export function MoveForm({
         disabled={pending}
         data-testid="appointment-move"
       >
-        {pending ? "Moviendo…" : "Mover"}
+        {pending ? "Guardando…" : "Guardar cambio"}
       </Button>
     </form>
   );

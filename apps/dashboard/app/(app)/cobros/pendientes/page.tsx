@@ -10,10 +10,16 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
 import { formatEuros } from "@/lib/payments";
-import { loadPendingPayments } from "@/lib/pending-payments";
+import {
+  loadPendingPayments,
+  PENDING_WINDOW_DAYS,
+} from "@/lib/pending-payments";
+
+export const metadata: Metadata = { title: "Pendientes de cobro" };
 
 export default async function PendingPaymentsPage() {
   const supabase = await createClient();
@@ -39,7 +45,8 @@ export default async function PendingPaymentsPage() {
           className="text-center text-sm text-ink-800"
           data-testid="payments-pending-empty"
         >
-          No hay citas pendientes de cobro.
+          No hay citas pendientes de cobro en los últimos {PENDING_WINDOW_DAYS}{" "}
+          días.
         </Card>
       )}
       {state === "list" && (
@@ -50,7 +57,7 @@ export default async function PendingPaymentsPage() {
               <TableHeaderCell>Paciente</TableHeaderCell>
               <TableHeaderCell>Servicio</TableHeaderCell>
               <TableHeaderCell>Profesional</TableHeaderCell>
-              <TableHeaderCell>Importe propuesto</TableHeaderCell>
+              <TableHeaderCell>Importe</TableHeaderCell>
               <TableHeaderCell />
             </TableRow>
           </TableHead>

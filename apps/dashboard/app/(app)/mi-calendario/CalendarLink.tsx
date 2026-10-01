@@ -53,7 +53,7 @@ export function CalendarLink({ url }: { url: string | null }) {
               data-testid="calendar-copy"
               onClick={handleCopy}
             >
-              {copied ? "Copiado" : "Copiar"}
+              {copied ? "Enlace copiado" : "Copiar enlace"}
             </Button>
             <ConfirmDialog
               trigger={
@@ -87,7 +87,7 @@ export function CalendarLink({ url }: { url: string | null }) {
             data-testid="calendar-generate"
             onClick={handleRegenerate}
           >
-            Generar enlace
+            Crear mi enlace
           </Button>
         </div>
       )}

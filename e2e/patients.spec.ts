@@ -134,7 +134,7 @@ test('an archived person is hidden by default and appears once "Ver archivados" 
   ).toBeVisible();
 });
 
-test("adding an adult with a unique name takes you to their record", async ({
+test("adding an adult from «Nuevo paciente» takes you to their record as a patient, without asking whether they are one", async ({
   page,
 }) => {
   const lastName = `Nueva${Date.now()}`;
@@ -145,6 +145,10 @@ test("adding an adult with a unique name takes you to their record", async ({
   await page.getByLabel("Nombre").fill("Persona");
   await page.getByLabel("Apellidos").fill(lastName);
   await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
+  await expect(
+    page.getByLabel("También es paciente (recibe tratamiento)"),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("person-submit")).toHaveText("Crear ficha");
   await page.getByTestId("person-submit").click();
 
   await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
@@ -153,10 +157,14 @@ test("adding an adult with a unique name takes you to their record", async ({
 
   const { data } = await admin
     .from("people")
-    .select("first_name, last_name")
+    .select("first_name, last_name, is_patient")
     .eq("id", id)
     .single();
-  expect(data).toEqual({ first_name: "Persona", last_name: lastName });
+  expect(data).toEqual({
+    first_name: "Persona",
+    last_name: lastName,
+    is_patient: true,
+  });
 });
 
 test("double-clicking Guardar on a new unique person creates exactly one row, not two", async ({
@@ -187,7 +195,7 @@ test("double-clicking Guardar on a new unique person creates exactly one row, no
   expect(data?.map((row) => row.id)).toEqual([id]);
 });
 
-test('adding someone with Lucía\'s phone shows the duplicate warning, and "Usar esta persona" takes you to her record without creating anything', async ({
+test('adding someone with Lucía\'s phone shows the duplicate warning, and "Usar esta ficha" takes you to her record without creating anything', async ({
   page,
 }) => {
   const lastName = `Duplicada${Date.now()}`;
@@ -276,7 +284,7 @@ test("adding someone with the seed DNI written with dots and lowercase reports t
   await page.getByTestId("person-submit").click();
 
   await expect(page.getByTestId("person-error")).toHaveText(
-    "Ya existe una persona con ese DNI/NIE.",
+    "Ya hay una ficha con ese DNI/NIE.",
   );
   await expect(page.getByLabel("Apellidos")).toHaveValue(lastName);
   await expect(taxId).toHaveValue("11.223.344-b");
@@ -316,7 +324,7 @@ test("editing the address of a person created by the test saves it", async ({
   expect(updated?.address).toBe("Calle Nueva 22");
 });
 
-test('creating a minor patient shows "Menor sin tutor", and adding their mother through guardianOf links them both ways', async ({
+test('creating a minor patient shows "Menor sin tutor/a", and adding their mother through guardianOf links them both ways', async ({
   page,
 }) => {
   const minorLastName = `Menor${Date.now()}`;
@@ -335,7 +343,7 @@ test('creating a minor patient shows "Menor sin tutor", and adding their mother 
   await expect(page.getByTestId("patient-no-guardian")).toBeVisible();
 
   await page.getByTestId("guardian-add").click();
-  await page.getByRole("link", { name: "Nueva persona" }).click();
+  await page.getByRole("link", { name: "Nuevo tutor/a" }).click();
   await expect(page).toHaveURL(
     `${DASHBOARD}/patients/new?guardianOf=${minorId}`,
   );
@@ -370,7 +378,7 @@ test('creating a minor patient shows "Menor sin tutor", and adding their mother 
   await expect(wardRow).toBeVisible();
 });
 
-test('in the guardianOf flow, "Usar esta persona" links the existing person as guardian instead of creating a new one', async ({
+test('in the guardianOf flow, "Usar esta ficha" links the existing record as guardian instead of creating a new one', async ({
   page,
 }) => {
   const minorLastName = `MenorUsar${Date.now()}`;
@@ -521,7 +529,7 @@ test("the guardian picker excludes the ficha's own person and people already add
   ).toHaveCount(0);
 });
 
-test('searching for someone who does not exist shows "No hay nadie con esos datos.", and Cerrar always closes the panel', async ({
+test('searching for someone who does not exist shows "No hay ninguna ficha con esos datos.", and Cancelar always closes the panel', async ({
   page,
 }) => {
   const minorLastName = `MenorCerrar${Date.now()}`;
@@ -548,7 +556,7 @@ test('searching for someone who does not exist shows "No hay nadie con esos dato
 
   await page.getByTestId("guardian-search").fill("zzz-no-existe-zzz");
   await expect(page.getByTestId("guardian-search-empty")).toHaveText(
-    "No hay nadie con esos datos.",
+    "No hay ninguna ficha con esos datos.",
   );
 
   await page.getByTestId("guardian-close").click();
@@ -556,7 +564,7 @@ test('searching for someone who does not exist shows "No hay nadie con esos dato
   await expect(page.getByTestId("guardian-search")).toHaveCount(0);
 });
 
-test('archiving a minor patient hides them from the list, "Ver archivados" shows them, and Recuperar brings them back', async ({
+test('archiving a minor patient hides them from the list, "Ver archivados" shows them, and Desarchivar brings them back', async ({
   page,
 }) => {
   const lastName = `ParaArchivar${Date.now()}`;
@@ -579,7 +587,7 @@ test('archiving a minor patient hides them from the list, "Ver archivados" shows
 
   await page.getByTestId("person-archive").click();
   await page.getByTestId("confirm-action").click();
-  await expect(page.getByTestId("person-archive")).toHaveText("Recuperar");
+  await expect(page.getByTestId("person-archive")).toHaveText("Desarchivar");
 
   await page.goto(`${DASHBOARD}/patients`);
   await page.getByTestId("patients-search").fill(lastName);
@@ -741,7 +749,7 @@ test("clicking a person's name in the list, an archive/recover round trip, and c
 
   await page.getByTestId("person-archive").click();
   await page.getByTestId("confirm-action").click();
-  await expect(page.getByTestId("person-archive")).toHaveText("Recuperar");
+  await expect(page.getByTestId("person-archive")).toHaveText("Desarchivar");
 
   await page.goto(`${DASHBOARD}/patients`);
   await page.getByTestId("patients-search").fill(minorLastName);

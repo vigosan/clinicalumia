@@ -249,7 +249,7 @@ test("una cita creada para el futuro aparece como appointment-block con el nombr
   await expect(appointment).toContainText("Jorge Ruiz Pérez");
 });
 
-test('activar a Marc en "Ver también" muestra su columna con un busy-block sin el nombre del paciente', async ({
+test('activar a Marc en "Ver también la agenda de" muestra su columna con un busy-block sin el nombre del paciente', async ({
   page,
 }) => {
   const date = futureDate(41);
@@ -648,7 +648,7 @@ test("desde un hueco de mañana, buscar «nora», elegir servicio y guardar crea
   ).toContainText("Nora");
 });
 
-test("«Nueva persona» desde el formulario de cita vuelve con la persona nueva elegida y conserva fecha, hora y profesional", async ({
+test("«Nuevo paciente» desde el formulario de cita vuelve con el paciente nuevo elegido y conserva fecha, hora y profesional", async ({
   page,
 }) => {
   const date = dateWithWeekday(61, [1, 2, 3, 4, 5]);
@@ -663,7 +663,7 @@ test("«Nueva persona» desde el formulario de cita vuelve con la persona nueva 
     `${DASHBOARD}/appointments/new?date=${date}&time=11:00&professional=${employee.id}`,
   );
 
-  await page.getByRole("link", { name: "Nueva persona" }).click();
+  await page.getByRole("link", { name: "Nuevo paciente" }).click();
   await page.waitForURL(/\/patients\/new\?returnTo=/);
 
   const lastName = `PruebaVolver${Date.now()}`;
@@ -685,6 +685,18 @@ test("«Nueva persona» desde el formulario de cita vuelve con la persona nueva 
   await expect(page.getByTestId("patient-selected")).toContainText(
     `Persona ${lastName}`,
   );
+});
+
+test("«Cancelar» en Nueva cita vuelve al día de la agenda del que se venía, no a hoy", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(61, [1, 2, 3, 4, 5]);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/appointments/new?date=${date}`);
+  await page.getByRole("link", { name: "Cancelar" }).click();
+
+  await expect(page).toHaveURL(`${DASHBOARD}/?date=${date}`);
 });
 
 test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55", async ({
@@ -1048,7 +1060,7 @@ test("cancelar como «paciente» con motivo la quita de la agenda y el historial
   ).toHaveCount(0);
 });
 
-test("en una cita pasada, «No se presentó» la atenúa y «Deshacer» la devuelve", async ({
+test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer «no presentada»» la devuelve", async ({
   page,
 }) => {
   const date = pastDate(120);
@@ -1082,14 +1094,16 @@ test("en una cita pasada, «No se presentó» la atenúa y «Deshacer» la devue
   await page.getByTestId("appointment-restore").click();
 
   await expect(page.getByTestId("appointment-history")).toContainText(
-    "Restaurada",
+    "Se deshizo «no presentada»",
   );
   await expect(
     columnFor(page, employee.id).getByTestId("appointment-block"),
   ).not.toHaveClass(/opacity-60/);
 });
 
-test("en una cita futura no aparece «No se presentó»", async ({ page }) => {
+test("en una cita futura no aparece «Marcar como no presentada»", async ({
+  page,
+}) => {
   const date = futureDate(112);
   const employee = await createThrowawayUser({
     fullName: "Profesional Futura Panel",

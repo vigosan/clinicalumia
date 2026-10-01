@@ -1,6 +1,7 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/agenda";
@@ -9,8 +10,10 @@ import { formatSignedAt, linkedPersonLabel } from "@/lib/consents";
 import { ConsentActions } from "./ConsentActions";
 
 function yesNo(value: boolean): string {
-  return value ? "sí" : "no";
+  return value ? "Sí" : "No";
 }
+
+export const metadata: Metadata = { title: "Consentimiento" };
 
 export default async function ConsentPage({
   params,
@@ -63,7 +66,7 @@ export default async function ConsentPage({
         </p>
         {consent.guardian_name && (
           <p>
-            <strong>Padre, madre o tutor:</strong> {consent.guardian_name}
+            <strong>Padre, madre o tutor/a:</strong> {consent.guardian_name}
           </p>
         )}
         <p>
@@ -92,7 +95,7 @@ export default async function ConsentPage({
         <p data-testid="consent-status">
           {consent.person ? (
             <>
-              Asociado a{" "}
+              Asociado a la ficha de{" "}
               <Link href={`/patients/${consent.person.id}`}>
                 {linkedPersonLabel(consent.person)}
               </Link>

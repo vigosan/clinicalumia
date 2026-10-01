@@ -6,6 +6,7 @@ import {
 import { isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
+import type { Metadata } from "next";
 import { canMarkNoShow, canMove, isUuid } from "@/lib/agenda";
 import {
   type AppointmentEventRow,
@@ -188,6 +189,8 @@ async function loadAppointmentDetail(
     },
   };
 }
+
+export const metadata: Metadata = { title: "Agenda" };
 
 export default async function DashboardHome({
   searchParams,

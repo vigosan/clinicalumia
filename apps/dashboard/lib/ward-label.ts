@@ -7,7 +7,7 @@ const RELATIONSHIP_LABEL: Record<Ward["relationship"], string> = {
   madre: "madre de",
   padre: "padre de",
   tutor_legal: "tutor legal de",
-  otro: "tutor de",
+  otro: "tutor/a de",
 };
 
 export function wardsLabel(wards: Ward[]): string {

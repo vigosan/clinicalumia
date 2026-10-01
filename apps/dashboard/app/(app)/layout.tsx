@@ -57,7 +57,7 @@ export default async function DashboardLayout({
       logout={
         <form action={logout}>
           <Button type="submit" variant="ghost" size="sm" data-testid="logout">
-            Salir
+            Cerrar sesión
           </Button>
         </form>
       }

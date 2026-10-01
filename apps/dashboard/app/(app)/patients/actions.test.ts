@@ -144,7 +144,7 @@ describe("savePerson", () => {
     };
     expect(
       await savePerson(undefined, personForm({ tax_id: "12345678Z" })),
-    ).toEqual({ error: "Ya existe una persona con ese DNI/NIE." });
+    ).toEqual({ error: "Ya hay una ficha con ese DNI/NIE." });
   });
 
   it("reports the generic message for a 23505 error that names a different constraint", async () => {
@@ -256,7 +256,7 @@ describe("savePerson with guardian_of", () => {
           birth_date: "2015-01-01",
         }),
       ),
-    ).toEqual({ error: "Un tutor tiene que ser mayor de edad." });
+    ).toEqual({ error: "El tutor/a tiene que ser mayor de edad." });
     expect(peopleInsert).not.toHaveBeenCalled();
   });
 
@@ -271,7 +271,7 @@ describe("savePerson with guardian_of", () => {
           is_primary: "on",
         }),
       ),
-    ).toEqual({ error: "Ya tiene un tutor principal." });
+    ).toEqual({ error: "Ya tiene tutor/a principal." });
     expect(peopleInsert).not.toHaveBeenCalled();
   });
 });
@@ -316,7 +316,7 @@ describe("addGuardian", () => {
 
   it("rejects a person as their own guardian without touching the database", async () => {
     expect(await addGuardian("person-1", "person-1", "madre", false)).toEqual({
-      error: "Una persona no puede ser su propio tutor.",
+      error: "Nadie puede ser su propio tutor/a.",
     });
     expect(guardianshipsInsert).not.toHaveBeenCalled();
   });
@@ -324,7 +324,7 @@ describe("addGuardian", () => {
   it("rejects a guardian who is still a minor", async () => {
     guardianLookupResult.data = { birth_date: "2015-01-01" };
     expect(await addGuardian("minor-1", "guardian-1", "madre", false)).toEqual({
-      error: "Un tutor tiene que ser mayor de edad.",
+      error: "El tutor/a tiene que ser mayor de edad.",
     });
     expect(guardianshipsInsert).not.toHaveBeenCalled();
   });
@@ -336,7 +336,7 @@ describe("addGuardian", () => {
         'duplicate key value violates unique constraint "guardianships_one_primary"',
     };
     expect(await addGuardian("minor-1", "guardian-1", "madre", true)).toEqual({
-      error: "Ya tiene un tutor principal.",
+      error: "Ya tiene tutor/a principal.",
     });
   });
 
@@ -347,7 +347,7 @@ describe("addGuardian", () => {
         'duplicate key value violates unique constraint "guardianships_pkey"',
     };
     expect(await addGuardian("minor-1", "guardian-1", "madre", false)).toEqual({
-      error: "Ya es tutor de este menor.",
+      error: "Ya es tutor/a de este menor.",
     });
   });
 });
@@ -413,7 +413,7 @@ describe("deletePerson", () => {
   it("reports the owner-only message when the delete affects no rows", async () => {
     deletePersonResult.data = [];
     expect(await deletePerson("person-1")).toEqual({
-      error: "Solo la propietaria puede eliminar personas.",
+      error: "Solo la propietaria puede eliminar fichas.",
     });
   });
 
@@ -437,7 +437,8 @@ describe("deletePerson", () => {
         'update or delete on table "people" violates foreign key constraint "appointments_person_id_fkey" on table "appointments"',
     };
     expect(await deletePerson("person-1")).toEqual({
-      error: "No se puede eliminar: tiene datos ligados.",
+      error:
+        "No se puede eliminar: tiene citas, cobros o consentimientos. Archívala.",
     });
   });
 });

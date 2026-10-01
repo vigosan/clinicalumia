@@ -77,7 +77,7 @@ export function historyLine(
   if (event.kind === "no_show")
     return `Marcada como no presentada por ${actorName} el ${moment}`;
 
-  return `Restaurada por ${actorName} el ${moment}`;
+  return `Se deshizo «no presentada» por ${actorName} el ${moment}`;
 }
 
 export function appointmentHistory({

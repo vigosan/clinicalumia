@@ -11,6 +11,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   formatInvoiceDate,
@@ -24,6 +25,8 @@ import {
 } from "@/lib/invoices-load";
 import { formatEuros } from "@/lib/payments";
 import { InvoicesFilters } from "./InvoicesFilters";
+
+export const metadata: Metadata = { title: "Facturas" };
 
 export default async function InvoicesPage({
   searchParams,
@@ -53,7 +56,10 @@ export default async function InvoicesPage({
 
   return (
     <>
-      <PageHeader title="Facturas" />
+      <PageHeader
+        title="Facturas"
+        description="Facturas emitidas a partir de los cobros."
+      />
       <Card>
         <InvoicesFilters
           params={params}

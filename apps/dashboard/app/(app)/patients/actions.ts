@@ -35,7 +35,7 @@ function mapPersonError(
   if (error.code === "23505") {
     const text = `${error.message ?? ""} ${error.details ?? ""}`;
     if (text.includes("people_tax_id_key"))
-      return "Ya existe una persona con ese DNI/NIE.";
+      return "Ya hay una ficha con ese DNI/NIE.";
     return "No se ha podido guardar.";
   }
   if (error.code === "23514")
@@ -83,7 +83,7 @@ export async function savePerson(
 
   if (guardianOf) {
     if (parsed.person.birth_date && isMinor(parsed.person.birth_date, today))
-      return { error: "Un tutor tiene que ser mayor de edad." };
+      return { error: "El tutor/a tiene que ser mayor de edad." };
 
     if (isPrimary) {
       const { data: existingPrimary } = await supabase
@@ -92,7 +92,7 @@ export async function savePerson(
         .eq("minor_id", guardianOf)
         .eq("is_primary", true)
         .maybeSingle();
-      if (existingPrimary) return { error: "Ya tiene un tutor principal." };
+      if (existingPrimary) return { error: "Ya tiene tutor/a principal." };
     }
   }
 
@@ -205,9 +205,9 @@ function mapGuardianshipError(
   if (error.code === "23505") {
     const text = `${error.message ?? ""} ${error.details ?? ""}`;
     if (text.includes("guardianships_one_primary"))
-      return "Ya tiene un tutor principal.";
+      return "Ya tiene tutor/a principal.";
     if (text.includes("guardianships_pkey"))
-      return "Ya es tutor de este menor.";
+      return "Ya es tutor/a de este menor.";
     return "No se ha podido guardar.";
   }
   return "No se ha podido guardar.";
@@ -220,7 +220,7 @@ export async function addGuardian(
   isPrimary: boolean,
 ): Promise<ActionResult> {
   if (guardianId === minorId)
-    return { error: "Una persona no puede ser su propio tutor." };
+    return { error: "Nadie puede ser su propio tutor/a." };
 
   const supabase = await createClient();
   const { data: guardian } = await supabase
@@ -229,7 +229,7 @@ export async function addGuardian(
     .eq("id", guardianId)
     .maybeSingle();
   if (guardian?.birth_date && isMinor(guardian.birth_date, todayInMadrid()))
-    return { error: "Un tutor tiene que ser mayor de edad." };
+    return { error: "El tutor/a tiene que ser mayor de edad." };
 
   const { error } = await supabase.from("guardianships").insert({
     minor_id: minorId,
@@ -297,12 +297,15 @@ export async function deletePerson(id: string): Promise<ActionResult> {
       const text = `${error.message ?? ""} ${error.details ?? ""}`;
       if (text.includes("guardianships_guardian_id_fkey"))
         return { error: "No se puede eliminar: tiene menores a su cargo." };
-      return { error: "No se puede eliminar: tiene datos ligados." };
+      return {
+        error:
+          "No se puede eliminar: tiene citas, cobros o consentimientos. Archívala.",
+      };
     }
     return { error: "No se ha podido eliminar." };
   }
   if (!data || data.length === 0)
-    return { error: "Solo la propietaria puede eliminar personas." };
+    return { error: "Solo la propietaria puede eliminar fichas." };
 
   revalidatePath("/patients");
   redirect("/patients");

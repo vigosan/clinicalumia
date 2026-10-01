@@ -142,7 +142,7 @@ test("cobrar en efectivo una cita pasada la deja pagada y lo apunta en el histor
   await page.getByTestId("payment-submit").click();
 
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 55,00 €",
+    "Cobrada · 55,00 € · Efectivo",
   );
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
   await expect(page.getByTestId("appointment-history")).toContainText(
@@ -173,7 +173,7 @@ test("cobrar un importe distinto del propuesto pide el motivo y con él se regis
   await page.getByTestId("payment-submit").click();
 
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 40,00 €",
+    "Cobrada · 40,00 € · Efectivo",
   );
 });
 
@@ -206,7 +206,7 @@ test("si la señal se paga en la web mientras el formulario está abierto, apare
   await page.getByTestId("payment-submit").click();
 
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 55,00 €",
+    "Cobrada · 55,00 € · Efectivo",
   );
 });
 
@@ -222,7 +222,7 @@ test("anular un cobro con motivo lo deja pendiente y se puede volver a cobrar co
 
   await collect(page, "cash");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 55,00 €",
+    "Cobrada · 55,00 € · Efectivo",
   );
 
   await page.getByTestId("payment-void").click();
@@ -241,7 +241,7 @@ test("anular un cobro con motivo lo deja pendiente y se puede volver a cobrar co
 
   await collect(page, "bizum");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Bizum · 55,00 €",
+    "Cobrada · 55,00 € · Bizum",
   );
 });
 
@@ -265,7 +265,7 @@ test("una empleada no ve «Anular cobro» en el cobro que registró otra persona
   await openAppointment(page, date, appointmentId);
 
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Tarjeta · 55,00 €",
+    "Cobrada · 55,00 € · Tarjeta",
   );
   await expect(page.getByTestId("payment-void")).toHaveCount(0);
 });
@@ -283,7 +283,7 @@ test("una cita futura se puede cobrar por adelantado y, ya facturada, no se pued
   await expect(page.getByTestId("appointment-payment-status")).toHaveCount(0);
   await collect(page, "card");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Tarjeta · 55,00 €",
+    "Cobrada · 55,00 € · Tarjeta",
   );
 
   await page.getByTestId("appointment-move-time").fill("12:00");
@@ -332,7 +332,7 @@ test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la 
 
     for (const page of [first, second]) {
       await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-        "Pagada · Efectivo · 55,00 €",
+        "Cobrada · 55,00 € · Efectivo",
       );
       await expect(page.getByTestId("payment-form")).toHaveCount(0);
       await expect(page.getByTestId("payment-collect")).toHaveCount(0);
@@ -369,17 +369,17 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
   await openAppointment(page, date, cashAppointmentId);
   await collect(page, "cash");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 55,00 €",
+    "Cobrada · 55,00 € · Efectivo",
   );
   await openAppointment(page, date, cardAppointmentId);
   await collect(page, "card");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Tarjeta · 55,00 €",
+    "Cobrada · 55,00 € · Tarjeta",
   );
   await openAppointment(page, date, voidedAppointmentId);
   await collect(page, "cash");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 55,00 €",
+    "Cobrada · 55,00 € · Efectivo",
   );
   await page.getByTestId("payment-void").click();
   await expect(page.getByTestId("payment-void-confirm")).toHaveText(
@@ -404,7 +404,7 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
       .getByTestId("payment-row")
       .filter({ hasText: cashPatientName })
       .getByTestId("payment-state"),
-  ).toHaveText("Vigente");
+  ).toHaveText("Válido");
   await expect(
     page
       .getByTestId("payment-row")
@@ -486,7 +486,7 @@ test("una cita pasada sin cobro aparece en pendientes de cobro, desaparece al co
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
   await collect(page, "cash");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 55,00 €",
+    "Cobrada · 55,00 € · Efectivo",
   );
 
   await page.goto(`${DASHBOARD}/cobros/pendientes`);
@@ -510,7 +510,7 @@ test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el sel
   await openAppointment(page, date, colleagueAppointmentId);
   await collect(page, "card");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Tarjeta · 55,00 €",
+    "Cobrada · 55,00 € · Tarjeta",
   );
   await page.getByTestId("logout").click();
   await expect(page).toHaveURL(/\/login$/);
@@ -519,7 +519,7 @@ test("un empleado solo ve en /cobros los cobros de sus propias citas, sin el sel
   await openAppointment(page, date, ownAppointmentId);
   await collect(page, "cash");
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pagada · Efectivo · 55,00 €",
+    "Cobrada · 55,00 € · Efectivo",
   );
 
   await page.goto(`${DASHBOARD}/cobros`);

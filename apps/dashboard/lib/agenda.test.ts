@@ -399,7 +399,7 @@ describe("parseAppointmentForm", () => {
 
   it("requires a professional", () => {
     expect(parseAppointmentForm(form({ professional_id: "" }))).toEqual({
-      error: "Elige profesional.",
+      error: "Elige un profesional.",
     });
   });
 
@@ -663,7 +663,7 @@ describe("appointmentError", () => {
   it("maps patient_not_bookable", () => {
     expect(
       appointmentError({ code: "23514", message: "patient_not_bookable" }),
-    ).toBe("Esa persona no es paciente o está archivada.");
+    ).toBe("Esa ficha no es de paciente o está archivada.");
   });
 
   it("maps service_inactive", () => {

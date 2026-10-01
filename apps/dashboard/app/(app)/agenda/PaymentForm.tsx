@@ -109,7 +109,7 @@ export function PaymentForm({
         ))}
       </fieldset>
       {needsNote && (
-        <Field label="Motivo">
+        <Field label="Motivo del cambio de importe">
           <Textarea
             data-testid="payment-note"
             value={note}

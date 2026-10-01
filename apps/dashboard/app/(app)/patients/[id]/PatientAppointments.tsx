@@ -1,3 +1,4 @@
+import { Button } from "@clinicalumia/ui/button";
 import Link from "next/link";
 import type { PatientAppointmentRow } from "@/lib/patient-appointments";
 
@@ -54,12 +55,14 @@ export function PatientAppointments({
   upcomingTruncated,
   past,
   pastTruncated,
+  newAppointmentHref,
 }: {
   error: boolean;
   upcoming: PatientAppointmentRow[];
   upcomingTruncated: boolean;
   past: PatientAppointmentRow[];
   pastTruncated: boolean;
+  newAppointmentHref: string | null;
 }) {
   if (error) {
     return (
@@ -75,9 +78,18 @@ export function PatientAppointments({
 
   if (upcoming.length === 0 && past.length === 0) {
     return (
-      <p className="text-sm text-ink-800">
-        Aquí aparecerán sus citas, cobros y facturas.
-      </p>
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-sm text-ink-800">Todavía no tiene citas.</p>
+        {newAppointmentHref && (
+          <Button
+            asChild
+            variant="secondary"
+            data-testid="patient-new-appointment"
+          >
+            <Link href={newAppointmentHref}>Nueva cita</Link>
+          </Button>
+        )}
+      </div>
     );
   }
 

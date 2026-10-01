@@ -73,7 +73,7 @@ function buildDayBlocks(
     contentById.set(block.id, {
       block,
       testId: "time-off-block",
-      title: "No disponible",
+      title: "Ausencia",
       subtitle: entry.reason
         ? `${timeOf(entry.startsAt)} – ${timeOf(entry.endsAt)} · ${entry.reason}`
         : `${timeOf(entry.startsAt)} – ${timeOf(entry.endsAt)}`,

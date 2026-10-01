@@ -68,7 +68,7 @@ export function linkedPersonLabel(person: {
   archived_at: string | null;
 }): string {
   const name = `${person.first_name} ${person.last_name}`;
-  return person.archived_at ? `${name} (archivada)` : name;
+  return person.archived_at ? `${name} (ficha archivada)` : name;
 }
 
 export function listConsents(

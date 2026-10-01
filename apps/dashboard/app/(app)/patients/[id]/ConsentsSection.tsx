@@ -10,7 +10,7 @@ export type PatientConsent = {
 };
 
 function yesNo(value: boolean): string {
-  return value ? "sí" : "no";
+  return value ? "Sí" : "No";
 }
 
 export function ConsentsSection({

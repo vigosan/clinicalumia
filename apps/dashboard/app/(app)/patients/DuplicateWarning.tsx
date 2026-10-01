@@ -31,7 +31,7 @@ export function DuplicateWarning({
       className="flex flex-col gap-3 rounded-card border border-warning-800 bg-warning-100 p-4"
     >
       <p className="text-[15px] font-medium text-ink-900">
-        Puede que esta persona ya exista.
+        Puede que ya tenga ficha.
       </p>
       <ul className="flex flex-col gap-2">
         {duplicates.map((duplicate) => (
@@ -55,7 +55,7 @@ export function DuplicateWarning({
               data-testid="duplicate-use"
               onClick={() => onUseExisting(duplicate.id)}
             >
-              Usar esta persona
+              Usar esta ficha
             </Button>
           </li>
         ))}

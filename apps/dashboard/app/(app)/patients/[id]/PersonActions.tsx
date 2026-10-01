@@ -51,7 +51,7 @@ export function PersonActions({
             data-testid="person-archive"
             onClick={handleArchiveToggle}
           >
-            Recuperar
+            Desarchivar
           </Button>
         ) : (
           <ConfirmDialog
@@ -66,8 +66,8 @@ export function PersonActions({
                 Archivar
               </Button>
             }
-            title="¿Archivar a esta persona?"
-            description="Dejará de aparecer en el listado. Puedes recuperarla cuando quieras."
+            title="¿Archivar esta ficha?"
+            description="Dejará de aparecer en Pacientes. Podrás desarchivarla desde «Archivados»."
             confirmLabel="Archivar"
             onConfirm={handleArchiveToggle}
           />
@@ -85,7 +85,7 @@ export function PersonActions({
                 Eliminar
               </Button>
             }
-            title="¿Eliminar a esta persona?"
+            title="¿Eliminar esta ficha?"
             description="Esta acción no se puede deshacer."
             confirmLabel="Eliminar"
             onConfirm={handleDelete}

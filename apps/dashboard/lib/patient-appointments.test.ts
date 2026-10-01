@@ -29,13 +29,13 @@ describe("appointmentStatusLabel", () => {
     ).toBe("Programada");
   });
 
-  it("shows «Hecha» for a scheduled appointment that already started, since it was never cancelled or marked no-show", () => {
+  it("shows «Realizada» for a scheduled appointment that already started, since it was never cancelled or marked no-show", () => {
     expect(
       appointmentStatusLabel(
         appointment({ startsAt: "2026-10-05T15:00:00+02:00" }),
         new Date("2026-10-10T00:00:00Z"),
       ),
-    ).toBe("Hecha");
+    ).toBe("Realizada");
   });
 
   it("shows «Cancelada por el paciente» when the patient cancelled", () => {
@@ -56,13 +56,13 @@ describe("appointmentStatusLabel", () => {
     ).toBe("Cancelada por la clínica");
   });
 
-  it("shows «No se presentó» for a no-show, regardless of the date", () => {
+  it("shows «No presentada» for a no-show, regardless of the date", () => {
     expect(
       appointmentStatusLabel(
         appointment({ status: "no_show" }),
         new Date("2026-10-10T00:00:00Z"),
       ),
-    ).toBe("No se presentó");
+    ).toBe("No presentada");
   });
 });
 
