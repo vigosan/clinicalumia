@@ -245,9 +245,11 @@ test("la propietaria revisa un trimestre y descarga el libro de facturas con los
   ledger.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     codes.push(row.getCell(2).value);
-    const replacesAnother =
-      row.getCell(3).value === "Completa" && Boolean(row.getCell(4).value);
-    if (!replacesAnother) ledgerTotal += row.getCell(12).value as number;
+    expect(row.getCell(13).value).toBe(
+      row.getCell(3).value === "Completa" ? "No" : "Sí",
+    );
+    if (row.getCell(13).value === "Sí")
+      ledgerTotal += row.getCell(12).value as number;
   });
   expect(codes.sort()).toEqual(invoices.map((invoice) => invoice.code).sort());
   expect(ledgerTotal).toBeCloseTo(145, 2);

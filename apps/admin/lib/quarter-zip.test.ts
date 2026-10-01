@@ -192,6 +192,29 @@ describe("quarterZip", () => {
     expect(supabase.from).toHaveBeenCalledWith("clinic_settings");
   }, 30_000);
 
+  it("keeps both PDFs when two codes map to the same file name, so the ZIP never holds fewer invoices than the ledger", async () => {
+    const clashing: QuarterInvoice[] = [
+      { ...invoices[0]!, code: "1/26" },
+      {
+        ...invoices[0]!,
+        id: "00000000-0000-0000-0000-000000000003",
+        code: "1-26",
+      },
+    ];
+    const result = await quarterZip(fakeSupabase(clashing), {
+      year: 2026,
+      q: 3,
+      invoices: clashing,
+      maxBytes: LIMIT,
+    });
+    if (!("zip" in result)) throw new Error("expected a zip");
+    expect(Object.keys(unzipSync(result.zip)).sort()).toEqual([
+      "1-26 (2).pdf",
+      "1-26.pdf",
+      "LUMIA-facturas-2026-T3.xlsx",
+    ]);
+  }, 30_000);
+
   it("fails instead of handing over a ZIP with an invoice missing", async () => {
     const supabase = fakeSupabase(invoices, { failingId: invoices[1]!.id });
     await expect(

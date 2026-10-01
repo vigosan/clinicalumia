@@ -50,7 +50,7 @@
 
 **Files:** migración `packages/db/supabase/migrations/20261005090000_exportaciones.sql`, test pgTAP, tipos de `@clinicalumia/db` si cambian.
 
-**Produces:** bucket `exports` privado (`application/zip`, límite 200 MB); políticas: la propietaria lee, escribe y borra solo `{auth.uid()}/...`; nadie más.
+**Produces:** bucket `exports` privado (`application/zip`, límite 50 MB); políticas: la propietaria lee, escribe y borra solo `{auth.uid()}/...`; nadie más.
 
 - [ ] **Tests:** pgTAP (propietaria sí en su carpeta, no en otra; empleada y anónimo no). **Commit:** "Crear el almacenamiento privado de exportaciones"
 

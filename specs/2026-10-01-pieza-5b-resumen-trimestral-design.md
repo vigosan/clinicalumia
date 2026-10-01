@@ -56,10 +56,11 @@ Los totales salen de los `snapshot.lines` de cada factura (`base_cents`, `vat_ra
 | % IVA | 0 o 21 (si hay líneas con tipos distintos, una fila por tipo con el mismo número) |
 | Cuota IVA | suma de `vat_cents` |
 | Total | `total_cents` |
+| Suma en totales | «No» solo para una completa que sustituye a una simplificada; «Sí» en el resto |
 | Exención | `snapshot.vat_note` cuando el IVA es 0 |
 | Forma de pago | `snapshot.payments` (Efectivo, Tarjeta, Bizum, Transferencia) |
 
-**Hoja «Resumen»:** el trimestre, el emisor (nombre y NIF), los totales por tipo de IVA y el total neto, igual que en pantalla.
+**Hoja «Resumen»:** el trimestre, el emisor (nombre y NIF), los totales por tipo de IVA y el total neto, igual que en pantalla, y una nota que explica que las rectificativas restan y que la completa que sustituye a una simplificada no suma.
 
 El nombre del archivo es `LUMIA-facturas-2026-T3.xlsx`.
 

@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import type { Quarter } from "./quarter";
 import {
   ledgerRows,
+  QUARTER_TOTALS_NOTE,
   type QuarterInvoice,
   summarizeInvoices,
   vatRateLabel,
@@ -22,6 +23,7 @@ const LEDGER_COLUMNS: { header: string; width: number; numFmt?: string }[] = [
   { header: "% IVA", width: 8 },
   { header: "Cuota IVA", width: 12, numFmt: EUROS },
   { header: "Total", width: 12, numFmt: EUROS },
+  { header: "Suma en totales", width: 16 },
   { header: "Exención", width: 40 },
   { header: "Forma de pago", width: 22 },
 ];
@@ -69,6 +71,7 @@ function addLedgerSheet(
       row.vat_rate,
       row.vat_cents / 100,
       row.total_cents / 100,
+      row.inTotals ? "Sí" : "No",
       row.exemption,
       row.paymentMethod,
     ]);
@@ -108,6 +111,8 @@ function addSummarySheet(
   );
   const net = sheet.addRow(["Total neto", null, null, summary.net_cents / 100]);
   net.font = { bold: true };
+  sheet.addRow([]);
+  sheet.addRow(["Nota", QUARTER_TOTALS_NOTE]);
   for (const row of [...amountRows, net]) {
     for (const column of [2, 3, 4]) row.getCell(column).numFmt = EUROS;
   }

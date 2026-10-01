@@ -20,7 +20,11 @@ import {
   quarterYears,
 } from "@/lib/quarter";
 import { loadQuarterInvoices } from "@/lib/quarter-load";
-import { summarizeInvoices, vatRateLabel } from "@/lib/quarter-summary";
+import {
+  QUARTER_TOTALS_NOTE,
+  summarizeInvoices,
+  vatRateLabel,
+} from "@/lib/quarter-summary";
 import { QuarterPicker } from "./QuarterPicker";
 import { QuarterZipButton } from "./QuarterZipButton";
 
@@ -169,11 +173,7 @@ export default async function BillingPage({
                 {formatCents(summary.net_cents)}
               </p>
             </Card>
-            <p className="text-[13px] text-ink-800">
-              Las rectificativas restan. Una completa que sustituye a una
-              simplificada aparece en el libro pero no suma: ya cuenta la
-              simplificada original.
-            </p>
+            <p className="text-[13px] text-ink-800">{QUARTER_TOTALS_NOTE}</p>
           </section>
         </>
       )}

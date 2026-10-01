@@ -142,6 +142,7 @@ const HEADERS = [
   "% IVA",
   "Cuota IVA",
   "Total",
+  "Suma en totales",
   "Exención",
   "Forma de pago",
 ];
@@ -204,8 +205,34 @@ describe("ledgerXlsx", () => {
         row.vat_cents / 100,
         row.total_cents / 100,
       ]);
-      expect(values.slice(12)).toEqual([row.exemption, row.paymentMethod]);
+      expect(values.slice(12)).toEqual([
+        row.inTotals ? "Sí" : "No",
+        row.exemption,
+        row.paymentMethod,
+      ]);
     });
+  });
+
+  it("marks the full invoice that replaces a simplified one as not adding up, so summing «Total» over the «Sí» rows gives the net", async () => {
+    const workbook = await readBack(
+      await ledgerXlsx({ year: 2026, q: 3, invoices }),
+    );
+    const sheet = workbook.getWorksheet("Facturas")!;
+    const marks: Record<string, unknown> = {};
+    let summed = 0;
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      marks[`${row.getCell(2).value}`] = row.getCell(13).value;
+      if (row.getCell(13).value === "Sí")
+        summed += row.getCell(12).value as number;
+    });
+    expect(marks).toEqual({
+      "1/26": "Sí",
+      "2/26": "No",
+      "3/26": "Sí",
+      "R1/26": "Sí",
+    });
+    expect(summed).toBeCloseTo(summarizeInvoices(invoices).net_cents / 100, 2);
   });
 
   it("writes amounts as real numbers in euros, so the gestoría can add them up in Excel", async () => {
@@ -280,6 +307,9 @@ describe("ledgerXlsx", () => {
     expect(net.getCell(4).value).toBe(summary.net_cents / 100);
     expect(net.getCell(4).value).toBe(55);
     expect(net.getCell(4).numFmt).toBe(EUROS);
+    expect(rowByLabel(sheet, "Nota").getCell(2).value).toBe(
+      "Las rectificativas restan. Una completa que sustituye a una simplificada aparece en el libro pero no suma: ya cuenta la simplificada original.",
+    );
   });
 
   it("still produces a readable workbook for a quarter without invoices", async () => {

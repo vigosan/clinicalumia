@@ -5,8 +5,8 @@ import {
 } from "@clinicalumia/invoices/format";
 import type { Quarter } from "./quarter";
 
-export type QuarterInvoiceKind = "simplified" | "full" | "rectifying";
-export type QuarterInvoiceStatus = "issued" | "replaced";
+type QuarterInvoiceKind = "simplified" | "full" | "rectifying";
+type QuarterInvoiceStatus = "issued" | "replaced";
 
 export type QuarterInvoice = {
   id: string;
@@ -20,14 +20,14 @@ export type QuarterInvoice = {
   snapshot: InvoiceSnapshot;
 };
 
-export type VatRateTotal = {
+type VatRateTotal = {
   vat_rate: number;
   base_cents: number;
   vat_cents: number;
   total_cents: number;
 };
 
-export type QuarterSummary = {
+type QuarterSummary = {
   counts: {
     simplified: number;
     full: number;
@@ -38,6 +38,13 @@ export type QuarterSummary = {
   net_cents: number;
 };
 
+export const QUARTER_TOTALS_NOTE =
+  "Las rectificativas restan. Una completa que sustituye a una simplificada aparece en el libro pero no suma: ya cuenta la simplificada original.";
+
+function addsToTotals(invoice: QuarterInvoice): boolean {
+  return !(invoice.kind === "full" && invoice.replaces !== null);
+}
+
 export function summarizeInvoices(invoices: QuarterInvoice[]): QuarterSummary {
   const counts = { simplified: 0, full: 0, rectifying: 0, replaced: 0 };
   const byRate = new Map<number, VatRateTotal>();
@@ -45,9 +52,7 @@ export function summarizeInvoices(invoices: QuarterInvoice[]): QuarterSummary {
     if (invoice.status === "replaced") counts.replaced++;
     else counts[invoice.kind]++;
 
-    const replacesAnother =
-      invoice.kind === "full" && invoice.replaces !== null;
-    if (replacesAnother) continue;
+    if (!addsToTotals(invoice)) continue;
 
     for (const line of invoice.snapshot.lines) {
       const bucket = byRate.get(line.vat_rate) ?? {
@@ -73,7 +78,7 @@ const INVOICE_TYPE_LABEL: Record<QuarterInvoiceKind, string> = {
   rectifying: "Rectificativa",
 };
 
-export type LedgerRow = {
+type LedgerRow = {
   date: string;
   code: string;
   type: string;
@@ -86,6 +91,7 @@ export type LedgerRow = {
   vat_rate: number;
   vat_cents: number;
   total_cents: number;
+  inTotals: boolean;
   exemption: string;
   paymentMethod: string;
 };
@@ -111,15 +117,11 @@ function paymentMethodColumn(snapshot: InvoiceSnapshot): string {
   ].join(", ");
 }
 
-function codeNumber(code: string): number {
-  return Number(/\d+/.exec(code)?.[0] ?? 0);
-}
-
 export function ledgerRows(invoices: QuarterInvoice[]): LedgerRow[] {
   const sorted = [...invoices].sort(
     (a, b) =>
       Date.parse(a.issued_at) - Date.parse(b.issued_at) ||
-      codeNumber(a.code) - codeNumber(b.code),
+      a.code.localeCompare(b.code, "es", { numeric: true }),
   );
   const rows: LedgerRow[] = [];
   for (const invoice of sorted) {
@@ -155,6 +157,7 @@ export function ledgerRows(invoices: QuarterInvoice[]): LedgerRow[] {
         vat_rate: bucket.vat_rate,
         vat_cents: bucket.vat_cents,
         total_cents: bucket.total_cents,
+        inTotals: addsToTotals(invoice),
         exemption: bucket.vat_rate === 0 ? snapshot.vat_note : "",
         paymentMethod: paymentMethodColumn(snapshot),
       });

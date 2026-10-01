@@ -627,3 +627,38 @@ describe("ledgerRows payment methods", () => {
     expect(row?.paymentMethod).toBe("Señal online, Tarjeta");
   });
 });
+
+describe("ledgerRows totals flag and order", () => {
+  it("flags only a full invoice that replaces a simplified one as not adding to the totals, the same rule as summarizeInvoices", () => {
+    const rows = ledgerRows([
+      invoice({ code: "1/26", status: "replaced", replaced_by: "2/26" }),
+      invoice({
+        id: "00000000-0000-0000-0000-000000000002",
+        code: "2/26",
+        kind: "full",
+        replaces: "1/26",
+        issued_at: "2026-08-11T10:00:00+02:00",
+      }),
+      invoice({
+        id: "00000000-0000-0000-0000-000000000003",
+        code: "R1/26",
+        kind: "rectifying",
+        rectifies: "1/26",
+        issued_at: "2026-08-12T10:00:00+02:00",
+      }),
+    ]);
+    expect(rows.map(({ code, inTotals }) => [code, inTotals])).toEqual([
+      ["1/26", true],
+      ["2/26", false],
+      ["R1/26", true],
+    ]);
+  });
+
+  it("orders invoices issued at the same instant by their number even when the code starts with the year", () => {
+    const rows = ledgerRows([
+      invoice({ id: "00000000-0000-0000-0000-00000000000a", code: "2026/10" }),
+      invoice({ id: "00000000-0000-0000-0000-00000000000b", code: "2026/9" }),
+    ]);
+    expect(rows.map(({ code }) => code)).toEqual(["2026/9", "2026/10"]);
+  });
+});

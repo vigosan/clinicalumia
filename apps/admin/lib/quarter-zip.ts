@@ -51,6 +51,14 @@ async function invoiceDetail(supabase: Client, invoice: QuarterInvoice) {
   return detail;
 }
 
+function uniqueName(entries: Zippable, name: string): string {
+  const base = name.replace(/\.pdf$/, "");
+  let candidate = name;
+  for (let copy = 2; candidate in entries; copy++)
+    candidate = `${base} (${copy}).pdf`;
+  return candidate;
+}
+
 export async function quarterZip(
   supabase: Client,
   {
@@ -78,7 +86,10 @@ export async function quarterZip(
       const pdf = await renderInvoicePdf(detail, { logo });
       total += pdf.byteLength;
       if (total > maxBytes) return { tooLarge: true };
-      entries[pdfFileName(detail.code)] = [pdf, { level: 0 }];
+      entries[uniqueName(entries, pdfFileName(detail.code))] = [
+        pdf,
+        { level: 0 },
+      ];
     }
   }
   const xlsx = await ledgerXlsx({ year, q, invoices });
