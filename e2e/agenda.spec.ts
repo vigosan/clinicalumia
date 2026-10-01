@@ -7,6 +7,7 @@ import {
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
+import { selectOption } from "./select";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -635,9 +636,10 @@ test("desde un hueco de mañana, buscar «nora», elegir servicio y guardar crea
   );
 
   await selectNora(page);
-  await page
-    .getByTestId("appointment-service")
-    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
   await page.getByTestId("appointment-submit").click();
 
   await page.waitForURL(/\/\?date=/);
@@ -728,9 +730,10 @@ test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55
     `${DASHBOARD}/appointments/new?date=${date}&time=16:55&professional=${employee.id}`,
   );
   await selectNora(page);
-  await page
-    .getByTestId("appointment-service")
-    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
   await page.getByTestId("appointment-submit").click();
 
   await page.waitForURL(/\/\?date=/);
@@ -766,9 +769,10 @@ test("una cita a las 16:50 contra una de 16:10 a 16:55 da el error de solape y c
     `${DASHBOARD}/appointments/new?date=${date}&time=16:50&professional=${employee.id}`,
   );
   await selectNora(page);
-  await page
-    .getByTestId("appointment-service")
-    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
   await page.getByTestId("appointment-notes").fill("Nota de prueba de solape");
   await page.getByTestId("appointment-submit").click();
 
@@ -796,9 +800,10 @@ test("un sábado da el aviso «Queda fuera del horario» y, tras «Dar la cita i
     `${DASHBOARD}/appointments/new?date=${date}&time=11:00&professional=${employee.id}`,
   );
   await selectNora(page);
-  await page
-    .getByTestId("appointment-service")
-    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
   await page.getByTestId("appointment-submit").click();
 
   await expect(page.getByTestId("appointment-warnings")).toContainText(
@@ -831,9 +836,10 @@ test("hacer doble clic en Guardar crea una sola cita", async ({ page }) => {
     `${DASHBOARD}/appointments/new?date=${date}&time=10:00&professional=${employee.id}`,
   );
   await selectNora(page);
-  await page
-    .getByTestId("appointment-service")
-    .selectOption(PSICOLOGIA_SERVICE_ID);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
   await page.getByTestId("appointment-submit").dblclick();
 
   await page.waitForURL(/\/\?date=/);
@@ -856,15 +862,18 @@ test("la propietaria elige profesional y ve los servicios de su especialidad", a
   await loginAsThrowawayOwner(page, "Propietaria Cita");
   await page.goto(`${DASHBOARD}/appointments/new?date=${date}&time=16:00`);
 
-  await page.getByTestId("appointment-professional").selectOption(MARC_ID);
-  await expect(page.getByTestId("appointment-service")).toContainText(
-    "Sesión individual de fisioterapia",
-  );
+  await selectOption(page.getByTestId("appointment-professional"), MARC_ID);
+  await page.getByTestId("appointment-service").click();
+  await expect(
+    page.getByRole("option", { name: "Sesión individual de fisioterapia" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await selectNora(page);
-  await page
-    .getByTestId("appointment-service")
-    .selectOption(FISIOTERAPIA_SERVICE_ID);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    FISIOTERAPIA_SERVICE_ID,
+  );
   await page.getByTestId("appointment-submit").click();
 
   await page.waitForURL(/\/\?date=/);
@@ -1048,7 +1057,7 @@ test("cancelar como «paciente» con motivo la quita de la agenda y el historial
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
   await page.getByTestId("appointment-cancel").click();
-  await page.getByTestId("cancel-by").selectOption("patient");
+  await page.getByTestId("cancel-by-patient").check();
   await page.getByTestId("cancel-reason").fill("Se encontraba mal");
   await page.getByTestId("cancel-confirm").click();
 
@@ -1152,7 +1161,7 @@ test("hacer doble clic en confirmar cancelación crea un solo evento", async ({
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
   await page.getByTestId("appointment-cancel").click();
-  await page.getByTestId("cancel-by").selectOption("clinic");
+  await page.getByTestId("cancel-by-clinic").check();
   await page.getByTestId("cancel-confirm").dblclick();
 
   await expect(page.getByTestId("appointment-history")).toContainText(

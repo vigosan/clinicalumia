@@ -38,4 +38,21 @@ describe("Button", () => {
     await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
     expect(onSubmit).toHaveBeenCalledOnce();
   });
+
+  it("exposes its variant, so screens and tests can tell a destructive action from a neutral one", () => {
+    render(
+      <>
+        <Button>Guardar</Button>
+        <Button variant="ghost">Volver</Button>
+      </>,
+    );
+    expect(screen.getByRole("button", { name: "Guardar" })).toHaveAttribute(
+      "data-variant",
+      "primary",
+    );
+    expect(screen.getByRole("button", { name: "Volver" })).toHaveAttribute(
+      "data-variant",
+      "ghost",
+    );
+  });
 });

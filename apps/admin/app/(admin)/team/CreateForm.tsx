@@ -44,14 +44,14 @@ export function CreateForm({
           <Input name="full_name" required />
         </Field>
         <Field label="Especialidad">
-          <Select name="specialty_id" defaultValue="">
-            <option value="">Sin asignar</option>
-            {specialties.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+          <Select
+            name="specialty_id"
+            defaultValue=""
+            options={[
+              { value: "", label: "Sin asignar" },
+              ...specialties.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
         </Field>
         <Field
           label="Nº de colegiado"

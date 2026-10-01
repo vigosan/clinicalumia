@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
+import { selectOption } from "./select";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -105,7 +106,7 @@ test("searching by a dni written with dot separators finds the person, since the
   ).toBeVisible();
 });
 
-test('an archived person is hidden by default and appears once "Ver archivados" is checked', async ({
+test("an archived person is hidden by default and appears once the «Archivados» filter is chosen", async ({
   page,
 }) => {
   const lastName = `Archivada${Date.now()}`;
@@ -322,7 +323,7 @@ test("editing the address of a person created by the test saves it", async ({
   expect(updated?.address).toBe("Calle Nueva 22");
 });
 
-test('creating a minor patient shows "Menor sin tutor/a", and adding their mother through guardianOf links them both ways', async ({
+test('creating a minor patient shows "Menor sin tutor/a", and adding their guardian through guardianOf links them both ways and saves the chosen relationship and «También es paciente»', async ({
   page,
 }) => {
   const minorLastName = `Menor${Date.now()}`;
@@ -348,8 +349,11 @@ test('creating a minor patient shows "Menor sin tutor/a", and adding their mothe
 
   await page.getByLabel("Nombre").fill("Madre");
   await page.getByLabel("Apellidos").fill(motherLastName);
-  await page.getByTestId("guardian-relationship").selectOption("madre");
+  await selectOption(page.getByTestId("guardian-relationship"), "tutor_legal");
   await page.getByTestId("guardian-primary").check();
+  await expect(page.getByTestId("person-is-patient")).not.toBeChecked();
+  await page.getByTestId("person-is-patient").click();
+  await page.getByLabel("Fecha de nacimiento").fill("1985-03-04");
   await page.getByTestId("person-submit").click();
 
   await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);
@@ -358,16 +362,17 @@ test('creating a minor patient shows "Menor sin tutor/a", and adding their mothe
     .getByTestId("guardian-row")
     .filter({ hasText: motherLastName });
   await expect(guardianRow).toBeVisible();
-  await expect(guardianRow).toContainText("Madre");
+  await expect(guardianRow).toContainText("Tutor legal");
   await expect(guardianRow).toContainText("Principal");
 
   const { data: mother } = await admin
     .from("people")
-    .select("id")
+    .select("id, is_patient")
     .eq("last_name", motherLastName)
     .single();
   const motherId = mother?.id ?? "";
   createdPersonIds.push(motherId);
+  expect(mother?.is_patient).toBe(true);
 
   await page.goto(`${DASHBOARD}/patients/${motherId}`);
   const wardRow = page
@@ -416,7 +421,7 @@ test('in the guardianOf flow, "Usar esta ficha" links the existing record as gua
 
   await page.getByLabel("Nombre").fill("Otra");
   await page.getByLabel("Apellidos").fill(`NoCreada${Date.now()}`);
-  await page.getByTestId("guardian-relationship").selectOption("madre");
+  await selectOption(page.getByTestId("guardian-relationship"), "madre");
   await page.getByTestId("guardian-primary").check();
   const phoneField = page.getByLabel("Teléfono");
   await phoneField.fill(phone);
@@ -562,7 +567,7 @@ test('searching for someone who does not exist shows "No hay ninguna ficha con e
   await expect(page.getByTestId("guardian-search")).toHaveCount(0);
 });
 
-test('archiving a minor patient hides them from the list, "Ver archivados" shows them, and Desarchivar brings them back', async ({
+test("archiving a minor patient hides them from the list, the «Archivados» filter shows them, and Desarchivar brings them back", async ({
   page,
 }) => {
   const lastName = `ParaArchivar${Date.now()}`;

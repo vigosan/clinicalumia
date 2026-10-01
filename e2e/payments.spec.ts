@@ -4,6 +4,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { logOut, signIn } from "./auth";
 import { deleteInvoicesOfAppointments } from "./invoices";
+import { selectOption } from "./select";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -412,7 +413,7 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
       .getByTestId("payment-state"),
   ).toHaveText("Anulado · Cobrado por error");
 
-  await page.getByTestId("payments-professional").selectOption(employee.id);
+  await selectOption(page.getByTestId("payments-professional"), employee.id);
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="payments-total-method"][data-method="cash"]'),
@@ -421,9 +422,10 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     "Total: 55,00 €",
   );
 
-  await page
-    .getByTestId("payments-professional")
-    .selectOption(secondEmployee.id);
+  await selectOption(
+    page.getByTestId("payments-professional"),
+    secondEmployee.id,
+  );
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="payments-total-method"][data-method="card"]'),
@@ -432,9 +434,10 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     "Total: 55,00 €",
   );
 
-  await page
-    .getByTestId("payments-professional")
-    .selectOption(otherEmployee.id);
+  await selectOption(
+    page.getByTestId("payments-professional"),
+    otherEmployee.id,
+  );
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(page.getByTestId("payment-state")).toHaveText(
     "Anulado · Cobrado por error",

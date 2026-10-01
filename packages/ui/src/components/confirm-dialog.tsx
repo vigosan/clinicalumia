@@ -15,6 +15,7 @@ export function ConfirmDialog({
   onOpenChange,
   closeOnConfirm = true,
   confirmDisabled = false,
+  tone = "default",
   children,
   onConfirm,
 }: {
@@ -28,23 +29,27 @@ export function ConfirmDialog({
   onOpenChange?: (open: boolean) => void;
   closeOnConfirm?: boolean;
   confirmDisabled?: boolean;
+  tone?: "default" | "destructive";
   children?: ReactNode;
   onConfirm: () => void;
 }) {
+  const confirmVariant = tone === "destructive" ? "destructive" : "primary";
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="fixed inset-0 z-50 bg-ink-900/30" />
-        <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 flex w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-card bg-surface p-6">
-          <AlertDialog.Title className="text-xl font-bold text-ink-900">
-            {title}
-          </AlertDialog.Title>
-          <AlertDialog.Description className="text-[15px] text-ink-800">
-            {description}
-          </AlertDialog.Description>
+        <AlertDialog.Overlay className="fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in motion-reduce:animate-none" />
+        <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-card border border-line bg-surface p-6 shadow-[0_24px_64px_-24px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in motion-reduce:animate-none">
+          <div className="flex flex-col gap-1.5">
+            <AlertDialog.Title className="text-lg font-bold text-ink-900">
+              {title}
+            </AlertDialog.Title>
+            <AlertDialog.Description className="text-[15px] text-ink-800">
+              {description}
+            </AlertDialog.Description>
+          </div>
           {children}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <AlertDialog.Cancel asChild>
               <Button variant="secondary" size="sm">
                 {cancelLabel}
@@ -53,7 +58,7 @@ export function ConfirmDialog({
             {closeOnConfirm ? (
               <AlertDialog.Action asChild>
                 <Button
-                  variant="danger"
+                  variant={confirmVariant}
                   size="sm"
                   data-testid={confirmTestId}
                   disabled={confirmDisabled}
@@ -65,7 +70,7 @@ export function ConfirmDialog({
             ) : (
               <Button
                 type="button"
-                variant="danger"
+                variant={confirmVariant}
                 size="sm"
                 data-testid={confirmTestId}
                 disabled={confirmDisabled}

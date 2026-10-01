@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
+import { SegmentedControl } from "@clinicalumia/ui/segmented-control";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { consentsListHref } from "@/lib/consents";
@@ -58,11 +58,18 @@ export function ConsentsSearch({
           />
         </Field>
       </div>
-      <CheckboxField
-        label="Solo pendientes"
-        data-testid="consents-pending-filter"
-        checked={pendingOnly}
-        onChange={(event) => setPendingOnly(event.target.checked)}
+      <SegmentedControl
+        aria-label="Mostrar consentimientos"
+        value={pendingOnly ? "pending" : "all"}
+        onValueChange={(value) => setPendingOnly(value === "pending")}
+        options={[
+          {
+            value: "pending",
+            label: "Pendientes",
+            testId: "consents-pending-filter",
+          },
+          { value: "all", label: "Todos", testId: "consents-all-filter" },
+        ]}
       />
     </div>
   );

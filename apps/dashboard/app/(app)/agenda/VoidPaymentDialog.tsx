@@ -44,6 +44,7 @@ export function VoidPaymentDialog({
 
   return (
     <ConfirmDialog
+      tone="destructive"
       trigger={
         <Button
           type="button"

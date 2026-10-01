@@ -3,7 +3,7 @@
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Field } from "@clinicalumia/ui/field";
-import { Select } from "@clinicalumia/ui/select";
+import { RadioCards } from "@clinicalumia/ui/radio-cards";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import { useRef, useState, useTransition } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
@@ -39,6 +39,7 @@ export function CancelDialog({
 
   return (
     <ConfirmDialog
+      tone="destructive"
       trigger={
         <Button
           type="button"
@@ -69,18 +70,20 @@ export function CancelDialog({
           anula el cobro (se emitirá una rectificativa).
         </p>
       )}
-      <Field label="¿Quién cancela?">
-        <Select
-          data-testid="cancel-by"
-          value={by}
-          onChange={(event) =>
-            setBy(event.target.value as "patient" | "clinic")
-          }
-        >
-          <option value="patient">El paciente</option>
-          <option value="clinic">La clínica</option>
-        </Select>
-      </Field>
+      <RadioCards
+        label="¿Quién cancela?"
+        data-testid="cancel-by"
+        value={by}
+        onValueChange={(value) => setBy(value as "patient" | "clinic")}
+        options={[
+          {
+            value: "patient",
+            label: "El paciente",
+            testId: "cancel-by-patient",
+          },
+          { value: "clinic", label: "La clínica", testId: "cancel-by-clinic" },
+        ]}
+      />
       <Field label="Motivo">
         <Textarea
           data-testid="cancel-reason"

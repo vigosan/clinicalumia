@@ -3,7 +3,9 @@
 import { Button } from "@clinicalumia/ui/button";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
+import { RadioCards } from "@clinicalumia/ui/radio-cards";
 import { Textarea } from "@clinicalumia/ui/textarea";
+import { Banknote, CreditCard, Landmark, Smartphone } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import {
   METHOD_ORDER,
@@ -13,6 +15,13 @@ import {
 } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { collectPayment } from "../payments/actions";
+
+const METHOD_ICONS: Record<PaymentMethod, React.ReactNode> = {
+  cash: <Banknote />,
+  card: <CreditCard />,
+  bizum: <Smartphone />,
+  transfer: <Landmark />,
+};
 
 export function PaymentForm({
   appointmentId,
@@ -88,26 +97,18 @@ export function PaymentForm({
           onChange={(event) => setAmount(event.target.value)}
         />
       </Field>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-[13px] text-ink-800">Forma de pago</legend>
-        {METHOD_ORDER.map((option) => (
-          <label
-            key={option}
-            className="flex items-center gap-3 text-[15px] text-ink-900"
-          >
-            <input
-              type="radio"
-              name="method"
-              value={option}
-              checked={method === option}
-              onChange={() => setMethod(option)}
-              data-testid={`payment-method-${option}`}
-              className="size-4 accent-sage-600"
-            />
-            {methodLabel(option)}
-          </label>
-        ))}
-      </fieldset>
+      <RadioCards
+        label="Forma de pago"
+        name="method"
+        value={method}
+        onValueChange={(value) => setMethod(value as PaymentMethod)}
+        options={METHOD_ORDER.map((option) => ({
+          value: option,
+          label: methodLabel(option),
+          icon: METHOD_ICONS[option],
+          testId: `payment-method-${option}`,
+        }))}
+      />
       {needsNote && (
         <Field label="Motivo del cambio de importe">
           <Textarea

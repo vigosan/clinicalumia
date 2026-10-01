@@ -3,6 +3,7 @@
 import { Button } from "@clinicalumia/ui/button";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { type PatientOption, searchPatients } from "./actions";
@@ -121,7 +122,7 @@ export function PatientPicker({
         </p>
       )}
       {!hideNewPerson && (
-        <Button asChild variant="ghost" size="sm">
+        <Button asChild variant="ghost" size="sm" className="self-start">
           <Link
             href={
               returnTo
@@ -129,6 +130,7 @@ export function PatientPicker({
                 : "/patients/new"
             }
           >
+            <Plus aria-hidden="true" />
             Nuevo paciente
           </Link>
         </Button>

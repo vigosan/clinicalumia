@@ -59,17 +59,10 @@ export function ServiceForm({
           <Select
             name="specialty_id"
             defaultValue={service?.specialty_id ?? ""}
+            placeholder="Elige una especialidad"
             required
-          >
-            <option value="" disabled>
-              Elige una especialidad
-            </option>
-            {specialties.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+            options={specialties.map((s) => ({ value: s.id, label: s.name }))}
+          />
         </Field>
         <Field label="Nombre">
           <Input name="name" defaultValue={service?.name} required />
@@ -94,10 +87,14 @@ export function ServiceForm({
           />
         </Field>
         <Field label="IVA">
-          <Select name="vat" defaultValue={service?.vat ?? "exempt"}>
-            <option value="exempt">Exento · servicio sanitario</option>
-            <option value="standard_21">21 %</option>
-          </Select>
+          <Select
+            name="vat"
+            defaultValue={service?.vat ?? "exempt"}
+            options={[
+              { value: "exempt", label: "Exento · servicio sanitario" },
+              { value: "standard_21", label: "21 %" },
+            ]}
+          />
         </Field>
         <Field
           label="Plazo de cancelación propio (horas)"
@@ -134,15 +131,16 @@ export function ServiceForm({
           <Select
             name="booking_payment"
             value={payment}
-            onChange={(event) =>
-              setPayment(event.target.value as Service["booking_payment"])
+            onValueChange={(value) =>
+              setPayment(value as Service["booking_payment"])
             }
-          >
-            <option value="none">Nada, se paga en la clínica</option>
-            <option value="fixed">Una señal fija</option>
-            <option value="percent">Un porcentaje</option>
-            <option value="full">El precio completo</option>
-          </Select>
+            options={[
+              { value: "none", label: "Nada, se paga en la clínica" },
+              { value: "fixed", label: "Una señal fija" },
+              { value: "percent", label: "Un porcentaje" },
+              { value: "full", label: "El precio completo" },
+            ]}
+          />
         </Field>
         {payment === "fixed" && (
           <Field label="Importe de la señal" hint="En euros.">

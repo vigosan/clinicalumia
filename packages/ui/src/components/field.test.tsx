@@ -34,9 +34,11 @@ describe("Field", () => {
   it("describes the control with its hint", () => {
     render(
       <Field label="IVA" hint="Los servicios sanitarios van exentos.">
-        <Select name="vat">
-          <option value="exempt">Exento</option>
-        </Select>
+        <Select
+          name="vat"
+          defaultValue="exempt"
+          options={[{ value: "exempt", label: "Exento" }]}
+        />
       </Field>,
     );
     expect(screen.getByLabelText("IVA")).toHaveAccessibleDescription(

@@ -20,16 +20,12 @@ export function EmployeePicker({
       <Select
         data-testid="schedule-employee"
         value={selectedId}
-        onChange={(event) =>
-          router.push(`/schedules?employee=${event.target.value}`)
-        }
-      >
-        {employees.map((employee) => (
-          <option key={employee.id} value={employee.id}>
-            {employee.full_name}
-          </option>
-        ))}
-      </Select>
+        onValueChange={(value) => router.push(`/schedules?employee=${value}`)}
+        options={employees.map((employee) => ({
+          value: employee.id,
+          label: employee.full_name,
+        }))}
+      />
     </Field>
   );
 }

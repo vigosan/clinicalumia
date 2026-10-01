@@ -98,6 +98,7 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
       </Button>
 
       <ConfirmDialog
+        tone="destructive"
         trigger={
           <Button
             type="button"

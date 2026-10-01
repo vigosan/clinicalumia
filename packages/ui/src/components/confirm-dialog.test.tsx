@@ -149,4 +149,40 @@ describe("ConfirmDialog", () => {
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     });
   });
+
+  it("keeps red for destructive actions only, so a reversible step like archiving does not look alarming", async () => {
+    render(
+      <>
+        <ConfirmDialog
+          trigger={<Button variant="secondary">Archivar</Button>}
+          title="¿Archivar esta ficha?"
+          description="Podrás desarchivarla."
+          confirmLabel="Archivar"
+          confirmTestId="archive-confirm"
+          onConfirm={vi.fn()}
+        />
+        <ConfirmDialog
+          trigger={<Button variant="danger">Eliminar</Button>}
+          title="¿Eliminar esta ficha?"
+          description="Esta acción no se puede deshacer."
+          confirmLabel="Eliminar"
+          confirmTestId="delete-confirm"
+          tone="destructive"
+          onConfirm={vi.fn()}
+        />
+      </>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Archivar" }));
+    expect(screen.getByTestId("archive-confirm")).toHaveAttribute(
+      "data-variant",
+      "primary",
+    );
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    expect(screen.getByTestId("delete-confirm")).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
+  });
 });

@@ -87,17 +87,15 @@ export function CobrosFilters({
           <Select
             data-testid="payments-professional"
             value={params.profesionalId ?? ""}
-            onChange={(event) =>
-              go({ profesionalId: event.target.value || null })
-            }
-          >
-            <option value="">Todo el equipo</option>
-            {staffOptions.map((staff) => (
-              <option key={staff.id} value={staff.id}>
-                {staff.fullName} · {staff.specialtyName ?? "Sin especialidad"}
-              </option>
-            ))}
-          </Select>
+            onValueChange={(value) => go({ profesionalId: value || null })}
+            options={[
+              { value: "", label: "Todo el equipo" },
+              ...staffOptions.map((staff) => ({
+                value: staff.id,
+                label: `${staff.fullName} · ${staff.specialtyName ?? "Sin especialidad"}`,
+              })),
+            ]}
+          />
         </Field>
       )}
     </div>

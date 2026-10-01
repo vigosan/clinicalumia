@@ -32,6 +32,7 @@ export function TimeOffRow({ timeOff }: { timeOff: TimeOff }) {
         {timeOff.reason ? ` · ${timeOff.reason}` : ""}
       </span>
       <ConfirmDialog
+        tone="destructive"
         trigger={
           <Button type="button" variant="danger" size="sm" disabled={pending}>
             Eliminar

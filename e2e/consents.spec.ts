@@ -251,7 +251,7 @@ test("staff see a pending consent first, link it by hand to the right record and
     "Pendiente de asociar",
   );
 
-  await page.getByTestId("consents-pending-filter").uncheck();
+  await page.getByTestId("consents-all-filter").check();
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("pendientes") === "0",
   );
@@ -387,7 +387,7 @@ test("the search box follows the address when staff navigate, so it never shows 
   await loginAsThrowawayEmployee(page);
   await page.goto(`${DASHBOARD}/consentimientos`);
   await searchConsents(page, surname);
-  await page.getByTestId("consents-pending-filter").uncheck();
+  await page.getByTestId("consents-all-filter").check();
   await expect(page).toHaveURL(
     (url) => url.searchParams.get("pendientes") === "0",
   );

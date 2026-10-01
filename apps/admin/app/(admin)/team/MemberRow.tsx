@@ -82,14 +82,11 @@ export function MemberRow({
             <Select
               name="specialty_id"
               defaultValue={member.specialty_id ?? ""}
-            >
-              <option value="">Sin asignar</option>
-              {specialties.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
+              options={[
+                { value: "", label: "Sin asignar" },
+                ...specialties.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
           </Field>
           <Field label="Nº de colegiado">
             <Input
@@ -158,6 +155,7 @@ export function MemberRow({
           Editar
         </Button>
         <ConfirmDialog
+          tone="destructive"
           trigger={
             <Button
               type="button"
@@ -212,6 +210,7 @@ export function MemberRow({
         {member.role !== "owner" &&
           (member.is_active ? (
             <ConfirmDialog
+              tone="destructive"
               trigger={
                 <Button
                   type="button"

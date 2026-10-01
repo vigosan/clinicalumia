@@ -33,7 +33,10 @@ export function CheckboxField({
           aria-invalid={error ? true : checkboxProps["aria-invalid"]}
           aria-describedby={describedBy}
         />
-        <label htmlFor={controlId} className="text-[15px] text-ink-900">
+        <label
+          htmlFor={controlId}
+          className="cursor-pointer text-[15px] text-ink-900"
+        >
           {label}
         </label>
       </div>

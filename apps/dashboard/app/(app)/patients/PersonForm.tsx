@@ -5,6 +5,7 @@ import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
+import { SwitchField } from "@clinicalumia/ui/switch";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -262,8 +263,9 @@ export function PersonForm({
       </div>
 
       {person || guardianOf || consent ? (
-        <CheckboxField
+        <SwitchField
           name="is_patient"
+          data-testid="person-is-patient"
           label={
             guardianOf
               ? "También es paciente (recibe tratamiento)"
@@ -282,13 +284,8 @@ export function PersonForm({
               name="relationship"
               defaultValue="madre"
               data-testid="guardian-relationship"
-            >
-              {RELATIONSHIP_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+              options={RELATIONSHIP_OPTIONS}
+            />
           </Field>
           <CheckboxField
             name="is_primary"

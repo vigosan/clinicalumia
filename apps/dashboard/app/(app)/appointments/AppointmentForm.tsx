@@ -151,19 +151,17 @@ export function AppointmentForm({
             name="professional_id"
             data-testid="appointment-professional"
             value={professionalId}
-            onChange={(event) => {
-              setProfessionalId(event.target.value);
+            onValueChange={(next) => {
+              setProfessionalId(next);
               setServiceId("");
               setDuration("");
               resetConfirmation();
             }}
-          >
-            {professionals.map((professional) => (
-              <option key={professional.id} value={professional.id}>
-                {professional.fullName}
-              </option>
-            ))}
-          </Select>
+            options={professionals.map((professional) => ({
+              value: professional.id,
+              label: professional.fullName,
+            }))}
+          />
         </Field>
       )}
 
@@ -171,22 +169,19 @@ export function AppointmentForm({
         <Select
           name="service_id"
           data-testid="appointment-service"
+          placeholder="Elige un servicio"
           value={serviceId}
-          onChange={(event) => {
-            const next = event.target.value;
+          onValueChange={(next) => {
             setServiceId(next);
             const service = filteredServices.find((s) => s.id === next);
             if (service) setDuration(String(service.durationMinutes));
             resetConfirmation();
           }}
-        >
-          <option value="">Elige un servicio</option>
-          {filteredServices.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name}
-            </option>
-          ))}
-        </Select>
+          options={filteredServices.map((service) => ({
+            value: service.id,
+            label: service.name,
+          }))}
+        />
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-3">

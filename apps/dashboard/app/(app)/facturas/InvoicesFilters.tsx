@@ -71,16 +71,9 @@ export function InvoicesFilters({
         <Select
           data-testid="invoices-kind"
           value={params.kind}
-          onChange={(event) =>
-            go({ kind: event.target.value as InvoiceKindFilter })
-          }
-        >
-          {INVOICE_KIND_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(value) => go({ kind: value as InvoiceKindFilter })}
+          options={INVOICE_KIND_OPTIONS}
+        />
       </Field>
       <div className="min-w-0 flex-1">
         <Field label="Buscar por código o nombre">
@@ -96,17 +89,15 @@ export function InvoicesFilters({
           <Select
             data-testid="invoices-professional"
             value={params.profesionalId ?? ""}
-            onChange={(event) =>
-              go({ profesionalId: event.target.value || null })
-            }
-          >
-            <option value="">Todo el equipo</option>
-            {staffOptions.map((staff) => (
-              <option key={staff.id} value={staff.id}>
-                {staff.fullName} · {staff.specialtyName ?? "Sin especialidad"}
-              </option>
-            ))}
-          </Select>
+            onValueChange={(value) => go({ profesionalId: value || null })}
+            options={[
+              { value: "", label: "Todo el equipo" },
+              ...staffOptions.map((staff) => ({
+                value: staff.id,
+                label: `${staff.fullName} · ${staff.specialtyName ?? "Sin especialidad"}`,
+              })),
+            ]}
+          />
         </Field>
       )}
     </div>

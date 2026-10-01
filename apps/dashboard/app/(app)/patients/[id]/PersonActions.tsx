@@ -67,7 +67,7 @@ export function PersonActions({
               </Button>
             }
             title="¿Archivar esta ficha?"
-            description="Dejará de aparecer en Pacientes. Podrás desarchivarla desde «Archivados»."
+            description="Dejará de aparecer entre los pacientes activos. La encontrarás en «Archivados», desde donde podrás desarchivarla."
             confirmLabel="Archivar"
             onConfirm={handleArchiveToggle}
           />
@@ -88,6 +88,7 @@ export function PersonActions({
             title="¿Eliminar esta ficha?"
             description="Esta acción no se puede deshacer."
             confirmLabel="Eliminar"
+            tone="destructive"
             onConfirm={handleDelete}
           />
         )}

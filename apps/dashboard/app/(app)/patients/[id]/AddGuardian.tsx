@@ -5,6 +5,7 @@ import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Ward } from "@/lib/ward-label";
@@ -151,8 +152,11 @@ export function AddGuardian({
           No hay ninguna ficha con esos datos.
         </p>
       )}
-      <Button asChild variant="ghost" size="sm">
-        <Link href={`/patients/new?guardianOf=${minorId}`}>Nuevo tutor/a</Link>
+      <Button asChild variant="ghost" size="sm" className="self-start">
+        <Link href={`/patients/new?guardianOf=${minorId}`}>
+          <Plus aria-hidden="true" />
+          Nuevo tutor/a
+        </Link>
       </Button>
       {selected && (
         <>
@@ -163,16 +167,11 @@ export function AddGuardian({
             <Select
               data-testid="guardian-relationship"
               value={relationship}
-              onChange={(event) =>
-                setRelationship(event.target.value as Ward["relationship"])
+              onValueChange={(value) =>
+                setRelationship(value as Ward["relationship"])
               }
-            >
-              {RELATIONSHIP_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+              options={RELATIONSHIP_OPTIONS}
+            />
           </Field>
           <CheckboxField
             label="Tutor/a principal"

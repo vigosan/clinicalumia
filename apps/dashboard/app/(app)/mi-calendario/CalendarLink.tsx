@@ -56,6 +56,7 @@ export function CalendarLink({ url }: { url: string | null }) {
               {copied ? "Enlace copiado" : "Copiar enlace"}
             </Button>
             <ConfirmDialog
+              tone="destructive"
               trigger={
                 <Button
                   type="button"

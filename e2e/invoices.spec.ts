@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { logOut, signIn } from "./auth";
 import { deleteInvoicesOfAppointments } from "./invoices";
 import { latestEmailAttachments } from "./mail";
+import { selectOption } from "./select";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -424,23 +425,25 @@ test("el listado de facturas filtra por tipo, texto y profesional, cada profesio
     .getByTestId("invoice-row")
     .filter({ hasText: appointmentTwo.patientName });
 
-  await page.getByTestId("invoices-professional").selectOption(employeeTwo.id);
+  await selectOption(page.getByTestId("invoices-professional"), employeeTwo.id);
   await expect(rowTwo).toHaveCount(1);
   await expect(rowOne).toHaveCount(0);
 
-  await page.getByTestId("invoices-professional").selectOption(employeeOne.id);
+  await selectOption(page.getByTestId("invoices-professional"), employeeOne.id);
   await expect(rowOne).toHaveCount(1);
   await expect(rowTwo).toHaveCount(0);
   await expect(page.getByTestId("invoice-row")).toHaveCount(1);
 
-  await page.getByTestId("invoices-kind").selectOption("simplified");
+  await selectOption(page.getByTestId("invoices-kind"), "simplified");
   await expect(rowOne).toHaveCount(1);
-  await page.getByTestId("invoices-kind").selectOption("rectifying");
+  await selectOption(page.getByTestId("invoices-kind"), "rectifying");
   await expect(rowOne).toHaveCount(0);
-  await page.getByTestId("invoices-kind").selectOption("");
+  await selectOption(page.getByTestId("invoices-kind"), { label: "Todas" });
   await expect(rowOne).toHaveCount(1);
 
-  await page.getByTestId("invoices-professional").selectOption("");
+  await selectOption(page.getByTestId("invoices-professional"), {
+    label: "Todo el equipo",
+  });
   await page.getByTestId("invoices-search").fill(appointmentOne.patientName);
   await expect(rowOne).toHaveCount(1);
   await expect(rowTwo).toHaveCount(0);

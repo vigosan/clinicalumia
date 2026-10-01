@@ -7,6 +7,7 @@ import {
   lockNextYearInvoiceSeries,
   madridYear,
 } from "./invoices";
+import { selectOption } from "./select";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -60,14 +61,14 @@ test("the owner creates a service with a deposit and sees it listed with its pri
   createdServiceNames.push(name);
   await page.goto(`${ADMIN}/services`);
   await page.getByTestId("service-new").click();
-  await page
-    .getByLabel("Especialidad", { exact: true })
-    .selectOption({ label: "Fisioterapia" });
+  await selectOption(page.getByLabel("Especialidad", { exact: true }), {
+    label: "Fisioterapia",
+  });
   await page.getByLabel("Nombre").fill(name);
   await page.getByLabel("Duración (minutos)").fill("45");
   await page.getByLabel("Precio").fill("50");
   await page.getByLabel("Se puede reservar desde la web").check();
-  await page.getByLabel("Qué se paga al reservar").selectOption("fixed");
+  await selectOption(page.getByLabel("Qué se paga al reservar"), "fixed");
   await page.getByLabel("Importe de la señal").fill("60");
   await page.getByTestId("service-submit").click();
   await expect(page.getByTestId("service-error")).toContainText(
@@ -93,9 +94,18 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
     await loginAsOwner(page);
     await page.goto(`${ADMIN}/schedules`);
     await expect(page.getByLabel("Persona del equipo")).toBeVisible();
-    await page
-      .getByTestId("schedule-employee")
-      .selectOption({ label: "Laura Ejemplo" });
+    await expect(page.getByTestId("schedule-employee")).toHaveText(
+      "Laura Ejemplo",
+    );
+    await selectOption(page.getByTestId("schedule-employee"), {
+      label: "Marc Ejemplo",
+    });
+    await expect(page).toHaveURL(
+      /\/schedules\?employee=(?!a0000000-0000-0000-0000-000000000002)/,
+    );
+    await selectOption(page.getByTestId("schedule-employee"), {
+      label: "Laura Ejemplo",
+    });
     await expect(page).toHaveURL(`${ADMIN}/schedules?employee=${employeeId}`);
     const saturday = page.getByTestId("schedule-day-6");
     await page.getByTestId("schedule-add-6").click();
@@ -213,16 +223,16 @@ test("a service that can be booked online with a deposit warns it can't take onl
   await loginAsOwner(page);
   await page.goto(`${ADMIN}/services`);
   await page.getByTestId("service-new").click();
-  await page
-    .getByLabel("Especialidad", { exact: true })
-    .selectOption({ label: "Fisioterapia" });
+  await selectOption(page.getByLabel("Especialidad", { exact: true }), {
+    label: "Fisioterapia",
+  });
   await page.getByLabel("Se puede reservar desde la web").check();
   await expect(page.getByTestId("service-phone-only-note")).toHaveCount(0);
-  await page.getByLabel("Qué se paga al reservar").selectOption("fixed");
+  await selectOption(page.getByLabel("Qué se paga al reservar"), "fixed");
   await expect(page.getByTestId("service-phone-only-note")).toContainText(
     "No se podrá reservar online hasta activar los cobros.",
   );
-  await page.getByLabel("Qué se paga al reservar").selectOption("none");
+  await selectOption(page.getByLabel("Qué se paga al reservar"), "none");
   await expect(page.getByTestId("service-phone-only-note")).toHaveCount(0);
 });
 

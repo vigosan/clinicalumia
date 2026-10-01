@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
+import { SegmentedControl } from "@clinicalumia/ui/segmented-control";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -44,11 +44,18 @@ export function SearchBox({
           />
         </Field>
       </div>
-      <CheckboxField
-        label="Ver archivados"
-        data-testid="patients-archived"
-        checked={archived}
-        onChange={(event) => setArchived(event.target.checked)}
+      <SegmentedControl
+        aria-label="Mostrar fichas"
+        value={archived ? "archived" : "active"}
+        onValueChange={(value) => setArchived(value === "archived")}
+        options={[
+          { value: "active", label: "Activos", testId: "patients-active" },
+          {
+            value: "archived",
+            label: "Archivados",
+            testId: "patients-archived",
+          },
+        ]}
       />
     </div>
   );
