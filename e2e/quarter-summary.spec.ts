@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import {
   addDays,
   madridInstant,
@@ -7,6 +8,7 @@ import {
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import ExcelJS from "exceljs";
+import { unzipSync } from "fflate";
 import { signIn } from "./auth";
 import {
   collectAsStaff,
@@ -30,6 +32,7 @@ const VAT_21_SERVICE_ID = "a0000000-0000-0000-0000-0000000005b2";
 const createdAppointmentIds: string[] = [];
 const createdPersonIds: string[] = [];
 const createdUserIds: string[] = [];
+const exportFolders: string[] = [];
 
 function uniqueSuffix(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -143,6 +146,12 @@ async function quarterWithFiveInvoices() {
   return { year, q, invoices };
 }
 
+async function exportsOf(folder: string) {
+  const { data, error } = await admin.storage.from("exports").list(folder);
+  expect(error).toBeNull();
+  return (data ?? []).map(({ name }) => name);
+}
+
 async function openQuarter(page: Page, year: number, q: number) {
   await page.goto(`${ADMIN}/facturacion?year=${year}&q=${q}`);
   await expect(
@@ -152,6 +161,14 @@ async function openQuarter(page: Page, year: number, q: number) {
 
 test.afterEach(async () => {
   const errors: unknown[] = [];
+  for (const folder of exportFolders.splice(0)) {
+    const names = await exportsOf(folder);
+    if (names.length === 0) continue;
+    const { error } = await admin.storage
+      .from("exports")
+      .remove(names.map((name) => `${folder}/${name}`));
+    if (error) errors.push(error);
+  }
   const appointmentIds = createdAppointmentIds.splice(0);
   if (appointmentIds.length > 0) {
     deleteInvoicesOfAppointments(appointmentIds);
@@ -278,4 +295,113 @@ test("una empleada no puede ver la facturación ni descargar el libro", async ({
   await page.goto(`${ADMIN}/facturacion?year=2026&q=3`);
   await expect(page).toHaveURL(`${ADMIN}/login`);
   await expect(page.getByTestId("quarter-net")).toHaveCount(0);
+});
+
+test("la propietaria descarga en un ZIP un PDF por factura del trimestre y el libro, y solo se guarda el último ZIP", async ({
+  page,
+}) => {
+  const { year, q, invoices } = await quarterWithFiveInvoices();
+  const owner = await createStaff("owner");
+  exportFolders.push(owner.id);
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await openQuarter(page, year, q);
+
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("quarter-download-zip").click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe(`LUMIA-facturas-${year}-T${q}.zip`);
+  const entries = unzipSync(await readFile((await download.path())!));
+  const pdfs = Object.keys(entries).filter((name) => name.endsWith(".pdf"));
+  expect(pdfs.sort()).toEqual(
+    invoices.map(({ code }) => `${code.replaceAll("/", "-")}.pdf`).sort(),
+  );
+  expect(pdfs.some((name) => name.startsWith("R"))).toBe(true);
+  for (const name of pdfs) {
+    expect(new TextDecoder().decode(entries[name]!.slice(0, 4))).toBe("%PDF");
+  }
+  const xlsx = entries[`LUMIA-facturas-${year}-T${q}.xlsx`];
+  expect(xlsx).toBeDefined();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(Buffer.from(xlsx!));
+  expect(workbook.getWorksheet("Facturas")!.rowCount).toBe(invoices.length + 1);
+  await expect(page.getByTestId("quarter-download-zip")).toHaveText(
+    "Descargar PDF (ZIP)",
+  );
+  await expect(page.getByTestId("quarter-zip-error")).toHaveCount(0);
+
+  const [first] = await exportsOf(owner.id);
+  expect(await exportsOf(owner.id)).toHaveLength(1);
+
+  const again = await page.request.post(
+    `${ADMIN}/facturacion/zip?year=${year}&q=${q}`,
+  );
+  expect(again.status()).toBe(200);
+  const { url } = (await again.json()) as { url: string };
+  const stored = await exportsOf(owner.id);
+  expect(stored).toHaveLength(1);
+  expect(stored[0]).not.toBe(first);
+  const fetched = await page.request.get(url);
+  expect(fetched.status()).toBe(200);
+  expect(fetched.headers()["content-disposition"]).toContain(
+    `LUMIA-facturas-${year}-T${q}.zip`,
+  );
+
+  const empty = await page.request.post(
+    `${ADMIN}/facturacion/zip?year=${year}&q=${(q % 4) + 1}`,
+  );
+  expect(empty.status()).toBe(404);
+  expect(await empty.json()).toEqual({
+    error: "No hay facturas en este trimestre.",
+  });
+  expect(await exportsOf(owner.id)).toEqual(stored);
+});
+
+test("el ZIP del trimestre explica el fallo sin dejar el botón bloqueado", async ({
+  page,
+}) => {
+  const { year, q } = await quarterWithFiveInvoices();
+  const owner = await createStaff("owner");
+  exportFolders.push(owner.id);
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await openQuarter(page, year, q);
+
+  await page.route("**/facturacion/zip?*", (route) =>
+    route.fulfill({
+      status: 413,
+      json: {
+        error:
+          "El ZIP del trimestre pesa más de 50 MB. Descarga las facturas desde el panel.",
+      },
+    }),
+  );
+  await page.getByTestId("quarter-download-zip").click();
+  await expect(page.getByTestId("quarter-zip-error")).toHaveText(
+    "El ZIP del trimestre pesa más de 50 MB. Descarga las facturas desde el panel.",
+  );
+  await expect(page.getByTestId("quarter-download-zip")).toBeEnabled();
+  expect(await exportsOf(owner.id)).toEqual([]);
+});
+
+test("solo la propietaria puede generar el ZIP del trimestre", async ({
+  page,
+  request,
+}) => {
+  const anonymous = await request.post(
+    `${ADMIN}/facturacion/zip?year=2026&q=3`,
+    { maxRedirects: 0 },
+  );
+  expect(anonymous.status()).toBe(307);
+  expect(new URL(anonymous.headers().location!, ADMIN).pathname).toBe("/login");
+
+  const employee = await createStaff("employee");
+  exportFolders.push(employee.id);
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  const response = await page.request.post(
+    `${ADMIN}/facturacion/zip?year=2026&q=3`,
+  );
+  expect(response.status()).toBe(403);
+  expect(await response.json()).toEqual({
+    error: "No tienes permiso para hacer esto.",
+  });
+  expect(await exportsOf(employee.id)).toEqual([]);
 });

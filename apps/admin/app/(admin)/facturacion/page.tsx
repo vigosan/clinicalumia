@@ -22,6 +22,7 @@ import {
 import { loadQuarterInvoices } from "@/lib/quarter-load";
 import { summarizeInvoices, vatRateLabel } from "@/lib/quarter-summary";
 import { QuarterPicker } from "./QuarterPicker";
+import { QuarterZipButton } from "./QuarterZipButton";
 
 export default async function BillingPage({
   searchParams,
@@ -66,11 +67,14 @@ export default async function BillingPage({
         actions={
           summary &&
           !isEmpty && (
-            <Button asChild data-testid="quarter-download-xlsx">
-              <a href={`/facturacion/excel?year=${year}&q=${q}`} download>
-                Descargar Excel
-              </a>
-            </Button>
+            <>
+              <Button asChild data-testid="quarter-download-xlsx">
+                <a href={`/facturacion/excel?year=${year}&q=${q}`} download>
+                  Descargar Excel
+                </a>
+              </Button>
+              <QuarterZipButton year={year} q={q} />
+            </>
           )
         }
       />
