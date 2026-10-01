@@ -225,6 +225,17 @@ describe("patientAppointmentsToCollect", () => {
     expect(rows.map((row) => row.id)).toEqual(["later-today", "old"]);
   });
 
+  it("uses the same 60-day window as «Pendientes», so the record and the Cobros page never disagree about what is owed", () => {
+    const rows = patientAppointmentsToCollect(
+      [
+        appointment({ id: "too-old", startsAt: "2026-08-10T21:59:00Z" }),
+        appointment({ id: "first-day", startsAt: "2026-08-10T22:00:00Z" }),
+      ],
+      now,
+    );
+    expect(rows.map((row) => row.id)).toEqual(["first-day"]);
+  });
+
   it("keeps a no-show collectable, as the clinic may still charge it", () => {
     const rows = patientAppointmentsToCollect(
       [

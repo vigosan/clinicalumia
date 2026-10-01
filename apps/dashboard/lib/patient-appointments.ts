@@ -5,6 +5,7 @@ import {
   type PaymentMethod,
   paymentStatus,
 } from "./payments";
+import { pendingSince } from "./pending-payments";
 
 export type PatientAppointmentStatus = "scheduled" | "cancelled" | "no_show";
 export type PatientAppointmentCanceller = "patient" | "clinic" | null;
@@ -148,10 +149,12 @@ export function patientAppointmentsToCollect(
   now: Date,
 ): PatientAppointmentSource[] {
   const today = todayInMadrid(now);
+  const since = new Date(pendingSince(now)).getTime();
   return appointments
     .filter(
       (appointment) =>
         appointment.status !== "cancelled" &&
+        new Date(appointment.startsAt).getTime() >= since &&
         activePayment(appointment) === null &&
         madridDateTime(appointment.startsAt).date <= today,
     )

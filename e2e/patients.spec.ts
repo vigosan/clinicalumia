@@ -361,6 +361,9 @@ test('creating a minor patient shows "Menor sin tutor/a", and adding their guard
   const minorId = page.url().split("/").pop() ?? "";
   createdPersonIds.push(minorId);
   await expect(page.getByTestId("patient-no-guardian")).toBeVisible();
+  await expect(page.getByTestId("guardians-section")).toContainText(
+    "No tiene tutor/a.",
+  );
 
   await page.getByTestId("guardian-add").click();
   await page.getByTestId("guardian-search").click();

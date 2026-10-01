@@ -43,9 +43,13 @@ export function GuardiansSection({
     });
   }
 
+  const showGuardians = isMinorPerson || guardians.length > 0;
+  const showWards = !isMinorPerson && wards.length > 0;
+  if (!showGuardians && !showWards && !error) return null;
+
   return (
-    <Card className="flex flex-col gap-4">
-      {(isMinorPerson || guardians.length > 0) && (
+    <Card className="flex flex-col gap-4" data-testid="guardians-section">
+      {showGuardians && (
         <>
           <h2 className="text-lg font-bold text-ink-900">Tutores</h2>
           {guardians.length === 0 ? (
@@ -87,7 +91,7 @@ export function GuardiansSection({
           )}
         </>
       )}
-      {!isMinorPerson && wards.length > 0 && (
+      {showWards && (
         <>
           <h2 className="text-lg font-bold text-ink-900">Menores a su cargo</h2>
           <ul className="flex flex-col gap-2">

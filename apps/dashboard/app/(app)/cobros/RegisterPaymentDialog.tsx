@@ -85,17 +85,22 @@ export function RegisterPaymentDialog({
   candidates = [],
   loadError = false,
   preselected,
+  focusAfterSuccess,
 }: {
   trigger: ReactElement;
   now: string;
   candidates?: PaymentCandidate[];
   loadError?: boolean;
   preselected?: PaymentCandidate;
+  focusAfterSuccess?: string;
 }) {
   const router = useRouter();
   const searchId = useId();
   const bodyRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const staleRef = useRef(false);
+  const succeededRef = useRef(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<PaymentCandidate | null>(
     preselected ?? null,
@@ -108,10 +113,15 @@ export function RegisterPaymentDialog({
   }
 
   function handleOpenChange(next: boolean) {
+    if (!next && submitting) return;
     setOpen(next);
     if (next) {
       setQuery("");
       setSelected(preselected ?? null);
+      succeededRef.current = false;
+    } else if (staleRef.current) {
+      staleRef.current = false;
+      router.refresh();
     }
   }
 
@@ -123,6 +133,9 @@ export function RegisterPaymentDialog({
     method: PaymentMethod;
   }) {
     const parsed = parseAmount(amount);
+    succeededRef.current = true;
+    staleRef.current = false;
+    setSubmitting(false);
     setOpen(false);
     toast(paymentToastMessage("cents" in parsed ? parsed.cents : 0, method));
     router.refresh();
@@ -158,10 +171,15 @@ export function RegisterPaymentDialog({
         event.preventDefault();
         focusFirstInput(bodyRef.current);
       }}
+      onCloseAutoFocus={(event) => {
+        if (!succeededRef.current || !focusAfterSuccess) return;
+        event.preventDefault();
+        document.querySelector<HTMLElement>(focusAfterSuccess)?.focus();
+      }}
       title="Registrar cobro"
       description={
         selected
-          ? "Al registrar el cobro se emite la factura simplificada."
+          ? "Si hay importe, al registrar el cobro se emite la factura simplificada."
           : "Elige la cita que quieres cobrar."
       }
       data-testid="payment-register-dialog"
@@ -202,6 +220,10 @@ export function RegisterPaymentDialog({
               cancelled={false}
               initiallyOpen
               onSuccess={handleSuccess}
+              onError={() => {
+                staleRef.current = true;
+              }}
+              onPendingChange={setSubmitting}
             />
           </>
         ) : (

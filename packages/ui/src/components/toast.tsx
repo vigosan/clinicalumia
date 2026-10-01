@@ -22,6 +22,7 @@ function subscribe(listener: () => void) {
 }
 
 export function toast(message: string) {
+  if (typeof window === "undefined") return;
   nextId += 1;
   setToasts([...toasts, { id: nextId, message }]);
 }

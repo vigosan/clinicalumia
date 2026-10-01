@@ -46,7 +46,12 @@ async function createEmployee(fullName: string) {
   return { id: data.user!.id, email, password, fullName };
 }
 
-async function createAppointment(professionalId: string, date: string) {
+async function createAppointment(
+  professionalId: string,
+  date: string,
+  startTime = "10:00",
+  endTime = "11:00",
+) {
   const { data: person, error: personError } = await admin
     .from("people")
     .insert({
@@ -65,8 +70,8 @@ async function createAppointment(professionalId: string, date: string) {
       professional_id: professionalId,
       patient_id: person!.id,
       service_id: PSICOLOGIA_SERVICE_ID,
-      starts_at: `${date} 10:00:00 Europe/Madrid`,
-      ends_at: `${date} 11:00:00 Europe/Madrid`,
+      starts_at: `${date} ${startTime}:00 Europe/Madrid`,
+      ends_at: `${date} ${endTime}:00 Europe/Madrid`,
     })
     .select("id")
     .single();
@@ -498,6 +503,7 @@ test("la pestaña Pendientes cuenta las citas sin cobrar, se cobra desde ella si
   );
   await expect(dialog).toHaveCount(0);
   await expect(pendingTab).toHaveText("Pendientes (0)");
+  await expect(pendingTab).toBeFocused();
   await expect(page.getByTestId("pending-payment-row")).toHaveCount(0);
   await expect(page.getByTestId("payments-pending-empty")).toBeVisible();
 });
@@ -517,8 +523,8 @@ test("«Registrar cobro» en /cobros pone primero las citas de hoy, busca por pa
 
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/cobros`);
-  await expect(page.getByTestId("payments-empty")).toContainText(
-    "usa «Registrar cobro» o revisa «Pendientes»",
+  await expect(page.getByTestId("payments-empty")).toHaveText(
+    "No hay cobros en estas fechas. Usa «Registrar cobro» o revisa «Pendientes».",
   );
 
   await page.getByTestId("payments-register").click();
@@ -602,8 +608,18 @@ test("en «Registrar cobro» y en Pendientes un empleado solo ve las citas de la
   const today = todayInMadrid();
   const employee = await createEmployee("Profesional Cobro Propio");
   const colleague = await createEmployee("Profesional Cobro Ajeno");
-  const ownAppointmentId = await createAppointment(employee.id, today);
-  const colleagueTodayId = await createAppointment(colleague.id, today);
+  const ownAppointmentId = await createAppointment(
+    employee.id,
+    today,
+    "23:30",
+    "23:55",
+  );
+  const colleagueTodayId = await createAppointment(
+    colleague.id,
+    today,
+    "23:30",
+    "23:55",
+  );
   const colleaguePastId = await createAppointment(
     colleague.id,
     addDays(today, -2),
@@ -617,7 +633,10 @@ test("en «Registrar cobro» y en Pendientes un empleado solo ve las citas de la
   await page.getByTestId("payments-register").click();
   const dialog = page.getByTestId("payment-register-dialog");
   await expect(
-    dialog.getByTestId("payment-candidate").filter({ hasText: ownPatientName }),
+    dialog
+      .getByTestId("payment-candidates-today")
+      .getByTestId("payment-candidate")
+      .filter({ hasText: ownPatientName }),
   ).toHaveCount(1);
   await expect(
     dialog
@@ -644,9 +663,11 @@ test("en «Registrar cobro» y en Pendientes un empleado solo ve las citas de la
   await page.goto(`${DASHBOARD}/cobros`);
   await page.getByTestId("payments-register").click();
   await dialog.getByTestId("payment-candidate-search").fill(colleagueTodayName);
-  await expect(dialog.getByTestId("payment-candidate")).toHaveText([
-    new RegExp(colleagueTodayName),
-  ]);
+  await expect(
+    dialog
+      .getByTestId("payment-candidates-today")
+      .getByTestId("payment-candidate"),
+  ).toHaveText([new RegExp(colleagueTodayName)]);
 });
 
 test("desde la ficha se ve si cada cita está cobrada, se cobra una pendiente con «Cobrar» y aparece en la tarjeta Cobros", async ({
@@ -668,6 +689,7 @@ test("desde la ficha se ve si cada cita está cobrada, se cobra una pendiente co
   await expect(page.getByTestId("patient-appointment")).toContainText(
     "Realizada · Pendiente de cobro",
   );
+  await expect(page.getByTestId("guardians-section")).toHaveCount(0);
   const card = page.getByTestId("patient-payments");
   await expect(card.getByTestId("patient-payment")).toHaveCount(0);
   await card
@@ -683,6 +705,7 @@ test("desde la ficha se ve si cada cita está cobrada, se cobra una pendiente co
   await expect(page.getByTestId("toast")).toContainText(
     "Cobro registrado · 55,00 € por Bizum",
   );
+  await expect(page.getByTestId("patient-payments-title")).toBeFocused();
   await expect(page.getByTestId("patient-appointment")).toContainText(
     "Realizada · Cobrada · 55,00 € · Bizum",
   );

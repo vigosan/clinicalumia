@@ -71,6 +71,7 @@ export function PatientPayments({
                     }
                     now={now}
                     preselected={candidate}
+                    focusAfterSuccess="#patient-payments-title"
                   />
                 </span>
               </li>

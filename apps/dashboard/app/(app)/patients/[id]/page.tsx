@@ -16,6 +16,7 @@ import {
   splitPatientAppointments,
 } from "@/lib/patient-appointments";
 import type { PaymentCandidate } from "@/lib/payment-candidates";
+import { pendingSince } from "@/lib/pending-payments";
 import { ConsentsSection, type PatientConsent } from "./ConsentsSection";
 import { GuardiansSection } from "./GuardiansSection";
 import { PatientAppointments } from "./PatientAppointments";
@@ -212,22 +213,37 @@ export default async function PatientPage({
     appointmentSources,
     now,
   );
-  const suggestedAmounts = await Promise.all(
-    appointmentsToCollect.map((appointment) =>
+  const { data: pendingRows, error: pendingError } =
+    appointmentsToCollect.length > 0
+      ? await supabase.rpc("pending_payments", { p_since: pendingSince(now) })
+      : { data: [], error: null };
+  const amountById = new Map(
+    (pendingRows ?? []).map((row) => [row.appointment_id, row.suggested_cents]),
+  );
+  const laterToday = appointmentsToCollect.filter(
+    (appointment) => !amountById.has(appointment.id),
+  );
+  const laterAmounts = await Promise.all(
+    laterToday.map((appointment) =>
       supabase.rpc("suggested_amount", { p_appointment_id: appointment.id }),
     ),
   );
+  laterToday.forEach((appointment, index) => {
+    const cents = laterAmounts[index]?.data;
+    if (typeof cents === "number") amountById.set(appointment.id, cents);
+  });
   const paymentsFailed =
     appointmentsFailed ||
-    suggestedAmounts.some((result) => result.error || result.data === null);
+    Boolean(pendingError) ||
+    laterAmounts.some((result) => result.error || result.data === null);
   const toCollect: PaymentCandidate[] = appointmentsToCollect.map(
-    (appointment, index) => ({
+    (appointment) => ({
       id: appointment.id,
       startsAt: appointment.startsAt,
       patientName: `${person.first_name} ${person.last_name}`,
       serviceName: appointment.serviceName,
       professionalName: appointment.professionalName,
-      suggestedAmountCents: suggestedAmounts[index]?.data ?? 0,
+      suggestedAmountCents: amountById.get(appointment.id) ?? 0,
     }),
   );
   const patientPayments = patientPaymentRows(appointmentSources);
@@ -347,7 +363,14 @@ export default async function PatientPage({
       </Card>
 
       <Card className="flex flex-col gap-2" data-testid="patient-payments">
-        <h2 className="text-lg font-bold text-ink-900">Cobros</h2>
+        <h2
+          id="patient-payments-title"
+          tabIndex={-1}
+          data-testid="patient-payments-title"
+          className="text-lg font-bold text-ink-900 outline-none"
+        >
+          Cobros
+        </h2>
         <PatientPayments
           error={paymentsFailed}
           toCollect={toCollect}

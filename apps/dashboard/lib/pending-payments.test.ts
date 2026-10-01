@@ -78,6 +78,29 @@ describe("loadPendingPayments", () => {
     });
   });
 
+  it("lists the most recent unpaid visit first, like the «Registrar cobro» dialog", async () => {
+    const row = (id: string, startsAt: string) => ({
+      appointment_id: id,
+      starts_at: startsAt,
+      patient_id: "pat-1",
+      patient_name: "Marta Paciente",
+      service_name: "Consulta",
+      professional_id: "prof-1",
+      suggested_cents: 3500,
+    });
+    const { client } = fakeClient({
+      rows: [
+        row("old", "2026-09-01T09:00:00Z"),
+        row("recent", "2026-09-27T09:00:00Z"),
+      ],
+    });
+    const result = await loadPendingPayments(client as never, NOW);
+    expect(result.ok && result.data.map((r) => r.id)).toEqual([
+      "recent",
+      "old",
+    ]);
+  });
+
   it("falls back to a generic professional name when the directory doesn't have one", async () => {
     const { client } = fakeClient({
       rows: [

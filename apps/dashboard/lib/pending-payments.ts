@@ -75,7 +75,11 @@ export async function loadPendingPayments(
     (directory ?? []).map((profile) => [profile.id, profile.full_name]),
   );
 
-  const data = (rows ?? []).map((row) => toRow(row, nameById));
+  const data = (rows ?? [])
+    .map((row) => toRow(row, nameById))
+    .sort(
+      (a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime(),
+    );
 
   return { ok: true, data };
 }

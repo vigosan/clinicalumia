@@ -11,6 +11,7 @@ export function Dialog({
   open,
   onOpenChange,
   onOpenAutoFocus,
+  onCloseAutoFocus,
   children,
   ...props
 }: {
@@ -20,6 +21,9 @@ export function Dialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onOpenAutoFocus?: ComponentProps<typeof Primitive.Content>["onOpenAutoFocus"];
+  onCloseAutoFocus?: ComponentProps<
+    typeof Primitive.Content
+  >["onCloseAutoFocus"];
   children: ReactNode;
   "data-testid"?: string;
 }) {
@@ -30,7 +34,8 @@ export function Dialog({
         <Primitive.Overlay className="fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in motion-reduce:animate-none" />
         <Primitive.Content
           onOpenAutoFocus={onOpenAutoFocus}
-          className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-card border border-line bg-surface p-6 shadow-[0_24px_64px_-24px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in motion-reduce:animate-none"
+          onCloseAutoFocus={onCloseAutoFocus}
+          className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100vw-1rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-card border border-line bg-surface p-4 shadow-[0_24px_64px_-24px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in motion-reduce:animate-none sm:p-6"
           {...props}
         >
           <div className="flex items-start justify-between gap-4">

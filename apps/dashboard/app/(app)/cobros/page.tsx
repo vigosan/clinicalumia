@@ -116,8 +116,8 @@ export default async function CobrosPage({
                 className="text-center text-sm text-ink-800"
                 data-testid="payments-empty"
               >
-                No hay cobros en estas fechas. Los cobros se registran desde
-                cada cita: usa «Registrar cobro» o revisa «Pendientes».
+                No hay cobros en estas fechas. Usa «Registrar cobro» o revisa
+                «Pendientes».
               </Card>
             )}
             {state === "list" && (
@@ -254,7 +254,12 @@ export default async function CobrosPage({
                   {pendingRows.map((row) => (
                     <TableRow key={row.id} data-testid="pending-payment-row">
                       <TableCell>
-                        <Link href={row.href}>{row.moment}</Link>
+                        <Link
+                          href={row.href}
+                          className="underline decoration-line-field underline-offset-4 hover:text-sage-800 hover:decoration-sage-800"
+                        >
+                          {row.moment}
+                        </Link>
                       </TableCell>
                       <TableCell className="font-medium">
                         {row.patientName}
@@ -276,6 +281,7 @@ export default async function CobrosPage({
                           }
                           now={nowIso}
                           preselected={row}
+                          focusAfterSuccess='[data-testid="payments-tab-pendientes"]'
                         />
                       </TableCell>
                     </TableRow>

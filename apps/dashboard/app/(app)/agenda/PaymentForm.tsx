@@ -6,7 +6,7 @@ import { Input } from "@clinicalumia/ui/input";
 import { RadioCards } from "@clinicalumia/ui/radio-cards";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import { Banknote, CreditCard, Landmark, Smartphone } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   METHOD_ORDER,
   methodLabel,
@@ -29,12 +29,16 @@ export function PaymentForm({
   cancelled,
   initiallyOpen = false,
   onSuccess,
+  onError,
+  onPendingChange,
 }: {
   appointmentId: string;
   suggestedAmountCents: number;
   cancelled: boolean;
   initiallyOpen?: boolean;
   onSuccess?: (payment: { amount: string; method: PaymentMethod }) => void;
+  onError?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [open, setOpen] = useState(initiallyOpen);
   const [amount, setAmount] = useState(
@@ -45,6 +49,10 @@ export function PaymentForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   const needsNote = needsPaymentNote({
     cancelled,
@@ -65,6 +73,7 @@ export function PaymentForm({
       submitGateRef.current.finish();
       if ("error" in result) {
         setError(result.error);
+        onError?.();
         return;
       }
       setError(null);
