@@ -43,8 +43,32 @@ describe("parseConsent", () => {
         marketing: false,
         mediaForTraining: false,
         signature,
+        signatureMethod: "drawn",
       },
     });
+  });
+
+  it("treats a form without a signature method as drawn, so a page opened before this change can still be signed", () => {
+    const result = parseConsent(form({ signature_method: null }), today);
+    expect(result).toHaveProperty("consent.signatureMethod", "drawn");
+  });
+
+  it("records that the signature was typed, so the PDF says how it was signed", () => {
+    const result = parseConsent(form({ signature_method: "typed" }), today);
+    expect(result).toHaveProperty("consent.signatureMethod", "typed");
+  });
+
+  it("rejects an unknown signature method instead of printing something the patient never chose", () => {
+    const result = parseConsent(form({ signature_method: "stamped" }), today);
+    expect(result).toEqual({ error: "La forma de firmar no es válida." });
+  });
+
+  it("asks for the signature when the typed name was left empty", () => {
+    const result = parseConsent(
+      form({ signature_method: "typed", signature: "" }),
+      today,
+    );
+    expect(result).toEqual({ error: "Falta la firma." });
   });
 
   it("requires the identifying data that makes the consent attributable to a person", () => {

@@ -1,3 +1,10 @@
+export const signatureMethodLabels = {
+  drawn: "Firma dibujada",
+  typed: "Firma escrita con el nombre",
+} as const;
+
+export type SignatureMethod = keyof typeof signatureMethodLabels;
+
 export type Consent = {
   firstName: string;
   lastName: string;
@@ -9,6 +16,7 @@ export type Consent = {
   marketing: boolean;
   mediaForTraining: boolean;
   signature: string;
+  signatureMethod: SignatureMethod;
 };
 
 export const consentSources = [
@@ -23,6 +31,10 @@ const ADULT_AGE = 18;
 
 function text(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
+}
+
+function isSignatureMethod(value: string): value is SignatureMethod {
+  return Object.hasOwn(signatureMethodLabels, value);
 }
 
 function ageOn(birthDate: Date, today: Date) {
@@ -48,6 +60,7 @@ export function parseConsent(
   const email = text(formData, "email");
   const sources = formData.getAll("source").map(String);
   const signature = text(formData, "signature");
+  const signatureMethod = text(formData, "signature_method") || "drawn";
 
   if (!firstName) return { error: "El nombre es obligatorio." };
   if (!lastName) return { error: "Los apellidos son obligatorios." };
@@ -80,6 +93,9 @@ export function parseConsent(
   if (formData.get("privacy") !== "on") {
     return { error: "Debes aceptar la política de privacidad." };
   }
+  if (!isSignatureMethod(signatureMethod)) {
+    return { error: "La forma de firmar no es válida." };
+  }
   if (!signature.startsWith("data:image/png;base64,")) {
     return { error: "Falta la firma." };
   }
@@ -97,6 +113,7 @@ export function parseConsent(
       marketing: formData.get("marketing") === "on",
       mediaForTraining: formData.get("mediaForTraining") === "on",
       signature,
+      signatureMethod,
     },
   };
 }

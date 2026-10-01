@@ -1,5 +1,5 @@
 import { PDFDocument, type PDFFont, rgb, StandardFonts } from "pdf-lib";
-import type { Consent } from "./consent";
+import { type Consent, signatureMethodLabels } from "./consent";
 import {
   consentClauses,
   consentTitle,
@@ -140,6 +140,11 @@ export async function buildConsentPdf(
     y: y - size.height - 6,
     width: size.width,
     height: size.height,
+  });
+  y -= size.height + 20;
+  write(signatureMethodLabels[consent.signatureMethod], {
+    size: 8,
+    color: SAGE,
   });
 
   return pdf.save();

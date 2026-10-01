@@ -16,6 +16,7 @@ const consent: Consent = {
   marketing: false,
   mediaForTraining: false,
   signature: "data:image/png;base64,iVBORw0KGgo=",
+  signatureMethod: "drawn",
 };
 const signedAt = new Date("2026-09-22T10:30:00Z");
 const pdf = new Uint8Array([1, 2, 3]);

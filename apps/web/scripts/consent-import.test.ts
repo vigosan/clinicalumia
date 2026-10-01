@@ -26,6 +26,7 @@ const minor: Consent = {
   marketing: true,
   mediaForTraining: false,
   signature,
+  signatureMethod: "drawn",
 };
 
 const adult: Consent = {
@@ -39,6 +40,7 @@ const adult: Consent = {
   marketing: false,
   mediaForTraining: true,
   signature,
+  signatureMethod: "drawn",
 };
 
 const summerSignature = new Date("2026-09-22T10:30:00Z");
@@ -66,6 +68,15 @@ describe("parseConsentText", () => {
 
     if (!("ok" in result)) throw new Error(result.error);
     expect(withoutSignature(result.consent)).toEqual(withoutSignature(adult));
+  });
+
+  it("recovers that a consent was signed by typing the name, and still reads its signing date", async () => {
+    const typed = { ...adult, signatureMethod: "typed" as const };
+    const result = parseConsentText(await pdfText(typed, summerSignature));
+
+    if (!("ok" in result)) throw new Error(result.error);
+    expect(withoutSignature(result.consent)).toEqual(withoutSignature(typed));
+    expect(result.signedAt).toEqual(summerSignature);
   });
 
   it("converts the Madrid wall-clock time printed in winter back to the real instant", async () => {

@@ -1,7 +1,12 @@
 import type { createAdminClient } from "@clinicalumia/api/admin";
 import { madridInstant } from "@clinicalumia/api/madrid-time";
 import { extractText } from "unpdf";
-import { type Consent, consentSources, parseConsent } from "@/lib/consent";
+import {
+  type Consent,
+  consentSources,
+  parseConsent,
+  signatureMethodLabels,
+} from "@/lib/consent";
 import { consentTitle } from "@/lib/consent-legal";
 import { matchConsentPerson, storeConsent } from "@/lib/consent-store";
 
@@ -132,7 +137,13 @@ export function parseConsentText(
     (box) => !box.label.startsWith(MARKETING) && !box.label.startsWith(MEDIA),
   );
 
-  const signedAt = parseSignedAt(lines.slice(signed).join(" "));
+  const methodLabels: string[] = Object.values(signatureMethodLabels);
+  const signedAt = parseSignedAt(
+    lines
+      .slice(signed)
+      .filter((line) => !methodLabels.includes(line))
+      .join(" "),
+  );
   if (!signedAt) return { error: "Sin fecha de firma." };
 
   const [day, month, year] = (values.birthDate ?? "").split("/");
@@ -148,6 +159,9 @@ export function parseConsentText(
   if (checked(MARKETING)) formData.set("marketing", "on");
   if (checked(MEDIA)) formData.set("mediaForTraining", "on");
   formData.set("signature", "data:image/png;base64,");
+  if (lines.includes(signatureMethodLabels.typed)) {
+    formData.set("signature_method", "typed");
+  }
 
   const result = parseConsent(formData, signedAt);
   if ("error" in result) return result;

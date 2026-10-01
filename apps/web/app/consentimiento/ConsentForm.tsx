@@ -1,15 +1,17 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
-import { consentSources } from "@/lib/consent";
+import { startTransition, useActionState, useReducer, useRef } from "react";
+import { consentSources, type SignatureMethod } from "@/lib/consent";
 import {
   consentClauses,
   marketingLabel,
   mediaForTrainingLabel,
   privacyLabel,
 } from "@/lib/consent-legal";
+import { initialSignatureChoice, signatureChoice } from "@/lib/typed-signature";
 import { type ConsentFormState, sendConsent } from "../actions";
 import { SignaturePad } from "./SignaturePad";
+import { TypedSignature, typedSignaturePng } from "./TypedSignature";
 
 const initialState: ConsentFormState = undefined;
 
@@ -28,11 +30,59 @@ function Field({
   );
 }
 
+const signatureModes: {
+  method: SignatureMethod;
+  label: string;
+  testId: string;
+}[] = [
+  { method: "drawn", label: "Dibujar", testId: "signature-mode-draw" },
+  { method: "typed", label: "Escribir", testId: "signature-mode-type" },
+];
+
+function SignatureModeSwitch({
+  value,
+  onChange,
+}: {
+  value: SignatureMethod;
+  onChange: (method: SignatureMethod) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Forma de firmar"
+      className="inline-flex rounded-full border border-sage-400/60 bg-cream-50 p-1"
+    >
+      {signatureModes.map((mode) => (
+        <label
+          key={mode.method}
+          className="relative rounded-full px-4 py-1.5 text-ink-600 text-sm transition-colors has-checked:bg-sage-600 has-checked:text-cream-50 has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-sage-700"
+        >
+          <input
+            type="radio"
+            name="signature_method"
+            value={mode.method}
+            checked={value === mode.method}
+            onChange={() => onChange(mode.method)}
+            data-testid={mode.testId}
+            className="absolute inset-0 cursor-pointer appearance-none rounded-full outline-none"
+          />
+          {mode.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function ConsentForm() {
   const [state, formAction, pending] = useActionState(
     sendConsent,
     initialState,
   );
+  const [signature, dispatch] = useReducer(
+    signatureChoice,
+    initialSignatureChoice,
+  );
+  const typedPreview = useRef<HTMLDivElement>(null);
 
   if (state && "ok" in state) {
     return (
@@ -47,9 +97,24 @@ export function ConsentForm() {
 
   return (
     <form
-      onSubmit={(event) => {
+      onChange={(event) => {
+        const data = new FormData(event.currentTarget);
+        dispatch({
+          type: "signer",
+          firstName: String(data.get("firstName") ?? ""),
+          lastName: String(data.get("lastName") ?? ""),
+          guardian: String(data.get("guardian") ?? ""),
+        });
+      }}
+      onSubmit={async (event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        if (signature.method === "typed" && typedPreview.current) {
+          formData.set(
+            "signature",
+            await typedSignaturePng(signature.typedName, typedPreview.current),
+          );
+        }
         startTransition(() => formAction(formData));
       }}
       data-testid="consent-form"
@@ -136,9 +201,24 @@ export function ConsentForm() {
         </label>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">Firma</span>
-        <SignaturePad name="signature" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-ink-600 text-sm">Firma</span>
+          <SignatureModeSwitch
+            value={signature.method}
+            onChange={(method) => dispatch({ type: "method", method })}
+          />
+        </div>
+        <div hidden={signature.method === "typed"}>
+          <SignaturePad name="signature" />
+        </div>
+        {signature.method === "typed" && (
+          <TypedSignature
+            name={signature.typedName}
+            onNameChange={(value) => dispatch({ type: "typedName", value })}
+            previewRef={typedPreview}
+          />
+        )}
       </div>
 
       <input
