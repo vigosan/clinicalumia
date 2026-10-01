@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(43);
+select plan(45);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -28,13 +28,14 @@ create or replace function pg_temp.at(d date, wall time) returns timestamptz lan
   select (d::timestamp + wall) at time zone 'Europe/Madrid'
 $$;
 
-create or replace function pg_temp.fall_back_day() returns date language sql stable as $$
+create or replace function pg_temp.clock_change_day() returns date language sql stable as $$
   select min(last_sunday)
   from (
-    select make_date(y, 10, 31) - extract(dow from make_date(y, 10, 31))::int as last_sunday
-    from generate_series(extract(year from pg_temp.day(0))::int, extract(year from pg_temp.day(0))::int + 1) as y
+    select make_date(y, m, 31) - extract(dow from make_date(y, m, 31))::int as last_sunday
+    from generate_series(extract(year from pg_temp.day(0))::int, extract(year from pg_temp.day(0))::int + 1) as y,
+      unnest(array[3, 10]) as m
   ) sundays
-  where last_sunday > pg_temp.day(8)
+  where last_sunday > pg_temp.day(9)
 $$;
 
 create or replace function pg_temp.slots(d_from date, d_to date) returns bigint language sql stable as $$
@@ -68,11 +69,15 @@ update public.clinic_settings set booking_horizon_days = 365;
 select has_table('public', 'clinic_closures', 'the clinic keeps its closed days in their own table');
 select ok(pg_temp.slots(pg_temp.day(3), pg_temp.day(3)) > 0, 'before any closure the day to close offers slots, so the checks below are not vacuous');
 select ok(pg_temp.slots(pg_temp.day(5), pg_temp.day(7)) > 0, 'before any closure the holiday range offers slots');
-select ok(pg_temp.slots(pg_temp.fall_back_day(), pg_temp.fall_back_day()) > 0, 'before any closure the clock-change day offers slots');
+select ok(pg_temp.slots(pg_temp.clock_change_day(), pg_temp.clock_change_day()) > 0,
+  format('before any closure the clock-change day %s offers slots', pg_temp.clock_change_day()));
 
 select pg_temp.act_as_patient('8d000000-0000-0000-0000-000000000010');
 select public.book_appointment('8d000000-0000-0000-0000-0000000000c1', '8d000000-0000-0000-0000-0000000000b1',
   '8d000000-0000-0000-0000-000000000002', pg_temp.at(pg_temp.day(4), '10:00'));
+select is((select count(*) from unnest(array[pg_temp.day(3), pg_temp.day(6), pg_temp.clock_change_day()]) as d
+    where exists (select 1 from public.my_reschedule_slots(pg_temp.web_id(), d, d) s where s.starts_at = pg_temp.at(d, '12:00'))),
+  3::bigint, 'before any closure the patient could move her appointment to each day about to be closed, so the rejections below are not vacuous');
 
 select pg_temp.act_as('8d000000-0000-0000-0000-000000000001');
 select lives_ok(format($$ insert into public.clinic_closures (starts_on, ends_on, reason) values (%L, %L, 'Festivo local') $$,
@@ -80,7 +85,7 @@ select lives_ok(format($$ insert into public.clinic_closures (starts_on, ends_on
 select lives_ok(format($$ insert into public.clinic_closures (starts_on, ends_on, reason) values (%L, %L, 'Vacaciones') $$,
   pg_temp.day(5), pg_temp.day(7)), 'the owner closes several days in a row');
 select lives_ok(format($$ insert into public.clinic_closures (starts_on, ends_on, reason) values (%L, %L, 'Cambio de hora') $$,
-  pg_temp.fall_back_day(), pg_temp.fall_back_day()), 'the owner closes the day the clocks go back');
+  pg_temp.clock_change_day(), pg_temp.clock_change_day()), format('the owner closes the clock-change day %s', pg_temp.clock_change_day()));
 select lives_ok(format($$ insert into public.clinic_closures (starts_on, ends_on, reason) values (%L, %L, 'Puente') $$,
   pg_temp.day(2), pg_temp.day(2)), 'a closure right next to another one is allowed, because both ends are whole days');
 select is((select created_by from public.clinic_closures where reason = 'Festivo local'), '8d000000-0000-0000-0000-000000000001'::uuid,
@@ -122,12 +127,12 @@ select is(pg_temp.slots(pg_temp.day(3), pg_temp.day(3)), 0::bigint, 'the web off
 select is(pg_temp.slots(pg_temp.day(5), pg_temp.day(5)), 0::bigint, 'the first day of a multi-day closure has no slot');
 select is(pg_temp.slots(pg_temp.day(6), pg_temp.day(6)), 0::bigint, 'the middle day of a multi-day closure has no slot');
 select is(pg_temp.slots(pg_temp.day(7), pg_temp.day(7)), 0::bigint, 'the last day of a multi-day closure has no slot');
-select is(pg_temp.slots(pg_temp.fall_back_day(), pg_temp.fall_back_day()), 0::bigint,
-  'a closure on the day the clocks go back leaves no slot, not even in the repeated hour');
+select is(pg_temp.slots(pg_temp.clock_change_day(), pg_temp.clock_change_day()), 0::bigint,
+  format('a closure on the clock-change day %s leaves no slot in its 23 or 25 hours', pg_temp.clock_change_day()));
 select ok(pg_temp.slots(pg_temp.day(4), pg_temp.day(4)) > 0, 'a day between closures still offers slots');
 select ok(pg_temp.slots(pg_temp.day(8), pg_temp.day(8)) > 0, 'the day after a multi-day closure still offers slots');
 select ok(pg_temp.slots(pg_temp.day(2), pg_temp.day(2)) > 0, 'removing a closure gives its day back to the web');
-select ok(pg_temp.slots(pg_temp.fall_back_day() + 1, pg_temp.fall_back_day() + 1) > 0, 'the day after the clock change is open again');
+select ok(pg_temp.slots(pg_temp.clock_change_day() + 1, pg_temp.clock_change_day() + 1) > 0, 'the day after the clock change is open again');
 select ok(exists (select 1 from public.available_slots('8d000000-0000-0000-0000-0000000000b1', null, pg_temp.day(2), pg_temp.day(2)) s
     where s.starts_at = pg_temp.at(pg_temp.day(2), '23:30')),
   'a slot ending exactly at midnight before a closed day is still offered');
@@ -140,6 +145,8 @@ select is((select count(*) from public.available_slots('8d000000-0000-0000-0000-
 
 reset role;
 select pg_temp.act_as_patient('8d000000-0000-0000-0000-000000000010');
+select is((select count(*) from public.clinic_closures)::bigint, 0::bigint,
+  'a signed-in patient cannot read the clinic''s closures, only the slots that remain');
 select throws_ok(format($$ select public.book_appointment(%L, %L, %L, %L) $$,
   '8d000000-0000-0000-0000-0000000000c1', '8d000000-0000-0000-0000-0000000000b1', '8d000000-0000-0000-0000-000000000002',
   pg_temp.at(pg_temp.day(3), '12:00')), 'P0001', 'slot_not_available',
@@ -149,14 +156,14 @@ select is((select count(*) from public.my_reschedule_slots(pg_temp.web_id(), pg_
   0::bigint, 'the patient area offers no closed day to move an appointment to');
 select ok((select count(*) from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.day(8), pg_temp.day(8))) > 0,
   'the patient area still offers open days to move an appointment to');
-select is((select count(*) from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.fall_back_day(), pg_temp.fall_back_day())),
+select is((select count(*) from public.my_reschedule_slots(pg_temp.web_id(), pg_temp.clock_change_day(), pg_temp.clock_change_day())),
   0::bigint, 'the patient area offers nothing on a closed clock-change day');
 select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, pg_temp.web_id(), pg_temp.at(pg_temp.day(3), '12:00')),
   'P0001', 'slot_not_available', 'moving an appointment into a closed day is rejected even calling the function directly');
 select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, pg_temp.web_id(), pg_temp.at(pg_temp.day(6), '12:00')),
   'P0001', 'slot_not_available', 'moving an appointment into the middle of a multi-day closure is rejected');
-select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, pg_temp.web_id(), pg_temp.at(pg_temp.fall_back_day(), '02:30')),
-  'P0001', 'slot_not_available', 'moving an appointment into the repeated hour of a closed clock-change day is rejected');
+select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, pg_temp.web_id(), pg_temp.at(pg_temp.clock_change_day(), '12:00')),
+  'P0001', 'slot_not_available', format('moving an appointment into the closed clock-change day %s is rejected', pg_temp.clock_change_day()));
 select is(public.reschedule_my_appointment(pg_temp.web_id(), pg_temp.at(pg_temp.day(8), '10:00')), pg_temp.web_id(),
   'moving an appointment to an open day still works');
 reset role;
