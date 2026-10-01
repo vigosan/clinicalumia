@@ -28,7 +28,7 @@ La propietaria apunta a mano los días en que la clínica cierra. Esos días nad
 
 ## 3. Pantallas
 
-- **Admin › Horarios:** sección «Días de cierre» con un formulario (rango de fechas con el selector compartido y motivo) y la lista. Primero los próximos, en orden; los pasados plegados en «Cierres anteriores». Cada cierre se puede borrar con confirmación. Tras crear uno con citas afectadas, se muestra un aviso con la lista (fecha, hora, paciente, profesional) y un enlace a la agenda de ese día en el panel.
+- **Admin › Horarios:** sección «Días de cierre» con un formulario (rango de fechas con el selector compartido y motivo) y la lista. Primero los próximos, en orden; los pasados plegados en «Cierres anteriores». Cada cierre se puede borrar con confirmación. Tras crear uno con citas afectadas, se muestra un aviso con la lista (fecha, hora, paciente, profesional) para revisarlas en la agenda del panel (sin enlace directo: el admin no conoce la URL del panel).
 - **Panel › Agenda:** en día y semana, un día cerrado muestra una banda «Clínica cerrada · {motivo}» y las columnas sombreadas.
 - **Panel › Nueva cita:** si la fecha elegida está cerrada, un aviso «La clínica está cerrada ese día ({motivo}). Puedes dar la cita igualmente.».
 
