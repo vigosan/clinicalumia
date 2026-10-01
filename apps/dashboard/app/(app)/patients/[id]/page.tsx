@@ -6,6 +6,7 @@ import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { guardianErrorMessage } from "@/lib/guardian-error";
 import type { InvoiceRow } from "@/lib/invoices-load";
 import type { PatientAppointmentSource } from "@/lib/patient-appointments";
@@ -18,18 +19,24 @@ import { PersonActions } from "./PersonActions";
 
 const PATIENT_INVOICES_LIMIT = 20;
 
+const getPerson = cache(async (id: string) => {
+  const supabase = await createClient();
+  return supabase
+    .from("people")
+    .select(
+      "id, first_name, last_name, birth_date, tax_id, email, phone, address, admin_notes, is_patient, archived_at",
+    )
+    .eq("id", id)
+    .maybeSingle();
+});
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: person } = await supabase
-    .from("people")
-    .select("first_name, last_name")
-    .eq("id", id)
-    .maybeSingle();
+  const { data: person, error } = await getPerson((await params).id);
+  if (!person && !error) notFound();
   return {
     title: person ? `${person.first_name} ${person.last_name}` : "Ficha",
   };
@@ -46,13 +53,7 @@ export default async function PatientPage({
   const { guardianError } = await searchParams;
   const supabase = await createClient();
 
-  const { data: person, error: personError } = await supabase
-    .from("people")
-    .select(
-      "id, first_name, last_name, birth_date, tax_id, email, phone, address, admin_notes, is_patient, archived_at",
-    )
-    .eq("id", id)
-    .maybeSingle();
+  const { data: person, error: personError } = await getPerson(id);
   if (personError) {
     return (
       <Card role="alert" className="text-center text-sm text-danger-600">

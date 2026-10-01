@@ -1,6 +1,7 @@
 import { createClient } from "@clinicalumia/api/server";
 import { AppShell } from "@clinicalumia/ui/app-shell";
 import logo from "@clinicalumia/ui/logo-dark.png";
+import { CalendarDays } from "lucide-react";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { logout } from "./actions";
@@ -56,6 +57,7 @@ export default async function DashboardLayout({
         {
           href: "/mi-calendario",
           label: "Ver citas en mi móvil",
+          icon: <CalendarDays aria-hidden="true" />,
           testId: "user-menu-calendar",
         },
       ]}

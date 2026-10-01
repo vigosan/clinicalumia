@@ -16,7 +16,12 @@ import { NavLink } from "./nav-link";
 
 export type NavItem = { href: string; label: string; match?: string[] };
 
-export type UserMenuItem = { href: string; label: string; testId?: string };
+export type UserMenuItem = {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  testId?: string;
+};
 
 type User = { name: string; detail: string };
 
@@ -67,7 +72,7 @@ function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         data-testid="user-menu"
-        aria-label={`Cuenta de ${user.name}`}
+        aria-label={`Cuenta de ${user.name}, ${user.detail}`}
         className="flex cursor-pointer items-center gap-3 rounded-full p-1 text-left transition-colors hover:bg-sage-100 focus-visible:outline-2 focus-visible:outline-sage-800 data-[state=open]:bg-sage-100 lg:w-full lg:rounded-xl lg:px-2 lg:py-2"
       >
         <span
@@ -101,6 +106,7 @@ function UserMenu({
         {menu.map((item) => (
           <DropdownMenuItem key={item.href} asChild>
             <Link href={item.href} data-testid={item.testId}>
+              {item.icon}
               {item.label}
             </Link>
           </DropdownMenuItem>
@@ -192,7 +198,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-cream-50 lg:flex-row">
-      <aside className="sticky top-0 z-40 flex items-center gap-2 border-line border-b bg-cream-50 px-4 py-3 lg:h-screen lg:w-62 lg:shrink-0 lg:flex-col lg:items-stretch lg:gap-10 lg:border-r lg:border-b-0 lg:px-5 lg:pt-9 lg:pb-5">
+      <aside className="sticky top-0 z-40 flex items-center gap-2 border-line border-b bg-cream-50 px-4 py-3 lg:h-screen lg:w-62 lg:overflow-y-auto lg:shrink-0 lg:flex-col lg:items-stretch lg:gap-10 lg:border-r lg:border-b-0 lg:px-5 lg:pt-9 lg:pb-5">
         <MobileMenu logo={logo} section={section} nav={nav} />
         <div className="flex min-w-0 flex-col gap-1.5 lg:px-3 [&_img]:h-auto [&_img]:max-w-30 lg:[&_img]:max-w-none">
           {logo}

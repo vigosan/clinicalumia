@@ -118,6 +118,44 @@ test("signing out from the user menu ends the session", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test("keyboard users open the user menu, reach the phone calendar link and close the menu with Escape", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+
+  await page.getByTestId("user-menu").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("user-menu-calendar")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toBeHidden();
+  await expect(page.getByTestId("user-menu")).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("user-menu-calendar")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`${DASHBOARD}/mi-calendario`);
+});
+
+test("a broken guardian link opens a plain Nuevo paciente, and the tab title says the same", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new?guardianOf=no-es-un-id`);
+  await expect(
+    page.getByRole("heading", { name: "Nuevo paciente" }),
+  ).toBeVisible();
+  await expect(page).toHaveTitle("Nuevo paciente · LUMIA");
+});
+
+test("a missing record tells staff in the tab title too, not only on the page", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/00000000-0000-4000-8000-000000000000`);
+  await expect(page.getByTestId("not-found")).toBeVisible();
+  await expect(page).toHaveTitle("Página no encontrada · LUMIA");
+});
+
 test.describe("on a 390 px phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -135,6 +173,12 @@ test.describe("on a 390 px phone", () => {
     await menu.getByRole("link", { name: "Pacientes" }).click();
     await expect(page).toHaveURL(`${DASHBOARD}/patients`);
     await expect(menu).toBeHidden();
+
+    await page.getByTestId("nav-toggle").click();
+    await expect(menu).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(page.getByTestId("nav-toggle")).toBeFocused();
 
     await page.goto(`${DASHBOARD}/patients/${person.id}/edit`);
     const back = page.getByTestId("breadcrumbs-back");

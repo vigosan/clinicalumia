@@ -15,8 +15,9 @@ export async function generateMetadata({
   searchParams: Promise<{ guardianOf?: string; consentimiento?: string }>;
 }): Promise<Metadata> {
   const { guardianOf, consentimiento } = await searchParams;
-  if (guardianOf) return { title: "Nuevo tutor/a" };
-  if (consentimiento) return { title: "Crear ficha" };
+  if (guardianOf && UUID_REGEX.test(guardianOf))
+    return { title: "Nuevo tutor/a" };
+  if (consentimiento && isUuid(consentimiento)) return { title: "Crear ficha" };
   return { title: "Nuevo paciente" };
 }
 
