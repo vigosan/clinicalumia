@@ -15,7 +15,7 @@
 - Todo el acceso pasa por `is_owner()`; lectura con el cliente de la sesión y RLS, nunca `service_role` en las rutas.
 - Sin cambios en `invoices`, `invoice_records` ni Verifactu. La única migración crea el bucket `exports` y sus políticas, y se aplica igual en dev y prod.
 - Fechas en Europe/Madrid; los límites del trimestre son `[inicio, inicio del siguiente)`.
-- Las facturas `status = 'replaced'` salen en el libro y el ZIP pero no suman en los totales; las rectificativas restan.
+- Una completa que sustituye a una simplificada sale en el libro y el ZIP pero no suma; la simplificada original sí suma aunque esté sustituida (los totales de un trimestre cerrado no cambian). Las rectificativas restan.
 - Importes en céntimos (enteros) hasta el último paso; en el Excel, números con formato `#,##0.00 €`.
 - Nombres: `LUMIA-facturas-{año}-T{n}.xlsx` / `.zip`; PDF `{código con / → -}.pdf`.
 - Reglas de la casa: textos en español, sin comentarios, `data-testid` > rol > texto, TDD, commits pequeños con título en español sin cuerpo, nunca `--no-verify`.

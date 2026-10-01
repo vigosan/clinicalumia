@@ -26,7 +26,7 @@ Al cerrar un trimestre, la propietaria entra en el admin, elige el trimestre, re
 | Fechas | Límites en Europe/Madrid: T1 del 1 de enero 00:00 al 1 de abril 00:00 (sin incluir), y así sucesivamente. Se compara con `invoices.issued_at`. |
 | Formato | Excel (`.xlsx`), no CSV: el CSV da problemas de acentos y decimales en el Excel español. Importes como números con formato `#,##0.00 €`. |
 | ZIP | Se genera en el servidor, se sube a un bucket privado y se descarga con una URL firmada de 10 minutos. Así no choca con el límite de 4,5 MB de respuesta de Vercel. |
-| Sustituidas | Una simplificada sustituida por una completa (`status = 'replaced'`) aparece en el libro y en el ZIP, pero no suma en los totales: suma la completa. **A validar con la gestoría.** |
+| Sustituidas | Cuando una completa sustituye a una simplificada, las dos aparecen en el libro y en el ZIP, pero en los totales suma siempre la simplificada original y la completa no suma (mismo cobro, mismo importe). Así un trimestre ya presentado no cambia si la completa se emite más tarde. **A validar con la gestoría.** |
 | Rectificativas | Aparecen con importes negativos y restan en los totales. |
 
 ## 3. Resumen en pantalla
@@ -36,7 +36,7 @@ Al cerrar un trimestre, la propietaria entra en el admin, elige el trimestre, re
 - Total neto del trimestre.
 - Botones «Descargar Excel» y «Descargar PDF (ZIP)». Si el trimestre no tiene facturas, se muestra un estado vacío y los botones no aparecen.
 
-Los totales salen de los `snapshot.lines` de cada factura (`base_cents`, `vat_rate`, `vat_cents`, `total_cents`), agrupados por `vat_rate`. Las facturas con `status = 'replaced'` no suman.
+Los totales salen de los `snapshot.lines` de cada factura (`base_cents`, `vat_rate`, `vat_cents`, `total_cents`), agrupados por `vat_rate`. Las facturas completas que sustituyen a una simplificada (`replaces_invoice_id` no nulo) no suman; la simplificada sustituida sí.
 
 ## 4. Excel
 
