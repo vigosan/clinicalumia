@@ -111,20 +111,34 @@ describe("loadQuarterInvoices", () => {
     ]);
   });
 
-  it("keeps reading pages until the last one, so a big quarter is never cut at the API's row limit", async () => {
+  it("keeps reading pages until an empty one, so a big quarter is never cut at the API's row limit", async () => {
     const full = Array.from({ length: QUARTER_PAGE_SIZE }, (_, index) =>
       row({ code: `${index + 1}/26` }),
     );
     const { client, calls } = fakeClient([
       { data: full, error: null },
       { data: [row({ code: "last/26" })], error: null },
+      { data: [], error: null },
     ]);
     const result = await loadQuarterInvoices(client as never, 2026, 3);
     expect(calls.range.mock.calls).toEqual([
       [0, QUARTER_PAGE_SIZE - 1],
       [QUARTER_PAGE_SIZE, 2 * QUARTER_PAGE_SIZE - 1],
+      [QUARTER_PAGE_SIZE + 1, QUARTER_PAGE_SIZE + QUARTER_PAGE_SIZE],
     ]);
     expect(result.ok && result.invoices.length).toBe(QUARTER_PAGE_SIZE + 1);
+  });
+
+  it("does not stop at a short page, since the server may cap pages below the size asked for", async () => {
+    const { client } = fakeClient([
+      { data: [row({ code: "1/26" }), row({ code: "2/26" })], error: null },
+      { data: [row({ code: "3/26" })], error: null },
+      { data: [], error: null },
+    ]);
+    const result = await loadQuarterInvoices(client as never, 2026, 3);
+    expect(result.ok && result.invoices.map((invoice) => invoice.code)).toEqual(
+      ["1/26", "2/26", "3/26"],
+    );
   });
 
   it("orders by issue date and id, so pages do not overlap or skip rows", async () => {

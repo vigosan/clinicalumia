@@ -1,5 +1,9 @@
 import { execSync } from "node:child_process";
-import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import {
+  addDays,
+  madridInstant,
+  todayInMadrid,
+} from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import ExcelJS from "exceljs";
@@ -97,9 +101,29 @@ async function invoicesOf(appointmentIds: string[]) {
   return data ?? [];
 }
 
+async function emptyPastQuarter(): Promise<{ year: number; q: number }> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const year = 2001 + Math.floor(Math.random() * 19);
+    const q = 1 + Math.floor(Math.random() * 4);
+    const month = (start: number) => String(start).padStart(2, "0");
+    const from = madridInstant(`${year}-${month(3 * q - 2)}-01`, "00:00");
+    const to =
+      q === 4
+        ? madridInstant(`${year + 1}-01-01`, "00:00")
+        : madridInstant(`${year}-${month(3 * q + 1)}-01`, "00:00");
+    const { count, error } = await admin
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .gte("issued_at", from)
+      .lt("issued_at", to);
+    expect(error).toBeNull();
+    if (count === 0) return { year, q };
+  }
+  throw new Error("No hay ningún trimestre pasado libre para la prueba");
+}
+
 async function quarterWithFiveInvoices() {
-  const year = 2001 + Math.floor(Math.random() * 19);
-  const q = 1 + Math.floor(Math.random() * 4);
+  const { year, q } = await emptyPastQuarter();
   const employee = await createStaff("employee");
   const replaced = await createAppointment(employee.id, EXEMPT_SERVICE_ID, 9);
   const rectified = await createAppointment(employee.id, VAT_21_SERVICE_ID, 11);
@@ -204,7 +228,8 @@ test("la propietaria revisa un trimestre y descarga el libro de facturas con los
   ledger.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     codes.push(row.getCell(2).value);
-    const replacesAnother = row.getCell(3).value === "Completa";
+    const replacesAnother =
+      row.getCell(3).value === "Completa" && Boolean(row.getCell(4).value);
     if (!replacesAnother) ledgerTotal += row.getCell(12).value as number;
   });
   expect(codes.sort()).toEqual(invoices.map((invoice) => invoice.code).sort());

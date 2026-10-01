@@ -610,3 +610,20 @@ describe("vatRateLabel", () => {
     expect(vatRateLabel(21)).toBe("IVA 21 %");
   });
 });
+
+describe("ledgerRows payment methods", () => {
+  it("names each payment method once, so two card payments read «Tarjeta» and not «Tarjeta, Tarjeta»", () => {
+    const [row] = ledgerRows([
+      invoice({
+        snapshot: snapshot({
+          payments: [
+            { method: "online", amount_cents: 1000 },
+            { method: "card", amount_cents: 2000 },
+            { method: "card", amount_cents: 3050 },
+          ],
+        }),
+      }),
+    ]);
+    expect(row?.paymentMethod).toBe("Señal online, Tarjeta");
+  });
+});

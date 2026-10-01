@@ -78,7 +78,7 @@ export default async function BillingPage({
         <QuarterPicker year={year} q={q} years={quarterYears(year, now)} />
       </Card>
       {isCurrentQuarter(year, q, now) && (
-        <Alert data-testid="quarter-current">
+        <Alert tone="warning" data-testid="quarter-current">
           Trimestre en curso: los datos pueden cambiar.
         </Alert>
       )}

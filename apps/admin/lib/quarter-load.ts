@@ -17,7 +17,8 @@ export async function loadQuarterInvoices(
 ): Promise<{ ok: true; invoices: QuarterInvoice[] } | { ok: false }> {
   const { from, to } = quarterRange(year, q);
   const invoices: QuarterInvoice[] = [];
-  for (let offset = 0; ; offset += QUARTER_PAGE_SIZE) {
+  while (true) {
+    const offset = invoices.length;
     const { data, error } = await supabase
       .from("invoices")
       .select(COLUMNS)
@@ -27,6 +28,7 @@ export async function loadQuarterInvoices(
       .order("id", { ascending: true })
       .range(offset, offset + QUARTER_PAGE_SIZE - 1);
     if (error || !data) return { ok: false };
+    if (data.length === 0) return { ok: true, invoices };
     for (const row of data) {
       invoices.push({
         id: row.id,
@@ -40,6 +42,5 @@ export async function loadQuarterInvoices(
         replaced_by: row.replaced_by[0]?.code ?? null,
       });
     }
-    if (data.length < QUARTER_PAGE_SIZE) return { ok: true, invoices };
   }
 }

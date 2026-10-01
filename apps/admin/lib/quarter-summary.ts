@@ -104,9 +104,11 @@ function statusLabel(invoice: QuarterInvoice): string {
 
 function paymentMethodColumn(snapshot: InvoiceSnapshot): string {
   if (!snapshot.payments || snapshot.payments.length === 0) return "";
-  return snapshot.payments
-    .map((payment) => paymentMethodLabel(payment.method))
-    .join(", ");
+  return [
+    ...new Set(
+      snapshot.payments.map((payment) => paymentMethodLabel(payment.method)),
+    ),
+  ].join(", ");
 }
 
 function codeNumber(code: string): number {

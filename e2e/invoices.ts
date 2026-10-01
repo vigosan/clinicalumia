@@ -107,43 +107,6 @@ export function lockNextYearInvoiceSeries(
   return year;
 }
 
-export function collectAsStaff(
-  professionalId: string,
-  appointmentId: string,
-  amountCents: number,
-) {
-  if (![professionalId, appointmentId].every((id) => UUID.test(id)))
-    throw new Error("Solo se cobra con ids válidos");
-  if (!Number.isInteger(amountCents)) throw new Error("Importe no válido");
-  const sessionId = randomUUID();
-  execFileSync(
-    "docker",
-    [
-      "exec",
-      "-i",
-      "supabase_db_clinicalumia",
-      "psql",
-      "-U",
-      "postgres",
-      "-d",
-      "postgres",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-q",
-    ],
-    {
-      input: [
-        "begin;",
-        `insert into auth.sessions (id, user_id, created_at, updated_at) values ('${sessionId}', '${professionalId}', now(), now());`,
-        `select set_config('request.jwt.claims', json_build_object('sub', '${professionalId}', 'role', 'authenticated', 'aal', 'aal2', 'session_id', '${sessionId}')::text, true);`,
-        "set local role authenticated;",
-        `select public.collect_payment('${appointmentId}', ${amountCents}, 'card', '');`,
-        "commit;",
-      ].join("\n"),
-    },
-  );
-}
-
 function asStaff(professionalId: string, statement: string) {
   if (!UUID.test(professionalId)) throw new Error("Profesional no válido");
   const sessionId = randomUUID();
@@ -172,6 +135,20 @@ function asStaff(professionalId: string, statement: string) {
         "commit;",
       ].join("\n"),
     },
+  );
+}
+
+export function collectAsStaff(
+  professionalId: string,
+  appointmentId: string,
+  amountCents: number,
+) {
+  if (![professionalId, appointmentId].every((id) => UUID.test(id)))
+    throw new Error("Solo se cobra con ids válidos");
+  if (!Number.isInteger(amountCents)) throw new Error("Importe no válido");
+  asStaff(
+    professionalId,
+    `select public.collect_payment('${appointmentId}', ${amountCents}, 'card', '');`,
   );
 }
 
