@@ -168,3 +168,7 @@ export function exportFileName(year: number, q: Quarter, ext: string): string {
 export function pdfFileName(code: string): string {
   return `${code.replaceAll("/", "-")}.pdf`;
 }
+
+export function vatRateLabel(vatRate: number): string {
+  return vatRate === 0 ? "Exento" : `IVA ${vatRate} %`;
+}

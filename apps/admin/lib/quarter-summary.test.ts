@@ -6,6 +6,7 @@ import {
   pdfFileName,
   type QuarterInvoice,
   summarizeInvoices,
+  vatRateLabel,
 } from "./quarter-summary";
 
 function snapshot(overrides: Partial<InvoiceSnapshot> = {}): InvoiceSnapshot {
@@ -597,5 +598,15 @@ describe("pdfFileName", () => {
 
   it("does the same for a rectifying invoice's code", () => {
     expect(pdfFileName("R3/26")).toBe("R3-26.pdf");
+  });
+});
+
+describe("vatRateLabel", () => {
+  it("names a 0 % rate «Exento», the way the gestoría reads exempt sessions", () => {
+    expect(vatRateLabel(0)).toBe("Exento");
+  });
+
+  it("names a taxed rate with its percentage", () => {
+    expect(vatRateLabel(21)).toBe("IVA 21 %");
   });
 });

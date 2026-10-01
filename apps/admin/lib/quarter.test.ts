@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isCurrentQuarter, lastClosedQuarter, quarterRange } from "./quarter";
+import {
+  isCurrentQuarter,
+  lastClosedQuarter,
+  parseQuarter,
+  quarterRange,
+  quarterYears,
+} from "./quarter";
 
 function inQuarter(
   instant: string,
@@ -123,5 +129,43 @@ describe("lastClosedQuarter", () => {
   it("already treats the new quarter as current right at its first instant, so the closed quarter becomes the one that just ended", () => {
     const now = new Date("2025-12-31T23:00:00Z");
     expect(lastClosedQuarter(now)).toEqual({ year: 2025, q: 4 });
+  });
+});
+
+describe("parseQuarter", () => {
+  it("reads a year and a quarter from the URL, so a link opens that quarter", () => {
+    expect(parseQuarter("2026", "3")).toEqual({ year: 2026, q: 3 });
+  });
+
+  it("rejects a missing year or quarter, so the Excel never covers an unintended period", () => {
+    expect(parseQuarter(undefined, "3")).toBeNull();
+    expect(parseQuarter("2026", undefined)).toBeNull();
+    expect(parseQuarter(null, null)).toBeNull();
+  });
+
+  it("rejects quarters outside T1–T4 and anything that is not a plain number", () => {
+    for (const q of ["0", "5", "1.5", " 1", "T1", "01"]) {
+      expect(parseQuarter("2026", q)).toBeNull();
+    }
+  });
+
+  it("rejects years that are not four plain digits", () => {
+    for (const year of ["26", "02026", "2026a", "-2026", "1999"]) {
+      expect(parseQuarter(year, "1")).toBeNull();
+    }
+  });
+});
+
+describe("quarterYears", () => {
+  it("offers every year from 2026, when invoicing started, to the current Madrid year, newest first", () => {
+    const now = new Date("2028-12-31T23:30:00Z");
+    expect(quarterYears(2028, now)).toEqual([2029, 2028, 2027, 2026]);
+  });
+
+  it("also offers a year opened from a link outside that range, so the selector never shows it blank", () => {
+    const now = new Date("2026-10-01T10:00:00Z");
+    expect(quarterYears(2019, now)).toEqual([
+      2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019,
+    ]);
   });
 });

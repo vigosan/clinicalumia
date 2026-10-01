@@ -47,3 +47,19 @@ export function isCurrentQuarter(year: number, q: Quarter, now: Date): boolean {
   const current = quarterOf(now);
   return current.year === year && current.q === q;
 }
+
+export function parseQuarter(
+  year: string | null | undefined,
+  q: string | null | undefined,
+): { year: number; q: Quarter } | null {
+  if (!year || !q || !/^20\d{2}$/.test(year) || !/^[1-4]$/.test(q)) return null;
+  return { year: Number(year), q: Number(q) as Quarter };
+}
+
+const FIRST_INVOICE_YEAR = 2026;
+
+export function quarterYears(selected: number, now: Date): number[] {
+  const newest = Math.max(quarterOf(now).year, selected);
+  const oldest = Math.min(FIRST_INVOICE_YEAR, selected);
+  return Array.from({ length: newest - oldest + 1 }, (_, i) => newest - i);
+}
