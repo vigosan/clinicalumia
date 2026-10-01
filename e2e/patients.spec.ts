@@ -992,3 +992,34 @@ test("a 390 px Pacientes se lee sin desplazar la página de lado", async ({
     }),
   ).toBe(true);
 });
+
+test("a page past the end of Pacientes says there are no more records and links back to the first page, instead of an error", async ({
+  page,
+}) => {
+  const lastName = `FueraDeRango${Date.now()}`;
+  const { data, error } = await admin
+    .from("people")
+    .insert({
+      first_name: "Persona",
+      last_name: lastName,
+      birth_date: "1990-01-01",
+      is_patient: true,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdPersonIds.push(data!.id);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients?q=${lastName}&pagina=99`);
+
+  await expect(page.getByTestId("patients-error")).toHaveCount(0);
+  await expect(page.getByTestId("patients-empty")).toContainText(
+    "No hay más fichas.",
+  );
+  await page.getByRole("link", { name: "Volver a la primera página" }).click();
+
+  await expect(page).not.toHaveURL(/pagina=/);
+  await expect(page).toHaveURL(new RegExp(`q=${lastName}`));
+  await expect(page.getByTestId("patient-row")).toHaveCount(1);
+});

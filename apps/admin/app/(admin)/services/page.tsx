@@ -1,7 +1,7 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
-import { Card } from "@clinicalumia/ui/card";
+import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import {
   Table,
@@ -53,9 +53,7 @@ export default async function ServicesPage() {
           <section key={specialty.id} className="flex flex-col gap-3">
             <h2 className="text-xl font-bold text-ink-900">{specialty.name}</h2>
             {list.length === 0 ? (
-              <Card className="text-sm text-ink-800">
-                Aún no hay servicios en esta especialidad.
-              </Card>
+              <EmptyState title="Aún no hay servicios en esta especialidad." />
             ) : (
               <Table aria-label={`Servicios de ${specialty.name}`}>
                 <TableHead>
@@ -74,19 +72,23 @@ export default async function ServicesPage() {
                 <TableBody>
                   {list.map((service) => (
                     <TableRow key={service.id} data-testid="service-row">
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium max-md:text-[15px]">
                         {service.name}
                       </TableCell>
-                      <TableCell>{service.duration_minutes} min</TableCell>
-                      <TableCell>{formatCents(service.price_cents)}</TableCell>
-                      <TableCell>
+                      <TableCell label="Duración">
+                        {service.duration_minutes} min
+                      </TableCell>
+                      <TableCell label="Precio">
+                        {formatCents(service.price_cents)}
+                      </TableCell>
+                      <TableCell label="IVA">
                         {service.vat === "exempt" ? (
                           "Exento"
                         ) : (
                           <Badge tone="outline">21 %</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell label="Reserva web">
                         {service.bookable_online
                           ? bookingLabel(
                               service.booking_payment,
@@ -94,12 +96,12 @@ export default async function ServicesPage() {
                             )
                           : "No"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell label="Estado">
                         <Badge tone={service.is_active ? "success" : "neutral"}>
                           {service.is_active ? "Activo" : "Inactivo"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-md:mt-2 max-md:justify-end">
                         <div className="flex flex-wrap justify-end gap-2">
                           <Button
                             asChild

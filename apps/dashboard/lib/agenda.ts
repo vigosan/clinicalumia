@@ -343,3 +343,27 @@ export function specialtyTone(slug: string): SpecialtyTone {
   if (slug === "fisioterapia") return "pebble";
   return "neutral";
 }
+
+export function adjacentAppointments(
+  appointments: { id: string; startsAt: string; professionalId: string }[],
+  currentId: string,
+  columnOrder: string[],
+): { previousId: string | null; nextId: string | null } {
+  const column = (professionalId: string) => {
+    const index = columnOrder.indexOf(professionalId);
+    return index === -1 ? columnOrder.length : index;
+  };
+  const ordered = [...appointments].sort(
+    (a, b) =>
+      new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime() ||
+      column(a.professionalId) - column(b.professionalId),
+  );
+  const index = ordered.findIndex(
+    (appointment) => appointment.id === currentId,
+  );
+  if (index === -1) return { previousId: null, nextId: null };
+  return {
+    previousId: ordered[index - 1]?.id ?? null,
+    nextId: ordered[index + 1]?.id ?? null,
+  };
+}

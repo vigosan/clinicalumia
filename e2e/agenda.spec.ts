@@ -1187,6 +1187,66 @@ test("cancelar como «paciente» con motivo la quita de la agenda y el historial
   ).toHaveCount(0);
 });
 
+test("en el panel de la cita, «Siguiente» y «Anterior» pasan a las otras citas de la agenda en orden sin cerrar el panel, y conservan la vista", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(106, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Panel Siguiente",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const first = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "09:00",
+    endTime: "10:00",
+  });
+  const third = await createAppointment({
+    professionalId: employee.id,
+    patientId: NORA_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "16:00",
+    endTime: "17:00",
+  });
+  const second = await createAppointment({
+    professionalId: employee.id,
+    patientId: ELENA_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "12:00",
+    endTime: "13:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${second}`);
+  const panel = page.getByTestId("appointment-panel");
+  await expect(panel).toContainText("Elena");
+
+  await panel.getByTestId("appointment-next").click();
+  await expect(page).toHaveURL(new RegExp(`appointment=${third}`));
+  await expect(panel).toContainText("Nora");
+  await expect(panel.getByTestId("appointment-next")).toHaveCount(0);
+
+  await panel.getByTestId("appointment-previous").click();
+  await expect(page).toHaveURL(new RegExp(`appointment=${second}`));
+  await expect(panel).toContainText("Elena");
+  await panel.getByTestId("appointment-previous").click();
+  await expect(page).toHaveURL(new RegExp(`appointment=${first}`));
+  await expect(panel).toContainText("Jorge");
+  await expect(panel.getByTestId("appointment-previous")).toHaveCount(0);
+
+  await page.goto(`${DASHBOARD}/?date=${date}&view=week&appointment=${first}`);
+  await expect(panel).toContainText("Jorge");
+  await panel.getByTestId("appointment-next").click();
+  await expect(page).toHaveURL(new RegExp(`appointment=${second}`));
+  await expect(page).toHaveURL(/view=week/);
+  await expect(panel).toContainText("Elena");
+});
+
 test("el panel de la cita retiene el foco mientras está abierto, y Escape lo cierra y devuelve el foco a la cita de la agenda", async ({
   page,
 }) => {

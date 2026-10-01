@@ -1,5 +1,6 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
+import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { CreateForm } from "./CreateForm";
 import { MemberRow } from "./MemberRow";
@@ -35,9 +36,7 @@ export default async function TeamPage() {
         <CreateForm specialties={specialtyList} />
       </Card>
       {!hasEmployees && (
-        <Card className="text-center text-sm text-ink-800">
-          Aún no hay empleados. Invita al primero arriba.
-        </Card>
+        <EmptyState title="Aún no hay empleados. Invita al primero arriba." />
       )}
       <Card className="p-2">
         <ul>

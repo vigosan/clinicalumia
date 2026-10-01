@@ -7,7 +7,12 @@ import { isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
 import type { Metadata } from "next";
-import { canMarkNoShow, canMove, isUuid } from "@/lib/agenda";
+import {
+  adjacentAppointments,
+  canMarkNoShow,
+  canMove,
+  isUuid,
+} from "@/lib/agenda";
 import {
   type AppointmentEventRow,
   appointmentHistory,
@@ -35,6 +40,16 @@ function buildHref(base: string, params: Record<string, string | undefined>) {
   }
   const query = search.toString();
   return query ? `${base}?${query}` : base;
+}
+
+function neighbourHrefs(
+  { previousId, nextId }: { previousId: string | null; nextId: string | null },
+  hrefFor: (id: string) => string,
+) {
+  return {
+    previousHref: previousId ? hrefFor(previousId) : null,
+    nextHref: nextId ? hrefFor(nextId) : null,
+  };
 }
 
 type AppointmentDetailResult =
@@ -271,6 +286,20 @@ export default async function DashboardHome({
               view,
               person: personParam,
             })}
+            {...neighbourHrefs(
+              adjacentAppointments(
+                data.days.flatMap((day) => day.appointments),
+                appointment.detail.id,
+                [],
+              ),
+              (id) =>
+                buildHref("/", {
+                  date: data.date,
+                  view: "week",
+                  person: data.personId,
+                  appointment: id,
+                }),
+            )}
           />
         )}
       </div>
@@ -328,6 +357,20 @@ export default async function DashboardHome({
           key={appointment.detail.id}
           appointment={appointment.detail}
           closeHref={buildHref("/", { date: data.date, view, with: withParam })}
+          {...neighbourHrefs(
+            adjacentAppointments(
+              data.appointments,
+              appointment.detail.id,
+              data.columns.map((column) => column.id),
+            ),
+            (id) =>
+              buildHref("/", {
+                date: data.date,
+                view,
+                with: withParam,
+                appointment: id,
+              }),
+          )}
         />
       )}
     </div>

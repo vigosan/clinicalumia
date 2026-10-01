@@ -5,6 +5,7 @@ import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Sheet } from "@clinicalumia/ui/sheet";
 import { toast } from "@clinicalumia/ui/toast";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -92,9 +93,13 @@ function formatPrice(cents: number): string {
 export function AppointmentPanel({
   appointment,
   closeHref,
+  previousHref,
+  nextHref,
 }: {
   appointment: AppointmentDetail;
   closeHref: string;
+  previousHref: string | null;
+  nextHref: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(true);
@@ -177,6 +182,35 @@ export function AppointmentPanel({
       <p className="-mt-4 text-[13px] text-ink-800">
         {appointment.serviceName} · {appointment.durationMinutes} min
       </p>
+
+      {(previousHref || nextHref) && (
+        <nav aria-label="Otras citas de la agenda" className="flex gap-2">
+          {previousHref && (
+            <Button asChild variant="secondary" size="sm">
+              <Link
+                href={previousHref}
+                scroll={false}
+                data-testid="appointment-previous"
+              >
+                <ChevronLeft aria-hidden="true" className="-ml-1" />
+                Cita anterior
+              </Link>
+            </Button>
+          )}
+          {nextHref && (
+            <Button asChild variant="secondary" size="sm" className="ml-auto">
+              <Link
+                href={nextHref}
+                scroll={false}
+                data-testid="appointment-next"
+              >
+                Cita siguiente
+                <ChevronRight aria-hidden="true" className="-mr-1" />
+              </Link>
+            </Button>
+          )}
+        </nav>
+      )}
 
       <div className="flex items-center gap-2">
         <Badge

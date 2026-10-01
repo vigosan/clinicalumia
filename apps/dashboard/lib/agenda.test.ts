@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjacentAppointments,
   appointmentError,
   type Block,
   canMarkNoShow,
@@ -751,5 +752,42 @@ describe("isUuid", () => {
 
   it("rejects an empty string", () => {
     expect(isUuid("")).toBe(false);
+  });
+});
+
+describe("adjacentAppointments", () => {
+  const appointments = [
+    { id: "c", startsAt: "2026-10-05T14:00:00Z", professionalId: "laura" },
+    { id: "a", startsAt: "2026-10-05T08:00:00Z", professionalId: "marc" },
+    { id: "b2", startsAt: "2026-10-05T10:00:00Z", professionalId: "marc" },
+    { id: "b1", startsAt: "2026-10-05T10:00:00Z", professionalId: "laura" },
+  ];
+  const columnOrder = ["laura", "marc"];
+
+  it("walks the agenda in time order, so «Siguiente» opens the appointment that comes next on screen", () => {
+    expect(adjacentAppointments(appointments, "a", columnOrder)).toEqual({
+      previousId: null,
+      nextId: "b1",
+    });
+    expect(adjacentAppointments(appointments, "b1", columnOrder)).toEqual({
+      previousId: "a",
+      nextId: "b2",
+    });
+    expect(adjacentAppointments(appointments, "c", columnOrder)).toEqual({
+      previousId: "b2",
+      nextId: null,
+    });
+  });
+
+  it("orders appointments at the same time by column, left to right as the agenda shows them", () => {
+    expect(adjacentAppointments(appointments, "b2", ["marc", "laura"])).toEqual(
+      { previousId: "a", nextId: "b1" },
+    );
+  });
+
+  it("offers no neighbours for an appointment that is not on the agenda, such as a cancelled one", () => {
+    expect(
+      adjacentAppointments(appointments, "cancelled", columnOrder),
+    ).toEqual({ previousId: null, nextId: null });
   });
 });

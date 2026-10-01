@@ -357,3 +357,35 @@ test("the owner invalidates a member's calendar link and it stops serving the fe
     await employeeContext.close();
   }
 });
+
+test("on a phone each service is a card whose values keep their column names, so «No» or «21 %» can still be read", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${ADMIN}/services`);
+
+  const row = page.getByTestId("service-row").first();
+  await expect(row).toBeVisible();
+  const labels = await row
+    .getByRole("cell")
+    .evaluateAll((cells) =>
+      cells.map((cell) =>
+        getComputedStyle(cell, "::before").content.replaceAll('"', ""),
+      ),
+    );
+  expect(labels).toEqual(
+    expect.arrayContaining([
+      "Duración",
+      "Precio",
+      "IVA",
+      "Reserva web",
+      "Estado",
+    ]),
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
