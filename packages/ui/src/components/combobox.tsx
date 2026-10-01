@@ -13,6 +13,7 @@ export type ComboboxStatus = "idle" | "loading" | "ready" | "error";
 export type ComboboxAction = { label: string; onSelect: () => void };
 
 const ACTION_VALUE = "__action__";
+const NOTHING = "__nothing__";
 
 const optionClass =
   "flex w-full cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[15px] text-ink-900 outline-none transition-colors data-[selected=true]:bg-sage-100";
@@ -55,6 +56,8 @@ export function Combobox<T>({
   const [highlighted, setHighlighted] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
+  const actionChosenRef = useRef(false);
+  const listRef = useRef<HTMLDivElement>(null);
   const hasQuery = query.trim() !== "";
   const visible = open && (hasQuery || action !== undefined);
   const shownItems = hasQuery && status === "ready" ? items : [];
@@ -67,12 +70,23 @@ export function Combobox<T>({
   }, []);
 
   useEffect(() => {
-    inputRef.current?.setAttribute("aria-expanded", String(visible));
-  }, [visible]);
+    const input = inputRef.current;
+    if (!input) return;
+    input.setAttribute("aria-expanded", String(visible));
+    const active = Array.from(
+      listRef.current?.querySelectorAll<HTMLElement>("[cmdk-item]") ?? [],
+    ).find((option) => option.dataset.value === highlighted);
+    if (visible && active) {
+      input.setAttribute("aria-activedescendant", active.id);
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  });
 
   useEffect(() => {
-    setHighlighted(firstValue);
-  }, [firstValue]);
+    actionChosenRef.current = false;
+    setHighlighted(visible ? firstValue : "");
+  }, [visible, firstValue]);
 
   function choose(item: T) {
     setOpen(false);
@@ -83,8 +97,20 @@ export function Combobox<T>({
     <Command
       label={label}
       shouldFilter={false}
+      vimBindings={false}
       value={highlighted}
-      onValueChange={setHighlighted}
+      onValueChange={(next) => {
+        if (next === ACTION_VALUE && !actionChosenRef.current) {
+          setHighlighted((current) => (current === NOTHING ? "" : NOTHING));
+          return;
+        }
+        setHighlighted(next);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          actionChosenRef.current = true;
+        }
+      }}
       className="flex flex-col gap-1.5"
     >
       <Label htmlFor={inputId} aria-hidden="true">
@@ -101,8 +127,14 @@ export function Combobox<T>({
               ref={inputRef}
               value={query}
               onValueChange={(next) => {
+                actionChosenRef.current = false;
                 onQueryChange(next);
                 setOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Home" || event.key === "End") {
+                  event.stopPropagation();
+                }
               }}
               onFocus={() => setOpen(true)}
               onClick={() => setOpen(true)}
@@ -149,7 +181,11 @@ export function Combobox<T>({
                 {emptyText}
               </p>
             )}
-            <Command.List className="max-h-72 overflow-y-auto">
+            <Command.List
+              ref={listRef}
+              label="Resultados"
+              className="max-h-72 overflow-y-auto"
+            >
               {shownItems.map((item) => (
                 <Command.Item
                   key={getKey(item)}
@@ -170,6 +206,9 @@ export function Combobox<T>({
               {action && showAction && (
                 <Command.Item
                   value={ACTION_VALUE}
+                  onPointerMove={() => {
+                    actionChosenRef.current = true;
+                  }}
                   onSelect={() => {
                     setOpen(false);
                     action.onSelect();

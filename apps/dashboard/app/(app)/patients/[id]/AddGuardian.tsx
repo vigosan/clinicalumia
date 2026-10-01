@@ -7,7 +7,7 @@ import { PersonCombobox } from "@clinicalumia/ui/combobox";
 import { Field } from "@clinicalumia/ui/field";
 import { Select } from "@clinicalumia/ui/select";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { withAge } from "@/lib/person-search";
 import type { Ward } from "@/lib/ward-label";
 import {
@@ -31,6 +31,21 @@ export function AddGuardian({
     useState<Ward["relationship"]>("madre");
   const [isPrimary, setIsPrimary] = useState(false);
   const [pending, startTransition] = useTransition();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const changeButtonRef = useRef<HTMLButtonElement>(null);
+  const keepFocusRef = useRef(false);
+
+  useEffect(() => {
+    if (!keepFocusRef.current) return;
+    keepFocusRef.current = false;
+    if (selected) {
+      changeButtonRef.current?.focus();
+    } else {
+      containerRef.current
+        ?.querySelector<HTMLInputElement>('[role="combobox"]')
+        ?.focus();
+    }
+  }, [selected]);
 
   function reset() {
     setOpen(false);
@@ -78,25 +93,51 @@ export function AddGuardian({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <PersonCombobox
-        label="Buscar tutor/a existente"
-        placeholder="Nombre, DNI, teléfono o email"
-        search={search}
-        onSelect={setSelected}
-        emptyText="No hay ninguna ficha con esos datos."
-        action={{
-          label: "Nuevo tutor/a",
-          onSelect: () => router.push(`/patients/new?guardianOf=${minorId}`),
-        }}
-        data-testid="guardian-search"
-        optionTestId="guardian-option"
-      />
+    <div ref={containerRef} className="flex flex-col gap-3">
+      {selected ? (
+        <Field label="Tutor/a">
+          <div
+            data-testid="guardian-selected"
+            className="flex h-11 items-center justify-between gap-3 rounded-field border border-line-field bg-white px-3.5 text-[15px] text-ink-900"
+          >
+            <span>
+              {selected.first_name} {selected.last_name}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              ref={changeButtonRef}
+              data-testid="guardian-change"
+              onClick={() => {
+                keepFocusRef.current = true;
+                setSelected(null);
+              }}
+            >
+              Cambiar
+            </Button>
+          </div>
+        </Field>
+      ) : (
+        <PersonCombobox
+          label="Buscar tutor/a existente"
+          placeholder="Nombre, DNI, teléfono o email"
+          search={search}
+          onSelect={(candidate) => {
+            keepFocusRef.current = true;
+            setSelected(candidate);
+          }}
+          emptyText="No hay ninguna ficha con esos datos."
+          action={{
+            label: "Nuevo tutor/a",
+            onSelect: () => router.push(`/patients/new?guardianOf=${minorId}`),
+          }}
+          data-testid="guardian-search"
+          optionTestId="guardian-option"
+        />
+      )}
       {selected && (
         <>
-          <p className="text-[15px] text-ink-900">
-            {selected.first_name} {selected.last_name}
-          </p>
           <Field label="Parentesco">
             <Select
               data-testid="guardian-relationship"

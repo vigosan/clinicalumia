@@ -718,7 +718,7 @@ test("en Nueva cita el buscador muestra edad y teléfono de cada paciente y se u
   expect(saved?.patient_id).toBe(person!.id);
 });
 
-test("en Nueva cita, Escape cierra la lista sin elegir a nadie y el foco sigue en el buscador", async ({
+test("en Nueva cita, Enter sin resultados no abre «Nuevo paciente» ni pierde lo escrito, y Escape cierra la lista dejando el foco en el buscador", async ({
   page,
 }) => {
   const employee = await createThrowawayUser({
@@ -732,12 +732,25 @@ test("en Nueva cita, Escape cierra la lista sin elegir a nadie y el foco sigue e
     `${DASHBOARD}/appointments/new?date=${dateWithWeekday(63, [1, 2, 3, 4, 5])}&time=10:00&professional=${employee.id}`,
   );
 
+  await page.getByTestId("appointment-notes").fill("Nota a conservar");
+  const url = page.url();
   const search = page.getByTestId("patient-search");
+  await search.focus();
+  await expect(
+    page.getByRole("option", { name: "Nuevo paciente" }),
+  ).toBeVisible();
+  await search.press("Enter");
   await search.fill("zzz-no-existe-zzz");
   await expect(page.getByTestId("patient-search-empty")).toHaveText(
     "No hay pacientes con esos datos.",
   );
   await expect(search).toHaveAttribute("aria-expanded", "true");
+  await search.press("Enter");
+  await expect(page.getByTestId("patient-search-empty")).toBeVisible();
+  expect(page.url()).toBe(url);
+  await expect(page.getByTestId("appointment-notes")).toHaveValue(
+    "Nota a conservar",
+  );
 
   await search.press("Escape");
   await expect(page.getByTestId("patient-search-empty")).toBeHidden();

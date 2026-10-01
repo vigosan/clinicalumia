@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -91,7 +91,12 @@ describe("PersonCombobox", () => {
     await screen.findAllByRole("option");
     expect(input).toHaveAttribute("aria-expanded", "true");
 
-    await userEvent.keyboard("{ArrowDown}{Enter}");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(input).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /Nuria Soler/ }).id,
+    );
+    await userEvent.keyboard("{Enter}");
 
     expect(screen.getByTestId("selected")).toHaveTextContent("Nuria");
     expect(onSubmit).not.toHaveBeenCalled();
@@ -245,6 +250,91 @@ describe("PersonCombobox", () => {
     );
 
     expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("does nothing on Enter right after focusing the empty search, so tabbing in and pressing Enter never leaves the appointment", async () => {
+    const onCreate = vi.fn();
+    render(
+      <PersonCombobox
+        label="Paciente"
+        search={async () => []}
+        onSelect={() => {}}
+        emptyText="No hay pacientes con esos datos."
+        action={{ label: "Nuevo paciente", onSelect: onCreate }}
+      />,
+    );
+    await userEvent.click(screen.getByRole("combobox", { name: "Paciente" }));
+    expect(
+      screen.getByRole("option", { name: "Nuevo paciente" }),
+    ).toHaveAttribute("aria-selected", "false");
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("does nothing on Enter when nobody matches, so a misspelled name does not open a new record by surprise", async () => {
+    const onCreate = vi.fn();
+    render(
+      <PersonCombobox
+        label="Paciente"
+        search={async () => []}
+        onSelect={() => {}}
+        emptyText="No hay pacientes con esos datos."
+        action={{ label: "Nuevo paciente", onSelect: onCreate }}
+        data-testid="patient-search"
+      />,
+    );
+    await userEvent.type(screen.getByTestId("patient-search"), "zzz");
+    await screen.findByTestId("patient-search-empty");
+
+    await userEvent.keyboard("{Enter}");
+    expect(onCreate).not.toHaveBeenCalled();
+
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves Home and End to the text cursor, as in any text field", async () => {
+    render(
+      <PersonCombobox
+        label="Paciente"
+        search={async () => [NORA, NURIA]}
+        onSelect={() => {}}
+        emptyText="No hay pacientes con esos datos."
+      />,
+    );
+    const input = screen.getByRole("combobox", { name: "Paciente" });
+    await userEvent.type(input, "n");
+    await screen.findAllByRole("option");
+
+    expect(fireEvent.keyDown(input, { key: "Home" })).toBe(true);
+    expect(fireEvent.keyDown(input, { key: "End" })).toBe(true);
+    expect(
+      screen.getByRole("option", { name: /Nora Martínez/ }),
+    ).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("names the result list in Spanish and stops pointing at an option once closed, so screen readers stay accurate", async () => {
+    render(
+      <PersonCombobox
+        label="Paciente"
+        search={async () => [NORA]}
+        onSelect={() => {}}
+        emptyText="No hay pacientes con esos datos."
+      />,
+    );
+    const input = screen.getByRole("combobox", { name: "Paciente" });
+    await userEvent.type(input, "nora");
+    await screen.findByRole("option", { name: /Nora Martínez/ });
+    expect(
+      screen.getByRole("listbox", { name: "Resultados" }),
+    ).toBeInTheDocument();
+    expect(input).toHaveAttribute("aria-activedescendant");
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(input).not.toHaveAttribute("aria-activedescendant");
   });
 
   it("picks a person with a click too", async () => {

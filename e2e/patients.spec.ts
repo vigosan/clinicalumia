@@ -607,6 +607,18 @@ test("añadir tutor/a busca fichas con edad y teléfono, se elige con el teclado
   await expect(option).toContainText(/\d+ años/);
   await expect(option).toContainText("622333444");
   await search.press("Enter");
+  await expect(page.getByTestId("guardian-selected")).toContainText(
+    `Abuela TutoraBuscada${suffix}`,
+  );
+  await expect(search).toHaveCount(0);
+
+  await page.getByTestId("guardian-change").click();
+  await expect(page.getByTestId("guardian-save")).toHaveCount(0);
+  await expect(page.getByTestId("guardian-selected")).toHaveCount(0);
+  await expect(search).toBeFocused();
+  await search.fill(`TutoraBuscada${suffix}`);
+  await expect(option).toHaveCount(1);
+  await search.press("Enter");
 
   await selectOption(page.getByTestId("guardian-relationship"), "otro");
   await page.getByTestId("guardian-save").click();
