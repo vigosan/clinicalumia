@@ -354,7 +354,7 @@ test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la 
 test("la página de cobros muestra los cobros del día con sus totales por forma de pago, el anulado se ve pero no suma, y el filtro por profesional funciona", async ({
   page,
 }) => {
-  const date = todayInMadrid();
+  const date = addDays(todayInMadrid(), -1);
   const employee = await createEmployee("Profesional Lista Cobros");
   const secondEmployee = await createEmployee("Profesional Lista Cobros Dos");
   const otherEmployee = await createEmployee("Profesional Lista Cobros Tres");

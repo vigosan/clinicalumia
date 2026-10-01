@@ -264,7 +264,11 @@ export function PersonForm({
       {person || guardianOf || consent ? (
         <CheckboxField
           name="is_patient"
-          label="También es paciente (recibe tratamiento)"
+          label={
+            guardianOf
+              ? "También es paciente (recibe tratamiento)"
+              : "Es paciente (recibe tratamiento)"
+          }
           defaultChecked={person?.is_patient ?? !guardianOf}
         />
       ) : (

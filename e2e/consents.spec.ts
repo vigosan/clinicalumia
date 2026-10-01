@@ -501,7 +501,7 @@ test("a consent from someone new waits as pending until staff create the record 
   );
   await expect(form.getByLabel("Email")).toHaveValue(email);
   await expect(
-    form.getByLabel("También es paciente (recibe tratamiento)"),
+    form.getByLabel("Es paciente (recibe tratamiento)", { exact: true }),
   ).toBeChecked();
   await expect(form).toContainText("Firmado por: Carmen Tutora");
 

@@ -123,6 +123,11 @@ export default async function NewAppointmentPage({
           initialTime={initialTime}
           initialProfessionalId={initialProfessionalId}
           initialPatient={patient}
+          cancelHref={
+            patient && !params.date
+              ? `/patients/${patient.id}`
+              : `/?date=${initialDate}`
+          }
         />
       </Card>
     </>

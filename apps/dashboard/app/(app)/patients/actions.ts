@@ -256,9 +256,9 @@ export async function removeGuardian(
     .eq("minor_id", minorId)
     .eq("guardian_id", guardianId)
     .select("minor_id");
-  if (error) return { error: "No se ha podido quitar el tutor." };
+  if (error) return { error: "No se ha podido quitar el tutor/a." };
   if (!data || data.length === 0)
-    return { error: "No se ha podido quitar el tutor." };
+    return { error: "No se ha podido quitar el tutor/a." };
 
   revalidatePath(`/patients/${minorId}`);
   revalidatePath(`/patients/${guardianId}`);

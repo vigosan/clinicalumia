@@ -150,8 +150,13 @@ export function AppointmentPanel({
       </div>
 
       <div className="flex items-center gap-2">
-        <Badge tone={STATUS_TONE[appointment.status]}>
-          {STATUS_LABEL[appointment.status]}
+        <Badge
+          tone={STATUS_TONE[appointment.status]}
+          data-testid="appointment-status"
+        >
+          {appointment.canMarkNoShow
+            ? "Realizada"
+            : STATUS_LABEL[appointment.status]}
         </Badge>
         {appointment.origin === "web" && (
           <Badge tone="neutral" data-testid="web-booking-badge">

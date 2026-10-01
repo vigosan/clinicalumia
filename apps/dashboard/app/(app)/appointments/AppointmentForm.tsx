@@ -38,6 +38,7 @@ export function AppointmentForm({
   initialTime,
   initialProfessionalId,
   initialPatient,
+  cancelHref,
 }: {
   professionals: Professional[];
   fixedProfessionalId: string | null;
@@ -46,6 +47,7 @@ export function AppointmentForm({
   initialTime: string;
   initialProfessionalId: string | null;
   initialPatient?: PatientOption | null;
+  cancelHref: string;
 }) {
   const [state, formAction, pending] = useActionState(
     createAppointment,
@@ -274,7 +276,7 @@ export function AppointmentForm({
           {pending ? "Guardando…" : "Dar cita"}
         </Button>
         <Button asChild variant="secondary">
-          <Link href={`/?date=${initialDate}`}>Cancelar</Link>
+          <Link href={cancelHref}>Cancelar</Link>
         </Button>
       </div>
     </form>

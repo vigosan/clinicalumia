@@ -1081,12 +1081,16 @@ test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer 
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
+  await expect(page.getByTestId("appointment-status")).toHaveText("Realizada");
   await page.getByTestId("appointment-no-show").click();
   await page.getByTestId("confirm-action").click();
 
   await expect(
     columnFor(page, employee.id).getByTestId("appointment-block"),
   ).toHaveClass(/opacity-60/);
+  await expect(page.getByTestId("appointment-status")).toHaveText(
+    "No presentada",
+  );
   await expect(page.getByTestId("appointment-history")).toContainText(
     "Marcada como no presentada",
   );

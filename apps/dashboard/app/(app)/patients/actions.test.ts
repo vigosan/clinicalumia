@@ -372,7 +372,7 @@ describe("removeGuardian", () => {
   it("reports it could not be removed when no row was deleted", async () => {
     guardianshipDeleteResult.data = [];
     expect(await removeGuardian("minor-1", "guardian-1")).toEqual({
-      error: "No se ha podido quitar el tutor.",
+      error: "No se ha podido quitar el tutor/a.",
     });
   });
 });

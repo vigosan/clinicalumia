@@ -145,9 +145,7 @@ test("adding an adult from «Nuevo paciente» takes you to their record as a pat
   await page.getByLabel("Nombre").fill("Persona");
   await page.getByLabel("Apellidos").fill(lastName);
   await page.getByLabel("Fecha de nacimiento").fill("1990-01-01");
-  await expect(
-    page.getByLabel("También es paciente (recibe tratamiento)"),
-  ).toHaveCount(0);
+  await expect(page.getByLabel(/es paciente/i)).toHaveCount(0);
   await expect(page.getByTestId("person-submit")).toHaveText("Crear ficha");
   await page.getByTestId("person-submit").click();
 
@@ -773,4 +771,59 @@ test("clicking a person's name in the list, an archive/recover round trip, and c
   await expect(
     page.getByTestId("ward-row").filter({ hasText: minorLastName }),
   ).toBeVisible();
+});
+
+test("a patient with no appointments offers «Nueva cita» for them, and Cancelar brings staff back to the record; archived and guardian-only records don't, since booking them would fail", async ({
+  page,
+}) => {
+  const lastName = `SinCitas${Date.now()}`;
+  const { data: people, error } = await admin
+    .from("people")
+    .insert([
+      {
+        first_name: "Paciente",
+        last_name: lastName,
+        birth_date: "1985-03-10",
+        is_patient: true,
+      },
+      {
+        first_name: "Archivado",
+        last_name: lastName,
+        birth_date: "1985-03-10",
+        is_patient: true,
+        archived_at: new Date().toISOString(),
+      },
+    ])
+    .select("id, first_name");
+  expect(error).toBeNull();
+  createdPersonIds.push(...(people ?? []).map((person) => person.id));
+  const patientId = people!.find((p) => p.first_name === "Paciente")!.id;
+  const archivedId = people!.find((p) => p.first_name === "Archivado")!.id;
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${patientId}`);
+
+  await expect(page.getByRole("main")).toContainText("años · Paciente");
+  await expect(page.getByRole("main")).toContainText("Todavía no tiene citas.");
+  const newAppointment = page.getByTestId("patient-new-appointment");
+  await expect(newAppointment).toHaveAttribute(
+    "href",
+    `/appointments/new?patient=${patientId}`,
+  );
+  await newAppointment.click();
+  await page.waitForURL(/\/appointments\/new\?patient=/);
+  await expect(page.getByTestId("patient-selected")).toContainText(
+    `Paciente ${lastName}`,
+  );
+
+  await page.getByRole("link", { name: "Cancelar" }).click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${patientId}`);
+
+  await page.goto(`${DASHBOARD}/patients/${archivedId}`);
+  await expect(page.getByRole("main")).toContainText("Ficha archivada");
+  await expect(page.getByTestId("patient-new-appointment")).toHaveCount(0);
+
+  await page.goto(`${DASHBOARD}/patients/a0000000-0000-0000-0000-000000000601`);
+  await expect(page.getByRole("main")).toContainText("Tutor/a");
+  await expect(page.getByTestId("patient-new-appointment")).toHaveCount(0);
 });

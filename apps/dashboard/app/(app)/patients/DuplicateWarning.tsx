@@ -68,7 +68,7 @@ export function DuplicateWarning({
           data-testid="duplicate-continue"
           onClick={onContinue}
         >
-          Es otra persona, continuar
+          No es ninguna de estas, crear ficha
         </Button>
       </div>
     </div>
