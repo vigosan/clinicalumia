@@ -356,7 +356,7 @@ test("la propietaria descarga en un ZIP un PDF por factura del trimestre y el li
   expect(await exportsOf(owner.id)).toEqual(stored);
 });
 
-test("el ZIP del trimestre explica el fallo sin dejar el botón bloqueado", async ({
+test("el ZIP del trimestre avisa de que se está preparando y explica el fallo sin dejar el botón bloqueado", async ({
   page,
 }) => {
   const { year, q } = await quarterWithFiveInvoices();
@@ -365,16 +365,26 @@ test("el ZIP del trimestre explica el fallo sin dejar el botón bloqueado", asyn
   await signIn(page, ADMIN, owner.email, owner.password);
   await openQuarter(page, year, q);
 
-  await page.route("**/facturacion/zip?*", (route) =>
-    route.fulfill({
+  let answer = () => {};
+  const answered = new Promise<void>((resolve) => {
+    answer = resolve;
+  });
+  await page.route("**/facturacion/zip?*", async (route) => {
+    await answered;
+    await route.fulfill({
       status: 413,
       json: {
         error:
           "El ZIP del trimestre pesa más de 50 MB. Descarga las facturas desde el panel.",
       },
-    }),
-  );
+    });
+  });
   await page.getByTestId("quarter-download-zip").click();
+  await expect(page.getByTestId("quarter-download-zip")).toHaveText(
+    "Preparando…",
+  );
+  await expect(page.getByTestId("quarter-download-zip")).toBeDisabled();
+  answer();
   await expect(page.getByTestId("quarter-zip-error")).toHaveText(
     "El ZIP del trimestre pesa más de 50 MB. Descarga las facturas desde el panel.",
   );

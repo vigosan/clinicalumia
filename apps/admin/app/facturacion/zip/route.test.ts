@@ -59,7 +59,7 @@ beforeEach(() => {
   zip.mockReset();
   zip.mockImplementation(async () => {
     calls.push("zip");
-    return ZIP_BYTES;
+    return { zip: ZIP_BYTES };
   });
   storage.list.mockReset();
   storage.list.mockImplementation(async () => {
@@ -100,6 +100,7 @@ describe("POST /facturacion/zip", () => {
       year: 2026,
       q: 3,
       invoices: INVOICES,
+      maxBytes: 50 * 1024 * 1024,
     });
     expect(bucket.mock.calls.every(([name]) => name === "exports")).toBe(true);
     const [path, body, options] = storage.upload.mock.calls[0]!;
@@ -164,7 +165,7 @@ describe("POST /facturacion/zip", () => {
   });
 
   it("explains that the ZIP is too big for the storage limit instead of failing on upload", async () => {
-    zip.mockResolvedValue(new Uint8Array(50 * 1024 * 1024 + 1));
+    zip.mockResolvedValue({ tooLarge: true });
     const response = await post("?year=2026&q=3");
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({
@@ -195,5 +196,17 @@ describe("POST /facturacion/zip", () => {
     await expect(post("?year=2026&q=3")).rejects.toThrow(
       "No se ha podido guardar el ZIP: y",
     );
+  });
+
+  it("hands a multi-megabyte ZIP to storage and answers only with the link, so the function response stays tiny whatever the quarter weighs", async () => {
+    const big = new Uint8Array(6 * 1024 * 1024);
+    zip.mockResolvedValue({ zip: big });
+    const response = await post("?year=2026&q=3");
+    expect(response.status).toBe(200);
+    expect(storage.upload.mock.calls[0]![1]).toBe(big);
+    expect(response.headers.get("Content-Type")).toContain("application/json");
+    const text = await response.text();
+    expect(JSON.parse(text)).toEqual({ url: "http://127.0.0.1:54321/signed" });
+    expect(text.length).toBeLessThan(200);
   });
 });

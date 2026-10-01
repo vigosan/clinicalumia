@@ -38,11 +38,12 @@ export async function POST(request: Request) {
   if (result.invoices.length === 0)
     return json(404, { error: "No hay facturas en este trimestre." });
 
-  const zip = await quarterZip(supabase, {
+  const built = await quarterZip(supabase, {
     ...quarter,
     invoices: result.invoices,
+    maxBytes: MAX_ZIP_BYTES,
   });
-  if (zip.byteLength > MAX_ZIP_BYTES)
+  if ("tooLarge" in built)
     return json(413, {
       error:
         "El ZIP del trimestre pesa más de 50 MB. Descarga las facturas desde el panel.",
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
   }
 
   const path = `${owner.userId}/${crypto.randomUUID()}.zip`;
-  const uploaded = await exports.upload(path, zip, {
+  const uploaded = await exports.upload(path, built.zip, {
     contentType: "application/zip",
   });
   if (uploaded.error) storageFailure(uploaded.error);

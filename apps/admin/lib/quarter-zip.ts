@@ -38,28 +38,51 @@ async function clinicLogo(supabase: Client): Promise<Uint8Array | undefined> {
   return isPngOrJpeg(bytes) ? bytes : undefined;
 }
 
+const DETAIL_CONCURRENCY = 4;
+
+async function invoiceDetail(supabase: Client, invoice: QuarterInvoice) {
+  const { data: detail, error } = await supabase
+    .rpc("invoice_detail", { p_invoice_id: invoice.id })
+    .single();
+  if (error || !detail)
+    throw new Error(
+      `No se ha podido generar la factura ${invoice.code}: ${error?.message ?? ""}`,
+    );
+  return detail;
+}
+
 export async function quarterZip(
   supabase: Client,
   {
     year,
     q,
     invoices,
-  }: { year: number; q: Quarter; invoices: QuarterInvoice[] },
-): Promise<Uint8Array> {
+    maxBytes,
+  }: {
+    year: number;
+    q: Quarter;
+    invoices: QuarterInvoice[];
+    maxBytes: number;
+  },
+): Promise<{ zip: Uint8Array } | { tooLarge: true }> {
   const logo = await clinicLogo(supabase);
   const entries: Zippable = {};
-  for (const invoice of invoices) {
-    const { data: detail, error } = await supabase
-      .rpc("invoice_detail", { p_invoice_id: invoice.id })
-      .single();
-    if (error || !detail)
-      throw new Error(
-        `No se ha podido generar la factura ${invoice.code}: ${error?.message ?? ""}`,
-      );
-    const pdf = await renderInvoicePdf(detail, { logo });
-    entries[pdfFileName(detail.code)] = [pdf, { level: 0 }];
+  let total = 0;
+  for (let start = 0; start < invoices.length; start += DETAIL_CONCURRENCY) {
+    const details = await Promise.all(
+      invoices
+        .slice(start, start + DETAIL_CONCURRENCY)
+        .map((invoice) => invoiceDetail(supabase, invoice)),
+    );
+    for (const detail of details) {
+      const pdf = await renderInvoicePdf(detail, { logo });
+      total += pdf.byteLength;
+      if (total > maxBytes) return { tooLarge: true };
+      entries[pdfFileName(detail.code)] = [pdf, { level: 0 }];
+    }
   }
   const xlsx = await ledgerXlsx({ year, q, invoices });
   entries[exportFileName(year, q, "xlsx")] = [xlsx, { level: 0 }];
-  return zipSync(entries);
+  const zip = zipSync(entries);
+  return zip.byteLength > maxBytes ? { tooLarge: true } : { zip };
 }
