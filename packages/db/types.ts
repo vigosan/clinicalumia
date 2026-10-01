@@ -257,6 +257,41 @@ export type Database = {
           },
         ]
       }
+      clinic_closures: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_on: string
+          id: string
+          reason: string
+          starts_on: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_on: string
+          id?: string
+          reason: string
+          starts_on: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_on?: string
+          id?: string
+          reason?: string
+          starts_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_closures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_settings: {
         Row: {
           address_line: string
