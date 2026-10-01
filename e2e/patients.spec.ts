@@ -342,7 +342,8 @@ test('creating a minor patient shows "Menor sin tutor/a", and adding their guard
   await expect(page.getByTestId("patient-no-guardian")).toBeVisible();
 
   await page.getByTestId("guardian-add").click();
-  await page.getByRole("link", { name: "Nuevo tutor/a" }).click();
+  await page.getByTestId("guardian-search").click();
+  await page.getByRole("option", { name: "Nuevo tutor/a" }).click();
   await expect(page).toHaveURL(
     `${DASHBOARD}/patients/new?guardianOf=${minorId}`,
   );
@@ -565,6 +566,57 @@ test('searching for someone who does not exist shows "No hay ninguna ficha con e
   await page.getByTestId("guardian-close").click();
   await expect(page.getByTestId("guardian-add")).toBeVisible();
   await expect(page.getByTestId("guardian-search")).toHaveCount(0);
+});
+
+test("añadir tutor/a busca fichas con edad y teléfono, se elige con el teclado y queda guardado con su parentesco", async ({
+  page,
+}) => {
+  const suffix = Date.now();
+  const { data: people, error: peopleError } = await admin
+    .from("people")
+    .insert([
+      {
+        first_name: "Hija",
+        last_name: `MenorTutora${suffix}`,
+        is_patient: true,
+        birth_date: "2016-05-05",
+      },
+      {
+        first_name: "Abuela",
+        last_name: `TutoraBuscada${suffix}`,
+        is_patient: false,
+        birth_date: "1960-02-02",
+        phone: "+34622333444",
+      },
+    ])
+    .select("id, first_name");
+  expect(peopleError).toBeNull();
+  const minorId = people!.find((p) => p.first_name === "Hija")!.id;
+  const guardianId = people!.find((p) => p.first_name === "Abuela")!.id;
+  createdPersonIds.push(minorId, guardianId);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${minorId}`);
+
+  await page.getByTestId("guardian-add").click();
+  const search = page.getByTestId("guardian-search");
+  await search.fill(`TutoraBuscada${suffix}`);
+  const option = page.getByTestId("guardian-option");
+  await expect(option).toHaveCount(1);
+  await expect(option).toContainText(`Abuela TutoraBuscada${suffix}`);
+  await expect(option).toContainText(/\d+ años/);
+  await expect(option).toContainText("622333444");
+  await search.press("Enter");
+
+  await selectOption(page.getByTestId("guardian-relationship"), "otro");
+  await page.getByTestId("guardian-save").click();
+  await expect(page.getByTestId("guardian-add")).toBeVisible();
+
+  const { data: saved } = await admin
+    .from("guardianships")
+    .select("guardian_id, relationship")
+    .eq("minor_id", minorId);
+  expect(saved).toEqual([{ guardian_id: guardianId, relationship: "otro" }]);
 });
 
 test("archiving a minor patient hides them from the list, the «Archivados» filter shows them, and Desarchivar brings them back", async ({

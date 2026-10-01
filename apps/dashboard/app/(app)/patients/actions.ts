@@ -167,6 +167,8 @@ export type GuardianCandidate = {
   id: string;
   first_name: string;
   last_name: string;
+  birth_date: string | null;
+  phone: string | null;
 };
 
 export async function searchGuardianCandidates(
@@ -188,7 +190,7 @@ export async function searchGuardianCandidates(
 
   const { data, error } = await supabase
     .from("people")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, birth_date, phone")
     .is("archived_at", null)
     .not("id", "in", `(${excludeIds.join(",")})`)
     .ilike("search_text", toIlikePattern(normalized))

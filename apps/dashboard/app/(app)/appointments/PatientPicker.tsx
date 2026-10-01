@@ -1,11 +1,12 @@
 "use client";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { PersonCombobox } from "@clinicalumia/ui/combobox";
 import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
-import { Plus } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { withAge } from "@/lib/person-search";
 import { type PatientOption, searchPatients } from "./actions";
 
 export type { PatientOption };
@@ -23,117 +24,83 @@ export function PatientPicker({
   returnTo?: string;
   hideNewPerson?: boolean;
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PatientOption[]>([]);
-  const [searched, setSearched] = useState(false);
-  const [searchFailed, setSearchFailed] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchSeqRef = useRef(0);
+  const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const changeButtonRef = useRef<HTMLButtonElement>(null);
+  const keepFocusRef = useRef(false);
 
-  useEffect(
-    () => () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    },
-    [],
-  );
-
-  function handleQueryChange(value: string) {
-    setQuery(value);
-    setSearched(false);
-    setSearchFailed(false);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!value.trim()) {
-      setResults([]);
-      return;
+  useEffect(() => {
+    if (!keepFocusRef.current) return;
+    keepFocusRef.current = false;
+    if (selected) {
+      changeButtonRef.current?.focus();
+    } else {
+      containerRef.current
+        ?.querySelector<HTMLInputElement>('[role="combobox"]')
+        ?.focus();
     }
-    const seq = ++searchSeqRef.current;
-    debounceRef.current = setTimeout(() => {
-      void searchPatients(value)
-        .then((found) => {
-          if (searchSeqRef.current !== seq) return;
-          setResults(found);
-          setSearched(true);
-        })
-        .catch(() => {
-          if (searchSeqRef.current !== seq) return;
-          setResults([]);
-          setSearchFailed(true);
-          setSearched(true);
-        });
-    }, 300);
-  }
+  }, [selected]);
 
-  if (selected) {
-    return (
-      <Field label="Paciente">
-        <div
-          data-testid="patient-selected"
-          className="flex h-11 items-center justify-between gap-3 rounded-field border border-line-field bg-white px-3.5 text-[15px] text-ink-900"
-        >
-          <span>
-            {selected.first_name} {selected.last_name}
-          </span>
-          <Button type="button" variant="ghost" size="sm" onClick={onClear}>
-            Cambiar
-          </Button>
-        </div>
-      </Field>
-    );
+  async function search(query: string) {
+    const today = todayInMadrid();
+    return (await searchPatients(query)).map((row) => withAge(row, today));
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <Field label="Paciente">
-        <Input
-          data-testid="patient-search"
-          value={query}
-          onChange={(event) => handleQueryChange(event.target.value)}
-        />
-      </Field>
-      {searchFailed && (
-        <p
-          role="alert"
-          data-testid="patient-search-error"
-          className="text-[13px] text-danger-600"
-        >
-          No se ha podido buscar. Inténtalo de nuevo.
-        </p>
-      )}
-      {!searchFailed && results.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {results.map((option) => (
-            <li key={option.id}>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid="patient-option"
-                onClick={() => onSelect(option)}
-              >
-                {option.first_name} {option.last_name}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {!searchFailed && searched && results.length === 0 && (
-        <p className="text-sm text-ink-800" data-testid="patient-search-empty">
-          No hay pacientes con esos datos.
-        </p>
-      )}
-      {!hideNewPerson && (
-        <Button asChild variant="ghost" size="sm" className="self-start">
-          <Link
-            href={
-              returnTo
-                ? `/patients/new?returnTo=${encodeURIComponent(returnTo)}`
-                : "/patients/new"
-            }
+    <div ref={containerRef}>
+      {selected ? (
+        <Field label="Paciente">
+          <div
+            data-testid="patient-selected"
+            className="flex h-11 items-center justify-between gap-3 rounded-field border border-line-field bg-white px-3.5 text-[15px] text-ink-900"
           >
-            <Plus aria-hidden="true" />
-            Nuevo paciente
-          </Link>
-        </Button>
+            <span>
+              {selected.first_name} {selected.last_name}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              ref={changeButtonRef}
+              onClick={() => {
+                keepFocusRef.current = true;
+                onClear();
+              }}
+            >
+              Cambiar
+            </Button>
+          </div>
+        </Field>
+      ) : (
+        <PersonCombobox
+          label="Paciente"
+          placeholder="Nombre, DNI, teléfono o email"
+          search={search}
+          onSelect={(patient) => {
+            keepFocusRef.current = true;
+            onSelect({
+              id: patient.id,
+              first_name: patient.first_name,
+              last_name: patient.last_name,
+            });
+          }}
+          emptyText="No hay pacientes con esos datos."
+          action={
+            hideNewPerson
+              ? undefined
+              : {
+                  label: "Nuevo paciente",
+                  onSelect: () =>
+                    router.push(
+                      returnTo
+                        ? `/patients/new?returnTo=${encodeURIComponent(returnTo)}`
+                        : "/patients/new",
+                    ),
+                }
+          }
+          data-testid="patient-search"
+          optionTestId="patient-option"
+        />
       )}
     </div>
   );

@@ -650,6 +650,102 @@ test("desde un hueco de mañana, buscar «nora», elegir servicio y guardar crea
   ).toContainText("Nora");
 });
 
+test("en Nueva cita el buscador muestra edad y teléfono de cada paciente y se usa solo con el teclado: Enter elige y la cita se guarda con ese paciente", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(62, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Buscador",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const { error: scheduleError } = await admin
+    .from("employee_schedules")
+    .insert({
+      profile_id: employee.id,
+      weekday: isoWeekday(date),
+      starts_at: "09:00",
+      ends_at: "14:00",
+    });
+  expect(scheduleError).toBeNull();
+  const lastName = `Teclado${Date.now()}`;
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: lastName,
+      is_patient: true,
+      birth_date: "1990-01-01",
+      phone: "+34611222333",
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  createdPersonIds.push(person!.id);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=10:00&professional=${employee.id}`,
+  );
+
+  const search = page.getByTestId("patient-search");
+  await expect(search).toHaveAttribute("role", "combobox");
+  await search.fill(lastName);
+  const option = page.getByTestId("patient-option");
+  await expect(option).toHaveCount(1);
+  await expect(option).toContainText(`Paciente ${lastName}`);
+  await expect(option).toContainText(/\d+ años/);
+  await expect(option).toContainText("611222333");
+
+  await search.press("Enter");
+  await expect(page.getByTestId("patient-selected")).toContainText(
+    `Paciente ${lastName}`,
+  );
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
+  await page.getByTestId("appointment-submit").click();
+
+  await page.waitForURL(/\/\?date=/);
+  const appointmentId = appointmentIdFrom(page);
+  createdAppointmentIds.push(appointmentId);
+  const { data: saved } = await admin
+    .from("appointments")
+    .select("patient_id")
+    .eq("id", appointmentId)
+    .single();
+  expect(saved?.patient_id).toBe(person!.id);
+});
+
+test("en Nueva cita, Escape cierra la lista sin elegir a nadie y el foco sigue en el buscador", async ({
+  page,
+}) => {
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Escape",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${dateWithWeekday(63, [1, 2, 3, 4, 5])}&time=10:00&professional=${employee.id}`,
+  );
+
+  const search = page.getByTestId("patient-search");
+  await search.fill("zzz-no-existe-zzz");
+  await expect(page.getByTestId("patient-search-empty")).toHaveText(
+    "No hay pacientes con esos datos.",
+  );
+  await expect(search).toHaveAttribute("aria-expanded", "true");
+
+  await search.press("Escape");
+  await expect(page.getByTestId("patient-search-empty")).toBeHidden();
+  await expect(search).toHaveAttribute("aria-expanded", "false");
+  await expect(search).toBeFocused();
+  await expect(page.getByTestId("patient-selected")).toHaveCount(0);
+});
+
 test("«Nuevo paciente» desde el formulario de cita vuelve con el paciente nuevo elegido y conserva fecha, hora y profesional", async ({
   page,
 }) => {
@@ -665,7 +761,8 @@ test("«Nuevo paciente» desde el formulario de cita vuelve con el paciente nuev
     `${DASHBOARD}/appointments/new?date=${date}&time=11:00&professional=${employee.id}`,
   );
 
-  await page.getByRole("link", { name: "Nuevo paciente" }).click();
+  await page.getByTestId("patient-search").click();
+  await page.getByRole("option", { name: "Nuevo paciente" }).click();
   await page.waitForURL(/\/patients\/new\?returnTo=/);
 
   const lastName = `PruebaVolver${Date.now()}`;
@@ -868,6 +965,7 @@ test("la propietaria elige profesional y ve los servicios de su especialidad", a
     page.getByRole("option", { name: "Sesión individual de fisioterapia" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("appointment-service")).toBeFocused();
 
   await selectNora(page);
   await selectOption(

@@ -24,14 +24,21 @@ export type PatientOption = {
   last_name: string;
 };
 
-export async function searchPatients(query: string): Promise<PatientOption[]> {
+export type PatientSearchResult = PatientOption & {
+  birth_date: string | null;
+  phone: string | null;
+};
+
+export async function searchPatients(
+  query: string,
+): Promise<PatientSearchResult[]> {
   const normalized = normalizeSearch(query);
   if (!normalized) return [];
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("people")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, birth_date, phone")
     .eq("is_patient", true)
     .is("archived_at", null)
     .ilike("search_text", toIlikePattern(normalized))

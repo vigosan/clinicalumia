@@ -1,13 +1,14 @@
 "use client";
 
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
+import { PersonCombobox } from "@clinicalumia/ui/combobox";
 import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
-import { Plus } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { withAge } from "@/lib/person-search";
 import type { Ward } from "@/lib/ward-label";
 import {
   addGuardian,
@@ -23,61 +24,25 @@ export function AddGuardian({
   minorId: string;
   onError: (message: string | null) => void;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [candidates, setCandidates] = useState<GuardianCandidate[]>([]);
-  const [searched, setSearched] = useState(false);
-  const [searchFailed, setSearchFailed] = useState(false);
   const [selected, setSelected] = useState<GuardianCandidate | null>(null);
   const [relationship, setRelationship] =
     useState<Ward["relationship"]>("madre");
   const [isPrimary, setIsPrimary] = useState(false);
   const [pending, startTransition] = useTransition();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchSeqRef = useRef(0);
 
   function reset() {
     setOpen(false);
-    setQuery("");
-    setCandidates([]);
-    setSearched(false);
-    setSearchFailed(false);
     setSelected(null);
     setIsPrimary(false);
   }
 
-  useEffect(
-    () => () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    },
-    [],
-  );
-
-  function handleQueryChange(value: string) {
-    setQuery(value);
-    setSelected(null);
-    setSearched(false);
-    setSearchFailed(false);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!value.trim()) {
-      setCandidates([]);
-      return;
-    }
-    const seq = ++searchSeqRef.current;
-    debounceRef.current = setTimeout(() => {
-      void searchGuardianCandidates(value, minorId)
-        .then((results) => {
-          if (searchSeqRef.current !== seq) return;
-          setCandidates(results);
-          setSearched(true);
-        })
-        .catch(() => {
-          if (searchSeqRef.current !== seq) return;
-          setCandidates([]);
-          setSearchFailed(true);
-          setSearched(true);
-        });
-    }, 300);
+  async function search(query: string) {
+    const today = todayInMadrid();
+    return (await searchGuardianCandidates(query, minorId)).map((row) =>
+      withAge(row, today),
+    );
   }
 
   function handleSave() {
@@ -114,50 +79,19 @@ export function AddGuardian({
 
   return (
     <div className="flex flex-col gap-3">
-      <Field label="Buscar tutor/a existente">
-        <Input
-          data-testid="guardian-search"
-          value={query}
-          onChange={(event) => handleQueryChange(event.target.value)}
-        />
-      </Field>
-      {!selected && searchFailed && (
-        <p
-          role="alert"
-          data-testid="guardian-search-error"
-          className="text-[13px] text-danger-600"
-        >
-          No se ha podido buscar. Inténtalo de nuevo.
-        </p>
-      )}
-      {!selected && !searchFailed && candidates.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {candidates.map((candidate) => (
-            <li key={candidate.id}>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid="guardian-option"
-                onClick={() => setSelected(candidate)}
-              >
-                {candidate.first_name} {candidate.last_name}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {!selected && !searchFailed && searched && candidates.length === 0 && (
-        <p className="text-sm text-ink-800" data-testid="guardian-search-empty">
-          No hay ninguna ficha con esos datos.
-        </p>
-      )}
-      <Button asChild variant="ghost" size="sm" className="self-start">
-        <Link href={`/patients/new?guardianOf=${minorId}`}>
-          <Plus aria-hidden="true" />
-          Nuevo tutor/a
-        </Link>
-      </Button>
+      <PersonCombobox
+        label="Buscar tutor/a existente"
+        placeholder="Nombre, DNI, teléfono o email"
+        search={search}
+        onSelect={setSelected}
+        emptyText="No hay ninguna ficha con esos datos."
+        action={{
+          label: "Nuevo tutor/a",
+          onSelect: () => router.push(`/patients/new?guardianOf=${minorId}`),
+        }}
+        data-testid="guardian-search"
+        optionTestId="guardian-option"
+      />
       {selected && (
         <>
           <p className="text-[15px] text-ink-900">

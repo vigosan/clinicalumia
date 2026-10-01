@@ -279,10 +279,11 @@ test("staff see a pending consent first, link it by hand to the right record and
 
   const picker = page.getByTestId("consent-link-picker");
   await picker.getByTestId("patient-search").fill(surname);
-  await picker
+  const option = page
     .getByTestId("patient-option")
-    .filter({ hasText: `Ficha ${surname}` })
-    .click();
+    .filter({ hasText: `Ficha ${surname}` });
+  await expect(option).toContainText(/\d+ años/);
+  await option.click();
   await page.getByTestId("consent-link").click();
 
   await expect(page.getByTestId("consent-status")).toHaveText(
