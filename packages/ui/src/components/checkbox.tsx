@@ -7,13 +7,14 @@ export function Checkbox({
   ...props
 }: Omit<ComponentProps<"input">, "type">) {
   return (
-    <span className="relative inline-flex size-[18px] shrink-0">
+    <span
+      className={cn("relative inline-flex size-[18px] shrink-0", className)}
+    >
       <input
         type="checkbox"
-        className={cn(
-          "peer size-full cursor-pointer appearance-none rounded-[5px] border border-line-field bg-white shadow-[0_1px_2px_rgb(58_58_58/0.05)] transition-colors checked:border-sage-800 checked:bg-sage-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-800 disabled:cursor-not-allowed disabled:opacity-55 aria-[invalid=true]:border-danger-600",
-          className,
-        )}
+        className={
+          "peer size-full cursor-pointer appearance-none rounded-[5px] border border-line-field bg-white shadow-[0_1px_2px_rgb(58_58_58/0.05)] transition-colors checked:border-sage-800 checked:bg-sage-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-800 disabled:cursor-not-allowed disabled:opacity-55 aria-[invalid=true]:border-danger-600"
+        }
         {...props}
       />
       <Check

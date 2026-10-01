@@ -52,9 +52,9 @@ export function Select({
   const [uncontrolled, setUncontrolled] = useState(defaultValue);
   const current = value ?? uncontrolled;
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const hasEmptyOption = options.some((option) => option.value === "");
-  const rootValue =
-    current === "" && !hasEmptyOption ? "" : toItemValue(current);
+  const rootValue = options.some((option) => option.value === current)
+    ? toItemValue(current)
+    : "";
 
   useEffect(() => {
     const form = triggerRef.current?.form;
@@ -71,6 +71,7 @@ export function Select({
       <Primitive.Root
         value={rootValue}
         disabled={disabled}
+        required={required}
         onValueChange={(next) => {
           const nextValue = fromItemValue(next);
           if (value === undefined) setUncontrolled(nextValue);
@@ -83,11 +84,10 @@ export function Select({
           aria-label={ariaLabel}
           aria-invalid={ariaInvalid}
           aria-describedby={ariaDescribedBy}
-          aria-required={required}
           data-testid={testId}
           className={cn(
             fieldControl,
-            "flex cursor-pointer items-center justify-between gap-2 text-left focus:border-line-field focus:ring-0 focus-visible:border-sage-800 focus-visible:ring-[3px] focus-visible:ring-sage-800/15 shadow-[0_1px_2px_rgb(58_58_58/0.05)] data-[placeholder]:text-ink-500 data-[state=open]:border-sage-800 data-[state=open]:ring-[3px] data-[state=open]:ring-sage-800/15 [&>span]:truncate",
+            "flex cursor-pointer items-center justify-between gap-2 text-left focus:border-line-field focus:ring-0 focus-visible:border-sage-800 focus-visible:ring-[3px] focus-visible:ring-sage-800/15 data-[placeholder]:text-ink-500 data-[state=open]:border-sage-800 data-[state=open]:ring-[3px] data-[state=open]:ring-sage-800/15 [&>span]:truncate",
             className,
           )}
         >

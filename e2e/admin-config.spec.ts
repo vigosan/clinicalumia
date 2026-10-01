@@ -61,6 +61,11 @@ test("the owner creates a service with a deposit and sees it listed with its pri
   createdServiceNames.push(name);
   await page.goto(`${ADMIN}/services`);
   await page.getByTestId("service-new").click();
+  const isFormValid = () =>
+    page
+      .getByTestId("service-form")
+      .evaluate((form: HTMLFormElement) => form.checkValidity());
+  expect(await isFormValid()).toBe(false);
   await selectOption(page.getByLabel("Especialidad", { exact: true }), {
     label: "Fisioterapia",
   });

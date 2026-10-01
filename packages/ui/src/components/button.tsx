@@ -17,7 +17,7 @@ export const buttonVariants = cva(
         danger:
           "border-danger-600/35 bg-white text-danger-600 shadow-[0_1px_2px_rgb(58_58_58/0.06)] hover:border-danger-600/60 hover:bg-danger-100",
         destructive:
-          "border-danger-600 bg-danger-600 text-white shadow-[0_1px_2px_rgb(156_74_49/0.25)] hover:border-[#843d28] hover:bg-[#843d28] focus-visible:outline-danger-600",
+          "border-danger-600 bg-danger-600 text-white shadow-[0_1px_2px_rgb(156_74_49/0.25)] hover:border-danger-700 hover:bg-danger-700 focus-visible:outline-danger-600",
       },
       size: {
         md: "h-11 px-[22px] text-[15px]",

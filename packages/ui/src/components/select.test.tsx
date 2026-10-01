@@ -167,4 +167,41 @@ describe("Select", () => {
     await userEvent.click(screen.getByRole("combobox", { name: "Servicio" }));
     expect(screen.getByTestId("option-psico")).toHaveTextContent("Psicología");
   });
+
+  it("blocks the submit while a required select has nothing chosen, so a service is never saved without its specialty", async () => {
+    render(
+      <form data-testid="form">
+        <Select
+          name="specialty_id"
+          aria-label="Especialidad"
+          placeholder="Elige una especialidad"
+          required
+          options={SERVICES}
+        />
+      </form>,
+    );
+    const form = screen.getByTestId("form") as HTMLFormElement;
+    expect(form.checkValidity()).toBe(false);
+
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Especialidad" }),
+    );
+    await userEvent.click(screen.getByRole("option", { name: "Logopedia" }));
+
+    expect(form.checkValidity()).toBe(true);
+  });
+
+  it("shows the placeholder when the value matches no option, like a link to a deactivated professional", () => {
+    render(
+      <Select
+        aria-label="Profesional"
+        placeholder="Elige un profesional"
+        value="gone"
+        options={SERVICES}
+      />,
+    );
+    expect(screen.getByRole("combobox")).toHaveTextContent(
+      "Elige un profesional",
+    );
+  });
 });
