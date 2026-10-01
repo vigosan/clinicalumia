@@ -4,7 +4,7 @@ import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
-import { PageHeader } from "@clinicalumia/ui/page-header";
+import { eyebrowClass, PageHeader } from "@clinicalumia/ui/page-header";
 import {
   Table,
   TableBody,
@@ -125,9 +125,7 @@ export default async function CobrosPage({
                   className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
                 >
                   <Card className="col-span-2 flex flex-col gap-1 bg-sage-100 p-5 sm:col-span-1">
-                    <p className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-                      Total
-                    </p>
+                    <p className={eyebrowClass}>Total</p>
                     <p
                       data-testid="payments-total-amount"
                       className="font-bold text-2xl text-ink-900 tabular-nums"
@@ -142,7 +140,7 @@ export default async function CobrosPage({
                       data-method={entry.method}
                       className="flex flex-col gap-1 p-5"
                     >
-                      <p className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
+                      <p className={eyebrowClass}>
                         {methodLabel(entry.method)}
                       </p>
                       <p className="font-semibold text-ink-900 text-xl tabular-nums">

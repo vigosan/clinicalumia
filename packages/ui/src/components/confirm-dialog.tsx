@@ -3,6 +3,7 @@
 import { AlertDialog } from "radix-ui";
 import type { ReactElement, ReactNode } from "react";
 import { Button } from "./button";
+import { overlayClass } from "./dialog";
 
 export function ConfirmDialog({
   trigger,
@@ -38,7 +39,7 @@ export function ConfirmDialog({
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in motion-reduce:animate-none" />
+        <AlertDialog.Overlay className={overlayClass} />
         <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-card border border-line bg-surface p-6 shadow-[0_24px_64px_-24px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in motion-reduce:animate-none">
           <div className="flex flex-col gap-1.5">
             <AlertDialog.Title className="text-lg font-bold text-ink-900">

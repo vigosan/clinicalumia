@@ -4,6 +4,7 @@ import { ChevronsUpDown, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { Dialog } from "radix-ui";
 import { type ReactNode, useEffect, useState } from "react";
+import { closeButtonClass, overlayClass } from "./dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -158,7 +159,7 @@ function MobileMenu({
         <Menu aria-hidden="true" className="size-5" />
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink-900/30 data-[state=open]:animate-fade-in motion-reduce:animate-none" />
+        <Dialog.Overlay className={overlayClass} />
         <Dialog.Content
           aria-describedby={undefined}
           className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,85vw)] flex-col gap-8 border-line border-r bg-cream-50 px-5 py-6 shadow-[8px_0_32px_-16px_rgb(58_58_58/0.3)] data-[state=open]:animate-slide-in-left motion-reduce:animate-none"
@@ -171,10 +172,7 @@ function MobileMenu({
                 {section}
               </span>
             </div>
-            <Dialog.Close
-              aria-label="Cerrar menú"
-              className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-800 transition-colors hover:bg-sage-100 focus-visible:outline-2 focus-visible:outline-sage-800"
-            >
+            <Dialog.Close aria-label="Cerrar menú" className={closeButtonClass}>
               <X aria-hidden="true" className="size-5" />
             </Dialog.Close>
           </div>

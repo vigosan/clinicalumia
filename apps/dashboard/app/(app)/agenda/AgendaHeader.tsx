@@ -4,6 +4,7 @@ import {
   weekStart,
 } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { weekTitle } from "@/lib/agenda";
@@ -81,9 +82,7 @@ export function AgendaHeader({
         <ChevronRight aria-hidden="true" className="size-4" />
       </Link>
       <div className="order-1 flex basis-full flex-col sm:order-none sm:mr-auto sm:basis-auto">
-        <p className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-          Agenda
-        </p>
+        <p className={eyebrowClass}>Agenda</p>
         <h1
           data-testid="agenda-title"
           className="font-bold text-[1.75rem] text-ink-900 leading-tight tracking-[-0.01em] sm:text-title"

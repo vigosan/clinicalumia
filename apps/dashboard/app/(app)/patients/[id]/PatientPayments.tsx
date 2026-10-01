@@ -1,18 +1,11 @@
-import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import Link from "next/link";
+import { formatMadridDateTime } from "@/lib/madrid-format";
 import { MAX_ROWS, type PatientPaymentRow } from "@/lib/patient-appointments";
 import type { PaymentCandidate } from "@/lib/payment-candidates";
 import { formatEuros } from "@/lib/payments";
 import { RegisterPaymentDialog } from "../../cobros/RegisterPaymentDialog";
-
-const subtitleClass =
-  "text-xs font-medium text-ink-700 uppercase tracking-[0.08em]";
-
-function formatMoment(instant: string): string {
-  const { date, time } = madridDateTime(instant);
-  return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)} ${time.slice(0, 5)}`;
-}
 
 export function PatientPayments({
   error,
@@ -47,7 +40,7 @@ export function PatientPayments({
     <div className="flex flex-col gap-4">
       {toCollect.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className={subtitleClass}>Pendientes de cobro</h3>
+          <h3 className={eyebrowClass}>Pendientes de cobro</h3>
           <ul className="flex flex-col gap-2">
             {toCollect.map((candidate) => (
               <li
@@ -56,8 +49,8 @@ export function PatientPayments({
                 className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-line px-3 py-2 text-[15px] text-ink-900"
               >
                 <span>
-                  {formatMoment(candidate.startsAt)} · {candidate.serviceName} ·{" "}
-                  {candidate.professionalName}
+                  {formatMadridDateTime(candidate.startsAt)} ·{" "}
+                  {candidate.serviceName} · {candidate.professionalName}
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="text-[13px] text-ink-800 tabular-nums">
@@ -81,7 +74,7 @@ export function PatientPayments({
       )}
       {payments.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className={subtitleClass}>Registrados</h3>
+          <h3 className={eyebrowClass}>Registrados</h3>
           <ul className="flex flex-col gap-2">
             {payments.map((payment) => (
               <li key={payment.id}>

@@ -3,6 +3,13 @@
 import { X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
 import type { ComponentProps, ReactElement, ReactNode } from "react";
+import { cn } from "../lib/cn";
+
+export const overlayClass =
+  "fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in motion-reduce:animate-none";
+
+export const closeButtonClass =
+  "inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-700 hover:bg-sage-100 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-sage-800";
 
 export function Dialog({
   trigger,
@@ -31,7 +38,7 @@ export function Dialog({
     <Primitive.Root open={open} onOpenChange={onOpenChange}>
       <Primitive.Trigger asChild>{trigger}</Primitive.Trigger>
       <Primitive.Portal>
-        <Primitive.Overlay className="fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in motion-reduce:animate-none" />
+        <Primitive.Overlay className={overlayClass} />
         <Primitive.Content
           onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={onCloseAutoFocus}
@@ -49,7 +56,7 @@ export function Dialog({
             </div>
             <Primitive.Close
               aria-label="Cerrar"
-              className="-mt-1 -mr-2 inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-700 hover:bg-sage-100 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-sage-800"
+              className={cn("-mt-1 -mr-2", closeButtonClass)}
             >
               <X aria-hidden="true" className="size-5" />
             </Primitive.Close>

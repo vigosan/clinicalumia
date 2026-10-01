@@ -1,10 +1,7 @@
-import {
-  addDays,
-  isValidDate,
-  madridDateTime,
-} from "@clinicalumia/api/madrid-time";
+import { addDays, isValidDate } from "@clinicalumia/api/madrid-time";
 import type { createClient } from "@clinicalumia/api/server";
 import { isUuid } from "./agenda";
+import { formatMadridDate } from "./madrid-format";
 import type { StaffOption } from "./payments-load";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -130,8 +127,7 @@ export function invoicesPageCount(totalCount: number): number {
 }
 
 export function formatInvoiceDate(instant: string): string {
-  const { date } = madridDateTime(instant);
-  return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
+  return formatMadridDate(instant);
 }
 
 export type InvoiceRow = {

@@ -1,12 +1,17 @@
 import type { ReactNode } from "react";
 import { Breadcrumbs, type Crumb } from "./breadcrumbs";
 
+export const eyebrowClass =
+  "text-xs font-medium text-ink-700 uppercase tracking-[0.08em]";
+
 export function PageHeader({
+  eyebrow,
   title,
   description,
   actions,
   breadcrumbs,
 }: {
+  eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
@@ -20,6 +25,7 @@ export function PageHeader({
             <Breadcrumbs items={breadcrumbs} />
           </div>
         )}
+        {eyebrow && <p className={eyebrowClass}>{eyebrow}</p>}
         <h1 className="break-words text-title font-bold text-ink-900">
           {title}
         </h1>

@@ -12,6 +12,7 @@ import {
   methodLabel,
   needsPaymentNote,
   type PaymentMethod,
+  parseAmount,
 } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { collectPayment } from "../payments/actions";
@@ -36,7 +37,7 @@ export function PaymentForm({
   suggestedAmountCents: number;
   cancelled: boolean;
   initiallyOpen?: boolean;
-  onSuccess?: (payment: { amount: string; method: PaymentMethod }) => void;
+  onSuccess?: (payment: { cents: number; method: PaymentMethod }) => void;
   onError?: () => void;
   onPendingChange?: (pending: boolean) => void;
 }) {
@@ -78,7 +79,8 @@ export function PaymentForm({
       }
       setError(null);
       setOpen(false);
-      onSuccess?.({ amount, method });
+      const parsed = parseAmount(amount);
+      onSuccess?.({ cents: "cents" in parsed ? parsed.cents : 0, method });
     });
   }
 

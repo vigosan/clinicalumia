@@ -1,10 +1,8 @@
 import { Button } from "@clinicalumia/ui/button";
+import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import Link from "next/link";
+import { formatDay } from "@/lib/madrid-format";
 import type { PatientAppointmentRow } from "@/lib/patient-appointments";
-
-function formatDate(date: string): string {
-  return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
-}
 
 function AppointmentList({
   title,
@@ -20,9 +18,7 @@ function AppointmentList({
   if (rows.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-        {title}
-      </h3>
+      <h3 className={eyebrowClass}>{title}</h3>
       <ul className="flex flex-col gap-2">
         {rows.map((row) => (
           <li key={row.id}>
@@ -32,7 +28,7 @@ function AppointmentList({
               className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-line px-3 py-2 text-[15px] text-ink-900 hover:bg-cream-200"
             >
               <span>
-                {formatDate(row.date)} {row.time} · {row.serviceName} ·{" "}
+                {formatDay(row.date)} {row.time} · {row.serviceName} ·{" "}
                 {row.professionalName}
               </span>
               <span className="text-[13px] text-ink-800">

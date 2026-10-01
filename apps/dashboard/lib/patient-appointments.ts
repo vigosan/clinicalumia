@@ -1,4 +1,5 @@
 import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { formatDay } from "./madrid-format";
 import {
   formatEuros,
   methodLabel,
@@ -94,10 +95,6 @@ function agendaHref(appointment: PatientAppointmentSource): string {
   return `/?date=${date}&appointment=${appointment.id}`;
 }
 
-function formatDate(date: string): string {
-  return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
-}
-
 function toRow(
   appointment: PatientAppointmentSource,
   now: Date,
@@ -190,8 +187,8 @@ export function patientPaymentRows(appointments: PatientAppointmentSource[]): {
   return {
     rows: all.slice(0, MAX_ROWS).map(({ appointment, payment }) => ({
       id: payment.id,
-      date: formatDate(madridDateTime(payment.collectedAt).date),
-      appointmentDate: formatDate(madridDateTime(appointment.startsAt).date),
+      date: formatDay(madridDateTime(payment.collectedAt).date),
+      appointmentDate: formatDay(madridDateTime(appointment.startsAt).date),
       serviceName: appointment.serviceName,
       amountLabel: `${formatEuros(payment.amountCents)} · ${methodLabel(payment.method)}`,
       stateLabel: payment.voidedAt ? "Anulado" : "Válido",

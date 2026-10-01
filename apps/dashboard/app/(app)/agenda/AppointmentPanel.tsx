@@ -3,15 +3,17 @@
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import { Sheet } from "@clinicalumia/ui/sheet";
 import { toast } from "@clinicalumia/ui/toast";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { formatMinutes } from "@/lib/duration";
 import type { CurrentInvoice, RecipientDraft } from "@/lib/invoices";
 import { paymentToastMessage } from "@/lib/payment-candidates";
-import { type PaymentMethod, parseAmount } from "@/lib/payments";
+import type { PaymentMethod } from "@/lib/payments";
 import { markNoShow, restoreFromNoShow } from "../appointments/actions";
 import { CancelDialog } from "./CancelDialog";
 import { FullInvoiceForm } from "./FullInvoiceForm";
@@ -124,14 +126,13 @@ export function AppointmentPanel({
   }
 
   function handlePaid({
-    amount,
+    cents,
     method,
   }: {
-    amount: string;
+    cents: number;
     method: PaymentMethod;
   }) {
-    const parsed = parseAmount(amount);
-    toast(paymentToastMessage("cents" in parsed ? parsed.cents : 0, method));
+    toast(paymentToastMessage(cents, method));
   }
 
   function handleNoShow() {
@@ -180,7 +181,7 @@ export function AppointmentPanel({
       }
     >
       <p className="-mt-4 text-[13px] text-ink-800">
-        {appointment.serviceName} · {appointment.durationMinutes} min
+        {appointment.serviceName} · {formatMinutes(appointment.durationMinutes)}
       </p>
 
       {(previousHref || nextHref) && (
@@ -233,9 +234,7 @@ export function AppointmentPanel({
       )}
 
       <div className="flex flex-col gap-1 border-line border-t pt-4">
-        <h2 className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-          Cobro
-        </h2>
+        <h2 className={eyebrowClass}>Cobro</h2>
         <p className="text-ink-900">{formatPrice(appointment.priceCents)}</p>
         {appointment.paymentStatus && (
           <p
@@ -340,9 +339,7 @@ export function AppointmentPanel({
 
       {appointment.canMove && (
         <div className="flex flex-col gap-3 border-line border-t pt-4">
-          <h2 className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-            Cambiar fecha u hora
-          </h2>
+          <h2 className={eyebrowClass}>Cambiar fecha u hora</h2>
           <MoveForm
             appointmentId={appointment.id}
             patientId={appointment.patientId}
@@ -366,9 +363,7 @@ export function AppointmentPanel({
       )}
 
       <div className="flex flex-col gap-2 border-line border-t pt-4">
-        <h2 className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-          Historial
-        </h2>
+        <h2 className={eyebrowClass}>Historial</h2>
         <ul data-testid="appointment-history" className="flex flex-col gap-1">
           {appointment.history.map((entry) => (
             <li

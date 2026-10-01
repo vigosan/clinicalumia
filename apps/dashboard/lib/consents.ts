@@ -1,6 +1,6 @@
-import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { normalizeSearch, toIlikePattern } from "@clinicalumia/api/person";
 import type { createClient } from "@clinicalumia/api/server";
+import { formatMadridDateTime } from "./madrid-format";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
@@ -58,8 +58,7 @@ export function consentsListResult<Row>({
 }
 
 export function formatSignedAt(instant: string): string {
-  const { date, time } = madridDateTime(instant);
-  return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)} ${time}`;
+  return formatMadridDateTime(instant);
 }
 
 export function linkedPersonLabel(person: {

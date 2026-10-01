@@ -1112,6 +1112,9 @@ test("mover una cita de duración personalizada conserva esa duración, y cambia
   await expect(page.getByTestId("appointment-move-duration")).toHaveText(
     "1 h 30 min",
   );
+  await expect(page.getByTestId("appointment-panel")).toContainText(
+    "Psicoterapia individual · 1 h 30 min",
+  );
 
   await pickTime(page.getByTestId("appointment-move-time"), "14:00");
   await page.getByTestId("appointment-move").click();

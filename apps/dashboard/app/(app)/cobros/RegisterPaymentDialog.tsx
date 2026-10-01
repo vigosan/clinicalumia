@@ -2,8 +2,9 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { Dialog } from "@clinicalumia/ui/dialog";
-import { fieldControl } from "@clinicalumia/ui/input";
+import { Input } from "@clinicalumia/ui/input";
 import { Label } from "@clinicalumia/ui/label";
+import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import { toast } from "@clinicalumia/ui/toast";
 import { ArrowLeft, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,12 +16,11 @@ import {
   type PaymentCandidate,
   paymentToastMessage,
 } from "@/lib/payment-candidates";
-import { formatEuros, type PaymentMethod, parseAmount } from "@/lib/payments";
+import { formatEuros, type PaymentMethod } from "@/lib/payments";
 import { PENDING_WINDOW_DAYS } from "@/lib/pending-payments";
 import { PaymentForm } from "../agenda/PaymentForm";
 
-const groupTitleClass =
-  "px-1 pb-1 text-xs font-medium text-ink-700 uppercase tracking-[0.08em]";
+const groupTitleClass = `px-1 pb-1 ${eyebrowClass}`;
 
 function focusFirstInput(container: HTMLElement | null) {
   container?.querySelector<HTMLInputElement>("input")?.focus();
@@ -126,18 +126,17 @@ export function RegisterPaymentDialog({
   }
 
   function handleSuccess({
-    amount,
+    cents,
     method,
   }: {
-    amount: string;
+    cents: number;
     method: PaymentMethod;
   }) {
-    const parsed = parseAmount(amount);
     succeededRef.current = true;
     staleRef.current = false;
     setSubmitting(false);
     setOpen(false);
-    toast(paymentToastMessage("cents" in parsed ? parsed.cents : 0, method));
+    toast(paymentToastMessage(cents, method));
     router.refresh();
   }
 
@@ -235,7 +234,7 @@ export function RegisterPaymentDialog({
                   aria-hidden="true"
                   className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-500"
                 />
-                <input
+                <Input
                   id={searchId}
                   type="search"
                   autoComplete="off"
@@ -244,7 +243,7 @@ export function RegisterPaymentDialog({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   onKeyDown={moveFocus}
-                  className={`${fieldControl} pl-10`}
+                  className="pl-10"
                 />
               </div>
             </div>
