@@ -48,6 +48,8 @@ export function DatePicker({
   const [uncontrolled, setUncontrolled] = useState(defaultValue);
   const [open, setOpen] = useState(false);
   const contentId = useId();
+  const messageId = useId();
+  const [missing, setMissing] = useState(false);
   const current = value ?? uncontrolled;
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -56,6 +58,7 @@ export function DatePicker({
     if (!form) return;
     function handleReset() {
       setUncontrolled(defaultValue);
+      setMissing(false);
     }
     form.addEventListener("reset", handleReset);
     return () => form.removeEventListener("reset", handleReset);
@@ -63,6 +66,7 @@ export function DatePicker({
 
   function choose(next: string) {
     setOpen(false);
+    setMissing(false);
     if (next === current) return;
     if (value === undefined) setUncontrolled(next);
     onValueChange?.(next);
@@ -81,8 +85,13 @@ export function DatePicker({
             id={id}
             disabled={disabled}
             aria-label={ariaLabel}
-            aria-invalid={ariaInvalid}
-            aria-describedby={ariaDescribedBy}
+            aria-required={required}
+            aria-invalid={ariaInvalid || missing || undefined}
+            aria-describedby={
+              [ariaDescribedBy, missing && messageId]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
             data-testid={testId}
             data-placeholder={current ? undefined : ""}
             className={cn(fieldControl, pickerTrigger, className)}
@@ -105,9 +114,21 @@ export function DatePicker({
             tabIndex={-1}
             aria-hidden="true"
             onChange={() => {}}
-            onInvalid={() => triggerRef.current?.focus()}
+            onInvalid={(event) => {
+              event.preventDefault();
+              setMissing(true);
+              const firstInvalid =
+                event.currentTarget.form?.querySelector(":invalid");
+              if (firstInvalid === event.currentTarget)
+                triggerRef.current?.focus();
+            }}
             className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-0"
           />
+        )}
+        {missing && (
+          <p id={messageId} className="mt-1.5 text-[13px] text-danger-600">
+            Elige una fecha
+          </p>
         )}
       </div>
       <Popover.Portal>

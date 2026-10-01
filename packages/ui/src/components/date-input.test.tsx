@@ -73,4 +73,33 @@ describe("DateInput", () => {
     expect(form().checkValidity()).toBe(true);
     expect(submittedValues(form())).toEqual({ birth_date: "2024-02-29" });
   });
+
+  it("pads a one-digit day or month when a slash is typed, so 5/3/1990 is 5 March and not 53/19/90", async () => {
+    const input = renderInForm();
+    await userEvent.type(input, "5/3/1990");
+
+    expect(input).toHaveValue("05/03/1990");
+    expect(submittedValues(form())).toEqual({ birth_date: "1990-03-05" });
+  });
+
+  it("turns an autofilled ISO date into dd/mm/aaaa", async () => {
+    const input = renderInForm();
+    await userEvent.click(input);
+    await userEvent.paste("1990-01-31");
+
+    expect(input).toHaveValue("31/01/1990");
+    expect(submittedValues(form())).toEqual({ birth_date: "1990-01-31" });
+  });
+
+  it("explains an invalid date in words once the field is left, not only with a red border", async () => {
+    const input = renderInForm();
+    await userEvent.type(input, "31021990");
+    expect(screen.queryByText(/fecha no válida/i)).not.toBeInTheDocument();
+
+    await userEvent.tab();
+
+    expect(input).toHaveAccessibleDescription(
+      "Fecha no válida. Escríbela como 05/03/1990.",
+    );
+  });
 });

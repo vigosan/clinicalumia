@@ -17,7 +17,7 @@ const SLOTS = Array.from(
 );
 
 export function parseTime(text: string): string | null {
-  const match = /^(\d{1,2})(?:[:.h]?(\d{2}))?$/.exec(text.trim());
+  const match = /^(\d{1,2})(?:[:.,h]?(\d{2}))?$/.exec(text.trim());
   if (!match) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2] ?? 0);
@@ -142,6 +142,10 @@ export function TimeSelect({
       event.preventDefault();
       if (!open) openList();
       else move(event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    if (event.key === "Escape") {
+      setText(current);
       return;
     }
     if (event.key !== "Enter") return;

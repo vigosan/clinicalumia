@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DatePicker } from "./date-picker";
@@ -205,5 +205,36 @@ describe("DatePicker", () => {
     await userEvent.click(day("2026-10-08"));
 
     expect(form().checkValidity()).toBe(true);
+  });
+
+  it("sends a keyboard user back to the first missing date, the visible field, with a message", async () => {
+    render(
+      <form data-testid="form" onSubmit={(event) => event.preventDefault()}>
+        <Field label="Desde">
+          <DatePicker name="starts_on" required today="2026-10-01" />
+        </Field>
+        <Field label="Hasta">
+          <DatePicker name="ends_on" required today="2026-10-01" />
+        </Field>
+      </form>,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Desde" });
+    expect(trigger).toHaveAttribute("aria-required", "true");
+
+    act(() => form().requestSubmit());
+
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
+    expect(trigger).toHaveAccessibleDescription("Elige una fecha");
+    expect(screen.getByRole("combobox", { name: "Hasta" })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+
+    await userEvent.click(trigger);
+    await userEvent.click(day("2026-10-08"));
+
+    expect(trigger).not.toHaveAttribute("aria-invalid", "true");
+    expect(trigger).not.toHaveAccessibleDescription("Elige una fecha");
   });
 });

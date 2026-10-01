@@ -124,4 +124,28 @@ describe("DateRangePicker", () => {
       "data-today",
     );
   });
+
+  it("does not let the second day go further than the allowed length, so the list never silently jumps back to today", async () => {
+    render(
+      <DateRangePicker
+        aria-label="Fechas"
+        from="2026-10-05"
+        to="2026-10-05"
+        today="2026-10-26"
+        maxDays={3}
+        onChange={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("combobox", { name: "Fechas" }));
+    expect(day("2026-10-20")).toBeEnabled();
+    await userEvent.click(day("2026-10-14"));
+
+    expect(
+      screen.getByText("Elige el último día (hasta 3 días)"),
+    ).toBeInTheDocument();
+    expect(day("2026-10-16")).toBeEnabled();
+    expect(day("2026-10-17")).toBeDisabled();
+    expect(day("2026-10-12")).toBeEnabled();
+    expect(day("2026-10-11")).toBeDisabled();
+  });
 });

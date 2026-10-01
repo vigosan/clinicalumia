@@ -1,5 +1,6 @@
 "use client";
 
+import { addDays } from "date-fns";
 import { CalendarRange } from "lucide-react";
 import { Popover } from "radix-ui";
 import { useId, useState } from "react";
@@ -36,6 +37,7 @@ export function DateRangePicker({
   onChange,
   today,
   presets = [],
+  maxDays,
   id,
   className,
   "aria-label": ariaLabel,
@@ -48,6 +50,7 @@ export function DateRangePicker({
   onChange: (range: DateRange) => void;
   today: string;
   presets?: RangePreset[];
+  maxDays?: number;
   id?: string;
   className?: string;
   "aria-label"?: string;
@@ -76,6 +79,14 @@ export function DateRangePicker({
     }
     choose(day < start ? { from: day, to: start } : { from: start, to: day });
   }
+
+  const limit =
+    start !== null && maxDays
+      ? [
+          { before: addDays(isoToDate(start), -(maxDays - 1)) },
+          { after: addDays(isoToDate(start), maxDays - 1) },
+        ]
+      : undefined;
 
   const selected =
     start === null
@@ -141,13 +152,18 @@ export function DateRangePicker({
               selected={selected}
               defaultMonth={isoToDate(from)}
               today={isoToDate(today)}
+              disabled={limit}
               onSelect={(_range, day) => pickDay(dateToIso(day))}
             />
             <p
               aria-live="polite"
               className="px-4 pb-3 text-[13px] text-ink-800"
             >
-              {start === null ? "Elige el primer día" : "Elige el último día"}
+              {start === null
+                ? "Elige el primer día"
+                : maxDays
+                  ? `Elige el último día (hasta ${maxDays} días)`
+                  : "Elige el último día"}
             </p>
           </div>
         </Popover.Content>

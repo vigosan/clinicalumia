@@ -10,6 +10,7 @@ import { madridRangePresets } from "@/lib/date-presets";
 import {
   type CobrosParams,
   cobrosListHref,
+  MAX_RANGE_DAYS,
   type StaffOption,
 } from "@/lib/payments-load";
 
@@ -66,6 +67,7 @@ export function CobrosFilters({
           to={params.hasta}
           today={todayInMadrid()}
           presets={madridRangePresets()}
+          maxDays={MAX_RANGE_DAYS}
           onChange={({ from, to }) => go({ desde: from, hasta: to })}
         />
       </Field>

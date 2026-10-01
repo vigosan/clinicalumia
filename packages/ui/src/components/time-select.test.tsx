@@ -34,6 +34,8 @@ describe("parseTime", () => {
     ["9.30", "09:30"],
     ["14:05", "14:05"],
     ["23:59", "23:59"],
+    ["9,30", "09:30"],
+    ["123", "01:23"],
   ])("reads %s as %s, so the time can be typed the way people write it", (text, time) => {
     expect(parseTime(text)).toBe(time);
   });
@@ -158,6 +160,18 @@ describe("TimeSelect", () => {
     form().reset();
 
     await waitFor(() => expect(input).toHaveValue("10:00"));
+    expect(submittedValues(form())).toEqual({ time: "10:00" });
+  });
+
+  it("puts the previous time back with Escape, so Escape cancels what was typed", async () => {
+    const onValueChange = vi.fn();
+    const input = renderInForm({ onValueChange });
+    await userEvent.clear(input);
+    await userEvent.type(input, "1530{Escape}");
+    expect(input).toHaveValue("10:00");
+
+    await userEvent.tab();
+    expect(onValueChange).not.toHaveBeenCalled();
     expect(submittedValues(form())).toEqual({ time: "10:00" });
   });
 });

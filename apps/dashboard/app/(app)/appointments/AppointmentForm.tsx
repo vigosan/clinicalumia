@@ -212,6 +212,7 @@ export function AppointmentForm({
           />
         </Field>
         <DurationField
+          key={serviceId || professionalId}
           testId="appointment-duration"
           value={duration}
           onValueChange={(next) => {
