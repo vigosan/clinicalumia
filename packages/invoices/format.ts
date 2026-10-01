@@ -15,6 +15,18 @@ const METHOD_NAMES: Record<string, string> = {
   transfer: "transferencia",
 };
 
+const METHOD_LABELS: Record<string, string> = {
+  cash: "Efectivo",
+  card: "Tarjeta",
+  bizum: "Bizum",
+  transfer: "Transferencia",
+  online: "Señal online",
+};
+
+export function paymentMethodLabel(method: string): string {
+  return METHOD_LABELS[method] ?? method;
+}
+
 export function formatEuros(cents: number): string {
   return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 }

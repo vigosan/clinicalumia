@@ -1,5 +1,9 @@
-import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import type { InvoiceSnapshot } from "@clinicalumia/invoices";
+import {
+  formatMadridDate,
+  paymentMethodLabel,
+} from "@clinicalumia/invoices/format";
+import type { Quarter } from "./quarter";
 
 export type QuarterInvoiceKind = "simplified" | "full" | "rectifying";
 export type QuarterInvoiceStatus = "issued" | "replaced";
@@ -38,11 +42,13 @@ export function summarizeInvoices(invoices: QuarterInvoice[]): QuarterSummary {
   const counts = { simplified: 0, full: 0, rectifying: 0, replaced: 0 };
   const byRate = new Map<number, VatRateTotal>();
   for (const invoice of invoices) {
-    if (invoice.status === "replaced") {
-      counts.replaced++;
-      continue;
-    }
-    counts[invoice.kind]++;
+    if (invoice.status === "replaced") counts.replaced++;
+    else counts[invoice.kind]++;
+
+    const replacesAnother =
+      invoice.kind === "full" && invoice.replaces !== null;
+    if (replacesAnother) continue;
+
     for (const line of invoice.snapshot.lines) {
       const bucket = byRate.get(line.vat_rate) ?? {
         vat_rate: line.vat_rate,
@@ -65,13 +71,6 @@ const INVOICE_TYPE_LABEL: Record<QuarterInvoiceKind, string> = {
   simplified: "Simplificada",
   full: "Completa",
   rectifying: "Rectificativa",
-};
-
-const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  cash: "Efectivo",
-  card: "Tarjeta",
-  bizum: "Bizum",
-  transfer: "Transferencia",
 };
 
 export type LedgerRow = {
@@ -99,27 +98,26 @@ function relatedCode(invoice: QuarterInvoice): string {
 
 function statusLabel(invoice: QuarterInvoice): string {
   if (invoice.status === "replaced")
-    return `Sustituida por ${invoice.replaced_by}`;
+    return `Sustituida por ${invoice.replaced_by ?? ""}`;
   return "Emitida";
 }
 
-function paymentMethodLabel(snapshot: InvoiceSnapshot): string {
+function paymentMethodColumn(snapshot: InvoiceSnapshot): string {
   if (!snapshot.payments || snapshot.payments.length === 0) return "";
   return snapshot.payments
-    .map((payment) => PAYMENT_METHOD_LABEL[payment.method] ?? payment.method)
+    .map((payment) => paymentMethodLabel(payment.method))
     .join(", ");
 }
 
-function madridDate(instant: string): string {
-  const { date } = madridDateTime(instant);
-  const [year, month, day] = date.split("-");
-  return `${day}/${month}/${year}`;
+function codeNumber(code: string): number {
+  return Number(/\d+/.exec(code)?.[0] ?? 0);
 }
 
 export function ledgerRows(invoices: QuarterInvoice[]): LedgerRow[] {
   const sorted = [...invoices].sort(
     (a, b) =>
-      a.issued_at.localeCompare(b.issued_at) || a.code.localeCompare(b.code),
+      Date.parse(a.issued_at) - Date.parse(b.issued_at) ||
+      codeNumber(a.code) - codeNumber(b.code),
   );
   const rows: LedgerRow[] = [];
   for (const invoice of sorted) {
@@ -143,7 +141,7 @@ export function ledgerRows(invoices: QuarterInvoice[]): LedgerRow[] {
       (a, b) => a.vat_rate - b.vat_rate,
     )) {
       rows.push({
-        date: madridDate(invoice.issued_at),
+        date: formatMadridDate(invoice.issued_at),
         code: invoice.code,
         type: INVOICE_TYPE_LABEL[invoice.kind],
         related: relatedCode(invoice),
@@ -156,18 +154,14 @@ export function ledgerRows(invoices: QuarterInvoice[]): LedgerRow[] {
         vat_cents: bucket.vat_cents,
         total_cents: bucket.total_cents,
         exemption: bucket.vat_rate === 0 ? snapshot.vat_note : "",
-        paymentMethod: paymentMethodLabel(snapshot),
+        paymentMethod: paymentMethodColumn(snapshot),
       });
     }
   }
   return rows;
 }
 
-export function exportFileName(
-  year: number,
-  q: 1 | 2 | 3 | 4,
-  ext: string,
-): string {
+export function exportFileName(year: number, q: Quarter, ext: string): string {
   return `LUMIA-facturas-${year}-T${q}.${ext}`;
 }
 

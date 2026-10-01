@@ -4,6 +4,7 @@ import {
   formatMadridDate,
   formatSessionDate,
   invoiceFileName,
+  paymentMethodLabel,
   paymentSummary,
 } from "./format";
 
@@ -31,6 +32,19 @@ describe("formatMadridDate", () => {
 describe("formatSessionDate", () => {
   it("prints the stored calendar day without shifting it through a time zone", () => {
     expect(formatSessionDate("2026-09-29")).toBe("29/09/2026");
+  });
+});
+
+describe("paymentMethodLabel", () => {
+  it("names each method as a column header word, for the quarterly ledger", () => {
+    expect(paymentMethodLabel("cash")).toBe("Efectivo");
+    expect(paymentMethodLabel("card")).toBe("Tarjeta");
+    expect(paymentMethodLabel("bizum")).toBe("Bizum");
+    expect(paymentMethodLabel("transfer")).toBe("Transferencia");
+  });
+
+  it('names an online deposit, so the ledger never shows the raw "online" token', () => {
+    expect(paymentMethodLabel("online")).toBe("Señal online");
   });
 });
 

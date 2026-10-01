@@ -78,7 +78,7 @@ describe("summarizeInvoices", () => {
     });
   });
 
-  it("no duplica el importe de una simplificada sustituida: solo suma la factura completa que la sustituye", () => {
+  it("no duplica el importe cuando una completa sustituye a una simplificada: suma la simplificada original, no la completa, para que un trimestre ya cerrado no cambie cuando la completa se emite más tarde", () => {
     const replacedSimplified = invoice({
       id: "1",
       code: "1/26",
@@ -119,10 +119,10 @@ describe("summarizeInvoices", () => {
             session_date: "2026-08-10",
             patient: "María López",
             quantity: 1,
-            base_cents: 5000,
+            base_cents: 9999,
             vat_rate: 21,
-            vat_cents: 1050,
-            total_cents: 6050,
+            vat_cents: 2100,
+            total_cents: 12099,
           },
         ],
       }),
@@ -135,12 +135,45 @@ describe("summarizeInvoices", () => {
     expect(summary.net_cents).toBe(6050);
   });
 
-  it("una rectificativa resta del total, porque sus líneas llevan importes negativos", () => {
-    const full = invoice({
+  it("un trimestre cerrado no cambia cuando la completa que sustituye se emite en un trimestre posterior", () => {
+    const q1Simplified = invoice({
       id: "1",
       code: "1/26",
+      kind: "simplified",
+      status: "replaced",
+      replaced_by: "2/26",
+      issued_at: "2026-02-10T10:00:00+01:00",
+    });
+    const q2Full = invoice({
+      id: "2",
+      code: "2/26",
       kind: "full",
-      replaces: "0/26",
+      replaces: "1/26",
+      issued_at: "2026-05-10T10:00:00+02:00",
+      snapshot: snapshot({
+        recipient: {
+          name: "María López",
+          tax_id: "12345678Z",
+          address: "Calle Mayor 1",
+          postal_code: "46800",
+          city: "Xàtiva",
+        },
+      }),
+    });
+    const q1Summary = summarizeInvoices([q1Simplified]);
+    expect(q1Summary.vatRates).toEqual([
+      { vat_rate: 21, base_cents: 5000, vat_cents: 1050, total_cents: 6050 },
+    ]);
+    const q2Summary = summarizeInvoices([q2Full]);
+    expect(q2Summary.vatRates).toEqual([]);
+    expect(q2Summary.net_cents).toBe(0);
+  });
+
+  it("una rectificativa resta del total, porque sus líneas llevan importes negativos", () => {
+    const simplified = invoice({
+      id: "1",
+      code: "1/26",
+      kind: "simplified",
       snapshot: snapshot({
         lines: [
           {
@@ -176,7 +209,7 @@ describe("summarizeInvoices", () => {
         ],
       }),
     });
-    const summary = summarizeInvoices([full, rectifying]);
+    const summary = summarizeInvoices([simplified, rectifying]);
     expect(summary.vatRates).toEqual([
       { vat_rate: 21, base_cents: 0, vat_cents: 0, total_cents: 0 },
     ]);
@@ -218,6 +251,103 @@ describe("summarizeInvoices", () => {
     ]);
     expect(summary.net_cents).toBe(6420);
   });
+
+  it("el total del resumen coincide con la suma de las filas del libro que cuentan (sustituida, rectificativa y líneas mixtas incluidas; la completa que sustituye, no)", () => {
+    const replacedSimplified = invoice({
+      id: "1",
+      code: "1/26",
+      kind: "simplified",
+      status: "replaced",
+      replaced_by: "2/26",
+    });
+    const full = invoice({
+      id: "2",
+      code: "2/26",
+      kind: "full",
+      replaces: "1/26",
+      snapshot: snapshot({
+        recipient: {
+          name: "María López",
+          tax_id: "12345678Z",
+          address: "Calle Mayor 1",
+          postal_code: "46800",
+          city: "Xàtiva",
+        },
+        lines: [
+          {
+            description: "Sesión de fisioterapia",
+            session_date: "2026-08-10",
+            patient: "María López",
+            quantity: 1,
+            base_cents: 9999,
+            vat_rate: 21,
+            vat_cents: 2100,
+            total_cents: 12099,
+          },
+        ],
+      }),
+    });
+    const rectifying = invoice({
+      id: "3",
+      code: "R1/26",
+      kind: "rectifying",
+      rectifies: "4/26",
+      snapshot: snapshot({
+        lines: [
+          {
+            description: "Sesión de fisioterapia",
+            session_date: "2026-08-10",
+            patient: "María López",
+            quantity: 1,
+            base_cents: -2000,
+            vat_rate: 21,
+            vat_cents: -420,
+            total_cents: -2420,
+          },
+        ],
+      }),
+    });
+    const mixed = invoice({
+      id: "4",
+      code: "3/26",
+      snapshot: snapshot({
+        vat_note: "Exento de IVA (art. 20 LIVA)",
+        lines: [
+          {
+            description: "Sesión exenta",
+            session_date: "2026-08-10",
+            patient: "María López",
+            quantity: 1,
+            base_cents: 4000,
+            vat_rate: 0,
+            vat_cents: 0,
+            total_cents: 4000,
+          },
+          {
+            description: "Producto con IVA",
+            session_date: "2026-08-10",
+            patient: "María López",
+            quantity: 1,
+            base_cents: 2000,
+            vat_rate: 21,
+            vat_cents: 420,
+            total_cents: 2420,
+          },
+        ],
+      }),
+    });
+    const invoices = [replacedSimplified, full, rectifying, mixed];
+    const summary = summarizeInvoices(invoices);
+    const rows = ledgerRows(invoices);
+    const summedRows = rows.filter(
+      (row) => !(row.type === "Completa" && row.related !== ""),
+    );
+    const reconciled = summedRows.reduce(
+      (sum, row) => sum + row.total_cents,
+      0,
+    );
+    expect(reconciled).toBe(summary.net_cents);
+  });
 });
 
 describe("ledgerRows", () => {
@@ -240,6 +370,13 @@ describe("ledgerRows", () => {
     expect(rows.map((row) => row.code)).toEqual(["1/26", "2/26"]);
     expect(rows[0]?.status).toBe("Sustituida por 2/26");
     expect(rows[1]?.status).toBe("Emitida");
+  });
+
+  it("no muestra el texto «null» si faltara el código de la sustitución", () => {
+    const [row] = ledgerRows([
+      invoice({ status: "replaced", replaced_by: null }),
+    ]);
+    expect(row?.status).not.toContain("null");
   });
 
   it("muestra «Consumidor final» cuando una simplificada no tiene destinatario", () => {
@@ -339,6 +476,20 @@ describe("ledgerRows", () => {
     expect(row?.paymentMethod).toBe("Efectivo, Tarjeta");
   });
 
+  it("nombra la señal online en vez de mostrar el valor en bruto «online»", () => {
+    const [row] = ledgerRows([
+      invoice({
+        snapshot: snapshot({
+          payments: [
+            { method: "online", amount_cents: 1000 },
+            { method: "card", amount_cents: 5050 },
+          ],
+        }),
+      }),
+    ]);
+    expect(row?.paymentMethod).toBe("Señal online, Tarjeta");
+  });
+
   it("deja la forma de pago vacía cuando la factura no tiene cobros asociados", () => {
     const [row] = ledgerRows([
       invoice({ snapshot: snapshot({ payments: null }) }),
@@ -371,6 +522,22 @@ describe("ledgerRows", () => {
       }),
     ]);
     expect(rows.map((row) => row.code)).toEqual(["1/26", "2/26"]);
+  });
+
+  it("en la misma fecha, ordena por número y no alfabéticamente, para que 9/26 vaya antes que 10/26", () => {
+    const rows = ledgerRows([
+      invoice({
+        id: "1",
+        code: "10/26",
+        issued_at: "2026-08-10T10:00:00+02:00",
+      }),
+      invoice({
+        id: "2",
+        code: "9/26",
+        issued_at: "2026-08-10T10:00:00+02:00",
+      }),
+    ]);
+    expect(rows.map((row) => row.code)).toEqual(["9/26", "10/26"]);
   });
 
   it("escribe la fecha en formato español, en hora de Madrid", () => {
