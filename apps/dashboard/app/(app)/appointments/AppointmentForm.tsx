@@ -1,6 +1,7 @@
 "use client";
 
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
@@ -15,6 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { type Closure, closureOn } from "@/lib/closures";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { toastOnRedirect } from "@/lib/toast-on-redirect";
 import { createAppointment } from "./actions";
@@ -47,6 +49,7 @@ export function AppointmentForm({
   initialTime,
   initialProfessionalId,
   initialPatient,
+  closures,
   cancelHref,
 }: {
   professionals: Professional[];
@@ -56,6 +59,7 @@ export function AppointmentForm({
   initialTime: string;
   initialProfessionalId: string | null;
   initialPatient?: PatientOption | null;
+  closures: Closure[];
   cancelHref: string;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -106,6 +110,7 @@ export function AppointmentForm({
       ? state.warnings
       : [];
   const error = state && "error" in state ? state.error : null;
+  const closure = closureOn(date, closures);
 
   function resetConfirmation() {
     dismissedStateRef.current = state;
@@ -227,6 +232,13 @@ export function AppointmentForm({
           }}
         />
       </div>
+
+      {closure && (
+        <Alert tone="warning" data-testid="appointment-closure-warning">
+          La clínica está cerrada ese día ({closure.reason}). Puedes dar la cita
+          igualmente.
+        </Alert>
+      )}
 
       <Field label="Notas">
         <Textarea name="notes" data-testid="appointment-notes" />

@@ -1,4 +1,5 @@
 import {
+  addDays,
   isValidDate,
   isValidTime,
   todayInMadrid,
@@ -9,6 +10,7 @@ import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import type { Metadata } from "next";
 import { isUuid } from "@/lib/agenda";
+import { loadClosures } from "@/lib/closures";
 import { AppointmentForm } from "../AppointmentForm";
 
 export const metadata: Metadata = { title: "Nueva cita" };
@@ -51,6 +53,7 @@ export default async function NewAppointmentPage({
     { data: directory, error: directoryError },
     { data: services, error: servicesError },
     { data: patient },
+    closures,
   ] = await Promise.all([
     supabase.rpc("staff_directory"),
     supabase
@@ -67,9 +70,10 @@ export default async function NewAppointmentPage({
           .is("archived_at", null)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    loadClosures(supabase, addDays(todayInMadrid(), -365)),
   ]);
 
-  if (directoryError || servicesError) {
+  if (directoryError || servicesError || !closures) {
     return (
       <Alert data-testid="appointment-form-error">
         No se han podido cargar los datos del formulario.
@@ -133,6 +137,7 @@ export default async function NewAppointmentPage({
           initialTime={initialTime}
           initialProfessionalId={initialProfessionalId}
           initialPatient={patient}
+          closures={closures}
           cancelHref={
             patient && !params.date
               ? `/patients/${patient.id}`

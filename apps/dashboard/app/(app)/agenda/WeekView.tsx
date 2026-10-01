@@ -5,6 +5,8 @@ import {
   AgendaColumnList,
   type BlockContent,
   buildHref,
+  CLOSURE_BAND_HEIGHT,
+  ClosureBand,
   HEADER_HEIGHT,
   type PositionedBlock,
   PX_PER_MINUTE,
@@ -130,6 +132,7 @@ export function WeekView({
       .filter((item): item is PositionedBlock => item !== null);
     return { day, items };
   });
+  const hasClosure = days.some((day) => day.closure !== null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -162,7 +165,11 @@ export function WeekView({
       <div className="hidden overflow-x-auto rounded-card border border-line bg-surface sm:block">
         <div className="relative flex min-w-max">
           <div className="w-16 shrink-0 border-line border-r">
-            <div style={{ height: HEADER_HEIGHT }} />
+            <div
+              style={{
+                height: HEADER_HEIGHT + (hasClosure ? CLOSURE_BAND_HEIGHT : 0),
+              }}
+            />
             <div
               className="relative"
               style={{ height: windowMinutes * PX_PER_MINUTE }}
@@ -196,11 +203,25 @@ export function WeekView({
                   {dayLabel(day.date)}
                 </p>
               </div>
+              {hasClosure && (
+                <div
+                  className="border-line border-b"
+                  style={{ height: CLOSURE_BAND_HEIGHT }}
+                >
+                  {day.closure && (
+                    <ClosureBand
+                      closure={day.closure}
+                      className="line-clamp-2 h-full px-2 py-1.5 text-xs leading-4"
+                    />
+                  )}
+                </div>
+              )}
               <AgendaColumnGrid
                 windowMinutes={windowMinutes}
                 firstHour={firstHour}
                 schedule={day.schedule}
                 items={items}
+                closed={day.closure !== null}
               />
             </div>
           ))}
@@ -220,6 +241,12 @@ export function WeekView({
               <p className="font-medium text-ink-900">
                 {weekdayLabel(day.date)} {dayLabel(day.date)}
               </p>
+              {day.closure && (
+                <ClosureBand
+                  closure={day.closure}
+                  className="mt-2 truncate rounded-field border py-2"
+                />
+              )}
               <div className="mt-2">
                 <AgendaColumnList items={sorted} />
               </div>

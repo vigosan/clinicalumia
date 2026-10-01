@@ -8,6 +8,7 @@ import {
 import { createClient } from "@clinicalumia/api/server";
 import type { ScheduleBlock } from "@/lib/agenda";
 import { isUuid, visibleHours, visibleWeekHours } from "@/lib/agenda";
+import { type Closure, closureOn, loadClosures } from "@/lib/closures";
 
 export type AgendaColumn = {
   id: string;
@@ -54,6 +55,7 @@ export type AgendaData = {
   busy: AgendaBusy[];
   timeOff: AgendaTimeOff[];
   schedulesByColumn: Record<string, ScheduleBlock[]>;
+  closure: Closure | null;
   firstHour: number;
   lastHour: number;
 };
@@ -63,6 +65,7 @@ export type WeekDayData = {
   appointments: AgendaAppointment[];
   timeOff: AgendaTimeOff[];
   schedule: ScheduleBlock[];
+  closure: Closure | null;
 };
 
 export type WeekAgendaData = {
@@ -225,6 +228,7 @@ export async function loadAgenda({
     { data: appointmentRows, error: appointmentsError },
     { data: timeOffRows, error: timeOffError },
     { data: scheduleRows, error: schedulesError },
+    closures,
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -246,10 +250,12 @@ export async function loadAgenda({
       .select("profile_id, weekday, starts_at, ends_at")
       .in("profile_id", columnIds)
       .eq("weekday", weekday),
+    loadClosures(supabase, date, date),
   ]);
   if (appointmentsError || !appointmentRows) return { ok: false };
   if (timeOffError || !timeOffRows) return { ok: false };
   if (schedulesError || !scheduleRows) return { ok: false };
+  if (!closures) return { ok: false };
 
   const appointments: AgendaAppointment[] = appointmentRows.map(toAppointment);
 
@@ -300,6 +306,7 @@ export async function loadAgenda({
       busy,
       timeOff,
       schedulesByColumn,
+      closure: closureOn(date, closures),
       firstHour,
       lastHour,
     },
@@ -340,6 +347,7 @@ async function loadWeekAgenda(
     { data: appointmentRows, error: appointmentsError },
     { data: timeOffRows, error: timeOffError },
     { data: scheduleRows, error: schedulesError },
+    closures,
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -360,10 +368,12 @@ async function loadWeekAgenda(
       .from("employee_schedules")
       .select("profile_id, weekday, starts_at, ends_at")
       .eq("profile_id", targetPersonId),
+    loadClosures(supabase, start, addDays(start, 6)),
   ]);
   if (appointmentsError || !appointmentRows) return { ok: false };
   if (timeOffError || !timeOffRows) return { ok: false };
   if (schedulesError || !scheduleRows) return { ok: false };
+  if (!closures) return { ok: false };
 
   const appointments = appointmentRows.map(toAppointment);
   const timeOff = timeOffRows.map(toTimeOff);
@@ -375,6 +385,7 @@ async function loadWeekAgenda(
     ),
     timeOff: timeOff.filter((entry) => overlapsDay(entry, day)),
     schedule: scheduleRows.filter((row) => row.weekday === weekdayOf(day)),
+    closure: closureOn(day, closures),
   }));
 
   const { firstHour, lastHour } = visibleWeekHours(scheduleRows, appointments);

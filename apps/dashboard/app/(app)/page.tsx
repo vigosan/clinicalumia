@@ -344,6 +344,7 @@ export default async function DashboardHome({
         busy={data.busy}
         timeOff={data.timeOff}
         schedulesByColumn={data.schedulesByColumn}
+        closure={data.closure}
         firstHour={data.firstHour}
         lastHour={data.lastHour}
       />

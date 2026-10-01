@@ -2,10 +2,12 @@ import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { Badge } from "@clinicalumia/ui/badge";
 import Link from "next/link";
 import type { Block, ScheduleBlock, SpecialtyTone } from "@/lib/agenda";
+import type { Closure } from "@/lib/closures";
 
 export const PX_PER_MINUTE = 2;
 export const SLOT_MINUTES = 15;
 export const HEADER_HEIGHT = 64;
+export const CLOSURE_BAND_HEIGHT = 44;
 
 export const TONE_CLASSES: Record<SpecialtyTone, string> = {
   sage: "border-sage-400 bg-sage-100 text-sage-900",
@@ -92,11 +94,31 @@ export type PositionedBlock = {
   content: BlockContent;
 };
 
+export function ClosureBand({
+  closure,
+  className = "",
+}: {
+  closure: Closure;
+  className?: string;
+}) {
+  const text = `Clínica cerrada · ${closure.reason}`;
+  return (
+    <p
+      data-testid="agenda-closure"
+      title={text}
+      className={`border-warning-800/25 bg-warning-100 px-3 font-medium text-[13px] text-warning-800 ${className}`}
+    >
+      {text}
+    </p>
+  );
+}
+
 export function AgendaColumnGrid({
   windowMinutes,
   firstHour,
   schedule,
   items,
+  closed = false,
   clickable = false,
   onClick,
   onKeyDown,
@@ -105,6 +127,7 @@ export function AgendaColumnGrid({
   firstHour: number;
   schedule: ScheduleBlock[];
   items: PositionedBlock[];
+  closed?: boolean;
   clickable?: boolean;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
@@ -132,6 +155,9 @@ export function AgendaColumnGrid({
           }}
         />
       ))}
+      {closed && (
+        <div className="pointer-events-none absolute inset-0 bg-warning-100/60" />
+      )}
       {items.map((item) => {
         const { content } = item;
         const blockStyle = {

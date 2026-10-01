@@ -9,11 +9,13 @@ import {
   type ScheduleBlock,
   specialtyTone,
 } from "@/lib/agenda";
+import type { Closure } from "@/lib/closures";
 import {
   AgendaColumnGrid,
   AgendaColumnList,
   type BlockContent,
   buildHref,
+  ClosureBand,
   HEADER_HEIGHT,
   type PositionedBlock,
   PX_PER_MINUTE,
@@ -156,6 +158,7 @@ export function DayView({
   busy,
   timeOff,
   schedulesByColumn,
+  closure,
   firstHour,
   lastHour,
 }: {
@@ -168,6 +171,7 @@ export function DayView({
   busy: AgendaBusy[];
   timeOff: AgendaTimeOff[];
   schedulesByColumn: Record<string, ScheduleBlock[]>;
+  closure: Closure | null;
   firstHour: number;
   lastHour: number;
 }) {
@@ -222,6 +226,12 @@ export function DayView({
 
   return (
     <>
+      {closure && (
+        <ClosureBand
+          closure={closure}
+          className="truncate rounded-card border py-2.5"
+        />
+      )}
       <div className="hidden overflow-x-auto rounded-card border border-line bg-surface sm:block">
         <div className="relative flex min-w-max">
           <div className="w-16 shrink-0 border-line border-r">
@@ -266,6 +276,7 @@ export function DayView({
                   firstHour={firstHour}
                   schedule={schedulesByColumn[column.id] ?? []}
                   items={laidOutByColumn.get(column.id) ?? []}
+                  closed={closure !== null}
                   clickable={isSelfColumn}
                   onClick={(event) => handleColumnClick(event, column.id)}
                   onKeyDown={(event) => {
