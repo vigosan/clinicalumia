@@ -1,7 +1,7 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
 import Link from "next/link";
-import type { PatientPaymentRow } from "@/lib/patient-appointments";
+import { MAX_ROWS, type PatientPaymentRow } from "@/lib/patient-appointments";
 import type { PaymentCandidate } from "@/lib/payment-candidates";
 import { formatEuros } from "@/lib/payments";
 import { RegisterPaymentDialog } from "../../cobros/RegisterPaymentDialog";
@@ -104,7 +104,7 @@ export function PatientPayments({
           </ul>
           {truncated && (
             <p className="text-[13px] text-ink-800">
-              Se muestran solo los 20 más recientes.
+              Se muestran solo los {MAX_ROWS} más recientes.
             </p>
           )}
         </div>

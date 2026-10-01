@@ -272,10 +272,11 @@ export type DbError = { code?: string; message?: string };
 
 const MESSAGE_BY_CODE: Record<string, string> = {
   appointment_not_started:
-    "Solo se puede marcar «no se presentó» cuando la cita ya ha empezado.",
+    "Solo se puede marcar como no presentada cuando la cita ya ha empezado.",
   appointment_cancelled_final:
-    "Una cita cancelada no se puede reprogramar; crea una nueva.",
-  appointment_in_past: "No se puede mover una cita que ya ha pasado.",
+    "Una cita cancelada no se puede cambiar de fecha u hora; crea una nueva.",
+  appointment_in_past:
+    "No se puede cambiar la fecha u hora de una cita que ya ha pasado.",
   appointment_invoiced:
     "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
   appointment_immutable_fields: "Esos datos de la cita no se pueden cambiar.",

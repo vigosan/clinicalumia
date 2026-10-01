@@ -947,7 +947,7 @@ test("Pacientes pasa de página sin perder la búsqueda ni el filtro «Archivado
   await expect(
     page.getByRole("navigation", { name: "Paginación" }),
   ).toContainText("Página 1 de 2");
-  await expect(page.getByTestId("patients-truncated")).toHaveCount(0);
+  await expect(page.getByTestId("patients-prev")).toHaveCount(0);
 
   await page.getByTestId("patients-next").click();
 

@@ -11,7 +11,7 @@ describe("newPersonToast", () => {
 
   it("names the guardian link when the record was created from «Nuevo tutor/a»", () => {
     expect(newPersonToast("/patients/minor-1", "minor-1")).toBe(
-      "Tutor/a añadido",
+      "Tutor/a añadido/a",
     );
   });
 

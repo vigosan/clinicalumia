@@ -4,6 +4,7 @@ import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { DateRangePicker } from "@clinicalumia/ui/date-range-picker";
 import { Field } from "@clinicalumia/ui/field";
 import { Select } from "@clinicalumia/ui/select";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { madridRangePresets } from "@/lib/date-presets";
@@ -44,7 +45,7 @@ export function CobrosFilters({
             aria-label="Día anterior"
             className="flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200"
           >
-            ‹
+            <ChevronLeft aria-hidden="true" className="size-4" />
           </Link>
           <Link
             href={cobrosListHref({
@@ -56,7 +57,7 @@ export function CobrosFilters({
             aria-label="Día siguiente"
             className="flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200"
           >
-            ›
+            <ChevronRight aria-hidden="true" className="size-4" />
           </Link>
         </div>
       )}

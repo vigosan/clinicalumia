@@ -1,4 +1,5 @@
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import type { Metadata } from "next";
@@ -36,9 +37,9 @@ export default async function ConsentPage({
     .maybeSingle();
   if (error) {
     return (
-      <Card role="alert" className="text-center text-sm text-danger-600">
+      <Alert>
         No se ha podido cargar el consentimiento. Recarga la página.
-      </Card>
+      </Alert>
     );
   }
   if (!consent) notFound();

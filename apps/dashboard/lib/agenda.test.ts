@@ -634,7 +634,7 @@ describe("appointmentError", () => {
     expect(
       appointmentError({ code: "23514", message: "appointment_not_started" }),
     ).toBe(
-      "Solo se puede marcar «no se presentó» cuando la cita ya ha empezado.",
+      "Solo se puede marcar como no presentada cuando la cita ya ha empezado.",
     );
   });
 
@@ -652,13 +652,15 @@ describe("appointmentError", () => {
         code: "23514",
         message: "appointment_cancelled_final",
       }),
-    ).toBe("Una cita cancelada no se puede reprogramar; crea una nueva.");
+    ).toBe(
+      "Una cita cancelada no se puede cambiar de fecha u hora; crea una nueva.",
+    );
   });
 
   it("maps appointment_in_past", () => {
     expect(
       appointmentError({ code: "23514", message: "appointment_in_past" }),
-    ).toBe("No se puede mover una cita que ya ha pasado.");
+    ).toBe("No se puede cambiar la fecha u hora de una cita que ya ha pasado.");
   });
 
   it("maps patient_not_bookable", () => {

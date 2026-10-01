@@ -1,6 +1,7 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
@@ -35,11 +36,7 @@ const RELATED_LABELS: Record<keyof Related, string> = {
 };
 
 function ErrorCard() {
-  return (
-    <Card role="alert" className="text-center text-sm text-danger-600">
-      No se ha podido cargar la factura. Recarga la página.
-    </Card>
-  );
+  return <Alert>No se ha podido cargar la factura. Recarga la página.</Alert>;
 }
 
 export const metadata: Metadata = { title: "Factura" };

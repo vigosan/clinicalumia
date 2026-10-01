@@ -7,6 +7,6 @@ export function newPersonToast(
   if (location.startsWith("/consentimientos/"))
     return "Ficha creada y consentimiento asociado";
   if (guardianOfId && location === `/patients/${guardianOfId}`)
-    return "Tutor/a añadido";
+    return "Tutor/a añadido/a";
   return "Ficha creada";
 }

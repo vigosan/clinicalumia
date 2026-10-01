@@ -5,6 +5,7 @@ import { Input } from "@clinicalumia/ui/input";
 import { SegmentedControl } from "@clinicalumia/ui/segmented-control";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { patientsListHref } from "@/lib/patients-list";
 
 export function SearchBox({
   defaultQuery,
@@ -24,11 +25,7 @@ export function SearchBox({
       return;
     }
     const timeout = setTimeout(() => {
-      const params = new URLSearchParams();
-      if (query) params.set("q", query);
-      if (archived) params.set("archived", "1");
-      const search = params.toString();
-      router.replace(search ? `/patients?${search}` : "/patients");
+      router.replace(patientsListHref({ q: query, archived, page: 1 }));
     }, 300);
     return () => clearTimeout(timeout);
   }, [query, archived, router]);

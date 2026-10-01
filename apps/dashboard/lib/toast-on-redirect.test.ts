@@ -29,7 +29,7 @@ describe("toastOnRedirect", () => {
 
   it("lets the message depend on where the redirect goes, so an error redirect is not confirmed as a success", async () => {
     const message = (location: string) =>
-      location.includes("guardianError") ? null : "Tutor/a añadido";
+      location.includes("guardianError") ? null : "Tutor/a añadido/a";
     const failed = toastOnRedirect<State>(async () => {
       throw redirectError("/patients/p1?guardianError=already");
     }, message);
@@ -40,7 +40,7 @@ describe("toastOnRedirect", () => {
     await expect(failed(undefined, new FormData())).rejects.toThrow();
     expect(toast).not.toHaveBeenCalled();
     await expect(added(undefined, new FormData())).rejects.toThrow();
-    expect(toast).toHaveBeenCalledWith("Tutor/a añadido");
+    expect(toast).toHaveBeenCalledWith("Tutor/a añadido/a");
   });
 
   it("says nothing when the action returns an error or warnings, as nothing was saved", async () => {

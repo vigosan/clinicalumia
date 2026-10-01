@@ -51,7 +51,7 @@ export default async function PatientsPage({
       <PageHeader
         title="Pacientes"
         actions={
-          <Button asChild data-testid="patient-new">
+          <Button asChild size="sm" data-testid="patient-new">
             <Link href="/patients/new">Nuevo paciente</Link>
           </Button>
         }

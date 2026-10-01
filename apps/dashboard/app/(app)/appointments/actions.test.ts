@@ -286,7 +286,7 @@ describe("moveAppointment", () => {
         moveForm({ date: "2020-01-01", confirm: "1" }),
       ),
     ).toEqual({
-      error: "No se puede mover una cita a una hora que ya ha pasado.",
+      error: "No se puede pasar una cita a una hora que ya ha pasado.",
     });
     expect(rpc).not.toHaveBeenCalled();
     expect(appointmentsUpdate).not.toHaveBeenCalled();
@@ -336,7 +336,10 @@ describe("moveAppointment", () => {
 
     expect(
       await moveAppointment(undefined, moveForm({ confirm: "1" })),
-    ).toEqual({ error: "No se puede mover una cita que ya ha pasado." });
+    ).toEqual({
+      error:
+        "No se puede cambiar la fecha u hora de una cita que ya ha pasado.",
+    });
   });
 
   it("reports it could not move the appointment when 0 rows matched", async () => {
@@ -345,7 +348,7 @@ describe("moveAppointment", () => {
 
     expect(
       await moveAppointment(undefined, moveForm({ confirm: "1" })),
-    ).toEqual({ error: "No se ha podido mover la cita." });
+    ).toEqual({ error: "No se ha podido cambiar la fecha u hora." });
   });
 });
 
@@ -429,7 +432,7 @@ describe("markNoShow", () => {
 
     expect(await markNoShow("appt-1")).toEqual({
       error:
-        "Solo se puede marcar «no se presentó» cuando la cita ya ha empezado.",
+        "Solo se puede marcar como no presentada cuando la cita ya ha empezado.",
     });
   });
 });

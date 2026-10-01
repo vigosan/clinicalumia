@@ -76,7 +76,7 @@ export function AddGuardian({
         return;
       }
       reset();
-      toast("Tutor/a añadido");
+      toast("Tutor/a añadido/a");
     });
   }
 

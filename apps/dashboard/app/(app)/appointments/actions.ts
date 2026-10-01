@@ -176,14 +176,14 @@ export async function moveAppointment(
   formData: FormData,
 ): Promise<AppointmentFormState> {
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "No se ha podido mover la cita." };
+  if (!id) return { error: "No se ha podido cambiar la fecha u hora." };
 
   const parsed = parseAppointmentForm(formData);
   if ("error" in parsed) return parsed;
   const { appointment } = parsed;
 
   if (new Date(appointment.starts_at).getTime() <= Date.now())
-    return { error: "No se puede mover una cita a una hora que ya ha pasado." };
+    return { error: "No se puede pasar una cita a una hora que ya ha pasado." };
 
   const supabase = await createClient();
 
@@ -224,7 +224,7 @@ export async function moveAppointment(
     return { error: appointmentError(error) };
   }
   if (!data || data.length === 0)
-    return { error: "No se ha podido mover la cita." };
+    return { error: "No se ha podido cambiar la fecha u hora." };
 
   revalidatePath("/");
   redirect(

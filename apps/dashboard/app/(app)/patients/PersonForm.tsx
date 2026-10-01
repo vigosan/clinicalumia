@@ -169,7 +169,7 @@ export function PersonForm({
         setUseExistingError(result.error);
         return;
       }
-      toast("Tutor/a añadido");
+      toast("Tutor/a añadido/a");
       router.push(`/patients/${guardianOf.id}`);
     });
   }

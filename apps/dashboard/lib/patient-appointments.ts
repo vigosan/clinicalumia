@@ -39,7 +39,7 @@ export type PatientAppointmentRow = {
   href: string;
 };
 
-const MAX_ROWS = 20;
+export const MAX_ROWS = 20;
 
 export function appointmentStatusLabel(
   appointment: Pick<

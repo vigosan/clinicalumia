@@ -4,7 +4,7 @@ import {
   weekStart,
 } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
-import { Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { weekTitle } from "@/lib/agenda";
 
@@ -65,7 +65,7 @@ export function AgendaHeader({
         aria-label={view === "week" ? "Semana anterior" : "Día anterior"}
         className="order-2 flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200 sm:order-none"
       >
-        ‹
+        <ChevronLeft aria-hidden="true" className="size-4" />
       </Link>
       <Link
         href={buildHref("/", {
@@ -78,7 +78,7 @@ export function AgendaHeader({
         aria-label={view === "week" ? "Semana siguiente" : "Día siguiente"}
         className="order-2 flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200 sm:order-none"
       >
-        ›
+        <ChevronRight aria-hidden="true" className="size-4" />
       </Link>
       <div className="order-1 flex basis-full flex-col sm:order-none sm:mr-auto sm:basis-auto">
         <p className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
