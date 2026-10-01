@@ -2,6 +2,7 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import { toast } from "@clinicalumia/ui/toast";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { deletePerson, setArchived } from "../actions";
@@ -26,6 +27,7 @@ export function PersonActions({
         return;
       }
       setError(null);
+      toast(isArchived ? "Ficha desarchivada" : "Ficha archivada");
     });
   }
 

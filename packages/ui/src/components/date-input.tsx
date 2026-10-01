@@ -105,7 +105,7 @@ export function DateInput({
         className={cn(fieldControl, "tabular-nums", className)}
       />
       {showError && (
-        <p id={messageId} className="text-[13px] text-danger-600">
+        <p id={messageId} role="alert" className="text-[13px] text-danger-600">
           {INVALID_MESSAGE}
         </p>
       )}

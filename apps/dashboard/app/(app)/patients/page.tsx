@@ -1,15 +1,13 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
-import {
-  ageOn,
-  isMinor,
-  normalizeSearch,
-  toIlikePattern,
-} from "@clinicalumia/api/person";
+import { ageOn, isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
+import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import { Pagination } from "@clinicalumia/ui/pagination";
 import {
   Table,
   TableBody,
@@ -18,8 +16,15 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import { Archive, SearchX, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  listPatients,
+  patientsListHref,
+  patientsListParams,
+  patientsPageCount,
+} from "@/lib/patients-list";
 import { patientsListState } from "@/lib/patients-list-state";
 import { SearchBox } from "./SearchBox";
 
@@ -28,31 +33,18 @@ export const metadata: Metadata = { title: "Pacientes" };
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; archived?: string }>;
+  searchParams: Promise<{ q?: string; archived?: string; pagina?: string }>;
 }) {
-  const { q, archived } = await searchParams;
-  const showArchived = archived === "1";
+  const params = patientsListParams(await searchParams);
+  const { q, archived: showArchived } = params;
   const supabase = await createClient();
 
-  let query = supabase
-    .from("people")
-    .select("id, first_name, last_name, birth_date, phone, is_patient")
-    .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true })
-    .limit(50);
-
-  query = showArchived
-    ? query.not("archived_at", "is", null)
-    : query.is("archived_at", null);
-
-  if (q) {
-    query = query.ilike("search_text", toIlikePattern(normalizeSearch(q)));
-  }
-
-  const { data: people, error } = await query;
+  const { data: people, error, count } = await listPatients(supabase, params);
   const patients = people ?? [];
   const today = todayInMadrid();
-  const state = patientsListState(Boolean(error), patients.length);
+  const failed = Boolean(error) && error?.code !== "PGRST103";
+  const state = patientsListState(failed, patients.length);
+  const pageCount = patientsPageCount(count ?? 0);
 
   return (
     <>
@@ -65,28 +57,45 @@ export default async function PatientsPage({
         }
       />
       <Card>
-        <SearchBox defaultQuery={q ?? ""} defaultArchived={showArchived} />
+        <SearchBox defaultQuery={q} defaultArchived={showArchived} />
       </Card>
       {state === "error" && (
-        <Card
-          role="alert"
-          className="text-center text-sm text-danger-600"
-          data-testid="patients-error"
-        >
+        <Alert data-testid="patients-error">
           No se ha podido cargar el listado. Recarga la página.
-        </Card>
+        </Alert>
       )}
-      {state === "empty" && (
-        <Card
-          className="text-center text-sm text-ink-800"
+      {state === "empty" && params.page > 1 && (
+        <EmptyState
           data-testid="patients-empty"
-        >
-          {q
-            ? "No hay pacientes ni tutores con esos datos."
-            : showArchived
-              ? "No hay fichas archivadas."
-              : "Todavía no hay pacientes."}
-        </Card>
+          title="No hay más fichas."
+          action={
+            <Button asChild variant="secondary" size="sm">
+              <Link href={patientsListHref({ ...params, page: 1 })}>
+                Volver a la primera página
+              </Link>
+            </Button>
+          }
+        />
+      )}
+      {state === "empty" && params.page === 1 && (
+        <EmptyState
+          data-testid="patients-empty"
+          icon={q ? <SearchX /> : showArchived ? <Archive /> : <Users />}
+          title={
+            q
+              ? "No hay pacientes ni tutores con esos datos."
+              : showArchived
+                ? "No hay fichas archivadas."
+                : "Todavía no hay pacientes."
+          }
+          description={
+            q
+              ? "Prueba con el DNI/NIE, el teléfono o el email."
+              : showArchived
+                ? "Las fichas que archives aparecerán aquí."
+                : "Crea la primera ficha con «Nuevo paciente»."
+          }
+        />
       )}
       {state === "list" && (
         <>
@@ -123,25 +132,25 @@ export default async function PatientsPage({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell label="Edad">
                       {person.birth_date
                         ? `${ageOn(person.birth_date, today)} años`
                         : "—"}
                     </TableCell>
-                    <TableCell>{person.phone ?? "—"}</TableCell>
+                    <TableCell label="Teléfono">
+                      {person.phone ?? "—"}
+                    </TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
-          {patients.length === 50 && (
-            <p
-              className="text-sm text-ink-800"
-              data-testid="patients-truncated"
-            >
-              Se muestran los 50 primeros. Afina la búsqueda para ver más.
-            </p>
-          )}
+          <Pagination
+            page={params.page}
+            pageCount={pageCount}
+            hrefFor={(page) => patientsListHref({ ...params, page })}
+            testIdPrefix="patients"
+          />
         </>
       )}
     </>

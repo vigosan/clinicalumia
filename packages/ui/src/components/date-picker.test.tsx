@@ -226,6 +226,9 @@ describe("DatePicker", () => {
     expect(trigger).toHaveFocus();
     expect(trigger).toHaveAttribute("aria-invalid", "true");
     expect(trigger).toHaveAccessibleDescription("Elige una fecha");
+    expect(screen.getAllByRole("alert")[0]).toHaveTextContent(
+      "Elige una fecha",
+    );
     expect(screen.getByRole("combobox", { name: "Hasta" })).toHaveAttribute(
       "aria-invalid",
       "true",

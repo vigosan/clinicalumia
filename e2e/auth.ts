@@ -135,6 +135,12 @@ export async function signIn(
 }
 
 export async function logOut(page: Page) {
+  const panel = page.getByTestId("appointment-panel");
+  if (await panel.isVisible()) {
+    await panel.getByRole("button", { name: "Cerrar", exact: true }).click();
+    await expect(panel).toHaveCount(0);
+    await expect(page).not.toHaveURL(/appointment=/);
+  }
   await page.getByTestId("user-menu").click();
   await page.getByTestId("logout").click();
 }

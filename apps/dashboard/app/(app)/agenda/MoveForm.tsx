@@ -13,8 +13,14 @@ import {
   useState,
 } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
+import { toastOnRedirect } from "@/lib/toast-on-redirect";
 import { moveAppointment } from "../appointments/actions";
 import { DurationField } from "../appointments/DurationField";
+
+const moveAppointmentWithToast = toastOnRedirect(
+  moveAppointment,
+  "Cita cambiada",
+);
 
 export function MoveForm({
   appointmentId,
@@ -34,7 +40,7 @@ export function MoveForm({
   initialTime: string;
 }) {
   const [state, formAction, pending] = useActionState(
-    moveAppointment,
+    moveAppointmentWithToast,
     undefined,
   );
   const [duration, setDuration] = useState(String(durationMinutes));

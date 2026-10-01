@@ -305,6 +305,11 @@ test("al pasar a otra cita, el formulario de factura completa se cierra y no arr
   );
 
   await page
+    .getByTestId("appointment-panel")
+    .getByRole("button", { name: "Cerrar", exact: true })
+    .click();
+  await expect(page.getByTestId("appointment-panel")).toHaveCount(0);
+  await page
     .locator(
       `[data-testid="appointment-block"][data-appointment="${second.id}"]`,
     )

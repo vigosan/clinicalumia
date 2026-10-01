@@ -4,6 +4,7 @@ import {
   weekStart,
 } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { weekTitle } from "@/lib/agenda";
 
@@ -52,102 +53,105 @@ export function AgendaHeader({
   const weekToDayWith = isOwner && personParam ? personParam : undefined;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-3 sm:gap-x-3">
+      <Link
+        href={buildHref("/", {
+          date: addDays(date, -step),
+          view,
+          with: view === "day" ? withParam : undefined,
+          person: view === "week" ? personParam : undefined,
+        })}
+        data-testid="agenda-prev"
+        aria-label={view === "week" ? "Semana anterior" : "Día anterior"}
+        className="order-2 flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200 sm:order-none"
+      >
+        ‹
+      </Link>
+      <Link
+        href={buildHref("/", {
+          date: addDays(date, step),
+          view,
+          with: view === "day" ? withParam : undefined,
+          person: view === "week" ? personParam : undefined,
+        })}
+        data-testid="agenda-next"
+        aria-label={view === "week" ? "Semana siguiente" : "Día siguiente"}
+        className="order-2 flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200 sm:order-none"
+      >
+        ›
+      </Link>
+      <div className="order-1 flex basis-full flex-col sm:order-none sm:mr-auto sm:basis-auto">
+        <p className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
+          Agenda
+        </p>
+        <h1
+          data-testid="agenda-title"
+          className="font-bold text-[1.75rem] text-ink-900 leading-tight tracking-[-0.01em] sm:text-title"
+        >
+          {titleFor(date, view)}
+        </h1>
+      </div>
+      <Button
+        asChild
+        variant="secondary"
+        size="sm"
+        data-testid="agenda-today"
+        className="order-2 sm:order-none"
+      >
         <Link
           href={buildHref("/", {
-            date: addDays(date, -step),
+            date: today,
             view,
             with: view === "day" ? withParam : undefined,
             person: view === "week" ? personParam : undefined,
           })}
-          data-testid="agenda-prev"
-          aria-label={view === "week" ? "Semana anterior" : "Día anterior"}
-          className="flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200"
         >
-          ‹
+          Hoy
+        </Link>
+      </Button>
+      <div className="order-2 flex overflow-hidden rounded-full border border-line sm:order-none">
+        <Link
+          href={buildHref("/", {
+            date,
+            view: "day",
+            with: view === "day" ? withParam : weekToDayWith,
+          })}
+          data-testid="agenda-view-day"
+          aria-current={view === "day" ? "page" : undefined}
+          className={`px-4 py-2 text-sm ${view === "day" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
+        >
+          Día
         </Link>
         <Link
           href={buildHref("/", {
-            date: addDays(date, step),
-            view,
-            with: view === "day" ? withParam : undefined,
-            person: view === "week" ? personParam : undefined,
+            date,
+            view: "week",
+            person:
+              view === "week" ? personParam : dayToWeekPerson || undefined,
           })}
-          data-testid="agenda-next"
-          aria-label={view === "week" ? "Semana siguiente" : "Día siguiente"}
-          className="flex size-9 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200"
+          data-testid="agenda-view-week"
+          aria-current={view === "week" ? "page" : undefined}
+          className={`px-4 py-2 text-sm ${view === "week" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
         >
-          ›
+          Semana
         </Link>
-        <div className="flex flex-col">
-          <p className="text-xs font-medium text-ink-700 uppercase tracking-[0.08em]">
-            Agenda
-          </p>
-          <h1
-            data-testid="agenda-title"
-            className="font-bold text-title text-ink-900"
-          >
-            {titleFor(date, view)}
-          </h1>
-        </div>
       </div>
-      <div className="flex items-center gap-3">
-        <Button
-          asChild
-          variant="secondary"
-          size="sm"
-          data-testid="agenda-today"
+      <Button
+        asChild
+        size="sm"
+        data-testid="agenda-new"
+        className="order-2 ml-auto max-sm:size-9 max-sm:px-0 sm:order-none sm:ml-0"
+      >
+        <Link
+          href={buildHref("/appointments/new", {
+            date,
+            professional: isOwner ? undefined : selfId,
+          })}
         >
-          <Link
-            href={buildHref("/", {
-              date: today,
-              view,
-              with: view === "day" ? withParam : undefined,
-              person: view === "week" ? personParam : undefined,
-            })}
-          >
-            Hoy
-          </Link>
-        </Button>
-        <div className="flex overflow-hidden rounded-full border border-line">
-          <Link
-            href={buildHref("/", {
-              date,
-              view: "day",
-              with: view === "day" ? withParam : weekToDayWith,
-            })}
-            data-testid="agenda-view-day"
-            aria-current={view === "day" ? "page" : undefined}
-            className={`px-4 py-2 text-sm ${view === "day" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
-          >
-            Día
-          </Link>
-          <Link
-            href={buildHref("/", {
-              date,
-              view: "week",
-              person:
-                view === "week" ? personParam : dayToWeekPerson || undefined,
-            })}
-            data-testid="agenda-view-week"
-            aria-current={view === "week" ? "page" : undefined}
-            className={`px-4 py-2 text-sm ${view === "week" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
-          >
-            Semana
-          </Link>
-        </div>
-        <Button asChild size="sm" data-testid="agenda-new">
-          <Link
-            href={buildHref("/appointments/new", {
-              date,
-              professional: isOwner ? undefined : selfId,
-            })}
-          >
-            Nueva cita
-          </Link>
-        </Button>
-      </div>
+          <Plus aria-hidden="true" />
+          <span className="max-sm:sr-only">Nueva cita</span>
+        </Link>
+      </Button>
     </div>
   );
 }

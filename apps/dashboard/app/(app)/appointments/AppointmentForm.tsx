@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
+import { toastOnRedirect } from "@/lib/toast-on-redirect";
 import { createAppointment } from "./actions";
 import { DurationField } from "./DurationField";
 import { type PatientOption, PatientPicker } from "./PatientPicker";
@@ -32,6 +33,11 @@ export type ServiceOption = {
   durationMinutes: number;
   specialtyId: string;
 };
+
+const createAppointmentWithToast = toastOnRedirect(
+  createAppointment,
+  "Cita creada",
+);
 
 export function AppointmentForm({
   professionals,
@@ -53,7 +59,7 @@ export function AppointmentForm({
   cancelHref: string;
 }) {
   const [state, formAction, pending] = useActionState(
-    createAppointment,
+    createAppointmentWithToast,
     undefined,
   );
   const [professionalId, setProfessionalId] = useState(

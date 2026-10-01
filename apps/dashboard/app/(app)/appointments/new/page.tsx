@@ -4,6 +4,7 @@ import {
   todayInMadrid,
 } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import type { Metadata } from "next";
@@ -37,13 +38,9 @@ export default async function NewAppointmentPage({
     .single();
   if (ownProfileError || !ownProfile) {
     return (
-      <Card
-        role="alert"
-        className="text-center text-danger-600 text-sm"
-        data-testid="appointment-form-error"
-      >
+      <Alert data-testid="appointment-form-error">
         No se han podido cargar los datos del formulario.
-      </Card>
+      </Alert>
     );
   }
 
@@ -74,13 +71,9 @@ export default async function NewAppointmentPage({
 
   if (directoryError || servicesError) {
     return (
-      <Card
-        role="alert"
-        className="text-center text-danger-600 text-sm"
-        data-testid="appointment-form-error"
-      >
+      <Alert data-testid="appointment-form-error">
         No se han podido cargar los datos del formulario.
-      </Card>
+      </Alert>
     );
   }
 

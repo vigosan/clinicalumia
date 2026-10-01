@@ -78,7 +78,7 @@ export function RadioCards({
               {option.icon ? (
                 <span
                   aria-hidden="true"
-                  className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-cream-200 text-ink-800 transition-colors group-data-[state=checked]:bg-sage-800 group-data-[state=checked]:text-cream-50 [&_svg]:size-3.5"
+                  className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-cream-200 text-ink-800 transition-colors group-data-[state=checked]:bg-sage-800 group-data-[state=checked]:text-cream-50 [&>svg]:size-3.5"
                 >
                   {option.icon}
                   <span className="absolute -top-1 -right-1 flex size-3.5 scale-50 items-center justify-center rounded-full bg-sage-800 opacity-0 ring-2 ring-white transition-[opacity,scale] duration-150 group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100 motion-reduce:transition-none">

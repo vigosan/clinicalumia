@@ -2,6 +2,7 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import { toast } from "@clinicalumia/ui/toast";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
@@ -29,6 +30,7 @@ export function ConsentActions({
       const result = await linkConsent(consentId, selected.id);
       setSelected(null);
       setError("error" in result ? result.error : null);
+      if (!("error" in result)) toast("Consentimiento asociado");
     });
   }
 
@@ -36,6 +38,7 @@ export function ConsentActions({
     startTransition(async () => {
       const result = await unlinkConsent(consentId);
       setError("error" in result ? result.error : null);
+      if (!("error" in result)) toast("Consentimiento desasociado");
     });
   }
 

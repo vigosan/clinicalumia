@@ -9,12 +9,14 @@ import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
 import { SwitchField } from "@clinicalumia/ui/switch";
 import { Textarea } from "@clinicalumia/ui/textarea";
+import { toast } from "@clinicalumia/ui/toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   startTransition,
   useActionState,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -23,7 +25,9 @@ import {
   createDuplicateChecker,
   type DuplicateFields,
 } from "@/lib/duplicate-checker";
+import { newPersonToast } from "@/lib/person-toast";
 import { createSubmitGate } from "@/lib/submit-gate";
+import { toastOnRedirect } from "@/lib/toast-on-redirect";
 import type { Ward } from "@/lib/ward-label";
 import { linkConsent } from "../consentimientos/actions";
 import {
@@ -72,7 +76,16 @@ export function PersonForm({
   consent?: ConsentPrefill;
 }) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(savePerson, undefined);
+  const personId = person?.id;
+  const guardianOfId = guardianOf?.id;
+  const save = useMemo(
+    () =>
+      toastOnRedirect(savePerson, (location) =>
+        personId ? "Ficha guardada" : newPersonToast(location, guardianOfId),
+      ),
+    [personId, guardianOfId],
+  );
+  const [state, formAction, pending] = useActionState(save, undefined);
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
   const [checking, setChecking] = useState(false);
   const [useExistingError, setUseExistingError] = useState<string | null>(null);
@@ -130,6 +143,7 @@ export function PersonForm({
           setUseExistingError(result.error);
           return;
         }
+        toast("Consentimiento asociado");
         router.push(`/consentimientos/${consent.id}`);
       });
       return;
@@ -155,6 +169,7 @@ export function PersonForm({
         setUseExistingError(result.error);
         return;
       }
+      toast("Tutor/a añadido");
       router.push(`/patients/${guardianOf.id}`);
     });
   }

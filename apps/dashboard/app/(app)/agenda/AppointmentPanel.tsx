@@ -3,9 +3,14 @@
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import { Sheet } from "@clinicalumia/ui/sheet";
+import { toast } from "@clinicalumia/ui/toast";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { CurrentInvoice, RecipientDraft } from "@/lib/invoices";
+import { paymentToastMessage } from "@/lib/payment-candidates";
+import { type PaymentMethod, parseAmount } from "@/lib/payments";
 import { markNoShow, restoreFromNoShow } from "../appointments/actions";
 import { CancelDialog } from "./CancelDialog";
 import { FullInvoiceForm } from "./FullInvoiceForm";
@@ -91,8 +96,38 @@ export function AppointmentPanel({
   appointment: AppointmentDetail;
   closeHref: string;
 }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function handleOpenChange(next: boolean) {
+    if (next) return;
+    setOpen(false);
+    router.push(closeHref, { scroll: false });
+  }
+
+  function focusAppointment(event: Event) {
+    const block = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        `[data-appointment="${appointment.id}"]`,
+      ),
+    ).find((element) => element.getClientRects().length > 0);
+    if (!block) return;
+    event.preventDefault();
+    block.focus();
+  }
+
+  function handlePaid({
+    amount,
+    method,
+  }: {
+    amount: string;
+    method: PaymentMethod;
+  }) {
+    const parsed = parseAmount(amount);
+    toast(paymentToastMessage("cents" in parsed ? parsed.cents : 0, method));
+  }
 
   function handleNoShow() {
     startTransition(async () => {
@@ -102,6 +137,7 @@ export function AppointmentPanel({
         return;
       }
       setError(null);
+      toast("Cita marcada como no presentada");
     });
   }
 
@@ -113,41 +149,34 @@ export function AppointmentPanel({
         return;
       }
       setError(null);
+      toast("Se deshizo «no presentada»");
     });
   }
 
   return (
-    <aside
+    <Sheet
+      open={open}
+      onOpenChange={handleOpenChange}
+      onCloseAutoFocus={focusAppointment}
       data-testid="appointment-panel"
-      className="fixed inset-0 z-40 flex flex-col gap-5 overflow-y-auto bg-surface p-6 sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[400px] sm:border-l sm:border-line"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p
-            className="text-[13px] text-ink-800"
-            data-testid="appointment-panel-date"
-          >
-            {dateOf(appointment.startsAt)} · {timeOf(appointment.startsAt)} –{" "}
-            {timeOf(appointment.endsAt)} · {appointment.professionalName}
-          </p>
-          <Link
-            href={`/patients/${appointment.patientId}`}
-            className="text-lg font-bold text-ink-900 underline-offset-2 hover:underline"
-          >
-            {appointment.patientName}
-          </Link>
-          <p className="text-[13px] text-ink-800">
-            {appointment.serviceName} · {appointment.durationMinutes} min
-          </p>
-        </div>
+      description={
+        <span data-testid="appointment-panel-date">
+          {dateOf(appointment.startsAt)} · {timeOf(appointment.startsAt)} –{" "}
+          {timeOf(appointment.endsAt)} · {appointment.professionalName}
+        </span>
+      }
+      title={
         <Link
-          href={closeHref}
-          aria-label="Cerrar"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full border border-line text-ink-900 hover:bg-cream-200"
+          href={`/patients/${appointment.patientId}`}
+          className="underline-offset-2 hover:underline"
         >
-          ×
+          {appointment.patientName}
         </Link>
-      </div>
+      }
+    >
+      <p className="-mt-4 text-[13px] text-ink-800">
+        {appointment.serviceName} · {appointment.durationMinutes} min
+      </p>
 
       <div className="flex items-center gap-2">
         <Badge
@@ -187,6 +216,7 @@ export function AppointmentPanel({
             appointmentId={appointment.id}
             suggestedAmountCents={appointment.suggestedAmountCents}
             cancelled={appointment.status === "cancelled"}
+            onSuccess={handlePaid}
           />
         )}
         {appointment.invoice && (
@@ -317,6 +347,6 @@ export function AppointmentPanel({
           ))}
         </ul>
       </div>
-    </aside>
+    </Sheet>
   );
 }

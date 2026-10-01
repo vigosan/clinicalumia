@@ -646,6 +646,7 @@ test("desde un hueco de mañana, buscar «nora», elegir servicio y guardar crea
   await page.waitForURL(/\/\?date=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
 
+  await expect(page.getByTestId("toast")).toHaveText("Cita creada");
   await expect(
     columnFor(page, employee.id).getByTestId("appointment-block"),
   ).toContainText("Nora");
@@ -1027,6 +1028,7 @@ test("abrir una cita del test, moverla a otra hora, la agenda la muestra en su s
   await expect(
     columnFor(page, employee.id).getByTestId("appointment-block"),
   ).toContainText("14:00");
+  await expect(page.getByTestId("toast")).toHaveText("Cita cambiada");
   await expect(page.getByTestId("appointment-history")).toContainText(
     "Movida de",
   );
@@ -1179,9 +1181,54 @@ test("cancelar como «paciente» con motivo la quita de la agenda y el historial
   await expect(page.getByTestId("appointment-history")).toContainText(
     "Cancelada (paciente) por",
   );
+  await expect(page.getByTestId("toast")).toHaveText("Cita cancelada");
   await expect(
     columnFor(page, employee.id).getByTestId("appointment-block"),
   ).toHaveCount(0);
+});
+
+test("el panel de la cita retiene el foco mientras está abierto, y Escape lo cierra y devuelve el foco a la cita de la agenda", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(104, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Panel Teclado",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}`);
+  const block = columnFor(page, employee.id).locator(
+    `[data-appointment="${appointmentId}"]`,
+  );
+  await block.click();
+
+  const panel = page.getByRole("dialog");
+  await expect(panel).toHaveAttribute("data-testid", "appointment-panel");
+  await expect(panel).toContainText("Jorge");
+  for (let step = 0; step < 25; step += 1) {
+    await page.keyboard.press("Tab");
+    expect(
+      await panel.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+    ).toBe(true);
+  }
+
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByTestId("appointment-panel")).toHaveCount(0);
+  await expect(page).not.toHaveURL(/appointment=/);
+  await expect(block).toBeFocused();
 });
 
 test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer «no presentada»» la devuelve", async ({

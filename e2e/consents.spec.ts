@@ -630,3 +630,29 @@ test("if someone links the consent while staff are creating the record, the reco
     `Asociado a la ficha de Otra ${surname}`,
   );
 });
+
+test("a 390 px la lista de consentimientos se lee sin desplazar la página de lado", async ({
+  page,
+}) => {
+  const lastName = `Movil${uniqueSuffix()}`;
+  await createConsent({ firstName: "Consentimiento", lastName });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsThrowawayEmployee(page);
+  await page.goto(`${DASHBOARD}/consentimientos?pendientes=0`);
+  await searchConsents(page, lastName);
+
+  const table = page.getByRole("table");
+  await expect(table.getByTestId("consent-row")).toHaveCount(1);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(
+    await table.evaluate((element) => {
+      const wrapper = element.parentElement as HTMLElement;
+      return wrapper.scrollWidth <= wrapper.clientWidth;
+    }),
+  ).toBe(true);
+});

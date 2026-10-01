@@ -12,3 +12,14 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 };
+window.matchMedia ??= (query: string) =>
+  ({
+    media: query,
+    matches: false,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }) as MediaQueryList;

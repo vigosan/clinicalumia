@@ -1,6 +1,7 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { ageOn, isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
@@ -62,11 +63,7 @@ export default async function PatientPage({
 
   const { data: person, error: personError } = await getPerson(id);
   if (personError) {
-    return (
-      <Card role="alert" className="text-center text-sm text-danger-600">
-        No se ha podido cargar la ficha. Recarga la página.
-      </Card>
-    );
+    return <Alert>No se ha podido cargar la ficha. Recarga la página.</Alert>;
   }
   if (!person) notFound();
 
@@ -307,13 +304,9 @@ export default async function PatientPage({
         {person.archived_at && <Badge tone="neutral">Ficha archivada</Badge>}
       </div>
       {guardianDataError && (
-        <Card
-          role="alert"
-          data-testid="guardian-load-error"
-          className="text-center text-sm text-danger-600"
-        >
+        <Alert data-testid="guardian-load-error">
           No se han podido cargar los tutores. Recarga la página.
-        </Card>
+        </Alert>
       )}
 
       <Card className="flex flex-col gap-2">

@@ -37,4 +37,21 @@ describe("Table", () => {
       within(table).getByRole("cell", { name: "40,00 €" }),
     ).toBeInTheDocument();
   });
+
+  it("keeps each value's column name on the cell, so on a phone, where the header row is hidden and rows become cards, every value still says what it is", () => {
+    render(
+      <Table aria-label="Cobros">
+        <TableBody>
+          <TableRow>
+            <TableCell label="Importe">45,00 €</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+
+    expect(screen.getByRole("cell", { name: "45,00 €" })).toHaveAttribute(
+      "data-label",
+      "Importe",
+    );
+  });
 });

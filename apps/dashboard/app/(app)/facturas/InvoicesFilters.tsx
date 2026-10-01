@@ -72,7 +72,7 @@ export function InvoicesFilters({
           options={INVOICE_KIND_OPTIONS}
         />
       </Field>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-56 flex-1 max-sm:basis-full">
         <Field label="Buscar por código o nombre">
           <Input
             data-testid="invoices-search"

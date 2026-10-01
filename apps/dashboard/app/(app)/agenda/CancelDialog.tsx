@@ -5,6 +5,7 @@ import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Field } from "@clinicalumia/ui/field";
 import { RadioCards } from "@clinicalumia/ui/radio-cards";
 import { Textarea } from "@clinicalumia/ui/textarea";
+import { toast } from "@clinicalumia/ui/toast";
 import { useRef, useState, useTransition } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { cancelAppointment } from "../appointments/actions";
@@ -34,6 +35,7 @@ export function CancelDialog({
       }
       setError(null);
       setOpen(false);
+      toast("Cita cancelada");
     });
   }
 

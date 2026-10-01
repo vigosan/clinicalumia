@@ -5,7 +5,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
-import { Card } from "@clinicalumia/ui/card";
+import { Alert } from "@clinicalumia/ui/alert";
 import type { Metadata } from "next";
 import { canMarkNoShow, canMove, isUuid } from "@/lib/agenda";
 import {
@@ -225,13 +225,9 @@ export default async function DashboardHome({
 
   if (!result.ok) {
     return (
-      <Card
-        role="alert"
-        className="text-center text-danger-600 text-sm"
-        data-testid="agenda-error"
-      >
+      <Alert data-testid="agenda-error">
         No se ha podido cargar la agenda.
-      </Card>
+      </Alert>
     );
   }
 
@@ -262,16 +258,13 @@ export default async function DashboardHome({
           lastHour={data.lastHour}
         />
         {appointment.status === "error" && (
-          <Card
-            role="alert"
-            className="text-center text-danger-600 text-sm"
-            data-testid="appointment-panel-error"
-          >
+          <Alert data-testid="appointment-panel-error">
             No se ha podido cargar la cita.
-          </Card>
+          </Alert>
         )}
         {appointment.status === "ok" && (
           <AppointmentPanel
+            key={appointment.detail.id}
             appointment={appointment.detail}
             closeHref={buildHref("/", {
               date: data.date,
@@ -326,16 +319,13 @@ export default async function DashboardHome({
         lastHour={data.lastHour}
       />
       {appointment.status === "error" && (
-        <Card
-          role="alert"
-          className="text-center text-danger-600 text-sm"
-          data-testid="appointment-panel-error"
-        >
+        <Alert data-testid="appointment-panel-error">
           No se ha podido cargar la cita.
-        </Card>
+        </Alert>
       )}
       {appointment.status === "ok" && (
         <AppointmentPanel
+          key={appointment.detail.id}
           appointment={appointment.detail}
           closeHref={buildHref("/", { date: data.date, view, with: withParam })}
         />

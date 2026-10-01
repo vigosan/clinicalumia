@@ -54,7 +54,7 @@ export function Toaster({ duration = 5000 }: { duration?: number }) {
           onOpenChange={(open) => {
             if (!open) dismiss(item.id);
           }}
-          className="flex items-start gap-3 rounded-xl border border-line bg-surface py-3 pr-2 pl-4 text-[15px] text-ink-900 shadow-[0_12px_32px_-12px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) motion-reduce:animate-none"
+          className="pointer-events-auto flex items-start gap-3 rounded-xl border border-line bg-surface py-3 pr-2 pl-4 text-[15px] text-ink-900 shadow-[0_12px_32px_-12px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) motion-reduce:animate-none"
         >
           <CircleCheck
             aria-hidden="true"
@@ -71,7 +71,7 @@ export function Toaster({ duration = 5000 }: { duration?: number }) {
           </Primitive.Close>
         </Primitive.Root>
       ))}
-      <Primitive.Viewport className="fixed right-0 bottom-0 left-0 z-[60] m-0 flex list-none flex-col gap-2 p-4 outline-none sm:left-auto sm:w-[26rem] sm:p-6" />
+      <Primitive.Viewport className="fixed right-0 bottom-0 left-0 pointer-events-none z-[60] m-0 flex list-none flex-col gap-2 p-4 outline-none sm:left-auto sm:w-[26rem] sm:p-6" />
     </Primitive.Provider>
   );
 }

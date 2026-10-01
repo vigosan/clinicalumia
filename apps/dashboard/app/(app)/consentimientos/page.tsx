@@ -1,7 +1,9 @@
 import { createClient } from "@clinicalumia/api/server";
-import { Button } from "@clinicalumia/ui/button";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Card } from "@clinicalumia/ui/card";
+import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import { Pagination } from "@clinicalumia/ui/pagination";
 import {
   Table,
   TableBody,
@@ -10,6 +12,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import { FileSignature } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -59,21 +62,16 @@ export default async function ConsentsPage({
         />
       </Card>
       {state === "error" && (
-        <Card
-          role="alert"
-          className="text-center text-sm text-danger-600"
-          data-testid="consents-error"
-        >
+        <Alert data-testid="consents-error">
           No se ha podido cargar el listado. Recarga la página.
-        </Card>
+        </Alert>
       )}
       {state === "empty" && (
-        <Card
-          className="text-center text-sm text-ink-800"
+        <EmptyState
           data-testid="consents-empty"
-        >
-          No hay consentimientos con esos datos.
-        </Card>
+          icon={<FileSignature />}
+          title="No hay consentimientos con esos datos."
+        />
       )}
       {state === "list" && (
         <>
@@ -89,8 +87,10 @@ export default async function ConsentsPage({
             <TableBody>
               {consents.map((consent) => (
                 <TableRow key={consent.id} data-testid="consent-row">
-                  <TableCell>{formatSignedAt(consent.signed_at)}</TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell label="Firmado">
+                    {formatSignedAt(consent.signed_at)}
+                  </TableCell>
+                  <TableCell className="font-medium max-md:order-first max-md:text-[15px]">
                     <Link
                       href={`/consentimientos/${consent.id}`}
                       data-testid="consent-open"
@@ -98,8 +98,11 @@ export default async function ConsentsPage({
                       {consent.first_name} {consent.last_name}
                     </Link>
                   </TableCell>
-                  <TableCell>{consent.tax_id}</TableCell>
-                  <TableCell data-testid="consent-status">
+                  <TableCell label="DNI/NIE">{consent.tax_id}</TableCell>
+                  <TableCell
+                    className="max-md:block max-md:text-left"
+                    data-testid="consent-status"
+                  >
                     {consent.person ? (
                       <>
                         Asociado a la ficha de{" "}
@@ -115,43 +118,12 @@ export default async function ConsentsPage({
               ))}
             </TableBody>
           </Table>
-          {pageCount > 1 && (
-            <div className="flex items-center justify-between gap-2 text-sm text-ink-800">
-              {params.page > 1 ? (
-                <Button asChild variant="secondary" size="sm">
-                  <Link
-                    href={consentsListHref({
-                      ...params,
-                      page: params.page - 1,
-                    })}
-                    data-testid="consents-prev"
-                  >
-                    Anterior
-                  </Link>
-                </Button>
-              ) : (
-                <span />
-              )}
-              <span>
-                Página {params.page} de {pageCount}
-              </span>
-              {params.page < pageCount ? (
-                <Button asChild variant="secondary" size="sm">
-                  <Link
-                    href={consentsListHref({
-                      ...params,
-                      page: params.page + 1,
-                    })}
-                    data-testid="consents-next"
-                  >
-                    Siguiente
-                  </Link>
-                </Button>
-              ) : (
-                <span />
-              )}
-            </div>
-          )}
+          <Pagination
+            page={params.page}
+            pageCount={pageCount}
+            hrefFor={(page) => consentsListHref({ ...params, page })}
+            testIdPrefix="consents"
+          />
         </>
       )}
     </>

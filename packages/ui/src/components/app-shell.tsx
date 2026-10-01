@@ -3,7 +3,7 @@
 import { ChevronsUpDown, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { Dialog } from "radix-ui";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,6 +138,16 @@ function MobileMenu({
   nav: NavItem[];
 }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    const close = (event: { matches: boolean }) => {
+      if (event.matches) setOpen(false);
+    };
+    desktop.addEventListener("change", close);
+    return () => desktop.removeEventListener("change", close);
+  }, []);
+
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
@@ -148,10 +158,10 @@ function MobileMenu({
         <Menu aria-hidden="true" className="size-5" />
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink-900/30" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink-900/30 data-[state=open]:animate-fade-in motion-reduce:animate-none" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,85vw)] flex-col gap-8 border-line border-r bg-cream-50 px-5 py-6 shadow-[8px_0_32px_-16px_rgb(58_58_58/0.3)]"
+          className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,85vw)] flex-col gap-8 border-line border-r bg-cream-50 px-5 py-6 shadow-[8px_0_32px_-16px_rgb(58_58_58/0.3)] data-[state=open]:animate-slide-in-left motion-reduce:animate-none"
         >
           <Dialog.Title className="sr-only">Menú</Dialog.Title>
           <div className="flex items-start justify-between gap-3">

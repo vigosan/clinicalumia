@@ -102,4 +102,14 @@ describe("DateInput", () => {
       "Fecha no válida. Escríbela como 05/03/1990.",
     );
   });
+
+  it("announces the invalid date message as soon as it appears, so a screen reader user hears it", async () => {
+    const input = renderInForm();
+    await userEvent.type(input, "31021990");
+    await userEvent.tab();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Fecha no válida. Escríbela como 05/03/1990.",
+    );
+  });
 });

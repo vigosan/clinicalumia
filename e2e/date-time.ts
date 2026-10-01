@@ -2,7 +2,10 @@ import { expect, type Locator } from "@playwright/test";
 
 export async function pickDate(trigger: Locator, date: string) {
   await trigger.click();
-  const calendar = trigger.page().getByRole("dialog");
+  const calendar = trigger
+    .page()
+    .getByRole("dialog")
+    .filter({ has: trigger.page().locator("[data-day]") });
   const day = calendar.locator(`[data-day="${date}"]:not([data-outside])`);
   for (let step = 0; step < 24 && (await day.count()) === 0; step++) {
     const shown = await calendar

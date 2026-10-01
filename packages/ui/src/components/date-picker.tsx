@@ -126,7 +126,11 @@ export function DatePicker({
           />
         )}
         {missing && (
-          <p id={messageId} className="mt-1.5 text-[13px] text-danger-600">
+          <p
+            id={messageId}
+            role="alert"
+            className="mt-1.5 text-[13px] text-danger-600"
+          >
             Elige una fecha
           </p>
         )}

@@ -148,6 +148,9 @@ test("cobrar en efectivo una cita pasada la deja pagada y lo apunta en el histor
   await expect(page.getByTestId("payment-note")).toHaveCount(0);
   await page.getByTestId("payment-submit").click();
 
+  await expect(page.getByTestId("toast")).toHaveText(
+    "Cobro registrado · 55,00 € en efectivo",
+  );
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
     "Cobrada · 55,00 € · Efectivo",
   );
@@ -523,8 +526,11 @@ test("«Registrar cobro» en /cobros pone primero las citas de hoy, busca por pa
 
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/cobros`);
-  await expect(page.getByTestId("payments-empty")).toHaveText(
-    "No hay cobros en estas fechas. Usa «Registrar cobro» o revisa «Pendientes».",
+  await expect(page.getByTestId("payments-empty")).toContainText(
+    "No hay cobros en estas fechas.",
+  );
+  await expect(page.getByTestId("payments-empty")).toContainText(
+    "Usa «Registrar cobro» o revisa «Pendientes».",
   );
 
   await page.getByTestId("payments-register").click();
@@ -784,4 +790,37 @@ test("los atajos de fechas de Cobros eligen los días de Madrid y el calendario 
   await expect(page).toHaveURL(
     `${DASHBOARD}/cobros?desde=${monthStart}&hasta=${today}`,
   );
+});
+
+test("a 390 px Cobros y Facturas se leen como tarjetas, sin desplazar la página de lado", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Cobros Móvil");
+  const appointmentId = await createAppointment(employee.id, date);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointmentId);
+  await collect(page, "card");
+  await expect(page.getByTestId("appointment-payment-status")).toContainText(
+    "Cobrada",
+  );
+
+  for (const path of ["/cobros", "/facturas"]) {
+    await page.goto(`${DASHBOARD}${path}`);
+    const table = page.getByRole("table");
+    await expect(table).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect(
+      await table.evaluate((element) => {
+        const wrapper = element.parentElement as HTMLElement;
+        return wrapper.scrollWidth <= wrapper.clientWidth;
+      }),
+    ).toBe(true);
+  }
 });

@@ -4,6 +4,7 @@ import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Field } from "@clinicalumia/ui/field";
 import { Textarea } from "@clinicalumia/ui/textarea";
+import { toast } from "@clinicalumia/ui/toast";
 import { useRef, useState, useTransition } from "react";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { issueRectifyingInvoice } from "../facturas/actions";
@@ -39,6 +40,7 @@ export function VoidPaymentDialog({
       }
       setError(null);
       setOpen(false);
+      toast("Cobro anulado");
     });
   }
 

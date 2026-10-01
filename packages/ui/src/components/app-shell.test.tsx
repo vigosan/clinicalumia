@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CalendarDays } from "lucide-react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -122,5 +122,33 @@ describe("AppShell", () => {
     expect(screen.getByTestId("user-menu")).toHaveAccessibleName(
       "Cuenta de Patricia Hernán, Propietaria",
     );
+  });
+
+  it("closes the side menu when the window grows to desktop, where the sections are always visible and a leftover overlay would block the page", async () => {
+    const listeners = new Set<(event: { matches: boolean }) => void>();
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      media: query,
+      matches: false,
+      addEventListener: (
+        _: string,
+        listener: (event: { matches: boolean }) => void,
+      ) => listeners.add(listener),
+      removeEventListener: (
+        _: string,
+        listener: (event: { matches: boolean }) => void,
+      ) => listeners.delete(listener),
+    }));
+    renderShell();
+    await userEvent.click(screen.getByTestId("nav-toggle"));
+    expect(screen.getByRole("dialog", { name: "Menú" })).toBeInTheDocument();
+
+    act(() => {
+      for (const listener of listeners) listener({ matches: true });
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Menú" })).toBeNull(),
+    );
+    vi.unstubAllGlobals();
   });
 });

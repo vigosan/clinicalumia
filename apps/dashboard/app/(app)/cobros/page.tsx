@@ -1,7 +1,9 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
+import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import {
   Table,
@@ -11,6 +13,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import { CircleCheck, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
@@ -103,22 +106,17 @@ export default async function CobrosPage({
               />
             </Card>
             {state === "error" && (
-              <Card
-                role="alert"
-                className="text-center text-sm text-danger-600"
-                data-testid="payments-error"
-              >
+              <Alert data-testid="payments-error">
                 No se ha podido cargar el listado. Recarga la página.
-              </Card>
+              </Alert>
             )}
             {state === "empty" && (
-              <Card
-                className="text-center text-sm text-ink-800"
+              <EmptyState
                 data-testid="payments-empty"
-              >
-                No hay cobros en estas fechas. Usa «Registrar cobro» o revisa
-                «Pendientes».
-              </Card>
+                icon={<Wallet />}
+                title="No hay cobros en estas fechas."
+                description="Usa «Registrar cobro» o revisa «Pendientes»."
+              />
             )}
             {state === "list" && (
               <>
@@ -175,27 +173,31 @@ export default async function CobrosPage({
                         data-testid="payment-row"
                         className={payment.voidedAt ? "opacity-60" : undefined}
                       >
-                        <TableCell>
+                        <TableCell label={momentHeader(showDate)}>
                           {formatPaymentMoment(payment.collectedAt, showDate)}
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium max-md:order-first max-md:text-[15px]">
                           <Link href={`/patients/${payment.patientId}`}>
                             {payment.patientName}
                           </Link>
                         </TableCell>
-                        <TableCell>{payment.serviceName}</TableCell>
-                        <TableCell>
+                        <TableCell label="Servicio">
+                          {payment.serviceName}
+                        </TableCell>
+                        <TableCell label="Profesional">
                           {nameById.get(payment.professionalId) ??
                             "Profesional"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell label="Importe">
                           {formatEuros(payment.amountCents)}
                         </TableCell>
-                        <TableCell>{methodLabel(payment.method)}</TableCell>
-                        <TableCell>
+                        <TableCell label="Forma de pago">
+                          {methodLabel(payment.method)}
+                        </TableCell>
+                        <TableCell label="Cobrado por">
                           {nameById.get(payment.collectedBy) ?? "Alguien"}
                         </TableCell>
-                        <TableCell data-testid="payment-state">
+                        <TableCell label="Estado" data-testid="payment-state">
                           {paymentStateLabel(payment)}
                         </TableCell>
                       </TableRow>
@@ -218,22 +220,16 @@ export default async function CobrosPage({
         pendientes={
           <>
             {pendingState === "error" && (
-              <Card
-                role="alert"
-                className="text-center text-sm text-danger-600"
-                data-testid="payments-pending-error"
-              >
+              <Alert data-testid="payments-pending-error">
                 No se ha podido cargar el listado. Recarga la página.
-              </Card>
+              </Alert>
             )}
             {pendingState === "empty" && (
-              <Card
-                className="text-center text-sm text-ink-800"
+              <EmptyState
                 data-testid="payments-pending-empty"
-              >
-                No hay citas pendientes de cobro en los últimos{" "}
-                {PENDING_WINDOW_DAYS} días.
-              </Card>
+                icon={<CircleCheck />}
+                title={`No hay citas pendientes de cobro en los últimos ${PENDING_WINDOW_DAYS} días.`}
+              />
             )}
             {pendingState === "list" && (
               <Table
@@ -253,7 +249,7 @@ export default async function CobrosPage({
                 <TableBody>
                   {pendingRows.map((row) => (
                     <TableRow key={row.id} data-testid="pending-payment-row">
-                      <TableCell>
+                      <TableCell label="Fecha y hora">
                         <Link
                           href={row.href}
                           className="underline decoration-line-field underline-offset-4 hover:text-sage-800 hover:decoration-sage-800"
@@ -261,15 +257,17 @@ export default async function CobrosPage({
                           {row.moment}
                         </Link>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium max-md:order-first max-md:text-[15px]">
                         {row.patientName}
                       </TableCell>
-                      <TableCell>{row.serviceName}</TableCell>
-                      <TableCell>{row.professionalName}</TableCell>
-                      <TableCell>
+                      <TableCell label="Servicio">{row.serviceName}</TableCell>
+                      <TableCell label="Profesional">
+                        {row.professionalName}
+                      </TableCell>
+                      <TableCell label="Importe">
                         {formatEuros(row.suggestedAmountCents)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-md:mt-2 max-md:justify-end">
                         <RegisterPaymentDialog
                           trigger={
                             <Button

@@ -1,8 +1,11 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
+import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import { Pagination } from "@clinicalumia/ui/pagination";
 import {
   Table,
   TableBody,
@@ -11,6 +14,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import { ReceiptText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -68,35 +72,32 @@ export default async function InvoicesPage({
         />
       </Card>
       {hasError && (
-        <Card
-          role="alert"
-          className="text-center text-sm text-danger-600"
-          data-testid="invoices-error"
-        >
+        <Alert data-testid="invoices-error">
           No se ha podido cargar el listado. Recarga la página.
-        </Card>
+        </Alert>
       )}
       {!hasError && isEmpty && !pastEnd && (
-        <Card
-          className="text-center text-sm text-ink-800"
+        <EmptyState
           data-testid="invoices-empty"
-        >
-          No hay facturas con estos filtros.
-        </Card>
+          icon={<ReceiptText />}
+          title="No hay facturas con estos filtros."
+        />
       )}
       {!hasError && isEmpty && pastEnd && (
-        <Card
-          className="flex flex-col items-center gap-2 text-center text-sm text-ink-800"
+        <EmptyState
           data-testid="invoices-empty-page"
-        >
-          No hay más facturas.
-          <Link
-            href={invoicesListHref({ ...params, page: 1 })}
-            data-testid="invoices-back-to-first"
-          >
-            Volver a la primera página
-          </Link>
-        </Card>
+          title="No hay más facturas."
+          action={
+            <Button asChild variant="secondary" size="sm">
+              <Link
+                href={invoicesListHref({ ...params, page: 1 })}
+                data-testid="invoices-back-to-first"
+              >
+                Volver a la primera página
+              </Link>
+            </Button>
+          }
+        />
       )}
       {!hasError && !isEmpty && (
         <>
@@ -114,7 +115,7 @@ export default async function InvoicesPage({
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id} data-testid="invoice-row">
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium max-md:text-[15px]">
                     <Link
                       href={`/facturas/${row.id}`}
                       data-testid="invoice-open"
@@ -122,53 +123,32 @@ export default async function InvoicesPage({
                       {row.code}
                     </Link>
                   </TableCell>
-                  <TableCell>{formatInvoiceDate(row.issuedAt)}</TableCell>
-                  <TableCell>{invoiceKindLabel(row.kind)}</TableCell>
-                  <TableCell>{invoiceRecipientLabel(row)}</TableCell>
-                  <TableCell>{formatEuros(row.totalCents)}</TableCell>
-                  <TableCell data-testid="invoice-status">
+                  <TableCell label="Fecha">
+                    {formatInvoiceDate(row.issuedAt)}
+                  </TableCell>
+                  <TableCell label="Tipo">
+                    {invoiceKindLabel(row.kind)}
+                  </TableCell>
+                  <TableCell label="Destinatario o paciente">
+                    {invoiceRecipientLabel(row)}
+                  </TableCell>
+                  <TableCell label="Total">
+                    {formatEuros(row.totalCents)}
+                  </TableCell>
+                  <TableCell label="Estado" data-testid="invoice-status">
                     {invoiceStatusLabel(row)}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          {pageCount !== null && pageCount > 1 && (
-            <div className="flex items-center justify-between gap-2 text-sm text-ink-800">
-              {params.page > 1 ? (
-                <Button asChild variant="secondary" size="sm">
-                  <Link
-                    href={invoicesListHref({
-                      ...params,
-                      page: params.page - 1,
-                    })}
-                    data-testid="invoices-prev"
-                  >
-                    Anterior
-                  </Link>
-                </Button>
-              ) : (
-                <span />
-              )}
-              <span>
-                Página {params.page} de {pageCount}
-              </span>
-              {params.page < pageCount ? (
-                <Button asChild variant="secondary" size="sm">
-                  <Link
-                    href={invoicesListHref({
-                      ...params,
-                      page: params.page + 1,
-                    })}
-                    data-testid="invoices-next"
-                  >
-                    Siguiente
-                  </Link>
-                </Button>
-              ) : (
-                <span />
-              )}
-            </div>
+          {pageCount !== null && (
+            <Pagination
+              page={params.page}
+              pageCount={pageCount}
+              hrefFor={(page) => invoicesListHref({ ...params, page })}
+              testIdPrefix="invoices"
+            />
           )}
         </>
       )}

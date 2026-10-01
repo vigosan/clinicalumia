@@ -920,3 +920,75 @@ test("a patient with no appointments offers «Nueva cita» for them, and Cancela
   await expect(page.getByRole("main")).toContainText("Tutor/a");
   await expect(page.getByTestId("patient-new-appointment")).toHaveCount(0);
 });
+
+test("Pacientes pasa de página sin perder la búsqueda ni el filtro «Archivados», y vuelve atrás igual", async ({
+  page,
+}) => {
+  const lastName = `Paginada${Date.now()}`;
+  const { data, error } = await admin
+    .from("people")
+    .insert(
+      Array.from({ length: 27 }, (_, index) => ({
+        first_name: `Persona ${String(index + 1).padStart(2, "0")}`,
+        last_name: lastName,
+        birth_date: "1990-01-01",
+        is_patient: true,
+        archived_at: new Date().toISOString(),
+      })),
+    )
+    .select("id");
+  expect(error).toBeNull();
+  createdPersonIds.push(...data!.map((row) => row.id));
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients?q=${lastName}&archived=1`);
+
+  await expect(page.getByTestId("patient-row")).toHaveCount(25);
+  await expect(
+    page.getByRole("navigation", { name: "Paginación" }),
+  ).toContainText("Página 1 de 2");
+  await expect(page.getByTestId("patients-truncated")).toHaveCount(0);
+
+  await page.getByTestId("patients-next").click();
+
+  await expect(page).toHaveURL(/pagina=2/);
+  await expect(page).toHaveURL(new RegExp(`q=${lastName}`));
+  await expect(page).toHaveURL(/archived=1/);
+  await expect(page.getByTestId("patient-row")).toHaveCount(2);
+  await expect(page.getByTestId("patient-row").last()).toContainText(
+    "Persona 27",
+  );
+  await expect(page.getByTestId("patients-search")).toHaveValue(lastName);
+  await expect(page.getByTestId("patients-archived")).toBeChecked();
+
+  await page.getByTestId("patients-prev").click();
+
+  await expect(page).not.toHaveURL(/pagina=/);
+  await expect(page).toHaveURL(new RegExp(`q=${lastName}`));
+  await expect(page.getByTestId("patient-row")).toHaveCount(25);
+  await expect(page.getByTestId("patient-row").first()).toContainText(
+    "Persona 01",
+  );
+});
+
+test("a 390 px Pacientes se lee sin desplazar la página de lado", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients`);
+
+  const table = page.getByRole("table");
+  await expect(table).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(
+    await table.evaluate((element) => {
+      const wrapper = element.parentElement as HTMLElement;
+      return wrapper.scrollWidth <= wrapper.clientWidth;
+    }),
+  ).toBe(true);
+});

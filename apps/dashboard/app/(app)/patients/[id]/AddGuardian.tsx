@@ -6,6 +6,7 @@ import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { PersonCombobox } from "@clinicalumia/ui/combobox";
 import { Field } from "@clinicalumia/ui/field";
 import { Select } from "@clinicalumia/ui/select";
+import { toast } from "@clinicalumia/ui/toast";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { withAge } from "@/lib/person-search";
@@ -75,6 +76,7 @@ export function AddGuardian({
         return;
       }
       reset();
+      toast("Tutor/a añadido");
     });
   }
 
