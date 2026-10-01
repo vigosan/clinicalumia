@@ -1,6 +1,11 @@
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
+import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import { splitClosures } from "@/lib/closures";
+import { ClosureForm } from "./ClosureForm";
+import { ClosureRow } from "./ClosureRow";
 import { EmployeePicker } from "./EmployeePicker";
 import { ScheduleEditor } from "./ScheduleEditor";
 import { TimeOffForm } from "./TimeOffForm";
@@ -18,6 +23,12 @@ export default async function SchedulesPage({
     .select("id, full_name")
     .eq("is_active", true)
     .order("full_name", { ascending: true });
+
+  const { data: closures } = await supabase
+    .from("clinic_closures")
+    .select("id, starts_on, ends_on, reason");
+  const today = todayInMadrid();
+  const { upcoming, past } = splitClosures(closures ?? [], today);
 
   const employees = profiles ?? [];
   const selected = employees.find((p) => p.id === employee) ?? employees[0];
@@ -78,6 +89,41 @@ export default async function SchedulesPage({
           </>
         )
       )}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xl font-bold text-ink-900">Días de cierre</h2>
+        <p className="text-[15px] text-ink-800">
+          Días en que la clínica no abre. La web no ofrece huecos esos días y
+          las citas que ya hay no se cancelan.
+        </p>
+        <Card>
+          <ClosureForm today={today} />
+        </Card>
+        {upcoming.length > 0 ? (
+          <Card className="p-2">
+            <ul>
+              {upcoming.map((closure) => (
+                <ClosureRow key={closure.id} closure={closure} />
+              ))}
+            </ul>
+          </Card>
+        ) : (
+          <EmptyState title="No hay cierres previstos." />
+        )}
+        {past.length > 0 && (
+          <details data-testid="closures-past">
+            <summary className="cursor-pointer text-[15px] font-medium text-ink-900">
+              Cierres anteriores
+            </summary>
+            <Card className="mt-3 p-2">
+              <ul>
+                {past.map((closure) => (
+                  <ClosureRow key={closure.id} closure={closure} />
+                ))}
+              </ul>
+            </Card>
+          </details>
+        )}
+      </section>
     </>
   );
 }
