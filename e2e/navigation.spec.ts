@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
@@ -11,6 +12,10 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 const createdPersonIds: string[] = [];
+const createdAppointmentIds: string[] = [];
+
+const OWNER_ID = "a0000000-0000-0000-0000-000000000001";
+const LOGOPEDIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005a2";
 
 async function createPerson(): Promise<{ id: string; name: string }> {
   const lastName = `Migas${Date.now()}`;
@@ -29,7 +34,31 @@ async function createPerson(): Promise<{ id: string; name: string }> {
   return { id: data!.id, name: `Nora ${lastName}` };
 }
 
+async function createPendingAppointment(): Promise<string> {
+  const { id: personId } = await createPerson();
+  const date = addDays(todayInMadrid(), -3);
+  const { data, error } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: OWNER_ID,
+      patient_id: personId,
+      service_id: LOGOPEDIA_SERVICE_ID,
+      starts_at: `${date} 08:00:00 Europe/Madrid`,
+      ends_at: `${date} 08:45:00 Europe/Madrid`,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdAppointmentIds.push(data!.id);
+  return data!.id as string;
+}
+
 test.afterEach(async () => {
+  if (createdAppointmentIds.length > 0) {
+    const ids = createdAppointmentIds.splice(0);
+    const { error } = await admin.from("appointments").delete().in("id", ids);
+    expect(error).toBeNull();
+  }
   if (createdPersonIds.length > 0) {
     const ids = createdPersonIds.splice(0);
     const { error } = await admin.from("people").delete().in("id", ids);
@@ -120,6 +149,20 @@ test("an old Nueva cita link opens the drawer on that day's agenda, and closing 
     .getByRole("button", { name: "Cerrar" })
     .click();
   await expect(page).toHaveURL(`${DASHBOARD}/?date=2026-11-09`);
+});
+
+test("the Cobros item shows a pending-payments count, so an owner spots unpaid visits from the sidebar", async ({
+  page,
+}) => {
+  await createPendingAppointment();
+  await signIn(page, DASHBOARD, "info@clinicalumia.es");
+
+  await expect(
+    page
+      .getByRole("navigation", { name: "Secciones" })
+      .getByRole("link", { name: "Cobros" })
+      .getByTestId("nav-count"),
+  ).toBeVisible();
 });
 
 test("the user menu holds the phone calendar link, not the sections", async ({
