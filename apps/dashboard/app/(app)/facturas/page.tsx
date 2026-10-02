@@ -99,7 +99,11 @@ export default async function InvoicesPage({
       )}
       {!hasError && !isEmpty && (
         <>
-          <Table aria-label="Facturas" data-testid="invoices-list">
+          <Table
+            aria-label="Facturas"
+            variant="list"
+            data-testid="invoices-list"
+          >
             <TableHead>
               <TableRow>
                 <TableHeaderCell>Código</TableHeaderCell>
@@ -113,7 +117,7 @@ export default async function InvoicesPage({
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id} linked data-testid="invoice-row">
-                  <TableCell className="font-medium max-md:text-[15px]">
+                  <TableCell className="font-medium" mobile="primary">
                     <Link
                       href={`/facturas/${row.id}`}
                       data-testid="invoice-open"
@@ -122,19 +126,23 @@ export default async function InvoicesPage({
                       {row.code}
                     </Link>
                   </TableCell>
-                  <TableCell label="Fecha">
+                  <TableCell label="Fecha" mobile="secondary">
                     {formatInvoiceDate(row.issuedAt)}
                   </TableCell>
-                  <TableCell label="Tipo">
+                  <TableCell label="Tipo" mobile="secondary">
                     {invoiceKindLabel(row.kind)}
                   </TableCell>
-                  <TableCell label="Destinatario o paciente">
+                  <TableCell label="Destinatario o paciente" mobile="secondary">
                     {invoiceRecipientLabel(row)}
                   </TableCell>
-                  <TableCell label="Total" numeric>
+                  <TableCell label="Total" numeric mobile="trailing">
                     {formatEuros(row.totalCents)}
                   </TableCell>
-                  <TableCell label="Estado" data-testid="invoice-status">
+                  <TableCell
+                    label="Estado"
+                    mobile="secondary"
+                    data-testid="invoice-status"
+                  >
                     {invoiceStatusLabel(row)}
                   </TableCell>
                 </TableRow>

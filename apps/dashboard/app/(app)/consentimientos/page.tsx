@@ -73,7 +73,11 @@ export default async function ConsentsPage({
       )}
       {state === "list" && (
         <>
-          <Table aria-label="Consentimientos" data-testid="consents-list">
+          <Table
+            aria-label="Consentimientos"
+            variant="list"
+            data-testid="consents-list"
+          >
             <TableHead>
               <TableRow>
                 <TableHeaderCell>Firmado</TableHeaderCell>
@@ -85,10 +89,10 @@ export default async function ConsentsPage({
             <TableBody>
               {consents.map((consent) => (
                 <TableRow key={consent.id} linked data-testid="consent-row">
-                  <TableCell label="Firmado">
+                  <TableCell label="Firmado" mobile="secondary">
                     {formatSignedAt(consent.signed_at)}
                   </TableCell>
-                  <TableCell className="font-medium max-md:order-first max-md:text-[15px]">
+                  <TableCell className="font-medium" mobile="primary">
                     <Link
                       href={`/consentimientos/${consent.id}`}
                       data-testid="consent-open"
@@ -97,11 +101,13 @@ export default async function ConsentsPage({
                       {consent.first_name} {consent.last_name}
                     </Link>
                   </TableCell>
-                  <TableCell label="DNI/NIE">{consent.tax_id ?? "—"}</TableCell>
                   <TableCell
-                    className="max-md:block max-md:text-left"
-                    data-testid="consent-status"
+                    label="DNI/NIE"
+                    mobile={consent.tax_id ? "secondary" : "hidden"}
                   >
+                    {consent.tax_id ?? "—"}
+                  </TableCell>
+                  <TableCell mobile="secondary" data-testid="consent-status">
                     {consent.person ? (
                       <>
                         Asociado a la ficha de{" "}

@@ -101,7 +101,11 @@ test("clicking anywhere on a pending row opens its appointment, not only on the 
   await page.goto(`${DASHBOARD}/cobros?tab=pendientes`);
 
   const row = page.getByTestId("pending-payment-row").first();
-  await row.getByTestId("pending-payment-amount").click({ force: true });
+  const box = await row.boundingBox();
+  await row.click({
+    force: true,
+    position: { x: (box?.width ?? 0) * 0.55, y: (box?.height ?? 0) / 2 },
+  });
 
   await expect(page).toHaveURL(/[?&]appointment=/);
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
@@ -114,7 +118,46 @@ test("clicking anywhere on a patient row opens the record", async ({
   await page.goto(`${DASHBOARD}/patients`);
 
   const row = page.getByTestId("patient-row").first();
-  await row.getByTestId("patient-age").click({ force: true });
+  const box = await row.boundingBox();
+  await row.click({
+    force: true,
+    position: { x: (box?.width ?? 0) - 24, y: (box?.height ?? 0) / 2 },
+  });
 
   await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("patients read as a compact list, so many more fit on one screen than with label/value cards", async ({
+    page,
+  }) => {
+    await signIn(page, DASHBOARD, OWNER);
+    await page.goto(`${DASHBOARD}/patients`);
+
+    const rows = page.getByTestId("patient-row");
+    await expect(rows.first()).toBeVisible();
+    for (const row of (await rows.all()).slice(0, 5)) {
+      const box = await row.boundingBox();
+      expect(box?.height ?? 0).toBeLessThanOrEqual(80);
+    }
+  });
+
+  test("a pending payment shows the amount on the patient's line, so the money is read with the name", async ({
+    page,
+  }) => {
+    await signIn(page, DASHBOARD, OWNER);
+    await page.goto(`${DASHBOARD}/cobros?tab=pendientes`);
+
+    const row = page.getByTestId("pending-payment-row").first();
+    await expect(row).toBeVisible();
+    const name = await row.getByTestId("pending-payment-patient").boundingBox();
+    const amount = await row
+      .getByTestId("pending-payment-amount")
+      .boundingBox();
+    expect(name && amount).toBeTruthy();
+    expect(Math.abs(name!.y - amount!.y)).toBeLessThanOrEqual(4);
+    expect(amount!.x).toBeGreaterThanOrEqual(name!.x + name!.width);
+  });
 });

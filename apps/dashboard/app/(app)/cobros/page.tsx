@@ -149,7 +149,11 @@ export default async function CobrosPage({
                     </Card>
                   ))}
                 </div>
-                <Table aria-label="Cobros" data-testid="payments-list">
+                <Table
+                  aria-label="Cobros"
+                  variant="list"
+                  data-testid="payments-list"
+                >
                   <TableHead>
                     <TableRow>
                       <TableHeaderCell>
@@ -171,35 +175,47 @@ export default async function CobrosPage({
                         data-testid="payment-row"
                         data-entry={payment.entry}
                       >
-                        <TableCell label={momentHeader(showDate)}>
+                        <TableCell
+                          label={momentHeader(showDate)}
+                          mobile="secondary"
+                        >
                           {formatPaymentMoment(payment.moment, showDate)}
                         </TableCell>
-                        <TableCell className="font-medium max-md:order-first max-md:text-[15px]">
+                        <TableCell className="font-medium" mobile="primary">
                           <Link href={`/patients/${payment.patientId}`}>
                             {payment.patientName}
                           </Link>
                         </TableCell>
-                        <TableCell label="Servicio">
+                        <TableCell label="Servicio" mobile="secondary">
                           {payment.serviceName}
                         </TableCell>
-                        <TableCell label="Profesional">
+                        <TableCell label="Profesional" mobile="hidden">
                           {nameById.get(payment.professionalId) ??
                             "Profesional"}
                         </TableCell>
                         <TableCell
                           label="Importe"
                           numeric
+                          mobile="trailing"
                           data-testid="payment-row-amount"
                         >
                           {formatEuros(payment.amountCents)}
                         </TableCell>
-                        <TableCell label="Forma de pago">
+                        <TableCell label="Forma de pago" mobile="secondary">
                           {methodLabel(payment.method)}
                         </TableCell>
-                        <TableCell label="Cobrado por">
+                        <TableCell label="Cobrado por" mobile="hidden">
                           {nameById.get(payment.collectedBy) ?? "Alguien"}
                         </TableCell>
-                        <TableCell label="Estado" data-testid="payment-state">
+                        <TableCell
+                          label="Estado"
+                          mobile={
+                            payment.entry === "voided" || payment.voidedAt
+                              ? "secondary"
+                              : "hidden"
+                          }
+                          data-testid="payment-state"
+                        >
                           {paymentStateLabel(payment)}
                         </TableCell>
                       </TableRow>
@@ -236,6 +252,7 @@ export default async function CobrosPage({
             {pendingState === "list" && (
               <Table
                 aria-label="Pendientes de cobro"
+                variant="list"
                 data-testid="payments-pending"
               >
                 <TableHead>
@@ -255,26 +272,36 @@ export default async function CobrosPage({
                       linked
                       data-testid="pending-payment-row"
                     >
-                      <TableCell label="Fecha y hora">
+                      <TableCell label="Fecha y hora" mobile="secondary">
                         <Link href={row.href} className={rowLinkClass}>
                           {row.moment}
                         </Link>
                       </TableCell>
-                      <TableCell className="font-medium max-md:order-first max-md:text-[15px]">
+                      <TableCell
+                        className="font-medium"
+                        mobile="primary"
+                        data-testid="pending-payment-patient"
+                      >
                         {row.patientName}
                       </TableCell>
-                      <TableCell label="Servicio">{row.serviceName}</TableCell>
-                      <TableCell label="Profesional">
+                      <TableCell label="Servicio" mobile="secondary">
+                        {row.serviceName}
+                      </TableCell>
+                      <TableCell label="Profesional" mobile="secondary">
                         {row.professionalName}
                       </TableCell>
                       <TableCell
                         label="Importe"
                         numeric
+                        mobile="trailing"
                         data-testid="pending-payment-amount"
                       >
                         {formatEuros(row.suggestedAmountCents)}
                       </TableCell>
-                      <TableCell className="relative z-10 text-right max-md:mt-2 max-md:justify-end">
+                      <TableCell
+                        className="relative z-10 text-right"
+                        mobile="action"
+                      >
                         <RegisterPaymentDialog
                           trigger={
                             <Button

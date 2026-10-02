@@ -100,7 +100,7 @@ export default async function PatientsPage({
       )}
       {state === "list" && (
         <>
-          <Table aria-label="Pacientes">
+          <Table aria-label="Pacientes" variant="list">
             <TableHead>
               <TableRow>
                 <TableHeaderCell>Nombre</TableHeaderCell>
@@ -115,7 +115,7 @@ export default async function PatientsPage({
                   : false;
                 return (
                   <TableRow key={person.id} linked data-testid="patient-row">
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium" mobile="primary">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/patients/${person.id}`}
@@ -134,12 +134,19 @@ export default async function PatientsPage({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell label="Edad" data-testid="patient-age">
+                    <TableCell
+                      label="Edad"
+                      mobile={person.birth_date ? "secondary" : "hidden"}
+                      data-testid="patient-age"
+                    >
                       {person.birth_date
                         ? `${ageOn(person.birth_date, today)} años`
                         : "—"}
                     </TableCell>
-                    <TableCell label="Teléfono">
+                    <TableCell
+                      label="Teléfono"
+                      mobile={person.phone ? "secondary" : "hidden"}
+                    >
                       {person.phone ?? "—"}
                     </TableCell>
                   </TableRow>
