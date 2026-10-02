@@ -678,6 +678,7 @@ export type Database = {
       invoices: {
         Row: {
           code: string
+          corrects_invoice_id: string | null
           id: string
           issued_at: string
           kind: Database["public"]["Enums"]["invoice_kind"]
@@ -693,6 +694,7 @@ export type Database = {
         }
         Insert: {
           code: string
+          corrects_invoice_id?: string | null
           id?: string
           issued_at: string
           kind: Database["public"]["Enums"]["invoice_kind"]
@@ -708,6 +710,7 @@ export type Database = {
         }
         Update: {
           code?: string
+          corrects_invoice_id?: string | null
           id?: string
           issued_at?: string
           kind?: Database["public"]["Enums"]["invoice_kind"]
@@ -722,6 +725,13 @@ export type Database = {
           total_cents?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_corrects_invoice_id_fkey"
+            columns: ["corrects_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_payment_id_fkey"
             columns: ["payment_id"]
@@ -1155,6 +1165,10 @@ export type Database = {
         Args: { p_birth_date: string; p_person_id: string }
         Returns: undefined
       }
+      correct_full_invoice_recipient: {
+        Args: { p_invoice_id: string; p_recipient: Json }
+        Returns: string
+      }
       f_unaccent: { Args: { value: string }; Returns: string }
       find_possible_duplicates: {
         Args: {
@@ -1177,6 +1191,10 @@ export type Database = {
       }
       format_invoice_code: {
         Args: { p_format: string; p_number: number; p_year: number }
+        Returns: string
+      }
+      insert_rectifying_invoice: {
+        Args: { p_invoice_id: string; p_reason: string }
         Returns: string
       }
       invoice_alta_canonical: {

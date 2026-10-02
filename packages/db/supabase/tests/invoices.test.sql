@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(259);
+select plan(291);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1402,6 +1402,239 @@ select throws_ok(
        (select payment_id from public.invoices where id = pg_temp.id_of('s4')), pg_temp.id_of('s4'), '{}', 1) $$,
   '23514', null,
   'only a full invoice can replace another one');
+
+create or replace function pg_temp.live_invoices_of(p_appointment_id uuid) returns setof public.invoices language sql stable as $$
+  select i.* from public.invoices i join public.payments p on p.id = i.payment_id
+  where p.appointment_id = p_appointment_id
+    and i.kind <> 'rectifying'
+    and i.status = 'issued'
+    and not exists (select 1 from public.invoices r where r.rectifies_invoice_id = i.id)
+$$;
+
+create or replace function pg_temp.chain_head() returns text language sql stable as $$
+  select r.hash from public.invoice_records r
+  where not exists (select 1 from public.invoice_records n where n.previous_hash = r.hash)
+  order by r.generated_at desc limit 1
+$$;
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('8b000000-0000-0000-0000-0000000003d1', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c4',
+   '8b000000-0000-0000-0000-0000000000b4', pg_temp.at_madrid(-4, '09:00'), pg_temp.at_madrid(-4, '10:00')),
+  ('8b000000-0000-0000-0000-0000000003d2', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c4',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-4, '10:00'), pg_temp.at_madrid(-4, '10:30')),
+  ('8b000000-0000-0000-0000-0000000003d3', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c4',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-4, '11:00'), pg_temp.at_madrid(-4, '11:30')),
+  ('8b000000-0000-0000-0000-0000000003d4', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c4',
+   '8b000000-0000-0000-0000-0000000000b4', pg_temp.at_madrid(-4, '12:00'), pg_temp.at_madrid(-4, '13:00'));
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(
+  public.collect_payment('8b000000-0000-0000-0000-0000000003d1', 45000, 'card', '',
+    '{"name": "Marta Soler Vidal", "tax_id": "12345678Z", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'the employee charges 450 € with a direct full invoice made out to the patient, but the company was paying');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000003d2', 3000, 'card', ''), null,
+  'the employee charges a session with a simplified invoice');
+select isnt(
+  public.issue_full_invoice((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000003d2')).id,
+    '{"name": "Marta Soler Vidal", "tax_id": "12345678Z", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'and replaces it with a full invoice made out to the wrong recipient');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000003d3', 3000, 'card', ''), null,
+  'the employee charges a session that keeps its simplified invoice');
+select isnt(
+  public.collect_payment('8b000000-0000-0000-0000-0000000003d4', 45000, 'card', '',
+    '{"name": "Marta Soler Vidal", "tax_id": "12345678Z", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'the employee charges 450 € that will be dated the day before');
+reset role;
+set local role service_role;
+select set_config('request.jwt.claims', '', true);
+update public.payments set collected_at = pg_temp.at_madrid(-1, '20:00')
+where appointment_id = '8b000000-0000-0000-0000-0000000003d4';
+reset role;
+
+select set_config('test.wrong_full', (select i.id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d1') i)::text, true);
+select set_config('test.main_before', (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year())::text, true);
+select set_config('test.rect_before', (select next_number from public.invoice_series where code = 'rectifying' and year = pg_temp.this_year())::text, true);
+select set_config('test.records_before', (select count(*) from public.invoice_records)::text, true);
+select set_config('test.chain_head', pg_temp.chain_head(), true);
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient(pg_temp.id_of('wrong_full'),
+       '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765430", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'recipient_tax_id_invalid',
+  'a correction with a wrong tax id is refused before anything is issued');
+reset role;
+set local session_replication_role = replica;
+update public.invoice_series set configured = false where code = 'main' and year = pg_temp.this_year();
+set local session_replication_role = origin;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient(pg_temp.id_of('wrong_full'),
+       '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_series_not_configured',
+  'when the new full invoice cannot be numbered after the rectifying one, the correction fails');
+reset role;
+set local session_replication_role = replica;
+update public.invoice_series set configured = true where code = 'main' and year = pg_temp.this_year();
+set local session_replication_role = origin;
+select results_eq(
+  $$ select (select count(*) from public.invoices where rectifies_invoice_id = pg_temp.id_of('wrong_full')),
+            (select p.voided_at is null from public.payments p where p.appointment_id = '8b000000-0000-0000-0000-0000000003d1'),
+            (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()),
+            (select next_number from public.invoice_series where code = 'rectifying' and year = pg_temp.this_year()),
+            (select count(*) from public.invoice_records) $$,
+  $$ values (0::bigint, true, current_setting('test.main_before')::integer, current_setting('test.rect_before')::integer,
+             current_setting('test.records_before')::bigint) $$,
+  'a failed correction leaves no rectifying invoice, no record and no consumed number: both invoices are issued together or not at all');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select set_config('test.corrected', public.correct_full_invoice_recipient(pg_temp.id_of('wrong_full'),
+  '{"name": " Talleres Auditoría S.L. ", "tax_id": "b-98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}')::text, true);
+reset role;
+select results_eq(
+  $$ select series::text, number, kind::text, status::text, total_cents, replaces_invoice_id, corrects_invoice_id,
+            snapshot->'recipient', payment_id = (select payment_id from public.invoices where id = pg_temp.id_of('wrong_full'))
+     from public.invoices where id = pg_temp.id_of('corrected') $$,
+  $$ values ('main', current_setting('test.main_before')::integer, 'full', 'issued', 45000, null::uuid, pg_temp.id_of('wrong_full'),
+       jsonb_build_object('name', 'Talleres Auditoría S.L.', 'tax_id', 'B98765431', 'address', 'Polígono Sur 4',
+         'postal_code', '46800', 'city', 'Xàtiva'),
+       true) $$,
+  'the collector corrects the recipient in one step: a new full invoice with the next main number, the normalised company and the same payment');
+select is(
+  (select n.snapshot - 'recipient' from public.invoices n where n.id = pg_temp.id_of('corrected')),
+  (select o.snapshot - 'recipient' from public.invoices o where o.id = pg_temp.id_of('wrong_full')),
+  'the new full invoice keeps the concept, amounts and payments of the corrected one; only the recipient changes');
+select results_eq(
+  $$ select series::text, number, total_cents, reason, snapshot->'rectifies'->>'code'
+     from public.invoices where rectifies_invoice_id = pg_temp.id_of('wrong_full') $$,
+  $$ values ('rectifying', current_setting('test.rect_before')::integer, -45000,
+       'Corrección de los datos del destinatario', (select code from public.invoices where id = pg_temp.id_of('wrong_full'))) $$,
+  'the wrong invoice is cancelled by a rectifying invoice for its whole amount, with the next R number and the reason');
+select results_eq(
+  $$ select (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()),
+            (select next_number from public.invoice_series where code = 'rectifying' and year = pg_temp.this_year()) $$,
+  $$ values (current_setting('test.main_before')::integer + 1, current_setting('test.rect_before')::integer + 1) $$,
+  'each series consumes exactly one number, so neither has gaps');
+select results_eq(
+  $$ select r.previous_hash = current_setting('test.chain_head'), r.canonical like '%&TipoFactura=R1&%',
+            n.previous_hash = r.hash, n.canonical like '%&TipoFactura=F1&CuotaTotal=78.10&ImporteTotal=450.00&%'
+     from public.invoice_records r, public.invoice_records n
+     where r.invoice_id = (select id from public.invoices where rectifies_invoice_id = pg_temp.id_of('wrong_full'))
+       and n.invoice_id = pg_temp.id_of('corrected') $$,
+  $$ values (true, true, true, true) $$,
+  'Verifactu receives the R1 chained to the head and then the new F1 chained to the R1, since the new invoice substitutes nothing');
+select is(
+  (select p.voided_at from public.payments p where p.appointment_id = '8b000000-0000-0000-0000-0000000003d1'),
+  null,
+  'the charge stays valid: the patient paid once and Cobros keeps counting it once');
+select results_eq(
+  $$ select id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d1') $$,
+  $$ values (pg_temp.id_of('corrected')) $$,
+  'the payment has exactly one invoice in force, the corrected one');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient(pg_temp.id_of('wrong_full'),
+       '{"name": "Otra S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_already_rectified',
+  'the corrected invoice cannot be corrected again; only the new one can');
+select isnt(
+  public.correct_full_invoice_recipient((select l.id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d2') l),
+    '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'a full invoice that replaced a simplified one is corrected the same way');
+reset role;
+select results_eq(
+  $$ select i.kind::text, i.status::text, i.replaces_invoice_id is not null, i.corrects_invoice_id is not null,
+            exists (select 1 from public.invoices r where r.rectifies_invoice_id = i.id)
+     from public.invoices i join public.payments p on p.id = i.payment_id
+     where p.appointment_id = '8b000000-0000-0000-0000-0000000003d2'
+     order by i.series, i.number $$,
+  $$ values ('simplified', 'replaced', false, false, false),
+            ('full', 'issued', true, false, true),
+            ('full', 'issued', false, true, false),
+            ('rectifying', 'issued', false, false, false) $$,
+  'the simplified stays replaced, the wrong full invoice is rectified and the new full invoice stands alone');
+select results_eq(
+  $$ select (select count(*) from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d2')),
+            (select sum(i.total_cents) from public.invoices i join public.payments p on p.id = i.payment_id
+             where p.appointment_id = '8b000000-0000-0000-0000-0000000003d2'
+               and not (i.kind = 'full' and i.replaces_invoice_id is not null)) $$,
+  $$ values (1::bigint, 3000::bigint) $$,
+  'one invoice in force, and the invoices that add to the quarter net to the 30 € paid exactly once');
+select is(
+  (select r.canonical like '%&TipoFactura=R1&%' from public.invoice_records r
+   join public.invoices i on i.id = r.invoice_id
+   join public.payments p on p.id = i.payment_id
+   where p.appointment_id = '8b000000-0000-0000-0000-0000000003d2' and i.kind = 'rectifying'),
+  true,
+  'the rectifying invoice of a full invoice is an R1, not the R5 of a simplified one');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000002');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient(pg_temp.id_of('corrected'),
+       '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_not_found',
+  'a colleague cannot correct another professional''s invoice, nor learn that it exists');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient((select l.id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d4') l),
+       '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'not_allowed',
+  'an employee cannot correct an invoice of a charge she registered another day, the same rule as the rectifying invoice');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient((select l.id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d3') l),
+       '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_not_full',
+  'a simplified invoice has no recipient to correct: it gets a full invoice instead');
+reset role;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select isnt(
+  public.correct_full_invoice_recipient((select l.id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d4') l),
+    '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'the owner can correct it on any day');
+reset role;
+
+select throws_ok(
+  $$ insert into public.invoices (series, number, code, kind, issued_at, payment_id, snapshot, total_cents)
+     values ('main', 9998, 'X9998', 'full', now(),
+       (select payment_id from public.invoices where id = pg_temp.id_of('corrected')), '{}', 45000) $$,
+  '23505', null,
+  'a payment never gets a second original invoice next to its corrected one');
+select throws_ok(
+  $$ insert into public.invoices (series, number, code, kind, issued_at, payment_id, corrects_invoice_id, snapshot, total_cents)
+     values ('main', 9997, 'X9997', 'full', now(),
+       (select payment_id from public.invoices where id = pg_temp.id_of('corrected')), pg_temp.id_of('wrong_full'), '{}', 45000) $$,
+  '23505', null,
+  'an invoice is corrected by one invoice only, so the payment never has two in force');
+select throws_ok(
+  $$ insert into public.invoices (series, number, code, kind, issued_at, payment_id, corrects_invoice_id, snapshot, total_cents)
+     values ('main', 9996, 'X9996', 'simplified', now(),
+       (select payment_id from public.invoices where id = pg_temp.id_of('corrected')), pg_temp.id_of('corrected'), '{}', 45000) $$,
+  '23514', null,
+  'only a full invoice can correct another one');
+
+select is(has_function_privilege('anon', 'public.correct_full_invoice_recipient(uuid, jsonb)', 'execute'), false,
+  'a visitor cannot correct invoices');
+select is(has_function_privilege('authenticated', 'public.correct_full_invoice_recipient(uuid, jsonb)', 'execute'), true,
+  'staff call the correction directly from the invoice detail');
+select is(has_function_privilege('authenticated', 'public.insert_rectifying_invoice(uuid, text)', 'execute'), false,
+  'staff cannot issue a rectifying invoice that leaves the charge in place outside a correction');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.issue_rectifying_invoice(pg_temp.id_of('corrected'), 'Devolución'), null,
+  'the corrected invoice can later be rectified like any other');
+reset role;
+select results_eq(
+  $$ select (select count(*) from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d1')),
+            (select p.voided_at is not null from public.payments p where p.appointment_id = '8b000000-0000-0000-0000-0000000003d1') $$,
+  $$ values (0::bigint, true) $$,
+  'and then the payment is voided and has no invoice in force');
 
 select * from finish();
 rollback;

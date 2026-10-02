@@ -9,11 +9,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/agenda";
-import { proposedInvoiceEmail, recipientDraft } from "@/lib/invoices";
+import {
+  type InvoiceRecipient,
+  proposedInvoiceEmail,
+  recipientDraft,
+  recipientFromInvoice,
+  recipientWithTaxId,
+} from "@/lib/invoices";
 import {
   formatInvoiceDate,
   invoiceKindLabel,
   invoiceStatusLabel,
+  loadLastFullRecipient,
 } from "@/lib/invoices-load";
 import { canVoidPayment, formatEuros } from "@/lib/payments";
 import { FullInvoiceForm } from "../../agenda/FullInvoiceForm";
@@ -80,6 +87,7 @@ export default async function InvoiceDetailPage({
 
   const [
     { data: payment, error: paymentError },
+    lastRecipient,
     {
       data: { user },
     },
@@ -89,6 +97,7 @@ export default async function InvoiceDetailPage({
       .select("collected_by, collected_at")
       .eq("id", detail.payment_id)
       .maybeSingle(),
+    loadLastFullRecipient(supabase, patient.id),
     supabase.auth.getUser(),
   ]);
   if (paymentError || !payment || !user) return <ErrorCard />;
@@ -99,6 +108,10 @@ export default async function InvoiceDetailPage({
     .maybeSingle();
 
   const related = detail.related as Related;
+  const recipient = (detail.snapshot as { recipient: InvoiceRecipient | null })
+    .recipient;
+  const recipientLabel = recipientWithTaxId(recipient);
+  const proposedEmail = proposedInvoiceEmail({ patient, guardian });
   const inForce =
     detail.kind !== "rectifying" &&
     detail.status === "issued" &&
@@ -135,12 +148,13 @@ export default async function InvoiceDetailPage({
           { label: detail.code },
         ]}
         title={`Factura ${detail.code}`}
+        titleTestId="invoice-code"
       />
       <Card className="flex flex-col gap-2">
-        <p data-testid="invoice-code">Factura {detail.code}</p>
         <p>{invoiceKindLabel(detail.kind)}</p>
         <p>{formatInvoiceDate(detail.issued_at)}</p>
-        <p>
+        <p data-testid="invoice-parties">
+          {recipientLabel && <>Para: {recipientLabel} · Paciente: </>}
           <Link href={`/patients/${patient.id}`}>
             {patient.first_name} {patient.last_name}
           </Link>
@@ -178,13 +192,27 @@ export default async function InvoiceDetailPage({
         <SendInvoiceForm
           key={`send-${detail.id}`}
           invoiceId={detail.id}
-          proposedEmail={proposedInvoiceEmail({ patient, guardian })}
+          proposedEmail={proposedEmail}
+          saveEmail={proposedEmail === ""}
         />
         {detail.kind === "simplified" && inForce && (
           <FullInvoiceForm
             key={`full-${detail.id}`}
             invoiceId={detail.id}
-            recipient={recipientDraft({ patient, guardian, minor })}
+            recipient={recipientDraft({
+              patient,
+              guardian,
+              minor,
+              lastRecipient,
+            })}
+          />
+        )}
+        {detail.kind === "full" && canRectify && recipient && (
+          <FullInvoiceForm
+            key={`correct-${detail.id}`}
+            invoiceId={detail.id}
+            recipient={recipientFromInvoice(recipient)}
+            correct
           />
         )}
         {canRectify && (

@@ -16,4 +16,12 @@ describe("PageHeader", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  it("lets a detail page tag its title, so the title is the one place that names the record", () => {
+    render(<PageHeader title="Factura 34/26" titleTestId="invoice-code" />);
+
+    expect(screen.getByTestId("invoice-code")).toEqual(
+      screen.getByRole("heading", { level: 1, name: "Factura 34/26" }),
+    );
+  });
 });

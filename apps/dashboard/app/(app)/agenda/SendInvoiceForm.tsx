@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@clinicalumia/ui/button";
+import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { useRef, useState, useTransition } from "react";
@@ -10,12 +11,15 @@ import { sendInvoiceEmail } from "../facturas/actions";
 export function SendInvoiceForm({
   invoiceId,
   proposedEmail,
+  saveEmail = false,
 }: {
   invoiceId: string;
   proposedEmail: string;
+  saveEmail?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(proposedEmail);
+  const [save, setSave] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -26,7 +30,11 @@ export function SendInvoiceForm({
     if (!submitGateRef.current.tryStart()) return;
     startTransition(async () => {
       try {
-        const result = await sendInvoiceEmail(invoiceId, email);
+        const result = await sendInvoiceEmail(
+          invoiceId,
+          email,
+          saveEmail && save,
+        );
         if ("error" in result) {
           setError(result.error);
           return;
@@ -87,6 +95,14 @@ export function SendInvoiceForm({
           onChange={(event) => setEmail(event.target.value)}
         />
       </Field>
+      {saveEmail && (
+        <CheckboxField
+          label="Guardar en la ficha"
+          data-testid="invoice-send-save"
+          checked={save}
+          onChange={(event) => setSave(event.target.checked)}
+        />
+      )}
       {error && (
         <p
           role="alert"

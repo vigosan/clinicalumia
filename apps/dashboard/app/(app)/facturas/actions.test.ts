@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const INVOICE_ID = "c3000000-0000-0000-0000-000000000003";
+const CORRECTED_ID = "c3000000-0000-0000-0000-000000000004";
+const PATIENT_ID = "c3000000-0000-0000-0000-0000000000c1";
 
 type DbError = { code?: string; message?: string; details?: string } | null;
 
@@ -11,6 +13,11 @@ const rpc = vi.fn(
 );
 const single = vi.fn(async () => rpcResults.invoice_detail);
 const settings = { data: { logo_path: null }, error: null };
+const emailOnlyIfEmpty = vi.fn(async (_column: string, _value: null) => ({
+  error: null,
+}));
+const savedEmail = vi.fn((_id: string) => ({ is: emailOnlyIfEmpty }));
+const peopleUpdate = vi.fn((_values: unknown) => ({ eq: savedEmail }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
@@ -26,6 +33,7 @@ vi.mock("@clinicalumia/api/server", () => ({
         : rpc(name, args),
     from: () => ({
       select: () => ({ maybeSingle: async () => settings }),
+      update: peopleUpdate,
     }),
   }),
 }));
@@ -38,10 +46,14 @@ vi.mock("@clinicalumia/invoices", () => ({
 const { revalidatePath } = await import("next/cache");
 const { sendEmail } = await import("@clinicalumia/api/email");
 const { renderInvoicePdf } = await import("@clinicalumia/invoices");
-const { issueFullInvoice, issueRectifyingInvoice, sendInvoiceEmail } =
-  await import("./actions");
+const {
+  correctInvoiceRecipient,
+  issueFullInvoice,
+  issueRectifyingInvoice,
+  sendInvoiceEmail,
+} = await import("./actions");
 
-const DETAIL = { id: INVOICE_ID, code: "34/26" };
+const DETAIL = { id: INVOICE_ID, code: "34/26", patient_id: PATIENT_ID };
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -50,6 +62,9 @@ beforeEach(() => {
   for (const key of Object.keys(rpcResults)) delete rpcResults[key];
   rpcResults.invoice_detail = { data: DETAIL, error: null };
   rpc.mockClear();
+  peopleUpdate.mockClear();
+  savedEmail.mockClear();
+  emailOnlyIfEmpty.mockClear();
   vi.mocked(sendEmail).mockReset();
   vi.mocked(revalidatePath).mockClear();
 });
@@ -94,6 +109,58 @@ describe("issueFullInvoice", () => {
     expect(result).toEqual({
       error:
         "Escribe un DNI, NIE o CIF válido. Otros documentos (pasaporte, NIF extranjero) no se admiten todavía.",
+    });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("correctInvoiceRecipient", () => {
+  it("corrects the recipient in one database call and returns the new invoice, so the screen can open it", async () => {
+    rpcResults.correct_full_invoice_recipient = {
+      data: CORRECTED_ID,
+      error: null,
+    };
+    const result = await correctInvoiceRecipient(INVOICE_ID, {
+      name: " Talleres Auditoría S.L. ",
+      taxId: "B98765431",
+      address: "Polígono Sur 4",
+      postalCode: "46800",
+      city: "Xàtiva",
+    });
+    expect(result).toEqual({ ok: true, id: CORRECTED_ID });
+    expect(rpc).toHaveBeenCalledWith("correct_full_invoice_recipient", {
+      p_invoice_id: INVOICE_ID,
+      p_recipient: {
+        name: "Talleres Auditoría S.L.",
+        tax_id: "B98765431",
+        address: "Polígono Sur 4",
+        postal_code: "46800",
+        city: "Xàtiva",
+      },
+    });
+    expect(rpc).not.toHaveBeenCalledWith(
+      "issue_rectifying_invoice",
+      expect.anything(),
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+    expect(revalidatePath).toHaveBeenCalledWith("/facturas");
+    expect(revalidatePath).toHaveBeenCalledWith(`/facturas/${INVOICE_ID}`);
+  });
+
+  it("explains that only a full invoice has a recipient to correct", async () => {
+    rpcResults.correct_full_invoice_recipient = {
+      data: null,
+      error: { code: "P0001", message: "invoice_not_full" },
+    };
+    const result = await correctInvoiceRecipient(INVOICE_ID, {
+      name: "Ana",
+      taxId: "12345678Z",
+      address: "Calle",
+      postalCode: "46800",
+      city: "Xàtiva",
+    });
+    expect(result).toEqual({
+      error: "Solo se puede corregir el destinatario de una factura completa.",
     });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
@@ -179,6 +246,26 @@ describe("sendInvoiceEmail", () => {
       p_invoice_id: INVOICE_ID,
       p_email: "ana@correo.test",
     });
+  });
+
+  it("saves the address in the patient's record when asked, only if the record still has no email, so the next invoice proposes it", async () => {
+    const result = await sendInvoiceEmail(INVOICE_ID, "Ana@Correo.test", true);
+    expect(result).toEqual({ ok: true, email: "ana@correo.test" });
+    expect(peopleUpdate).toHaveBeenCalledWith({ email: "ana@correo.test" });
+    expect(savedEmail).toHaveBeenCalledWith("id", PATIENT_ID);
+    expect(emailOnlyIfEmpty).toHaveBeenCalledWith("email", null);
+    expect(revalidatePath).toHaveBeenCalledWith(`/patients/${PATIENT_ID}`);
+  });
+
+  it("leaves the record untouched when «Guardar en la ficha» is unchecked", async () => {
+    await sendInvoiceEmail(INVOICE_ID, "ana@correo.test", false);
+    expect(peopleUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not save an address whose email failed to send", async () => {
+    vi.mocked(sendEmail).mockRejectedValueOnce(new Error("Mailpit caído"));
+    await sendInvoiceEmail(INVOICE_ID, "ana@correo.test", true);
+    expect(peopleUpdate).not.toHaveBeenCalled();
   });
 
   it("refuses an address that cannot receive email before generating anything", async () => {

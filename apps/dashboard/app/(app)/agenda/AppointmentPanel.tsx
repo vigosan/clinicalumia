@@ -47,9 +47,8 @@ export type AppointmentDetail = {
   suggestedAmountCents: number;
   canCollect: boolean;
   activePaymentId: string | null;
-  invoice:
-    | (CurrentInvoice & { email: string; recipient: RecipientDraft })
-    | null;
+  invoice: (CurrentInvoice & { email: string; saveEmail: boolean }) | null;
+  recipient: RecipientDraft;
   canVoid: boolean;
   canMove: boolean;
   canMarkNoShow: boolean;
@@ -257,6 +256,7 @@ export function AppointmentPanel({
             appointmentId={appointment.id}
             suggestedAmountCents={appointment.suggestedAmountCents}
             cancelled={appointment.status === "cancelled"}
+            recipient={appointment.recipient}
             onSuccess={handlePaid}
           />
         )}
@@ -282,17 +282,28 @@ export function AppointmentPanel({
                   Ver / Imprimir
                 </a>
               </Button>
+              {appointment.canVoid && (
+                <Button asChild variant="secondary" size="sm">
+                  <Link
+                    href={`/facturas/${appointment.invoice.id}`}
+                    data-testid="invoice-rectify-link"
+                  >
+                    Rectificar
+                  </Link>
+                </Button>
+              )}
             </div>
             <SendInvoiceForm
               key={`send-${appointment.invoice.id}`}
               invoiceId={appointment.invoice.id}
               proposedEmail={appointment.invoice.email}
+              saveEmail={appointment.invoice.saveEmail}
             />
             {appointment.invoice.kind === "simplified" && (
               <FullInvoiceForm
                 key={`full-${appointment.invoice.id}`}
                 invoiceId={appointment.invoice.id}
-                recipient={appointment.invoice.recipient}
+                recipient={appointment.recipient}
               />
             )}
           </div>

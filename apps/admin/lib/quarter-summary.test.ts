@@ -217,6 +217,66 @@ describe("summarizeInvoices", () => {
     expect(summary.net_cents).toBe(0);
   });
 
+  it("corregir el destinatario de una completa deja el cobro contado una sola vez: la rectificativa anula la completa equivocada y la nueva completa suma", () => {
+    const negative = snapshot({
+      lines: snapshot().lines.map((line) => ({
+        ...line,
+        base_cents: -line.base_cents,
+        vat_cents: -line.vat_cents,
+        total_cents: -line.total_cents,
+      })),
+    });
+    const simplified = invoice({
+      id: "1",
+      code: "1/26",
+      status: "replaced",
+      replaced_by: "2/26",
+    });
+    const wrongFull = invoice({
+      id: "2",
+      code: "2/26",
+      kind: "full",
+      replaces: "1/26",
+    });
+    const rectifying = invoice({
+      id: "3",
+      code: "R1/26",
+      kind: "rectifying",
+      rectifies: "2/26",
+      snapshot: negative,
+    });
+    const corrected = invoice({ id: "4", code: "3/26", kind: "full" });
+
+    expect(
+      summarizeInvoices([simplified, wrongFull, rectifying, corrected])
+        .net_cents,
+    ).toBe(6050);
+
+    const directWrongFull = invoice({ id: "5", code: "4/26", kind: "full" });
+    const directRectifying = invoice({
+      id: "6",
+      code: "R2/26",
+      kind: "rectifying",
+      rectifies: "4/26",
+      snapshot: negative,
+    });
+    const directCorrected = invoice({ id: "7", code: "5/26", kind: "full" });
+    const rows = ledgerRows([
+      directWrongFull,
+      directRectifying,
+      directCorrected,
+    ]);
+    expect(
+      summarizeInvoices([directWrongFull, directRectifying, directCorrected])
+        .net_cents,
+    ).toBe(6050);
+    expect(
+      rows
+        .filter((row) => row.inTotals)
+        .reduce((sum, row) => sum + row.total_cents, 0),
+    ).toBe(6050);
+  });
+
   it("agrupa en líneas distintas cuando una factura mezcla tipos de IVA, sin perder ninguna de las dos", () => {
     const mixed = invoice({
       snapshot: snapshot({

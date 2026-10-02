@@ -7,12 +7,14 @@ export const eyebrowClass =
 export function PageHeader({
   eyebrow,
   title,
+  titleTestId,
   description,
   actions,
   breadcrumbs,
 }: {
   eyebrow?: string;
   title: string;
+  titleTestId?: string;
   description?: string;
   actions?: ReactNode;
   breadcrumbs?: Crumb[];
@@ -26,7 +28,10 @@ export function PageHeader({
           </div>
         )}
         {eyebrow && <p className={eyebrowClass}>{eyebrow}</p>}
-        <h1 className="break-words text-title font-bold text-ink-900">
+        <h1
+          data-testid={titleTestId}
+          className="break-words text-title font-bold text-ink-900"
+        >
           {title}
         </h1>
         {description && (

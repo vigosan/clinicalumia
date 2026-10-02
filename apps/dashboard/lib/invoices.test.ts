@@ -7,6 +7,7 @@ import {
   proposedInvoiceEmail,
   recipientDraft,
   recipientParams,
+  recipientWithTaxId,
 } from "./invoices";
 
 const adult = {
@@ -35,6 +36,7 @@ describe("currentInvoice", () => {
           kind: "simplified",
           status: "replaced",
           issued_at: "2026-10-01T09:00:00+00:00",
+          rectifies_invoice_id: null,
         },
         {
           id: "f2",
@@ -42,6 +44,7 @@ describe("currentInvoice", () => {
           kind: "full",
           status: "issued",
           issued_at: "2026-10-02T09:00:00+00:00",
+          rectifies_invoice_id: null,
         },
       ]),
     ).toEqual({
@@ -61,6 +64,7 @@ describe("currentInvoice", () => {
           kind: "simplified",
           status: "issued",
           issued_at: "2026-10-01T09:00:00+00:00",
+          rectifies_invoice_id: null,
         },
       ]),
     ).toEqual({
@@ -69,6 +73,37 @@ describe("currentInvoice", () => {
       kind: "simplified",
       issuedAt: "2026-10-01T09:00:00+00:00",
     });
+  });
+
+  it("after correcting the recipient, picks the new full invoice and not the rectified one, although both are still issued and the charge stays valid", () => {
+    expect(
+      currentInvoice([
+        {
+          id: "f1",
+          code: "1/26",
+          kind: "full",
+          status: "issued",
+          issued_at: "2026-10-01T09:00:00+00:00",
+          rectifies_invoice_id: null,
+        },
+        {
+          id: "r1",
+          code: "R1/26",
+          kind: "rectifying",
+          status: "issued",
+          issued_at: "2026-10-02T09:00:00+00:00",
+          rectifies_invoice_id: "f1",
+        },
+        {
+          id: "f2",
+          code: "2/26",
+          kind: "full",
+          status: "issued",
+          issued_at: "2026-10-02T09:00:00+00:00",
+          rectifies_invoice_id: null,
+        },
+      ])?.id,
+    ).toBe("f2");
   });
 
   it("returns nothing for a payment without invoice, such as a free session", () => {
@@ -115,6 +150,62 @@ describe("recipientDraft", () => {
         minor: true,
       }).taxId,
     ).toBe("");
+  });
+});
+
+describe("recipientDraft with an earlier full invoice", () => {
+  const company = {
+    name: "Talleres Auditoría S.L.",
+    tax_id: "B98765431",
+    address: "Polígono Sur 4",
+    postal_code: "46800",
+    city: "Xàtiva",
+  };
+
+  it("fills the form with the recipient of the patient's latest full invoice, because a company that paid once usually pays again and its data is not in the patient's record", () => {
+    expect(
+      recipientDraft({
+        patient: adult,
+        guardian,
+        minor: true,
+        lastRecipient: company,
+      }),
+    ).toEqual({
+      name: "Talleres Auditoría S.L.",
+      taxId: "B98765431",
+      address: "Polígono Sur 4",
+      postalCode: "46800",
+      city: "Xàtiva",
+    });
+  });
+
+  it("uses the record's data when the patient never had a full invoice", () => {
+    expect(
+      recipientDraft({
+        patient: adult,
+        guardian: null,
+        minor: false,
+        lastRecipient: null,
+      }).name,
+    ).toBe("Lucía Martínez");
+  });
+});
+
+describe("recipientWithTaxId", () => {
+  it("names who the invoice is made out to with its tax id, so a full invoice for a company is not mistaken for the patient's", () => {
+    expect(
+      recipientWithTaxId({
+        name: "Talleres Auditoría S.L.",
+        tax_id: "B98765431",
+        address: "Polígono Sur 4",
+        postal_code: "46800",
+        city: "Xàtiva",
+      }),
+    ).toBe("Talleres Auditoría S.L. (B98765431)");
+  });
+
+  it("gives nothing for a simplified invoice, which has no recipient", () => {
+    expect(recipientWithTaxId(null)).toBeNull();
   });
 });
 

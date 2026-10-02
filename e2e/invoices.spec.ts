@@ -3,7 +3,11 @@ import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { logOut, signIn } from "./auth";
-import { deleteInvoicesOfAppointments } from "./invoices";
+import {
+  collectAsStaff,
+  deleteInvoicesOfAppointments,
+  replaceWithFullInvoiceAsStaff,
+} from "./invoices";
 import { latestEmailAttachments } from "./mail";
 import { selectOption } from "./select";
 
@@ -600,4 +604,170 @@ test("desde el detalle, quien cobró hoy puede emitir la rectificativa de la fac
   expect(invoices.map((row) => row.kind)).toEqual(["simplified", "rectifying"]);
   await page.goto(`${DASHBOARD}/facturas/${invoices[1]!.id}`);
   await expect(page.getByTestId("invoice-rectify")).toHaveCount(0);
+});
+
+test("«Corregir destinatario» en una completa emite la rectificativa y la nueva completa en un paso, el cobro sigue válido y el detalle dice para quién es", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Corrige Destinatario");
+  const appointment = await createAppointment(employee.id, date, {
+    tax_id: "12345678Z",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointment.id);
+  await collectAndReadCode(page);
+  await page.getByTestId("invoice-full").click();
+  await page.getByTestId("invoice-full-postal-code").fill("46800");
+  await page.getByTestId("invoice-full-city").fill("Xàtiva");
+  await page.getByTestId("invoice-full-submit").click();
+  await expect(page.getByTestId("invoice-full-form")).toHaveCount(0);
+  await expect(page.getByTestId("invoice-full")).toHaveCount(0);
+  const wrongFull = (await invoicesOf(appointment.id)).find(
+    (invoice) => invoice.kind === "full",
+  );
+
+  await page.getByTestId("invoice-rectify-link").click();
+  await expect(page).toHaveURL(`${DASHBOARD}/facturas/${wrongFull!.id}`);
+  await expect(page.getByTestId("invoice-code")).toHaveText(
+    `Factura ${wrongFull!.code}`,
+  );
+  await expect(
+    page.getByText(`Factura ${wrongFull!.code}`, { exact: true }),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("invoice-parties")).toHaveText(
+    `Para: ${appointment.patientName} (12345678Z) · Paciente: ${appointment.patientName}`,
+  );
+
+  await page.getByTestId("invoice-correct").click();
+  await expect(page.getByTestId("invoice-correct-name")).toHaveValue(
+    appointment.patientName,
+  );
+  await expect(page.getByTestId("invoice-correct-city")).toHaveValue("Xàtiva");
+  await page
+    .getByTestId("invoice-correct-name")
+    .fill("Talleres Auditoría S.L.");
+  await page.getByTestId("invoice-correct-tax-id").fill("B98765431");
+  await page.getByTestId("invoice-correct-address").fill("Polígono Sur 4");
+  await page.getByTestId("invoice-correct-submit").click();
+
+  await expect(page.getByTestId("invoice-parties")).toHaveText(
+    `Para: Talleres Auditoría S.L. (B98765431) · Paciente: ${appointment.patientName}`,
+  );
+  await expect(page.getByTestId("invoice-status")).toHaveText("Emitida");
+
+  const { data: invoices, error } = await admin
+    .from("invoices")
+    .select(
+      "id, code, kind, status, replaces_invoice_id, rectifies_invoice_id, corrects_invoice_id, payments!inner(appointment_id, voided_at)",
+    )
+    .eq("payments.appointment_id", appointment.id);
+  expect(error).toBeNull();
+  expect(invoices).toHaveLength(4);
+  const corrected = invoices!.find(
+    (invoice) => invoice.corrects_invoice_id === wrongFull!.id,
+  );
+  expect(corrected).toMatchObject({
+    kind: "full",
+    status: "issued",
+    replaces_invoice_id: null,
+  });
+  expect(
+    invoices!.filter(
+      (invoice) =>
+        invoice.kind === "rectifying" &&
+        invoice.rectifies_invoice_id === wrongFull!.id,
+    ),
+  ).toHaveLength(1);
+  expect(invoices![0]!.payments.voided_at).toBeNull();
+  await expect(page).toHaveURL(`${DASHBOARD}/facturas/${corrected!.id}`);
+
+  await openAppointment(page, date, appointment.id);
+  await expect(page.getByTestId("invoice-code")).toHaveText(
+    `Factura ${corrected!.code}`,
+  );
+  await expect(page.getByTestId("appointment-payment-status")).toContainText(
+    "Cobrada",
+  );
+});
+
+test("la factura completa de otra sesión del mismo paciente se rellena con el destinatario de su última completa", async ({
+  page,
+}) => {
+  const employee = await createEmployee("Profesional Precarga Completa");
+  const firstDate = addDays(todayInMadrid(), -3);
+  const first = await createAppointment(employee.id, firstDate);
+  collectAsStaff(employee.id, first.id, 5500);
+  replaceWithFullInvoiceAsStaff(employee.id, first.id, {
+    name: "Talleres Auditoría",
+    taxId: "B98765431",
+  });
+  const date = addDays(todayInMadrid(), -2);
+  const { data: second, error } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: employee.id,
+      patient_id: await patientIdOf(first.id),
+      service_id: PSICOLOGIA_SERVICE_ID,
+      starts_at: `${date} 10:00:00 Europe/Madrid`,
+      ends_at: `${date} 11:00:00 Europe/Madrid`,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdAppointmentIds.push(second!.id);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, second!.id);
+  await collectAndReadCode(page);
+  await page.getByTestId("invoice-full").click();
+  await expect(page.getByTestId("invoice-full-name")).toHaveValue(
+    "Talleres Auditoría",
+  );
+  await expect(page.getByTestId("invoice-full-tax-id")).toHaveValue(
+    "B98765431",
+  );
+  await expect(page.getByTestId("invoice-full-address")).toHaveValue(
+    "Calle de la Factura 7",
+  );
+  await expect(page.getByTestId("invoice-full-postal-code")).toHaveValue(
+    "46800",
+  );
+  await expect(page.getByTestId("invoice-full-city")).toHaveValue("Xàtiva");
+});
+
+test("al enviar la factura a un email que la ficha no tiene, «Guardar en la ficha» viene marcado y lo guarda para la próxima vez", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Guarda Email");
+  const appointment = await createAppointment(employee.id, date);
+  const email = `guardado-${uniqueSuffix()}@test.local`;
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointment.id);
+  await collectAndReadCode(page);
+
+  await page.getByTestId("invoice-send").click();
+  await expect(page.getByTestId("invoice-send-email")).toHaveValue("");
+  await expect(page.getByTestId("invoice-send-save")).toBeChecked();
+  await page.getByTestId("invoice-send-email").fill(email);
+  await page.getByTestId("invoice-send-submit").click();
+  await expect(page.getByTestId("invoice-send-result")).toHaveText(
+    `Factura enviada a ${email}`,
+  );
+
+  const { data: person, error } = await admin
+    .from("people")
+    .select("email")
+    .eq("id", await patientIdOf(appointment.id))
+    .single();
+  expect(error).toBeNull();
+  expect(person?.email).toBe(email);
+
+  await openAppointment(page, date, appointment.id);
+  await page.getByTestId("invoice-send").click();
+  await expect(page.getByTestId("invoice-send-email")).toHaveValue(email);
+  await expect(page.getByTestId("invoice-send-save")).toHaveCount(0);
 });

@@ -1,3 +1,4 @@
+import type { InvoiceSnapshot } from "@clinicalumia/invoices";
 import { formatMadridDate } from "./madrid-format";
 
 export type InvoiceKind = "simplified" | "full" | "rectifying";
@@ -16,6 +17,8 @@ export type InvoiceContact = {
   tax_id: string | null;
   address: string;
 };
+
+export type InvoiceRecipient = NonNullable<InvoiceSnapshot["recipient"]>;
 
 export type RecipientDraft = {
   name: string;
@@ -44,10 +47,17 @@ export function currentInvoice(
     kind: InvoiceKind;
     status: "issued" | "replaced";
     issued_at: string;
+    rectifies_invoice_id: string | null;
   }[],
 ): CurrentInvoice | null {
+  const rectified = new Set(
+    invoices.map((invoice) => invoice.rectifies_invoice_id),
+  );
   const current = invoices.find(
-    (invoice) => invoice.status === "issued" && invoice.kind !== "rectifying",
+    (invoice) =>
+      invoice.status === "issued" &&
+      invoice.kind !== "rectifying" &&
+      !rectified.has(invoice.id),
   );
   return current
     ? {
@@ -63,15 +73,36 @@ export function invoiceIssuedLabel(issuedAt: string): string {
   return `Factura emitida el ${formatMadridDate(issuedAt)}`;
 }
 
+export function recipientWithTaxId(
+  recipient: InvoiceRecipient | null,
+): string | null {
+  return recipient ? `${recipient.name} (${recipient.tax_id})` : null;
+}
+
+export function recipientFromInvoice(
+  recipient: InvoiceRecipient,
+): RecipientDraft {
+  return {
+    name: recipient.name,
+    taxId: recipient.tax_id,
+    address: recipient.address,
+    postalCode: recipient.postal_code,
+    city: recipient.city,
+  };
+}
+
 export function recipientDraft({
   patient,
   guardian,
   minor,
+  lastRecipient = null,
 }: {
   patient: InvoiceContact;
   guardian: InvoiceContact | null;
   minor: boolean;
+  lastRecipient?: InvoiceRecipient | null;
 }): RecipientDraft {
+  if (lastRecipient) return recipientFromInvoice(lastRecipient);
   const payer = minor && guardian ? guardian : patient;
   return {
     name: `${payer.first_name} ${payer.last_name}`,

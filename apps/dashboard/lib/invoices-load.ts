@@ -1,6 +1,7 @@
 import { addDays, isValidDate } from "@clinicalumia/api/madrid-time";
 import type { createClient } from "@clinicalumia/api/server";
 import { isUuid } from "./agenda";
+import type { InvoiceRecipient } from "./invoices";
 import { formatMadridDate } from "./madrid-format";
 import type { StaffOption } from "./payments-load";
 
@@ -225,4 +226,21 @@ export async function loadInvoices(
       isOwner,
     },
   };
+}
+
+export async function loadLastFullRecipient(
+  supabase: Client,
+  patientId: string,
+): Promise<InvoiceRecipient | null> {
+  const { data } = await supabase
+    .from("invoices")
+    .select("snapshot, payments!inner(appointments!inner(patient_id))")
+    .eq("kind", "full")
+    .eq("payments.appointments.patient_id", patientId)
+    .order("issued_at", { ascending: false })
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const snapshot = data?.snapshot as { recipient?: InvoiceRecipient } | null;
+  return snapshot?.recipient ?? null;
 }

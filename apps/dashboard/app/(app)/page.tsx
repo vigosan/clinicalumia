@@ -23,6 +23,7 @@ import {
   proposedInvoiceEmail,
   recipientDraft,
 } from "@/lib/invoices";
+import { loadLastFullRecipient } from "@/lib/invoices-load";
 import { canVoidPayment, paymentStatus } from "@/lib/payments";
 import { AgendaHeader } from "./agenda/AgendaHeader";
 import {
@@ -86,6 +87,7 @@ async function loadAppointmentDetail(
     { data: suggestedCents, error: suggestedError },
     { data: guardianRows, error: guardiansError },
     { data: noticeRecipients },
+    lastRecipient,
     {
       data: { user },
     },
@@ -101,7 +103,7 @@ async function loadAppointmentDetail(
     supabase
       .from("payments")
       .select(
-        "id, amount_cents, method, note, collected_at, collected_by, voided_at, voided_by, void_reason, invoices(id, code, kind, status, issued_at)",
+        "id, amount_cents, method, note, collected_at, collected_by, voided_at, voided_by, void_reason, invoices(id, code, kind, status, issued_at, rectifies_invoice_id)",
       )
       .eq("appointment_id", appointmentId)
       .order("collected_at", { ascending: true }),
@@ -116,6 +118,7 @@ async function loadAppointmentDetail(
     supabase.rpc("appointment_notice_recipients", {
       p_appointment_id: appointmentId,
     }),
+    loadLastFullRecipient(supabase, appt.patient.id),
     supabase.auth.getUser(),
   ]);
   if (
@@ -163,6 +166,10 @@ async function loadAppointmentDetail(
   const initial = madridDateTime(appt.starts_at);
   const invoice = activePayment ? currentInvoice(activePayment.invoices) : null;
   const guardian = guardianRows?.[0]?.guardian ?? null;
+  const invoiceEmail = proposedInvoiceEmail({
+    patient: appt.patient,
+    guardian,
+  });
 
   return {
     status: "ok",
@@ -198,15 +205,17 @@ async function loadAppointmentDetail(
       activePaymentId: activePayment?.id ?? null,
       invoice: invoice && {
         ...invoice,
-        email: proposedInvoiceEmail({ patient: appt.patient, guardian }),
-        recipient: recipientDraft({
-          patient: appt.patient,
-          guardian,
-          minor: appt.patient.birth_date
-            ? isMinor(appt.patient.birth_date, todayInMadrid(now))
-            : false,
-        }),
+        email: invoiceEmail,
+        saveEmail: invoiceEmail === "",
       },
+      recipient: recipientDraft({
+        patient: appt.patient,
+        guardian,
+        minor: appt.patient.birth_date
+          ? isMinor(appt.patient.birth_date, todayInMadrid(now))
+          : false,
+        lastRecipient,
+      }),
       canVoid:
         activePayment !== null &&
         canVoidPayment({

@@ -42,6 +42,7 @@ export function PaymentForm({
   appointmentId,
   suggestedAmountCents,
   cancelled,
+  recipient: initialRecipient = EMPTY_RECIPIENT,
   initiallyOpen = false,
   onSuccess,
   onError,
@@ -50,6 +51,7 @@ export function PaymentForm({
   appointmentId: string;
   suggestedAmountCents: number;
   cancelled: boolean;
+  recipient?: RecipientDraft;
   initiallyOpen?: boolean;
   onSuccess?: (payment: { cents: number; method: PaymentMethod }) => void;
   onError?: () => void;
@@ -61,7 +63,7 @@ export function PaymentForm({
   );
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
-  const [recipient, setRecipient] = useState(EMPTY_RECIPIENT);
+  const [recipient, setRecipient] = useState(initialRecipient);
   const [requested, setRequested] = useState(false);
   const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();

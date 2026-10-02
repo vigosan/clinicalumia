@@ -6,7 +6,12 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 
 const LOGO_TIMEOUT_MS = 3000;
 
-export type InvoicePdf = { code: string; fileName: string; pdf: Uint8Array };
+export type InvoicePdf = {
+  code: string;
+  fileName: string;
+  pdf: Uint8Array;
+  patientId: string;
+};
 
 function isPngOrJpeg(bytes: Uint8Array): boolean {
   const png = [0x89, 0x50, 0x4e, 0x47].every(
@@ -43,5 +48,10 @@ export async function loadInvoicePdf(
   if (error || !detail) return { error: error ?? {} };
   const logo = await clinicLogo(supabase);
   const pdf = await renderInvoicePdf(detail, { logo });
-  return { code: detail.code, fileName: invoiceFileName(detail.code), pdf };
+  return {
+    code: detail.code,
+    fileName: invoiceFileName(detail.code),
+    pdf,
+    patientId: detail.patient_id,
+  };
 }

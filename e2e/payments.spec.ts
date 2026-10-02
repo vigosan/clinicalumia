@@ -4,7 +4,11 @@ import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { logOut, signIn } from "./auth";
 import { pickTime } from "./date-time";
-import { deleteInvoicesOfAppointments } from "./invoices";
+import {
+  collectAsStaff,
+  deleteInvoicesOfAppointments,
+  replaceWithFullInvoiceAsStaff,
+} from "./invoices";
 import { selectOption } from "./select";
 
 const DASHBOARD = "http://localhost:3001";
@@ -975,4 +979,57 @@ test("a 390 px Cobros y Facturas se leen como tarjetas, sin desplazar la página
       }),
     ).toBe(true);
   }
+});
+
+test("cobrar 450 € a un paciente que ya tuvo factura completa rellena el destinatario con los datos de esa factura", async ({
+  page,
+}) => {
+  const employee = await createEmployee("Profesional Cobro Precarga");
+  const firstDate = addDays(todayInMadrid(), -6);
+  const firstId = await createAppointment(employee.id, firstDate);
+  collectAsStaff(employee.id, firstId, 5500);
+  replaceWithFullInvoiceAsStaff(employee.id, firstId, {
+    name: "Talleres Auditoría",
+    taxId: "B98765431",
+  });
+  const { data: first, error: firstError } = await admin
+    .from("appointments")
+    .select("patient_id")
+    .eq("id", firstId)
+    .single();
+  expect(firstError).toBeNull();
+  const date = addDays(todayInMadrid(), -5);
+  const { data: second, error } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: employee.id,
+      patient_id: first!.patient_id,
+      service_id: PSICOLOGIA_SERVICE_ID,
+      starts_at: `${date} 10:00:00 Europe/Madrid`,
+      ends_at: `${date} 11:00:00 Europe/Madrid`,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdAppointmentIds.push(second!.id);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, second!.id);
+  await page.getByTestId("payment-collect").click();
+  await page.getByTestId("payment-amount").fill("450");
+  await expect(page.getByTestId("payment-recipient-name")).toHaveValue(
+    "Talleres Auditoría",
+  );
+  await expect(page.getByTestId("payment-recipient-tax-id")).toHaveValue(
+    "B98765431",
+  );
+  await expect(page.getByTestId("payment-recipient-city")).toHaveValue(
+    "Xàtiva",
+  );
+  await page.getByTestId("payment-note").fill("Bono de diez sesiones");
+  await page.getByTestId("payment-method-card").check();
+  await page.getByTestId("payment-submit").click();
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Cobrada · 450,00 € · Tarjeta",
+  );
 });

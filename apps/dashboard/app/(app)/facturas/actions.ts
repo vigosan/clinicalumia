@@ -12,7 +12,7 @@ import {
   recipientParams,
 } from "@/lib/invoices";
 import { failureFor } from "@/lib/payment-failure";
-import { paymentError } from "@/lib/payments";
+import { type PaymentFailure, paymentError } from "@/lib/payments";
 
 export async function issueFullInvoice(
   invoiceId: string,
@@ -29,6 +29,23 @@ export async function issueFullInvoice(
   revalidatePath("/facturas");
   revalidatePath(`/facturas/${invoiceId}`);
   return { ok: true };
+}
+
+export async function correctInvoiceRecipient(
+  invoiceId: string,
+  recipient: RecipientDraft,
+): Promise<{ ok: true; id: string } | PaymentFailure> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("correct_full_invoice_recipient", {
+    p_invoice_id: invoiceId,
+    p_recipient: recipientParams(recipient),
+  });
+  if (error) return failureFor(supabase, error);
+
+  revalidatePath("/");
+  revalidatePath("/facturas");
+  revalidatePath(`/facturas/${invoiceId}`);
+  return { ok: true, id: data };
 }
 
 export async function issueRectifyingInvoice(
@@ -51,6 +68,7 @@ export async function issueRectifyingInvoice(
 export async function sendInvoiceEmail(
   invoiceId: string,
   input: string,
+  saveToRecord = false,
 ): Promise<{ ok: true; email: string } | { error: string }> {
   const email = normalizeEmail(input);
   if (!email) return { error: "Escribe un email válido." };
@@ -91,5 +109,16 @@ export async function sendInvoiceEmail(
   });
   if (error)
     console.error("No se ha podido registrar el envío de la factura", error);
+
+  if (saveToRecord) {
+    const { error: saveError } = await supabase
+      .from("people")
+      .update({ email })
+      .eq("id", invoice.patientId)
+      .is("email", null);
+    if (saveError)
+      console.error("No se ha podido guardar el email en la ficha", saveError);
+    revalidatePath(`/patients/${invoice.patientId}`);
+  }
   return { ok: true, email };
 }
