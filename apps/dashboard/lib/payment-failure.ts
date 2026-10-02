@@ -10,7 +10,10 @@ import {
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 export function adminUrl(): string {
-  return process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3002";
+  if (process.env.ADMIN_URL) return process.env.ADMIN_URL;
+  return process.env.NODE_ENV === "production"
+    ? "https://admin.clinicalumia.es"
+    : "http://localhost:3002";
 }
 
 export async function failureFor(

@@ -277,7 +277,7 @@ describe("paymentFailure", () => {
       ),
     ).toEqual({
       error:
-        "Falta configurar la numeración de las facturas: hasta que la confirmes no se pueden registrar cobros.",
+        "Falta configurar la numeración de las facturas: hasta que la confirmes no se pueden emitir facturas ni registrar cobros.",
       link: {
         href: "https://admin.clinicalumia.es/clinic",
         label: "Configurar la numeración",

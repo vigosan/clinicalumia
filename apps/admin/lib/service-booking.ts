@@ -30,3 +30,13 @@ export function bookingLabel(
   if (service.booking_payment === "full") return "Pago completo";
   return "Paga en la clínica";
 }
+
+export function hasPhoneOnlyServices(
+  services: (ServiceBooking & { is_active: boolean })[],
+  onlinePaymentsEnabled: boolean,
+): boolean {
+  return services.some(
+    (service) =>
+      service.is_active && isPhoneOnly(service, onlinePaymentsEnabled),
+  );
+}

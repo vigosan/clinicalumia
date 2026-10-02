@@ -166,7 +166,7 @@ export function invoiceSetupWarnings({
   if (!mainSeries?.configured)
     warnings.push({
       id: "invoice-series-warning",
-      text: `Confirma la numeración de facturas de ${year} en Facturación: hasta que la guardes, no se pueden registrar cobros.`,
+      text: `Confirma la numeración de facturas de ${year} en Datos de la clínica → Facturación: hasta que la guardes, no se pueden registrar cobros.`,
     });
   if (
     !effectiveSeries(

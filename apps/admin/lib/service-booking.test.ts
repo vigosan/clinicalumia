@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { bookingLabel, isPhoneOnly } from "./service-booking";
+import {
+  bookingLabel,
+  hasPhoneOnlyServices,
+  isPhoneOnly,
+} from "./service-booking";
 
 const deposit = {
   bookable_online: true,
@@ -53,6 +57,29 @@ describe("bookingLabel", () => {
     );
     expect(bookingLabel({ ...deposit, bookable_online: false }, true)).toBe(
       "No",
+    );
+  });
+});
+
+describe("hasPhoneOnlyServices", () => {
+  it("warns only about active services, since an inactive one is not offered to patients anyway", () => {
+    expect(
+      hasPhoneOnlyServices([{ ...deposit, is_active: false }], false),
+    ).toBe(false);
+    expect(
+      hasPhoneOnlyServices(
+        [
+          { ...deposit, is_active: false },
+          { ...deposit, is_active: true },
+        ],
+        false,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not warn once online payments are on", () => {
+    expect(hasPhoneOnlyServices([{ ...deposit, is_active: true }], true)).toBe(
+      false,
     );
   });
 });

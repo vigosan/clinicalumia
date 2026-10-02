@@ -180,7 +180,7 @@ export type Viewer = { isOwner: boolean; adminUrl: string };
 const UNCONFIGURED_SERIES: Record<string, { name: string; blocked: string }> = {
   invoice_series_not_configured: {
     name: "las facturas",
-    blocked: "no se pueden registrar cobros",
+    blocked: "no se pueden emitir facturas ni registrar cobros",
   },
   rectifying_series_not_configured: {
     name: "las rectificativas",

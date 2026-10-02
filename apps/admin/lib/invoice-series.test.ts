@@ -180,7 +180,7 @@ describe("invoiceSetupWarnings", () => {
     ).toEqual([
       {
         id: "invoice-series-warning",
-        text: "Confirma la numeración de facturas de 2026 en Facturación: hasta que la guardes, no se pueden registrar cobros.",
+        text: "Confirma la numeración de facturas de 2026 en Datos de la clínica → Facturación: hasta que la guardes, no se pueden registrar cobros.",
       },
     ]);
   });
@@ -220,7 +220,7 @@ describe("invoiceSetupWarnings", () => {
         year: 2027,
       }).map((warning) => warning.text),
     ).toEqual([
-      "Confirma la numeración de facturas de 2027 en Facturación: hasta que la guardes, no se pueden registrar cobros.",
+      "Confirma la numeración de facturas de 2027 en Datos de la clínica → Facturación: hasta que la guardes, no se pueden registrar cobros.",
     ]);
   });
 

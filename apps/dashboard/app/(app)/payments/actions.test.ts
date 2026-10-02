@@ -91,7 +91,7 @@ describe("collectPayment", () => {
 
 describe("collectPayment without invoice numbering", () => {
   it("links the owner to the admin where she confirms the numbering, since only she can unblock charging", async () => {
-    vi.stubEnv("NEXT_PUBLIC_ADMIN_URL", "https://admin.clinicalumia.es");
+    vi.stubEnv("ADMIN_URL", "https://admin.example.test");
     isOwnerResult.data = true;
     rpcResult.error = {
       code: "P0001",
@@ -104,16 +104,17 @@ describe("collectPayment without invoice numbering", () => {
     });
     expect(result).toEqual({
       error:
-        "Falta configurar la numeración de las facturas: hasta que la confirmes no se pueden registrar cobros.",
+        "Falta configurar la numeración de las facturas: hasta que la confirmes no se pueden emitir facturas ni registrar cobros.",
       link: {
-        href: "https://admin.clinicalumia.es/clinic",
+        href: "https://admin.example.test/clinic",
         label: "Configurar la numeración",
       },
     });
   });
 
   it("points to the local admin when no admin address is configured, so development links work", async () => {
-    vi.stubEnv("NEXT_PUBLIC_ADMIN_URL", "");
+    vi.stubEnv("ADMIN_URL", "");
+    vi.stubEnv("NODE_ENV", "development");
     isOwnerResult.data = true;
     rpcResult.error = {
       code: "P0001",

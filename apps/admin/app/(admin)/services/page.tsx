@@ -14,7 +14,7 @@ import {
 } from "@clinicalumia/ui/table";
 import Link from "next/link";
 import { formatCents } from "@/lib/money";
-import { bookingLabel, isPhoneOnly } from "@/lib/service-booking";
+import { bookingLabel, hasPhoneOnlyServices } from "@/lib/service-booking";
 import { ServiceStatusToggle } from "./ServiceStatusToggle";
 
 export default async function ServicesPage() {
@@ -34,8 +34,9 @@ export default async function ServicesPage() {
         .single(),
     ]);
   const onlinePaymentsEnabled = settings?.online_payments_enabled ?? false;
-  const anyPhoneOnly = (services ?? []).some((service) =>
-    isPhoneOnly(service, onlinePaymentsEnabled),
+  const anyPhoneOnly = hasPhoneOnlyServices(
+    services ?? [],
+    onlinePaymentsEnabled,
   );
 
   return (

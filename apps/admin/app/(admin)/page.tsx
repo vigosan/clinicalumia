@@ -49,13 +49,7 @@ const sections = [
 export default async function AdminHome() {
   const supabase = await createClient();
   const year = Number(todayInMadrid().slice(0, 4));
-  const [
-    { data: settings },
-    { data: series },
-    { count: activeServiceCount },
-    { data: professionals },
-    { data: schedules },
-  ] = await Promise.all([
+  const results = await Promise.all([
     supabase
       .from("clinic_settings")
       .select("legal_name, tax_id, address_line, postal_code, city")
@@ -76,16 +70,26 @@ export default async function AdminHome() {
       .order("full_name"),
     supabase.from("employee_schedules").select("profile_id"),
   ]);
+  const [
+    { data: settings },
+    { data: series },
+    { count: activeServiceCount },
+    { data: professionals },
+    { data: schedules },
+  ] = results;
+  const loaded = results.every((result) => !result.error) && settings;
   const scheduled = new Set((schedules ?? []).map((row) => row.profile_id));
-  const pending = pendingSetup({
-    settings: settings!,
-    series: series ?? [],
-    year,
-    activeServiceCount: activeServiceCount ?? 0,
-    professionalsWithoutSchedule: (professionals ?? []).filter(
-      (professional) => !scheduled.has(professional.id),
-    ),
-  });
+  const pending = loaded
+    ? pendingSetup({
+        settings,
+        series: series ?? [],
+        year,
+        activeServiceCount: activeServiceCount ?? 0,
+        professionalsWithoutSchedule: (professionals ?? []).filter(
+          (professional) => !scheduled.has(professional.id),
+        ),
+      })
+    : [];
 
   return (
     <>
@@ -93,7 +97,11 @@ export default async function AdminHome() {
         title="Bienvenida"
         description="Configura la clínica desde aquí."
       />
-      {pending.length > 0 ? (
+      {!loaded ? (
+        <Alert data-testid="pending-error">
+          No se ha podido comprobar qué falta por configurar. Recarga la página.
+        </Alert>
+      ) : pending.length > 0 ? (
         <Alert
           tone="warning"
           title="Pendiente de configurar"
