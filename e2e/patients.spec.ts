@@ -4,6 +4,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 import { selectOption } from "./select";
+import { slowDownServerActions } from "./server-renders";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -1359,4 +1360,59 @@ test("«Archivar» y «Eliminar» viven en «Más acciones» y no al lado de «E
   await page.getByTestId("person-menu").click();
   await expect(page.getByTestId("person-archive")).toBeVisible();
   await expect(page.getByTestId("person-delete")).toBeVisible();
+});
+
+test("the owner removes a guardian and the row goes away at once, without waiting for the server", async ({
+  page,
+}) => {
+  const stamp = Date.now();
+  const { data: people, error } = await admin
+    .from("people")
+    .insert([
+      {
+        first_name: "Menor",
+        last_name: `ConTutora${stamp}`,
+        is_patient: true,
+        birth_date: "2016-01-01",
+      },
+      {
+        first_name: "Tutora",
+        last_name: `Quitada${stamp}`,
+        is_patient: false,
+      },
+    ])
+    .select("id, first_name");
+  expect(error).toBeNull();
+  const idOf = (firstName: string) =>
+    people!.find((person) => person.first_name === firstName)!.id;
+  createdPersonIds.push(...people!.map((person) => person.id));
+  const { error: guardianshipError } = await admin
+    .from("guardianships")
+    .insert({
+      minor_id: idOf("Menor"),
+      guardian_id: idOf("Tutora"),
+      relationship: "madre",
+      is_primary: true,
+    });
+  expect(guardianshipError).toBeNull();
+
+  await loginAsOwner(page);
+  await page.goto(`${DASHBOARD}/patients/${idOf("Menor")}`);
+  const row = page
+    .getByTestId("guardian-row")
+    .filter({ hasText: `Tutora Quitada${stamp}` });
+  await expect(row).toBeVisible();
+  await slowDownServerActions(page, 3000);
+
+  await row.getByTestId("guardian-remove").click();
+  await expect(row).toHaveCount(0, { timeout: 1000 });
+  await expect
+    .poll(async () => {
+      const { data } = await admin
+        .from("guardianships")
+        .select("guardian_id")
+        .eq("minor_id", idOf("Menor"));
+      return data;
+    })
+    .toEqual([]);
 });

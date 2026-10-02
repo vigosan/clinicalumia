@@ -3,7 +3,7 @@
 import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import type { Ward } from "@/lib/ward-label";
 import { removeGuardian } from "../actions";
 import { RELATIONSHIP_LABEL } from "../relationship-options";
@@ -32,10 +32,16 @@ export function GuardiansSection({
   initialError?: string;
 }) {
   const [pending, startTransition] = useTransition();
+  const [shownGuardians, removeOptimistically] = useOptimistic(
+    guardians,
+    (current, removedId: string) =>
+      current.filter((guardian) => guardian.id !== removedId),
+  );
   const [error, setError] = useState<string | null>(initialError ?? null);
 
   function handleRemove(guardianId: string) {
     startTransition(async () => {
+      removeOptimistically(guardianId);
       const result = await removeGuardian(personId, guardianId);
       if ("error" in result) {
         setError(result.error);
@@ -57,11 +63,11 @@ export function GuardiansSection({
             <h2 className="text-lg font-bold text-ink-900">Tutores</h2>
             {isMinorPerson && <AddGuardian minorId={personId} />}
           </div>
-          {guardians.length === 0 ? (
+          {shownGuardians.length === 0 ? (
             <p className="text-sm text-ink-800">No tiene tutor/a.</p>
           ) : (
             <ul className="flex flex-col divide-y divide-line">
-              {guardians.map((guardian) => (
+              {shownGuardians.map((guardian) => (
                 <li
                   key={guardian.id}
                   data-testid="guardian-row"

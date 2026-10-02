@@ -9,7 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 import { pickDate, pickTime } from "./date-time";
 import { selectOption } from "./select";
-import { recordServerRenders } from "./server-renders";
+import { recordServerRenders, slowDownServerActions } from "./server-renders";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -1561,7 +1561,7 @@ test("el panel de la cita retiene el foco mientras está abierto, y Escape lo ci
   expect(serverRenders).toEqual([]);
 });
 
-test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer «no presentada»» la devuelve", async ({
+test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer «no presentada»» la devuelve, y el panel lo refleja sin esperar al servidor", async ({
   page,
 }) => {
   const date = pastDate(120);
@@ -1583,8 +1583,13 @@ test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer 
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
   await expect(page.getByTestId("appointment-status")).toHaveText("Realizada");
+  await slowDownServerActions(page, 3000);
   await page.getByTestId("appointment-no-show").click();
   await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("appointment-status")).toHaveText(
+    "No presentada",
+    { timeout: 1000 },
+  );
 
   await expect(
     columnFor(page, employee.id).getByTestId("appointment-block"),

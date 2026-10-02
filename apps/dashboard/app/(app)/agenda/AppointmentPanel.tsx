@@ -11,7 +11,7 @@ import { toast } from "@clinicalumia/ui/toast";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { adjacentAppointments, isUuid } from "@/lib/agenda";
 import { formatMinutes } from "@/lib/duration";
 import {
@@ -112,6 +112,11 @@ function AppointmentDetails({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [moving, setMoving] = useState(false);
+  const [status, setOptimisticStatus] = useOptimistic(appointment.status);
+  const isPast = appointment.canMarkNoShow || appointment.canRestore;
+  const canMarkNoShow = isPast && status === "scheduled";
+  const canRestore = status === "no_show";
+  const canCancel = status === "scheduled";
 
   function handlePaid({
     cents,
@@ -125,6 +130,7 @@ function AppointmentDetails({
 
   function handleNoShow() {
     startTransition(async () => {
+      setOptimisticStatus("no_show");
       const result = await markNoShow(appointment.id);
       if ("error" in result) {
         setError(result.error);
@@ -137,6 +143,7 @@ function AppointmentDetails({
 
   function handleRestore() {
     startTransition(async () => {
+      setOptimisticStatus("scheduled");
       const result = await restoreFromNoShow(appointment.id);
       if ("error" in result) {
         setError(result.error);
@@ -150,13 +157,8 @@ function AppointmentDetails({
   return (
     <>
       <div className="flex items-center gap-2">
-        <Badge
-          tone={STATUS_TONE[appointment.status]}
-          data-testid="appointment-status"
-        >
-          {appointment.canMarkNoShow
-            ? "Realizada"
-            : STATUS_LABEL[appointment.status]}
+        <Badge tone={STATUS_TONE[status]} data-testid="appointment-status">
+          {canMarkNoShow ? "Realizada" : STATUS_LABEL[status]}
         </Badge>
         {appointment.origin === "web" && (
           <Badge tone="neutral" data-testid="web-booking-badge">
@@ -247,11 +249,9 @@ function AppointmentDetails({
         )}
       </div>
 
-      {(appointment.canCancel ||
-        appointment.canMarkNoShow ||
-        appointment.canRestore) && (
+      {(canCancel || canMarkNoShow || canRestore) && (
         <div className="flex flex-wrap gap-2 border-line border-t pt-4">
-          {appointment.canCancel && (
+          {canCancel && (
             <CancelDialog
               appointmentId={appointment.id}
               invoiced={appointment.invoice !== null}
@@ -260,7 +260,7 @@ function AppointmentDetails({
               disabled={moving}
             />
           )}
-          {appointment.canMarkNoShow && (
+          {canMarkNoShow && (
             <ConfirmDialog
               trigger={
                 <Button
@@ -279,7 +279,7 @@ function AppointmentDetails({
               onConfirm={handleNoShow}
             />
           )}
-          {appointment.canRestore && (
+          {canRestore && (
             <Button
               type="button"
               variant="secondary"
