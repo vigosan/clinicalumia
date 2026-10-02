@@ -12,6 +12,9 @@ export const SLOT_MINUTES = 15;
 export const HEADER_HEIGHT = 64;
 export const CLOSURE_BAND_HEIGHT = 44;
 
+const UNAVAILABLE_STRIPES =
+  "repeating-linear-gradient(135deg, transparent 0 6px, rgb(58 58 58 / 0.04) 6px 7px)";
+
 export const TONE_CLASSES: Record<SpecialtyTone, string> = {
   sage: "border-sage-400 bg-sage-100 text-sage-900",
   bark: "border-[#b5a2b0] bg-[#ece4ea] text-bark-700",
@@ -185,23 +188,41 @@ export function AgendaColumnGrid({
       className="relative"
       style={{
         height: windowMinutes * PX_PER_MINUTE,
-        backgroundImage: `repeating-linear-gradient(to bottom, var(--color-line) 0, var(--color-line) 1px, transparent 1px, transparent ${SLOT_MINUTES * PX_PER_MINUTE}px)`,
+        backgroundImage: `repeating-linear-gradient(to bottom, var(--color-line) 0, var(--color-line) 1px, transparent 1px, transparent ${60 * PX_PER_MINUTE}px)`,
         cursor: clickable ? "pointer" : "default",
       }}
       {...clickableProps}
     >
+      {Array.from(
+        { length: Math.ceil(windowMinutes / SLOT_MINUTES) },
+        (_, index) => index * SLOT_MINUTES,
+      )
+        .filter((minute) => minute % 60 !== 0)
+        .map((minute) => (
+          <div
+            key={minute}
+            data-testid="slot-line"
+            className="pointer-events-none absolute inset-x-0 border-line border-t border-dotted"
+            style={{ top: minute * PX_PER_MINUTE }}
+          />
+        ))}
       {outOfScheduleBands(schedule, firstHour, windowMinutes).map((band) => (
         <div
           key={band.top}
-          className="pointer-events-none absolute inset-x-0 bg-ink-900/5"
+          data-testid="out-of-schedule"
+          className="pointer-events-none absolute inset-x-0"
           style={{
             top: band.top * PX_PER_MINUTE,
             height: band.height * PX_PER_MINUTE,
+            backgroundImage: UNAVAILABLE_STRIPES,
           }}
         />
       ))}
       {closed && (
-        <div className="pointer-events-none absolute inset-0 bg-warning-100/60" />
+        <div
+          className="pointer-events-none absolute inset-0 bg-warning-100/60"
+          style={{ backgroundImage: UNAVAILABLE_STRIPES }}
+        />
       )}
       {items.map((item) => {
         const { content } = item;

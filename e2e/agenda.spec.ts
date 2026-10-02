@@ -429,6 +429,21 @@ test("pulsar un hueco fuera de horario en la propia columna da de alta una cita,
   expect(url.searchParams.get("professional")).toBe(employeeId);
 });
 
+test("fuera de horario se ve rayado y las líneas de cada cuarto de hora son punteadas, para que el hueco donde se puede dar cita se distinga sin pensarlo", async ({
+  page,
+}) => {
+  const employeeId = await loginAsThrowawayEmployee(page, "Profesional Rayas");
+
+  const column = columnFor(page, employeeId);
+  await expect(column).toBeVisible();
+  await expect(column.getByTestId("out-of-schedule").first()).toHaveCSS(
+    "background-image",
+    /repeating-linear-gradient/,
+  );
+  const lines = column.getByTestId("slot-line");
+  await expect(lines.first()).toHaveCSS("border-top-style", "dotted");
+});
+
 test("cambiar a Semana muestra siete week-day, y una cita del test aparece en su día", async ({
   page,
 }) => {
