@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
+import { recordServerRenders } from "./server-renders";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -59,12 +60,13 @@ test("the record's breadcrumbs show where staff are and take them back up withou
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("«Editar» opens the record's form in a drawer over the record, and closing it leaves the record as it was", async ({
+test("«Editar» opens the record's form in a drawer over the record and closes it without waiting for the server, leaving the record as it was", async ({
   page,
 }) => {
   const person = await createPerson();
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
   await page.goto(`${DASHBOARD}/patients/${person.id}`);
+  const serverRenders = recordServerRenders(page);
 
   await page.getByRole("link", { name: "Editar" }).click();
   const drawer = page.getByTestId("person-edit-drawer");
@@ -74,22 +76,31 @@ test("«Editar» opens the record's form in a drawer over the record, and closin
   await drawer.getByRole("button", { name: "Cerrar" }).click();
   await expect(page).toHaveURL(`${DASHBOARD}/patients/${person.id}`);
   await expect(drawer).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Editar" }).click();
+  await expect(drawer.getByTestId("person-form")).toBeVisible();
+  await drawer.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${person.id}`);
+  await expect(drawer).toHaveCount(0);
+  expect(serverRenders).toEqual([]);
 });
 
-test("«Nuevo paciente» opens the form in a drawer over the list", async ({
+test("«Nuevo paciente» opens the form in a drawer over the list without waiting for the server", async ({
   page,
 }) => {
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
   await page.goto(`${DASHBOARD}/patients`);
+  const serverRenders = recordServerRenders(page);
 
   await page.getByTestId("patient-new").click();
   const drawer = page.getByTestId("person-new-drawer");
   await expect(drawer.getByTestId("person-form")).toBeVisible();
   await expect(page).toHaveURL(`${DASHBOARD}/patients?nuevo=1`);
 
-  await drawer.getByRole("link", { name: "Cancelar" }).click();
+  await drawer.getByRole("button", { name: "Cancelar" }).click();
   await expect(page).toHaveURL(`${DASHBOARD}/patients`);
   await expect(drawer).toHaveCount(0);
+  expect(serverRenders).toEqual([]);
 });
 
 test("an old Nueva cita link opens the drawer on that day's agenda, and closing it stays on the same day", async ({

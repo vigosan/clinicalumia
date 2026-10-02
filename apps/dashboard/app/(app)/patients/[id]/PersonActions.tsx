@@ -12,8 +12,8 @@ import {
 } from "@clinicalumia/ui/dropdown-menu";
 import { toast } from "@clinicalumia/ui/toast";
 import { Archive, ArchiveRestore, Ellipsis, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useState, useTransition } from "react";
+import { DrawerLink } from "../../url-drawer";
 import {
   deletePerson,
   setArchived,
@@ -64,9 +64,9 @@ export function PersonActions({
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="secondary" size="sm">
-          <Link href={`/patients/${personId}?editar=1`} scroll={false}>
+          <DrawerLink href={`/patients/${personId}?editar=1`} scroll={false}>
             Editar
-          </Link>
+          </DrawerLink>
         </Button>
         {isOwner && (
           <DropdownMenu modal={false}>

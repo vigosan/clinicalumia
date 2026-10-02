@@ -26,6 +26,7 @@ import {
   patientsPageCount,
 } from "@/lib/patients-list";
 import { patientsListState } from "@/lib/patients-list-state";
+import { DrawerLink } from "../url-drawer";
 import { PersonDrawer } from "./PersonDrawer";
 import { PersonForm } from "./PersonForm";
 import { SearchBox } from "./SearchBox";
@@ -53,8 +54,7 @@ export default async function PatientsPage({
   const failed = Boolean(error) && error?.code !== "PGRST103";
   const state = patientsListState(failed, patients.length);
   const pageCount = patientsPageCount(count ?? 0);
-  const { data: isOwner } =
-    search.nuevo === "1" ? await supabase.rpc("is_owner") : { data: false };
+  const { data: isOwner } = await supabase.rpc("is_owner");
 
   return (
     <>
@@ -62,10 +62,10 @@ export default async function PatientsPage({
         title="Pacientes"
         actions={
           <Button asChild size="sm" data-testid="patient-new">
-            <Link href="/patients?nuevo=1" scroll={false}>
+            <DrawerLink href="/patients?nuevo=1" scroll={false}>
               <Plus aria-hidden="true" />
               Nuevo paciente
-            </Link>
+            </DrawerLink>
           </Button>
         }
       />
@@ -172,16 +172,15 @@ export default async function PatientsPage({
           />
         </>
       )}
-      {search.nuevo === "1" && (
-        <PersonDrawer
-          closeHref={patientsListHref(params)}
-          title="Nuevo paciente"
-          description="Pacientes"
-          testId="person-new-drawer"
-        >
-          <PersonForm isOwner={isOwner === true} />
-        </PersonDrawer>
-      )}
+      <PersonDrawer
+        param="nuevo"
+        closeHref={patientsListHref(params)}
+        title="Nuevo paciente"
+        description="Pacientes"
+        testId="person-new-drawer"
+      >
+        <PersonForm isOwner={isOwner === true} inDrawer />
+      </PersonDrawer>
     </>
   );
 }

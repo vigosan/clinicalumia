@@ -57,10 +57,10 @@ export default async function PatientPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ guardianError?: string; editar?: string }>;
+  searchParams: Promise<{ guardianError?: string }>;
 }) {
   const { id } = await params;
-  const { guardianError, editar } = await searchParams;
+  const { guardianError } = await searchParams;
   const supabase = await createClient();
 
   const { data: person, error: personError } = await getPerson(id);
@@ -400,16 +400,15 @@ export default async function PatientPage({
           </Card>
         </div>
       </div>
-      {editar === "1" && (
-        <PersonDrawer
-          closeHref={`/patients/${id}`}
-          title="Editar ficha"
-          description={`${person.first_name} ${person.last_name}`}
-          testId="person-edit-drawer"
-        >
-          <PersonForm person={person} isOwner={isOwner} />
-        </PersonDrawer>
-      )}
+      <PersonDrawer
+        param="editar"
+        closeHref={`/patients/${id}`}
+        title="Editar ficha"
+        description={`${person.first_name} ${person.last_name}`}
+        testId="person-edit-drawer"
+      >
+        <PersonForm person={person} isOwner={isOwner} inDrawer />
+      </PersonDrawer>
     </>
   );
 }

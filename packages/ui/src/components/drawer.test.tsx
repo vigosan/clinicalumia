@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { expectExitThatOnlyFadesWithReducedMotion } from "../test/motion";
-import { Drawer } from "./drawer";
+import { Drawer, DrawerClose } from "./drawer";
 
 function Example() {
   const [open, setOpen] = useState(true);
@@ -93,5 +93,28 @@ describe("Drawer", () => {
     render(<Example />);
 
     expectExitThatOnlyFadesWithReducedMotion(screen.getByRole("dialog"));
+  });
+
+  it("lets a form inside offer its own «Cancelar» that closes the drawer, so cancelling never needs a trip to another page", async () => {
+    function WithCancel() {
+      const [open, setOpen] = useState(true);
+      return (
+        <Drawer
+          open={open}
+          onOpenChange={setOpen}
+          title="Nuevo paciente"
+          description="Pacientes"
+        >
+          <DrawerClose asChild>
+            <button type="button">Cancelar</button>
+          </DrawerClose>
+        </Drawer>
+      );
+    }
+    render(<WithCancel />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });

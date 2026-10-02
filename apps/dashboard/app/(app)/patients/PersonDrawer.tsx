@@ -1,29 +1,29 @@
 "use client";
 
 import { Drawer } from "@clinicalumia/ui/drawer";
-import { useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { showUrl, useUrlDrawer } from "../url-drawer";
 
 export function PersonDrawer({
+  param,
   closeHref,
   title,
   description,
   testId,
   children,
 }: {
+  param: string;
   closeHref: string;
   title: string;
   description: string;
   testId: string;
   children: ReactNode;
 }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(true);
+  const open = useUrlDrawer(param);
 
   function handleOpenChange(next: boolean) {
     if (next) return;
-    setOpen(false);
-    router.push(closeHref, { scroll: false });
+    showUrl(closeHref);
   }
 
   return (

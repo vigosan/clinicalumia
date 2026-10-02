@@ -4,6 +4,7 @@ import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { DateInput } from "@clinicalumia/ui/date-input";
+import { DrawerClose } from "@clinicalumia/ui/drawer";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
@@ -74,12 +75,14 @@ export function PersonForm({
   returnTo,
   consent,
   isOwner,
+  inDrawer = false,
 }: {
   person?: Person;
   guardianOf?: GuardianOf;
   returnTo?: string;
   consent?: ConsentPrefill;
   isOwner: boolean;
+  inDrawer?: boolean;
 }) {
   const router = useRouter();
   const personId = person?.id;
@@ -392,9 +395,17 @@ export function PersonForm({
         >
           {pending ? "Guardando…" : person ? "Guardar cambios" : "Crear ficha"}
         </Button>
-        <Button asChild variant="secondary">
-          <Link href={cancelHref}>Cancelar</Link>
-        </Button>
+        {inDrawer ? (
+          <DrawerClose asChild>
+            <Button type="button" variant="secondary">
+              Cancelar
+            </Button>
+          </DrawerClose>
+        ) : (
+          <Button asChild variant="secondary">
+            <Link href={cancelHref}>Cancelar</Link>
+          </Button>
+        )}
       </div>
     </form>
   );

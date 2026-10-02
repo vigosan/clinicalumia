@@ -8,6 +8,8 @@ import { closeButtonClass, overlayClass } from "./dialog";
 
 type ContentProps = ComponentProps<typeof Primitive.Content>;
 
+export const DrawerClose = Primitive.Close;
+
 export function Drawer({
   trigger,
   open,
