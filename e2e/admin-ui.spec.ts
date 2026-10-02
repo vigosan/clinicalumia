@@ -242,27 +242,29 @@ test("the admin home shows the clinic's status: the next quarter to file with it
     (await filing.textContent())!.match(/T([1-4]) de (20\d\d)/) ?? [];
   await filing.getByRole("link").click();
   await expect(page).toHaveURL(`${ADMIN}/facturacion?year=${year}&q=${q}`);
-  await page.goto(`${ADMIN}/`);
 
-  const { data: next } = await admin
-    .from("clinic_closures")
-    .select("starts_on, reason")
-    .gte("ends_on", todayInMadrid())
-    .order("starts_on")
-    .limit(1)
-    .maybeSingle();
   const closure = page.getByTestId("home-status-closure");
-  if (next) {
-    await expect(closure).toContainText(next.reason);
+  await expect(async () => {
+    await page.goto(`${ADMIN}/`);
+    const { data: next } = await admin
+      .from("clinic_closures")
+      .select("starts_on, reason")
+      .gte("ends_on", todayInMadrid())
+      .order("starts_on")
+      .limit(1)
+      .maybeSingle();
+    await expect(closure).toContainText(
+      next ? next.reason : "No hay cierres previstos.",
+      { timeout: 1000 },
+    );
     await closure.getByRole("link").click();
     await expect(page).toHaveURL(
-      `${ADMIN}/closures?month=${next.starts_on.slice(0, 7)}`,
+      next
+        ? `${ADMIN}/closures?month=${next.starts_on.slice(0, 7)}`
+        : `${ADMIN}/closures`,
+      { timeout: 1000 },
     );
-  } else {
-    await expect(closure).toContainText("No hay cierres previstos.");
-    await closure.getByRole("link").click();
-    await expect(page).toHaveURL(`${ADMIN}/closures`);
-  }
+  }).toPass();
   await page.goto(`${ADMIN}/`);
 
   for (const [testId, href] of [
