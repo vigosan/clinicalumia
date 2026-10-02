@@ -2,24 +2,28 @@
 
 import { X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { closeButtonClass, overlayClass } from "./dialog";
 
-export function Sheet({
+type ContentProps = ComponentProps<typeof Primitive.Content>;
+
+export function Drawer({
+  trigger,
   open,
   onOpenChange,
+  onOpenAutoFocus,
   onCloseAutoFocus,
   title,
   description,
   children,
   ...props
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCloseAutoFocus?: ComponentProps<
-    typeof Primitive.Content
-  >["onCloseAutoFocus"];
+  trigger?: ReactElement;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onOpenAutoFocus?: ContentProps["onOpenAutoFocus"];
+  onCloseAutoFocus?: ContentProps["onCloseAutoFocus"];
   title: ReactNode;
   description: ReactNode;
   children: ReactNode;
@@ -27,11 +31,13 @@ export function Sheet({
 }) {
   return (
     <Primitive.Root open={open} onOpenChange={onOpenChange}>
+      {trigger && <Primitive.Trigger asChild>{trigger}</Primitive.Trigger>}
       <Primitive.Portal>
         <Primitive.Overlay className={overlayClass} />
         <Primitive.Content
+          onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={onCloseAutoFocus}
-          className="fixed inset-y-0 right-0 z-50 flex w-full flex-col gap-5 overflow-y-auto bg-surface p-5 shadow-[-8px_0_32px_-16px_rgb(58_58_58/0.3)] data-[state=open]:animate-slide-in-right motion-reduce:animate-none sm:w-[26rem] sm:border-line sm:border-l sm:p-6"
+          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[90dvh] flex-col gap-5 overflow-y-auto rounded-t-card border-line border-t bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-8px_32px_-16px_rgb(58_58_58/0.3)] data-[state=open]:animate-slide-in-bottom motion-reduce:animate-none sm:top-0 sm:left-auto sm:max-h-none sm:w-[26rem] sm:rounded-none sm:border-t-0 sm:border-l sm:p-6 sm:shadow-[-8px_0_32px_-16px_rgb(58_58_58/0.3)] sm:data-[state=open]:animate-slide-in-right"
           {...props}
         >
           <div className="flex items-start justify-between gap-3">

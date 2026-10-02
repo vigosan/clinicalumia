@@ -9,6 +9,8 @@
   --animate-fade-in: fade-in 140ms ease-out;
   --animate-slide-in-right: slide-in-right 240ms cubic-bezier(0.32, 0.72, 0, 1);
   --animate-slide-in-left: slide-in-left 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-slide-in-bottom: slide-in-bottom 240ms
+    cubic-bezier(0.32, 0.72, 0, 1);
 
   @keyframes pop-in {
     from {
@@ -32,6 +34,12 @@
   @keyframes slide-in-left {
     from {
       transform: translateX(-100%);
+    }
+  }
+
+  @keyframes slide-in-bottom {
+    from {
+      transform: translateY(100%);
     }
   }
 }

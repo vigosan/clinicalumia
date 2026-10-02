@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { Sheet } from "./sheet";
+import { Drawer } from "./drawer";
 
 function Example() {
   const [open, setOpen] = useState(true);
@@ -11,7 +11,7 @@ function Example() {
       <button type="button" data-appointment="a1">
         Elena · 10:00
       </button>
-      <Sheet
+      <Drawer
         open={open}
         onOpenChange={setOpen}
         title="Elena Ruiz"
@@ -26,12 +26,12 @@ function Example() {
       >
         <button type="button">Cobrar</button>
         <button type="button">Cancelar cita</button>
-      </Sheet>
+      </Drawer>
     </>
   );
 }
 
-describe("Sheet", () => {
+describe("Drawer", () => {
   it("is a dialog named by its title and described by its description", () => {
     render(<Example />);
 
@@ -65,5 +65,26 @@ describe("Sheet", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+  it("opens from its trigger and gives the focus back to it on close, so the keyboard user continues where they were", async () => {
+    render(
+      <Drawer
+        trigger={<button type="button">Editar</button>}
+        title="Editar especialidad"
+        description="Logopedia"
+      >
+        <input aria-label="Nombre" />
+      </Drawer>,
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(
+      screen.getByRole("dialog", { name: "Editar especialidad" }),
+    ).toHaveAccessibleDescription("Logopedia");
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("button", { name: "Editar" })).toHaveFocus();
   });
 });

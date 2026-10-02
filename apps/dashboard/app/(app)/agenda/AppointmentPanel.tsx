@@ -3,9 +3,9 @@
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import { Drawer } from "@clinicalumia/ui/drawer";
 import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import type { SelectOption } from "@clinicalumia/ui/select";
-import { Sheet } from "@clinicalumia/ui/sheet";
 import { toast } from "@clinicalumia/ui/toast";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -164,7 +164,7 @@ export function AppointmentPanel({
   }
 
   return (
-    <Sheet
+    <Drawer
       open={open}
       onOpenChange={handleOpenChange}
       onCloseAutoFocus={focusAppointment}
@@ -385,6 +385,6 @@ export function AppointmentPanel({
           ))}
         </ul>
       </div>
-    </Sheet>
+    </Drawer>
   );
 }
