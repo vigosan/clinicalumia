@@ -245,6 +245,14 @@ describe("needsRecipient", () => {
   });
 });
 
+describe("paymentError", () => {
+  it("explains in Spanish that the invoice already got its full invoice when two tabs ask for it at once", () => {
+    expect(
+      paymentError({ code: "P0001", message: "invoice_not_simplified" }),
+    ).toBe("Esta factura ya no es simplificada.");
+  });
+});
+
 describe("recipientRequested", () => {
   const fullInvoiceRequired = paymentError({
     code: "P0001",

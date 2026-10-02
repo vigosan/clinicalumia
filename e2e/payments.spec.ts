@@ -568,7 +568,7 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
       .filter({ hasText: voidedPatientName })
       .getByTestId("payment-state"),
   ).toHaveText([
-    `Anulado el ${today.slice(8, 10)}/${today.slice(5, 7)}`,
+    `Anulado el ${today.slice(8, 10)}/${today.slice(5, 7)}/${today.slice(0, 4)}`,
     "Anulado · Cobrado por error",
   ]);
 
@@ -638,7 +638,7 @@ test("una anulación sale en Cobros el día en que se anula, en negativo, y la c
   );
   await expect(page.getByTestId("payment-row-amount")).toHaveText("55,00 €");
   await expect(page.getByTestId("payment-state")).toHaveText(
-    `Anulado el ${today.slice(8, 10)}/${today.slice(5, 7)}`,
+    `Anulado el ${today.slice(8, 10)}/${today.slice(5, 7)}/${today.slice(0, 4)}`,
   );
   await expect(page.getByTestId("payments-total-amount")).toHaveText("55,00 €");
 

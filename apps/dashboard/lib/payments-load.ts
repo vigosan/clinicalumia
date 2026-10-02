@@ -6,6 +6,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import type { createClient } from "@clinicalumia/api/server";
 import { isUuid } from "./agenda";
+import { formatMadridDate } from "./madrid-format";
 import type { MethodTotal, PaymentMethod } from "./payments";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -80,8 +81,7 @@ export function paymentStateLabel({
 }): string {
   if (entry === "voided") return `Anulado · ${voidReason}`;
   if (!voidedAt) return "Válido";
-  const { date } = madridDateTime(voidedAt);
-  return `Anulado el ${date.slice(8, 10)}/${date.slice(5, 7)}`;
+  return `Anulado el ${formatMadridDate(voidedAt)}`;
 }
 
 export type StaffOption = {

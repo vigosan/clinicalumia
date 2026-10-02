@@ -139,7 +139,17 @@ describe("paymentStateLabel", () => {
         voidedAt: "2026-10-02T10:00:00Z",
         voidReason: "Cobrado por error",
       }),
-    ).toBe("Anulado el 02/10");
+    ).toBe("Anulado el 02/10/2026");
+  });
+
+  it("gives the year of the void, so a December payment voided in January is not read as voided the same December", () => {
+    expect(
+      paymentStateLabel({
+        entry: "collected",
+        voidedAt: "2026-12-31T23:30:00Z",
+        voidReason: "Cobrado por error",
+      }),
+    ).toBe("Anulado el 01/01/2027");
   });
 
   it("shows why a payment was voided on the void's own row, instead of hiding it in a tooltip", () => {
