@@ -507,6 +507,7 @@ test("adding an absence lists the appointments that professional already has tho
 
   await signIn(page, ADMIN, owner.email, owner.password);
   await page.goto(`${ADMIN}/schedules?employee=${employee.id}`);
+  await page.getByTestId("time-off-new").click();
   const form = page.getByTestId("timeoff-form");
   await pickDate(form.getByTestId("timeoff-from"), first);
   await pickDate(form.getByTestId("timeoff-to"), last);
@@ -518,6 +519,9 @@ test("adding an absence lists the appointments that professional already has tho
   await expect(page.getByTestId("timeoff-affected-item")).toHaveText(
     `${spanish(last)} · 09:15 · Paciente ${lastName}`,
   );
+  await expect(
+    page.getByRole("dialog", { name: "Nueva ausencia" }),
+  ).toBeVisible();
   const { data: stored } = await admin
     .from("appointments")
     .select("status")
