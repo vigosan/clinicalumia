@@ -1,6 +1,8 @@
 "use server";
 
 import { sendEmail } from "@clinicalumia/api/email";
+import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
@@ -111,14 +113,28 @@ export async function sendInvoiceEmail(
     console.error("No se ha podido registrar el envío de la factura", error);
 
   if (saveToRecord) {
-    const { error: saveError } = await supabase
+    const { data: patient } = await supabase
       .from("people")
-      .update({ email })
+      .select("birth_date")
       .eq("id", invoice.patientId)
-      .is("email", null);
-    if (saveError)
-      console.error("No se ha podido guardar el email en la ficha", saveError);
-    revalidatePath(`/patients/${invoice.patientId}`);
+      .maybeSingle();
+    const minor = patient?.birth_date
+      ? isMinor(patient.birth_date, todayInMadrid())
+      : false;
+    if (patient && !minor) {
+      const { error: saveError } = await supabase
+        .from("people")
+        .update({ email })
+        .eq("id", invoice.patientId)
+        .is("email", null);
+      if (saveError)
+        console.error(
+          "No se ha podido guardar el email en la ficha",
+          saveError,
+        );
+      revalidatePath("/");
+      revalidatePath(`/patients/${invoice.patientId}`);
+    }
   }
   return { ok: true, email };
 }

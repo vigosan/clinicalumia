@@ -18,6 +18,9 @@ const emailOnlyIfEmpty = vi.fn(async (_column: string, _value: null) => ({
 }));
 const savedEmail = vi.fn((_id: string) => ({ is: emailOnlyIfEmpty }));
 const peopleUpdate = vi.fn((_values: unknown) => ({ eq: savedEmail }));
+const patientRow: { data: { birth_date: string | null } | null } = {
+  data: { birth_date: "1990-05-12" },
+};
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
@@ -31,10 +34,17 @@ vi.mock("@clinicalumia/api/server", () => ({
             },
           }
         : rpc(name, args),
-    from: () => ({
-      select: () => ({ maybeSingle: async () => settings }),
-      update: peopleUpdate,
-    }),
+    from: (table: string) =>
+      table === "people"
+        ? {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({ ...patientRow, error: null }),
+              }),
+            }),
+            update: peopleUpdate,
+          }
+        : { select: () => ({ maybeSingle: async () => settings }) },
   }),
 }));
 vi.mock("@clinicalumia/api/email", () => ({ sendEmail: vi.fn() }));
@@ -63,6 +73,7 @@ beforeEach(() => {
   rpcResults.invoice_detail = { data: DETAIL, error: null };
   rpc.mockClear();
   peopleUpdate.mockClear();
+  patientRow.data = { birth_date: "1990-05-12" };
   savedEmail.mockClear();
   emailOnlyIfEmpty.mockClear();
   vi.mocked(sendEmail).mockReset();
@@ -166,6 +177,25 @@ describe("correctInvoiceRecipient", () => {
   });
 });
 
+describe("correctInvoiceRecipient unchanged", () => {
+  it("explains that nothing changed when the recipient is submitted as it was", async () => {
+    rpcResults.correct_full_invoice_recipient = {
+      data: null,
+      error: { code: "P0001", message: "recipient_unchanged" },
+    };
+    const result = await correctInvoiceRecipient(INVOICE_ID, {
+      name: "Ana",
+      taxId: "12345678Z",
+      address: "Calle",
+      postalCode: "46800",
+      city: "Xàtiva",
+    });
+    expect(result).toEqual({
+      error: "Los datos del destinatario no han cambiado.",
+    });
+  });
+});
+
 describe("issueRectifyingInvoice", () => {
   it("names the rectifying numbering when it is the one missing, and tells an employee to warn the owner", async () => {
     rpcResults.is_owner = { data: false, error: null };
@@ -255,6 +285,14 @@ describe("sendInvoiceEmail", () => {
     expect(savedEmail).toHaveBeenCalledWith("id", PATIENT_ID);
     expect(emailOnlyIfEmpty).toHaveBeenCalledWith("email", null);
     expect(revalidatePath).toHaveBeenCalledWith(`/patients/${PATIENT_ID}`);
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+  });
+
+  it("never saves the address in a minor's record, because it is a parent's and the patient area would then treat the child as the parent", async () => {
+    patientRow.data = { birth_date: "2018-03-01" };
+    const result = await sendInvoiceEmail(INVOICE_ID, "ana@correo.test", true);
+    expect(result).toEqual({ ok: true, email: "ana@correo.test" });
+    expect(peopleUpdate).not.toHaveBeenCalled();
   });
 
   it("leaves the record untouched when «Guardar en la ficha» is unchecked", async () => {

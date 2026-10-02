@@ -157,6 +157,7 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   invoice_already_replaced: "Esta factura ya tiene factura completa.",
   invoice_not_full:
     "Solo se puede corregir el destinatario de una factura completa.",
+  recipient_unchanged: "Los datos del destinatario no han cambiado.",
   recipient_tax_id_invalid:
     "Escribe un DNI, NIE o CIF válido. Otros documentos (pasaporte, NIF extranjero) no se admiten todavía.",
   recipient_invalid: "Completa nombre, NIF, dirección, código postal y ciudad.",

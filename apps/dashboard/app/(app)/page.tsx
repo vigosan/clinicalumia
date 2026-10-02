@@ -166,6 +166,9 @@ async function loadAppointmentDetail(
   const initial = madridDateTime(appt.starts_at);
   const invoice = activePayment ? currentInvoice(activePayment.invoices) : null;
   const guardian = guardianRows?.[0]?.guardian ?? null;
+  const minor = appt.patient.birth_date
+    ? isMinor(appt.patient.birth_date, todayInMadrid(now))
+    : false;
   const invoiceEmail = proposedInvoiceEmail({
     patient: appt.patient,
     guardian,
@@ -206,14 +209,12 @@ async function loadAppointmentDetail(
       invoice: invoice && {
         ...invoice,
         email: invoiceEmail,
-        saveEmail: invoiceEmail === "",
+        saveEmail: invoiceEmail === "" && !minor,
       },
       recipient: recipientDraft({
         patient: appt.patient,
         guardian,
-        minor: appt.patient.birth_date
-          ? isMinor(appt.patient.birth_date, todayInMadrid(now))
-          : false,
+        minor,
         lastRecipient,
       }),
       canVoid:

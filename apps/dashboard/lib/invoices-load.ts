@@ -234,13 +234,17 @@ export async function loadLastFullRecipient(
 ): Promise<InvoiceRecipient | null> {
   const { data } = await supabase
     .from("invoices")
-    .select("snapshot, payments!inner(appointments!inner(patient_id))")
+    .select(
+      "snapshot, rectified:invoices!rectifies_invoice_id(id), payments!inner(appointments!inner(patient_id))",
+    )
     .eq("kind", "full")
     .eq("payments.appointments.patient_id", patientId)
     .order("issued_at", { ascending: false })
     .order("number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const snapshot = data?.snapshot as { recipient?: InvoiceRecipient } | null;
+    .limit(10);
+  const inForce = (data ?? []).find((row) => row.rectified.length === 0);
+  const snapshot = inForce?.snapshot as {
+    recipient?: InvoiceRecipient;
+  } | null;
   return snapshot?.recipient ?? null;
 }

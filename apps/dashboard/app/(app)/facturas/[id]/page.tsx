@@ -33,6 +33,8 @@ type Related = {
   replaced_by: RelatedInvoice;
   rectifies: RelatedInvoice;
   rectified_by: RelatedInvoice;
+  corrects: RelatedInvoice;
+  corrected_by: RelatedInvoice;
 };
 
 const RELATED_LABELS: Record<keyof Related, string> = {
@@ -40,6 +42,8 @@ const RELATED_LABELS: Record<keyof Related, string> = {
   replaced_by: "Sustituida por",
   rectifies: "Rectifica a",
   rectified_by: "Rectificada por",
+  corrects: "Corrige a",
+  corrected_by: "Corregida por",
 };
 
 function ErrorCard() {
@@ -193,7 +197,7 @@ export default async function InvoiceDetailPage({
           key={`send-${detail.id}`}
           invoiceId={detail.id}
           proposedEmail={proposedEmail}
-          saveEmail={proposedEmail === ""}
+          saveEmail={proposedEmail === "" && !minor}
         />
         {detail.kind === "simplified" && inForce && (
           <FullInvoiceForm

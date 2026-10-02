@@ -54,7 +54,7 @@ async function createEmployee(fullName: string) {
 async function createAppointment(
   professionalId: string,
   date: string,
-  patient: { email?: string; tax_id?: string } = {},
+  patient: { email?: string; tax_id?: string; birth_date?: string } = {},
   hour = 10,
 ) {
   const lastName = `Factura${uniqueSuffix()}`;
@@ -656,6 +656,9 @@ test("«Corregir destinatario» en una completa emite la rectificativa y la nuev
     `Para: Talleres Auditoría S.L. (B98765431) · Paciente: ${appointment.patientName}`,
   );
   await expect(page.getByTestId("invoice-status")).toHaveText("Emitida");
+  await expect(
+    page.getByTestId("invoice-related-link").filter({ hasText: "Corrige a" }),
+  ).toHaveText(`Corrige a ${wrongFull!.code}`);
 
   const { data: invoices, error } = await admin
     .from("invoices")
@@ -769,5 +772,27 @@ test("al enviar la factura a un email que la ficha no tiene, «Guardar en la fic
   await openAppointment(page, date, appointment.id);
   await page.getByTestId("invoice-send").click();
   await expect(page.getByTestId("invoice-send-email")).toHaveValue(email);
+  await expect(page.getByTestId("invoice-send-save")).toHaveCount(0);
+});
+
+test("a un menor no se le ofrece «Guardar en la ficha», porque el email que se escribe es el de su familia", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Email Menor");
+  const appointment = await createAppointment(employee.id, date, {
+    birth_date: addDays(todayInMadrid(), -365 * 8),
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointment.id);
+  await collectAndReadCode(page);
+
+  await page.getByTestId("invoice-send").click();
+  await expect(page.getByTestId("invoice-send-email")).toHaveValue("");
+  await expect(page.getByTestId("invoice-send-save")).toHaveCount(0);
+  const [invoice] = await invoicesOf(appointment.id);
+  await page.goto(`${DASHBOARD}/facturas/${invoice!.id}`);
+  await page.getByTestId("invoice-send").click();
   await expect(page.getByTestId("invoice-send-save")).toHaveCount(0);
 });

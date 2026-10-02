@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(291);
+select plan(297);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -932,7 +932,9 @@ select results_eq(
          'replaces', jsonb_build_object('id', pg_temp.id_of('s5'), 'code', '5/' || pg_temp.yy()),
          'replaced_by', null,
          'rectifies', null,
-         'rectified_by', jsonb_build_object('id', pg_temp.id_of('r1'), 'code', 'R1/' || pg_temp.yy())),
+         'rectified_by', jsonb_build_object('id', pg_temp.id_of('r1'), 'code', 'R1/' || pg_temp.yy()),
+         'corrects', null,
+         'corrected_by', null),
        jsonb_build_object('nif', 'B12345674', 'code', '9/' || pg_temp.yy(),
          'issued_on', to_char(pg_temp.today(), 'DD-MM-YYYY'), 'total_cents', 4500)) $$,
   'the detail gives the frozen invoice, the invoices it replaces and that rectify it, and the data for the AEAT QR');
@@ -1635,6 +1637,39 @@ select results_eq(
             (select p.voided_at is not null from public.payments p where p.appointment_id = '8b000000-0000-0000-0000-0000000003d1') $$,
   $$ values (0::bigint, true) $$,
   'and then the payment is voided and has no invoice in force');
+
+select set_config('test.main_before', (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year())::text, true);
+select set_config('test.rect_before', (select next_number from public.invoice_series where code = 'rectifying' and year = pg_temp.this_year())::text, true);
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient((select l.id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d4') l),
+       '{"name": "  Talleres Auditoría S.L.", "tax_id": "b98765431 ", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva "}') $$,
+  'P0001', 'recipient_unchanged',
+  'submitting the same recipient by accident is refused, since it would issue a rectifying and a full invoice for nothing');
+select results_eq(
+  $$ select (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()),
+            (select next_number from public.invoice_series where code = 'rectifying' and year = pg_temp.this_year()) $$,
+  $$ values (current_setting('test.main_before')::integer, current_setting('test.rect_before')::integer) $$,
+  'and neither series consumes a number');
+select results_eq(
+  $$ select d.related->'corrects'->>'id', d.related->'corrected_by' = 'null'::jsonb
+     from public.invoice_detail((select l.id from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d4') l)) d $$,
+  $$ select o.id::text, true from public.invoices o
+     join public.payments p on p.id = o.payment_id
+     where p.appointment_id = '8b000000-0000-0000-0000-0000000003d4' and o.kind = 'full' and o.corrects_invoice_id is null $$,
+  'the detail of the new invoice links to the invoice it corrects');
+select results_eq(
+  $$ select d.related->'corrected_by'->>'code'
+     from public.invoice_detail((select o.id from public.invoices o
+       join public.payments p on p.id = o.payment_id
+       where p.appointment_id = '8b000000-0000-0000-0000-0000000003d4' and o.kind = 'full' and o.corrects_invoice_id is null)) d $$,
+  $$ select l.code from pg_temp.live_invoices_of('8b000000-0000-0000-0000-0000000003d4') l $$,
+  'and the detail of the corrected invoice links to the one that corrects it, so the chain can be followed');
+reset role;
+select is(has_function_privilege('anon', 'public.insert_rectifying_invoice(uuid, text)', 'execute'), false,
+  'a visitor cannot issue a rectifying invoice through the internal function');
+select is(has_function_privilege('service_role', 'public.insert_rectifying_invoice(uuid, text)', 'execute'), false,
+  'nor can the service role, so every rectifying invoice goes through a function that checks who asks');
 
 select * from finish();
 rollback;

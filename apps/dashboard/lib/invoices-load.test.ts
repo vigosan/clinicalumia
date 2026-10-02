@@ -10,6 +10,7 @@ import {
   invoicesListParams,
   invoicesPageCount,
   loadInvoices,
+  loadLastFullRecipient,
 } from "./invoices-load";
 
 const TODAY = "2026-09-30";
@@ -365,5 +366,48 @@ describe("loadInvoices", () => {
       page: 1,
     });
     expect(result).toEqual({ ok: false });
+  });
+});
+
+describe("loadLastFullRecipient", () => {
+  const company = {
+    name: "Talleres Auditoría S.L.",
+    tax_id: "B98765431",
+    address: "Polígono Sur 4",
+    postal_code: "46800",
+    city: "Xàtiva",
+  };
+  const wrong = { ...company, name: "Talleres Equivocados S.L." };
+
+  function clientReturning(rows: unknown[]) {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      order: () => query,
+      limit: async () => ({ data: rows, error: null }),
+    };
+    return { from: () => query } as never;
+  }
+
+  it("skips a full invoice that was rectified, because its data was probably the wrong one", async () => {
+    const recipient = await loadLastFullRecipient(
+      clientReturning([
+        { snapshot: { recipient: wrong }, rectified: [{ id: "r1" }] },
+        { snapshot: { recipient: company }, rectified: [] },
+      ]),
+      "p1",
+    );
+    expect(recipient).toEqual(company);
+  });
+
+  it("gives nothing when the patient never had a full invoice in force", async () => {
+    expect(
+      await loadLastFullRecipient(
+        clientReturning([
+          { snapshot: { recipient: wrong }, rectified: [{ id: "r1" }] },
+        ]),
+        "p1",
+      ),
+    ).toBeNull();
   });
 });
