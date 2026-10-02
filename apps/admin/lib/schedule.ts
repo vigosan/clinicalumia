@@ -54,3 +54,30 @@ export function validateSchedule(
   }
   return { ok: true, blocks: sorted };
 }
+
+export type ScheduleSource = {
+  id: string;
+  name: string;
+  blocks: ScheduleBlock[];
+};
+
+export function scheduleSources(
+  people: { id: string; full_name: string }[],
+  blocks: (ScheduleBlock & { profile_id: string })[],
+  currentId: string,
+): ScheduleSource[] {
+  return people
+    .filter((person) => person.id !== currentId)
+    .map((person) => ({
+      id: person.id,
+      name: person.full_name,
+      blocks: blocks
+        .filter((block) => block.profile_id === person.id)
+        .map(({ weekday, starts_at, ends_at }) => ({
+          weekday,
+          starts_at,
+          ends_at,
+        })),
+    }))
+    .filter((source) => source.blocks.length > 0);
+}

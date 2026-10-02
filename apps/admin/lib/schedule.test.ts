@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateSchedule } from "./schedule";
+import { scheduleSources, validateSchedule } from "./schedule";
 
 describe("validateSchedule", () => {
   it("accepts separate blocks and returns them ordered by day and time", () => {
@@ -65,5 +65,42 @@ describe("validateSchedule", () => {
     ).toEqual({
       error: "Hay un día no válido en el horario.",
     });
+  });
+});
+
+describe("scheduleSources", () => {
+  const people = [
+    { id: "laura", full_name: "Laura" },
+    { id: "marc", full_name: "Marc" },
+    { id: "nueva", full_name: "Nueva" },
+  ];
+  const blocks = [
+    { profile_id: "marc", weekday: 2, starts_at: "09:00", ends_at: "13:00" },
+    { profile_id: "laura", weekday: 1, starts_at: "15:15", ends_at: "20:30" },
+    { profile_id: "marc", weekday: 1, starts_at: "09:00", ends_at: "13:00" },
+  ];
+
+  it("offers only the other people who already have a schedule, so copying always brings something", () => {
+    expect(
+      scheduleSources(people, blocks, "laura").map((source) => source.name),
+    ).toEqual(["Marc"]);
+  });
+
+  it("carries each person's own blocks without the profile, ready to load into the editor", () => {
+    expect(scheduleSources(people, blocks, "nueva")).toEqual([
+      {
+        id: "laura",
+        name: "Laura",
+        blocks: [{ weekday: 1, starts_at: "15:15", ends_at: "20:30" }],
+      },
+      {
+        id: "marc",
+        name: "Marc",
+        blocks: [
+          { weekday: 2, starts_at: "09:00", ends_at: "13:00" },
+          { weekday: 1, starts_at: "09:00", ends_at: "13:00" },
+        ],
+      },
+    ]);
   });
 });

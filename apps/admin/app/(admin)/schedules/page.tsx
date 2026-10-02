@@ -4,6 +4,7 @@ import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { splitClosures } from "@/lib/closures";
+import { scheduleSources } from "@/lib/schedule";
 import { AddClosure } from "./AddClosure";
 import { AddTimeOff } from "./AddTimeOff";
 import { ClosureRow } from "./ClosureRow";
@@ -33,12 +34,15 @@ export default async function SchedulesPage({
   const employees = profiles ?? [];
   const selected = employees.find((p) => p.id === employee) ?? employees[0];
 
-  const [{ data: blocks }, { data: timeOff }] = selected
+  const [{ data: schedules }, { data: timeOff }] = selected
     ? await Promise.all([
         supabase
           .from("employee_schedules")
-          .select("weekday, starts_at, ends_at")
-          .eq("profile_id", selected.id),
+          .select("profile_id, weekday, starts_at, ends_at")
+          .in(
+            "profile_id",
+            employees.map((person) => person.id),
+          ),
         supabase
           .from("employee_time_off")
           .select("id, starts_at, ends_at, reason")
@@ -65,7 +69,10 @@ export default async function SchedulesPage({
             <ScheduleEditor
               key={selected.id}
               profileId={selected.id}
-              blocks={blocks ?? []}
+              blocks={(schedules ?? []).filter(
+                (block) => block.profile_id === selected.id,
+              )}
+              sources={scheduleSources(employees, schedules ?? [], selected.id)}
             />
             <section className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">

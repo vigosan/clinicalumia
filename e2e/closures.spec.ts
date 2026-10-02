@@ -644,3 +644,47 @@ test("the time slots of a day read from earliest to latest, both when the page l
     .poll(() => startsOf(monday))
     .toEqual(["09:00", "12:00", "16:00"]);
 });
+
+test("a new employee starts from a teammate's schedule: copying fills the editor, saving stores the same blocks, and copying over it asks first", async ({
+  page,
+}) => {
+  const lauraId = "a0000000-0000-0000-0000-000000000002";
+  const { data: laura } = await admin
+    .from("employee_schedules")
+    .select("weekday, starts_at, ends_at")
+    .eq("profile_id", lauraId)
+    .order("weekday")
+    .order("starts_at");
+  expect(laura?.length).toBeGreaterThan(0);
+  const owner = await createStaff("owner");
+  const employee = await createStaff("employee");
+
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/schedules?employee=${employee.id}`);
+  await selectOption(page.getByTestId("schedule-copy"), {
+    label: "Laura Ejemplo",
+  });
+  await page.getByTestId("schedule-copy-apply").click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  const firstDay = page.getByTestId(`schedule-day-${laura![0].weekday}`);
+  await expect(firstDay.getByTestId("schedule-start").first()).toHaveValue(
+    laura![0].starts_at.slice(0, 5),
+  );
+  await page.getByTestId("schedule-save").click();
+  await expect(page.getByTestId("schedule-saved")).toBeVisible();
+
+  const { data: copied } = await admin
+    .from("employee_schedules")
+    .select("weekday, starts_at, ends_at")
+    .eq("profile_id", employee.id)
+    .order("weekday")
+    .order("starts_at");
+  expect(copied).toEqual(laura);
+
+  await page.getByTestId("schedule-copy-apply").click();
+  await expect(page.getByRole("alertdialog")).toContainText(
+    "¿Sustituir el horario?",
+  );
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+});
