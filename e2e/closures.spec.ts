@@ -207,10 +207,9 @@ test("the owner closes days that already have an appointment, sees it listed wit
   await expect(drawer).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(drawer).toHaveCount(0);
-  const row = page.getByTestId("closure-row").filter({ hasText: reason });
-  await expect(row).toHaveText(
-    new RegExp(`${spanish(first)} – ${spanish(last)} · ${reason}`),
-  );
+  await page.goto(`${ADMIN}/closures?month=${first.slice(0, 7)}`);
+  const firstDay = page.getByTestId(`closure-day-${first}`);
+  await expect(firstDay).toContainText(reason);
 
   const { data: stored } = await admin
     .from("appointments")
@@ -227,13 +226,18 @@ test("the owner closes days that already have an appointment, sees it listed wit
   );
   await expect(drawer).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(
-    page.getByTestId("closure-row").filter({ hasText: overlapReason }),
-  ).toHaveCount(0);
+  const { data: overlap } = await admin
+    .from("clinic_closures")
+    .select("id")
+    .eq("reason", overlapReason);
+  expect(overlap).toEqual([]);
 
-  await row.getByTestId("closure-delete").click();
+  await firstDay.click();
+  const editDrawer = page.getByRole("dialog", { name: "Editar día de cierre" });
+  await editDrawer.getByTestId("closure-delete").click();
   await page.getByTestId("confirm-action").click();
-  await expect(row).toHaveCount(0);
+  await expect(editDrawer).toHaveCount(0);
+  await expect(firstDay).not.toContainText(reason);
   const { data: remaining } = await admin
     .from("clinic_closures")
     .select("id")
@@ -254,9 +258,8 @@ test("a closure with no appointments in it closes the form straight away and app
   await addClosure(page, day, day, reason);
 
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(
-    page.getByTestId("closure-row").filter({ hasText: reason }),
-  ).toBeVisible();
+  await page.goto(`${ADMIN}/closures?month=${day.slice(0, 7)}`);
+  await expect(page.getByTestId(`closure-day-${day}`)).toContainText(reason);
 });
 
 test("the owner adds an absence from its own drawer, which closes and leaves it listed", async ({
@@ -698,7 +701,7 @@ test("a new employee starts from a teammate's schedule: copying fills the editor
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
 });
 
-test("the owner renames a closure from its drawer and the list shows the new reason", async ({
+test("the owner renames a closure by clicking its day in the calendar", async ({
   page,
 }) => {
   const day = addDays(todayInMadrid(), 500 + Math.floor(Math.random() * 150));
@@ -714,25 +717,91 @@ test("the owner renames a closure from its drawer and the list shows the new rea
   const owner = await createStaff("owner");
 
   await signIn(page, ADMIN, owner.email, owner.password);
-  await page.goto(`${ADMIN}/closures`);
-  await page
-    .getByTestId("closure-row")
-    .filter({ hasText: reason })
-    .getByTestId("closure-edit")
-    .click();
+  await page.goto(`${ADMIN}/closures?month=${day.slice(0, 7)}`);
+  await page.getByTestId(`closure-day-${day}`).click();
   const drawer = page.getByRole("dialog", { name: "Editar día de cierre" });
   await expect(drawer.getByLabel("Motivo")).toHaveValue(reason);
   await drawer.getByLabel("Motivo").fill(renamed);
   await drawer.getByRole("button", { name: "Guardar" }).click();
 
   await expect(drawer).toHaveCount(0);
-  await expect(
-    page.getByTestId("closure-row").filter({ hasText: renamed }),
-  ).toBeVisible();
+  await expect(page.getByTestId(`closure-day-${day}`)).toContainText(renamed);
   const { data: stored } = await admin
     .from("clinic_closures")
     .select("starts_on, ends_on, reason")
     .eq("id", closure!.id)
     .single();
   expect(stored).toEqual({ starts_on: day, ends_on: day, reason: renamed });
+});
+
+test("clicking a free day in the calendar opens a new closure for that day", async ({
+  page,
+}) => {
+  const day = addDays(todayInMadrid(), 40 + Math.floor(Math.random() * 20));
+  const reason = `Cierre desde el calendario ${uniqueSuffix()}`;
+  createdReasons.push(reason);
+  const owner = await createStaff("owner");
+
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/closures`);
+  const month = page.getByTestId("closures-month");
+  const target = day.slice(0, 7);
+  while ((await month.getAttribute("data-month")) !== target) {
+    const shown = await month.getAttribute("data-month");
+    await page.getByRole("link", { name: "Mes siguiente" }).click();
+    await expect(month).not.toHaveAttribute("data-month", shown ?? "");
+  }
+  await expect(month).toHaveAttribute("data-month", target);
+  await expect(page).toHaveURL(`${ADMIN}/closures?month=${target}`);
+
+  await page.getByTestId(`closure-day-${day}`).click();
+  const drawer = page.getByRole("dialog", { name: "Nuevo día de cierre" });
+  await expect(drawer.getByTestId("closure-range")).toContainText(
+    String(Number(day.slice(8, 10))),
+  );
+  await drawer.getByLabel("Motivo").fill(reason);
+  await drawer.getByRole("button", { name: "Añadir cierre" }).click();
+
+  await expect(drawer).toHaveCount(0);
+  const { data: stored } = await admin
+    .from("clinic_closures")
+    .select("starts_on, ends_on")
+    .eq("reason", reason)
+    .single();
+  expect(stored).toEqual({ starts_on: day, ends_on: day });
+  await expect(page.getByTestId(`closure-day-${day}`)).toContainText(reason);
+});
+
+test("on a phone the calendar marks the closed days and lists that month's closures underneath, each one opening its drawer", async ({
+  page,
+}) => {
+  const day = addDays(todayInMadrid(), 800 + Math.floor(Math.random() * 100));
+  const reason = `Cierre móvil ${uniqueSuffix()}`;
+  createdReasons.push(reason);
+  const { error } = await admin
+    .from("clinic_closures")
+    .insert({ starts_on: day, ends_on: day, reason });
+  expect(error).toBeNull();
+  const owner = await createStaff("owner");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/closures?month=${day.slice(0, 7)}`);
+  await expect(page.getByTestId(`closure-day-${day}`)).toHaveAttribute(
+    "data-closed",
+    "true",
+  );
+  const item = page
+    .getByTestId("closure-month-item")
+    .filter({ hasText: reason });
+  await expect(item).toContainText(spanish(day));
+  await item.click();
+  await expect(
+    page.getByRole("dialog", { name: "Editar día de cierre" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });

@@ -17,10 +17,12 @@ import { addClosure, type ClosureState, updateClosure } from "./actions";
 
 export function ClosureForm({
   today,
+  day = today,
   closure,
   onDone,
 }: {
   today: string;
+  day?: string;
   closure?: Closure;
   onDone: () => void;
 }) {
@@ -31,7 +33,7 @@ export function ClosureForm({
   const [range, setRange] = useState(
     closure
       ? { from: closure.starts_on, to: closure.ends_on }
-      : { from: today, to: today },
+      : { from: day, to: day },
   );
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -43,8 +45,8 @@ export function ClosureForm({
     }
     if (closure) return;
     formRef.current?.reset();
-    setRange({ from: today, to: today });
-  }, [state, today, closure, onDone]);
+    setRange({ from: day, to: day });
+  }, [state, day, closure, onDone]);
 
   const affected = state && "ok" in state ? state.affected : undefined;
 

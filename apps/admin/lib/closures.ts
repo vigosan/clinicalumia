@@ -1,3 +1,5 @@
+import { addDays, weekStart } from "@clinicalumia/api/madrid-time";
+
 export type Closure = {
   id: string;
   starts_on: string;
@@ -21,15 +23,54 @@ export function closureLabel({
   return `${days} · ${reason}`;
 }
 
-export function splitClosures(
-  closures: Closure[],
-  today: string,
-): { upcoming: Closure[]; past: Closure[] } {
-  const sorted = [...closures].sort((a, b) =>
-    a.starts_on.localeCompare(b.starts_on),
-  );
-  return {
-    upcoming: sorted.filter((closure) => closure.ends_on >= today),
-    past: sorted.filter((closure) => closure.ends_on < today).reverse(),
-  };
+export type MonthCell = { date: string; inMonth: boolean; closure?: Closure };
+
+export function monthGrid(month: string, closures: Closure[]): MonthCell[][] {
+  const first = `${month}-01`;
+  const last = addDays(`${shiftMonth(month, 1)}-01`, -1);
+  const weeks: MonthCell[][] = [];
+  for (let start = weekStart(first); start <= last; start = addDays(start, 7)) {
+    weeks.push(
+      Array.from({ length: 7 }, (_, offset) => {
+        const date = addDays(start, offset);
+        return {
+          date,
+          inMonth: date.startsWith(month),
+          closure: closures.find(
+            (closure) => closure.starts_on <= date && date <= closure.ends_on,
+          ),
+        };
+      }),
+    );
+  }
+  return weeks;
+}
+
+export function closuresInMonth(closures: Closure[], month: string): Closure[] {
+  const first = `${month}-01`;
+  const last = addDays(`${shiftMonth(month, 1)}-01`, -1);
+  return closures
+    .filter((closure) => closure.starts_on <= last && closure.ends_on >= first)
+    .sort((a, b) => a.starts_on.localeCompare(b.starts_on));
+}
+
+export function monthFromParam(param: string | undefined, today: string) {
+  return param && /^\d{4}-(0[1-9]|1[0-2])$/.test(param)
+    ? param
+    : today.slice(0, 7);
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year ?? 0, (monthNumber ?? 1) - 1 + delta, 1));
+  return date.toISOString().slice(0, 7);
+}
+
+export function monthLabel(month: string): string {
+  const label = new Intl.DateTimeFormat("es-ES", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${month}-01T00:00:00Z`));
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
