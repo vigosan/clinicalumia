@@ -14,6 +14,10 @@ export const CAPTCHA_UNAVAILABLE = `Ahora mismo no podemos comprobar que no eres
 function keys() {
   const siteKey = process.env.TURNSTILE_SITE_KEY;
   const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (Boolean(siteKey) !== Boolean(secret)) {
+    const missing = siteKey ? "TURNSTILE_SECRET_KEY" : "TURNSTILE_SITE_KEY";
+    console.warn(`Captcha apagado: falta ${missing}.`);
+  }
   return siteKey && secret ? { siteKey, secret } : undefined;
 }
 

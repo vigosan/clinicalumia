@@ -474,6 +474,7 @@ async function loadWeekAgenda(
     scheduleRows,
     appointments,
     timeOff,
+    { from: start, to: addDays(start, 6) },
   );
 
   return {

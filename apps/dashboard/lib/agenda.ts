@@ -208,14 +208,16 @@ export function visibleWeekHours(
   schedules: ScheduleBlock[],
   blocks: TimeSpan[] = [],
   absences: TimeSpan[] = [],
+  week: { from: string; to: string } = { from: "", to: "" },
 ): { firstHour: number; lastHour: number } {
   const blockSpans = blocks.map((block) =>
     blockSpan(block, madridDateTime(block.startsAt).date),
   );
-  const absenceSpans = absences.flatMap((absence) => [
-    blockSpan(absence, madridDateTime(absence.startsAt).date),
-    blockSpan(absence, madridDateTime(absence.endsAt).date),
-  ]);
+  const absenceSpans = absences.flatMap((absence) =>
+    [madridDateTime(absence.startsAt).date, madridDateTime(absence.endsAt).date]
+      .filter((day) => day >= week.from && day <= week.to)
+      .map((day) => blockSpan(absence, day)),
+  );
   return showingAbsences(
     hoursSpan([...schedules.map(scheduleSpan), ...blockSpans]),
     absenceSpans,

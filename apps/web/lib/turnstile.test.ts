@@ -31,6 +31,39 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("captcha with only one key", () => {
+  it("warns which key is missing when only the site key is set, so a half-configured captcha does not go unnoticed", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("TURNSTILE_SITE_KEY", "clave-del-sitio");
+
+    turnstileSiteKey();
+
+    expect(warn.mock.calls.flat().join(" ")).toContain("TURNSTILE_SECRET_KEY");
+    warn.mockRestore();
+  });
+
+  it("warns which key is missing when only the secret is set", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "clave-secreta");
+
+    await captchaError(solvedForm(null), "acceder");
+
+    expect(warn.mock.calls.flat().join(" ")).toContain("TURNSTILE_SITE_KEY");
+    warn.mockRestore();
+  });
+
+  it("stays quiet when both keys or neither are set", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    turnstileSiteKey();
+    withKeys();
+    turnstileSiteKey();
+
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
 describe("turnstileSiteKey", () => {
   it("shows no captcha while the keys are not configured, so the forms work as they always did", () => {
     expect(turnstileSiteKey()).toBeUndefined();
