@@ -339,31 +339,32 @@ export async function cancelAppointment(
   by: "patient" | "clinic",
   reason: string,
   notify: boolean,
-  rectifyInvoiceId?: string,
+  rectify = false,
 ): Promise<{ ok: true; noticeFailed: boolean } | PaymentFailure> {
   if (reason.length > 2000)
     return { error: "El motivo no puede superar los 2000 caracteres." };
 
   const supabase = await createClient();
-  if (rectifyInvoiceId) {
-    const { error: rectifyError } = await supabase.rpc(
-      "issue_rectifying_invoice",
-      {
-        p_invoice_id: rectifyInvoiceId,
-        p_reason: reason.trim() || "Cita cancelada",
-      },
+  if (rectify) {
+    const { error } = await supabase.rpc(
+      "cancel_appointment_with_rectification",
+      { p_appointment_id: id, p_cancelled_by: by, p_reason: reason },
     );
-    if (rectifyError) return failureFor(supabase, rectifyError);
+    if (error?.code === "23514") return { error: appointmentError(error) };
+    if (error?.message === "appointment_not_found")
+      return { error: "No se ha podido cancelar la cita." };
+    if (error) return failureFor(supabase, error);
     revalidatePath("/facturas");
+  } else {
+    const { data, error } = await supabase
+      .from("appointments")
+      .update({ status: "cancelled", cancelled_by: by, cancel_reason: reason })
+      .eq("id", id)
+      .select("id");
+    if (error) return { error: appointmentError(error) };
+    if (!data || data.length === 0)
+      return { error: "No se ha podido cancelar la cita." };
   }
-  const { data, error } = await supabase
-    .from("appointments")
-    .update({ status: "cancelled", cancelled_by: by, cancel_reason: reason })
-    .eq("id", id)
-    .select("id");
-  if (error) return { error: appointmentError(error) };
-  if (!data || data.length === 0)
-    return { error: "No se ha podido cancelar la cita." };
 
   const notified =
     !notify || (await notifyPatient(supabase, id, { kind: "cancelled" }));

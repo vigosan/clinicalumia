@@ -24,7 +24,10 @@ function uniqueSuffix(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-async function createEmployee(fullName: string) {
+async function createEmployee(
+  fullName: string,
+  role: "employee" | "owner" = "employee",
+) {
   const email = `cobros-${uniqueSuffix()}@test.local`;
   const password = "lumia-segura-2026";
   const { data, error } = await admin.auth.admin.createUser({
@@ -38,7 +41,7 @@ async function createEmployee(fullName: string) {
     id: data.user!.id,
     email,
     full_name: fullName,
-    role: "employee",
+    role,
     specialty_id: PSICOLOGIA_SPECIALTY_ID,
     is_active: true,
   });
@@ -334,9 +337,9 @@ test("una empleada no ve «Anular cobro» en el cobro que registró otra persona
   await expect(page.getByTestId("payment-void")).toHaveCount(0);
 });
 
-function shortToday(): string {
+function todayLabel(): string {
   const today = todayInMadrid();
-  return `${today.slice(8, 10)}/${today.slice(5, 7)}`;
+  return `${today.slice(8, 10)}/${today.slice(5, 7)}/${today.slice(0, 4)}`;
 }
 
 test("una cita futura cobrada por adelantado se mueve a otra hora sin anular el cobro, la factura no cambia y el panel dice cuándo se emitió", async ({
@@ -374,7 +377,32 @@ test("una cita futura cobrada por adelantado se mueve a otra hora sin anular el 
   );
   await expect(page.getByTestId("invoice-code")).toHaveText(invoiceCode!);
   await expect(page.getByTestId("invoice-issued")).toHaveText(
-    `Factura emitida el ${shortToday()}`,
+    `Factura emitida el ${todayLabel()}`,
+  );
+});
+
+test("la propietaria no puede pasar a otra profesional una cita ya cobrada, y el panel le dice que anule antes el cobro", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), 7);
+  const employee = await createEmployee("Profesional Cobro Reasignar");
+  const owner = await createEmployee("Propietaria Cobro Reasignar", "owner");
+  const appointmentId = await createAppointment(employee.id, date);
+
+  await signIn(page, DASHBOARD, owner.email, owner.password);
+  await openAppointment(page, date, appointmentId);
+  await expect(page.getByTestId("appointment-move-professional")).toBeEnabled();
+
+  await collect(page, "card");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Cobrada · 55,00 € · Tarjeta",
+  );
+
+  await expect(
+    page.getByTestId("appointment-move-professional"),
+  ).toBeDisabled();
+  await expect(page.getByTestId("appointment-move-form")).toContainText(
+    "Para cambiar de profesional una cita cobrada, anula antes el cobro.",
   );
 });
 

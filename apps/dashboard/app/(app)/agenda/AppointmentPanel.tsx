@@ -314,7 +314,7 @@ export function AppointmentPanel({
           {appointment.canCancel && (
             <CancelDialog
               appointmentId={appointment.id}
-              invoiceId={appointment.invoice?.id ?? null}
+              invoiced={appointment.invoice !== null}
               canRectify={appointment.canVoid}
               canNotify={appointment.canNotify}
               disabled={moving}
@@ -363,6 +363,7 @@ export function AppointmentPanel({
             serviceId={appointment.serviceId}
             professionalId={appointment.professionalId}
             professionalOptions={appointment.professionalOptions}
+            professionalLocked={appointment.invoice !== null}
             durationMinutes={appointment.durationMinutes}
             initialDate={appointment.initialDate}
             initialTime={appointment.initialTime}

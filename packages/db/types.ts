@@ -1125,6 +1125,14 @@ export type Database = {
         }[]
       }
       calendar_owner: { Args: { p_token: string }; Returns: string }
+      cancel_appointment_with_rectification: {
+        Args: {
+          p_appointment_id: string
+          p_cancelled_by: Database["public"]["Enums"]["appointment_canceller"]
+          p_reason: string
+        }
+        Returns: string
+      }
       cancel_my_appointment: {
         Args: { p_appointment_id: string }
         Returns: undefined

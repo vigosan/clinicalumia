@@ -16,13 +16,13 @@ import { ActionError } from "./ActionError";
 
 export function CancelDialog({
   appointmentId,
-  invoiceId,
+  invoiced,
   canRectify,
   canNotify,
   disabled,
 }: {
   appointmentId: string;
-  invoiceId: string | null;
+  invoiced: boolean;
   canRectify: boolean;
   canNotify: boolean;
   disabled: boolean;
@@ -36,7 +36,14 @@ export function CancelDialog({
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
 
-  const rectifying = invoiceId !== null && canRectify && rectify;
+  const rectifying = invoiced && canRectify && rectify;
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) return;
+    setRectify(false);
+    setFailure(null);
+  }
 
   function handleConfirm() {
     if (!submitGateRef.current.tryStart()) return;
@@ -46,7 +53,7 @@ export function CancelDialog({
         by,
         reason,
         canNotify && notify,
-        rectifying ? (invoiceId ?? undefined) : undefined,
+        rectifying,
       );
       submitGateRef.current.finish();
       if ("error" in result) {
@@ -88,11 +95,11 @@ export function CancelDialog({
       cancelLabel="Volver"
       confirmTestId="cancel-confirm"
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       closeOnConfirm={false}
       onConfirm={handleConfirm}
     >
-      {invoiceId && (
+      {invoiced && (
         <p
           role="alert"
           data-testid="cancel-invoiced-warning"
@@ -103,7 +110,7 @@ export function CancelDialog({
             : "Esta cita está cobrada y facturada. Si hay que devolver el importe, avisa a la propietaria: solo puede emitir la rectificativa quien registró el cobro hoy o la propietaria."}
         </p>
       )}
-      {invoiceId && canRectify && (
+      {invoiced && canRectify && (
         <CheckboxField
           label="Emitir rectificativa (devuelve el importe y anula el cobro)"
           data-testid="cancel-rectify"

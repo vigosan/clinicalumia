@@ -31,6 +31,7 @@ export function MoveForm({
   serviceId,
   professionalId,
   professionalOptions,
+  professionalLocked,
   durationMinutes,
   initialDate,
   initialTime,
@@ -42,6 +43,7 @@ export function MoveForm({
   serviceId: string;
   professionalId: string;
   professionalOptions: SelectOption[] | null;
+  professionalLocked: boolean;
   durationMinutes: number;
   initialDate: string;
   initialTime: string;
@@ -99,18 +101,26 @@ export function MoveForm({
       <input type="hidden" name="id" value={appointmentId} />
       <input type="hidden" name="patient_id" value={patientId} />
       <input type="hidden" name="service_id" value={serviceId} />
-      {!professionalOptions && (
+      {(!professionalOptions || professionalLocked) && (
         <input type="hidden" name="professional_id" value={professionalId} />
       )}
       <div className="grid grid-cols-2 gap-3">
         {professionalOptions && (
           <div className="col-span-2">
-            <Field label="Profesional">
+            <Field
+              label="Profesional"
+              hint={
+                professionalLocked
+                  ? "Para cambiar de profesional una cita cobrada, anula antes el cobro."
+                  : undefined
+              }
+            >
               <Select
-                name="professional_id"
+                name={professionalLocked ? undefined : "professional_id"}
                 data-testid="appointment-move-professional"
                 options={professionalOptions}
                 defaultValue={professionalId}
+                disabled={professionalLocked}
                 onValueChange={resetConfirmation}
               />
             </Field>

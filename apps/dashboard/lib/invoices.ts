@@ -1,4 +1,4 @@
-import { madridDateTime } from "@clinicalumia/api/madrid-time";
+import { formatMadridDate } from "./madrid-format";
 
 export type InvoiceKind = "simplified" | "full" | "rectifying";
 
@@ -60,8 +60,7 @@ export function currentInvoice(
 }
 
 export function invoiceIssuedLabel(issuedAt: string): string {
-  const { date } = madridDateTime(issuedAt);
-  return `Factura emitida el ${date.slice(8, 10)}/${date.slice(5, 7)}`;
+  return `Factura emitida el ${formatMadridDate(issuedAt)}`;
 }
 
 export function recipientDraft({

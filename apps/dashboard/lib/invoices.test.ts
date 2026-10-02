@@ -77,9 +77,9 @@ describe("currentInvoice", () => {
 });
 
 describe("invoiceIssuedLabel", () => {
-  it("gives the Madrid day the invoice was issued, so a session moved after paying explains why its invoice shows another date", () => {
+  it("gives the Madrid day the invoice was issued, with its year, so a session paid in December and moved to January is not ambiguous", () => {
     expect(invoiceIssuedLabel("2026-10-01T22:30:00+00:00")).toBe(
-      "Factura emitida el 02/10",
+      "Factura emitida el 02/10/2026",
     );
   });
 });

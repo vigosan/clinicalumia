@@ -283,6 +283,8 @@ const MESSAGE_BY_CODE: Record<string, string> = {
     "Una cita cancelada no se puede cambiar de fecha u hora; crea una nueva.",
   appointment_in_past:
     "No se puede cambiar la fecha u hora de una cita que ya ha pasado.",
+  appointment_invoiced:
+    "Para cambiar de profesional una cita cobrada, anula antes el cobro.",
   appointment_immutable_fields: "Esos datos de la cita no se pueden cambiar.",
   patient_not_bookable: "Esa ficha no es de paciente o está archivada.",
   service_inactive: "Ese servicio ya no está activo.",

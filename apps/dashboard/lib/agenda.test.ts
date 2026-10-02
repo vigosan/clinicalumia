@@ -670,6 +670,14 @@ describe("appointmentError", () => {
     );
   });
 
+  it("tells the team to void the charge before handing a paid appointment to another professional, since its invoice and payment follow the professional", () => {
+    expect(
+      appointmentError({ code: "23514", message: "appointment_invoiced" }),
+    ).toBe(
+      "Para cambiar de profesional una cita cobrada, anula antes el cobro.",
+    );
+  });
+
   it("maps appointment_cancelled_final", () => {
     expect(
       appointmentError({

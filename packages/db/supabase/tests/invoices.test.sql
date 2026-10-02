@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(242);
+select plan(259);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1114,17 +1114,11 @@ select lives_ok(
   'other changes to an invoiced appointment are still allowed');
 
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
-select lives_ok(
+select throws_ok(
   $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000002'
      where id = '8b000000-0000-0000-0000-0000000001d1' $$,
-  'the owner can hand a paid appointment to another professional, just like moving it, because the invoice belongs to the clinic');
-select is((select professional_id from public.appointments where id = '8b000000-0000-0000-0000-0000000001d1'),
-  '8b000000-0000-0000-0000-000000000002'::uuid,
-  'the paid appointment really changes professional');
-select lives_ok(
-  $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000001'
-     where id = '8b000000-0000-0000-0000-0000000001d1' $$,
-  'and the owner can give it back to the professional who charged it');
+  '23514', 'appointment_invoiced',
+  'a paid appointment is not handed to another professional, because who may see its invoice and payment follows the professional');
 select lives_ok(
   $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000002'
      where id = '8b000000-0000-0000-0000-0000000001d2' $$,
@@ -1137,6 +1131,99 @@ select lives_ok(
      where id = '8b000000-0000-0000-0000-0000000001d1' $$,
   'once the invoice is rectified the appointment can still be moved and charged again');
 reset role;
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('8b000000-0000-0000-0000-0000000001e1', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c2',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(7, '09:00'), pg_temp.at_madrid(7, '09:30')),
+  ('8b000000-0000-0000-0000-0000000001e2', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c2',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(-6, '09:00'), pg_temp.at_madrid(-6, '09:30')),
+  ('8b000000-0000-0000-0000-0000000001e3', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c2',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(7, '10:00'), pg_temp.at_madrid(7, '10:30')),
+  ('8b000000-0000-0000-0000-0000000001e4', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c2',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(7, '11:00'), pg_temp.at_madrid(7, '11:30')),
+  ('8b000000-0000-0000-0000-0000000001e5', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c2',
+   '8b000000-0000-0000-0000-0000000000b3', pg_temp.at_madrid(7, '12:00'), pg_temp.at_madrid(7, '12:30'));
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001e1', 3000, 'card', ''), null,
+  'the professional charges a session in advance that will be cancelled with a refund');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001e2', 3000, 'card', ''), null,
+  'the professional charges a session the patient then missed');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001e3', 3000, 'card', ''), null,
+  'the professional charges a session whose charge will be dated the day before');
+select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001e5', 3000, 'card', ''), null,
+  'the professional charges a session that will be cancelled without a reason');
+select lives_ok(
+  $$ update public.appointments set status = 'no_show' where id = '8b000000-0000-0000-0000-0000000001e2' $$,
+  'the missed session is marked as not attended, so it can no longer be cancelled');
+reset role;
+set local role service_role;
+select set_config('request.jwt.claims', '', true);
+update public.payments set collected_at = pg_temp.at_madrid(-1, '20:00')
+where appointment_id = '8b000000-0000-0000-0000-0000000001e3';
+reset role;
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000002');
+select throws_ok(
+  $$ select public.cancel_appointment_with_rectification('8b000000-0000-0000-0000-0000000001e5', 'clinic', 'Error') $$,
+  'P0001', 'invoice_not_found',
+  'a colleague cannot refund and cancel another professional''s appointment, nor learn that it is invoiced');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(public.cancel_appointment_with_rectification('8b000000-0000-0000-0000-0000000001e1', 'patient', 'No puede venir'), null,
+  'the professional who charged today cancels and refunds a paid session in one step');
+select is(
+  (select status::text || ' · ' || cancelled_by::text || ' · ' || cancel_reason
+   from public.appointments where id = '8b000000-0000-0000-0000-0000000001e1'),
+  'cancelled · patient · No puede venir',
+  'the appointment is cancelled with who cancelled it and why');
+select is(
+  (select p.voided_at is not null from public.payments p where p.appointment_id = '8b000000-0000-0000-0000-0000000001e1'),
+  true,
+  'its charge is voided, so the 30 € no longer count in Cobros');
+select is(
+  (select r.reason from public.invoices r join public.payments p on p.id = r.payment_id
+   where p.appointment_id = '8b000000-0000-0000-0000-0000000001e1' and r.kind = 'rectifying'),
+  'No puede venir',
+  'the rectifying invoice states the cancellation reason');
+select isnt(public.cancel_appointment_with_rectification('8b000000-0000-0000-0000-0000000001e5', 'clinic', E' \n '), null,
+  'a cancellation without a reason still refunds');
+select is(
+  (select r.reason from public.invoices r join public.payments p on p.id = r.payment_id
+   where p.appointment_id = '8b000000-0000-0000-0000-0000000001e5' and r.kind = 'rectifying'),
+  'Cita cancelada',
+  'and its rectifying invoice says it was a cancellation, since an invoice always needs a reason');
+
+select throws_ok(
+  $$ select public.cancel_appointment_with_rectification('8b000000-0000-0000-0000-0000000001e2', 'clinic', 'Error') $$,
+  '23514', 'appointment_invalid_transition',
+  'an appointment that cannot be cancelled is refused');
+select is(
+  (select count(*)::int from public.invoices r join public.payments p on p.id = r.payment_id
+   where p.appointment_id = '8b000000-0000-0000-0000-0000000001e2' and r.kind = 'rectifying'),
+  0,
+  'and no rectifying invoice is left behind, because refund and cancellation succeed or fail together');
+select is(
+  (select p.voided_at from public.payments p where p.appointment_id = '8b000000-0000-0000-0000-0000000001e2'),
+  null,
+  'and its charge stays valid');
+
+select throws_ok(
+  $$ select public.cancel_appointment_with_rectification('8b000000-0000-0000-0000-0000000001e3', 'clinic', 'Error') $$,
+  'P0001', 'not_allowed',
+  'an employee cannot refund a charge she registered another day, the same rule as «Anular cobro»');
+select is(
+  (select status::text from public.appointments where id = '8b000000-0000-0000-0000-0000000001e3'),
+  'scheduled',
+  'and the appointment is not cancelled either, so the owner can still refund it');
+select throws_ok(
+  $$ select public.cancel_appointment_with_rectification('8b000000-0000-0000-0000-0000000001e4', 'clinic', 'Error') $$,
+  'P0001', 'invoice_not_found',
+  'an appointment without an invoice has nothing to rectify');
+reset role;
+
+select is(has_function_privilege('anon', 'public.cancel_appointment_with_rectification(uuid, public.appointment_canceller, text)', 'execute'), false,
+  'a visitor cannot cancel or refund anything');
 
 update public.clinic_settings set address_line = '', postal_code = '', city = '';
 insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
