@@ -185,4 +185,30 @@ describe("ConfirmDialog", () => {
       "destructive",
     );
   });
+
+  it("can be opened from elsewhere without its own button, so a menu item can ask before archiving or deleting", async () => {
+    const onConfirm = vi.fn();
+    function Opener() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button onClick={() => setOpen(true)}>Más acciones</Button>
+          <ConfirmDialog
+            open={open}
+            onOpenChange={setOpen}
+            title="¿Archivar esta ficha?"
+            description="Podrás desarchivarla."
+            confirmLabel="Archivar"
+            onConfirm={onConfirm}
+          />
+        </>
+      );
+    }
+    render(<Opener />);
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Más acciones" }));
+    await userEvent.click(screen.getByRole("button", { name: "Archivar" }));
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
 });

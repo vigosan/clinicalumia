@@ -20,7 +20,7 @@ export function ConfirmDialog({
   children,
   onConfirm,
 }: {
-  trigger: ReactElement;
+  trigger?: ReactElement;
   title: string;
   description: string;
   confirmLabel: string;
@@ -37,7 +37,7 @@ export function ConfirmDialog({
   const confirmVariant = tone === "destructive" ? "destructive" : "primary";
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
-      <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>
+      {trigger && <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>}
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={overlayClass} />
         <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-card border border-line bg-surface p-6 shadow-[0_24px_64px_-24px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in motion-reduce:animate-none">

@@ -420,7 +420,9 @@ test("an archived record with the same name and birth date shows up as «Ficha a
 
   await duplicateRow.getByTestId("duplicate-unarchive").click();
   await expect(page).toHaveURL(`${DASHBOARD}/patients/${archivedId}`);
+  await page.getByTestId("person-menu").click();
   await expect(page.getByTestId("person-archive")).toHaveText("Archivar");
+  await page.keyboard.press("Escape");
 
   const { data } = await admin
     .from("people")
@@ -882,9 +884,12 @@ test("archiving a minor patient hides them from the list, the «Archivados» fil
   await loginAsOwner(page);
   await page.goto(`${DASHBOARD}/patients/${id}`);
 
+  await page.getByTestId("person-menu").click();
   await page.getByTestId("person-archive").click();
   await page.getByTestId("confirm-action").click();
+  await page.getByTestId("person-menu").click();
   await expect(page.getByTestId("person-archive")).toHaveText("Desarchivar");
+  await page.keyboard.press("Escape");
 
   await page.goto(`${DASHBOARD}/patients`);
   await page.getByTestId("patients-search").fill(lastName);
@@ -895,8 +900,11 @@ test("archiving a minor patient hides them from the list, the «Archivados» fil
   ).toBeVisible();
 
   await page.goto(`${DASHBOARD}/patients/${id}`);
+  await page.getByTestId("person-menu").click();
   await page.getByTestId("person-archive").click();
+  await page.getByTestId("person-menu").click();
   await expect(page.getByTestId("person-archive")).toHaveText("Archivar");
+  await page.keyboard.press("Escape");
 
   await page.goto(`${DASHBOARD}/patients`);
   await page.getByTestId("patients-search").fill(lastName);
@@ -1006,6 +1014,7 @@ test("a throwaway owner cannot delete a guardian who still has wards, but can de
   await loginAsOwner(page);
 
   await page.goto(`${DASHBOARD}/patients/${motherId}`);
+  await page.getByTestId("person-menu").click();
   await page.getByTestId("person-delete").click();
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId("person-action-error")).toHaveText(
@@ -1013,6 +1022,7 @@ test("a throwaway owner cannot delete a guardian who still has wards, but can de
   );
 
   await page.goto(`${DASHBOARD}/patients/${minorId}`);
+  await page.getByTestId("person-menu").click();
   await page.getByTestId("person-delete").click();
   await page.getByTestId("confirm-action").click();
   await expect(page).toHaveURL(`${DASHBOARD}/patients`);
@@ -1082,9 +1092,12 @@ test("clicking a person's name in the list, an archive/recover round trip, and c
     .click();
   await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);
 
+  await page.getByTestId("person-menu").click();
   await page.getByTestId("person-archive").click();
   await page.getByTestId("confirm-action").click();
+  await page.getByTestId("person-menu").click();
   await expect(page.getByTestId("person-archive")).toHaveText("Desarchivar");
+  await page.keyboard.press("Escape");
 
   await page.goto(`${DASHBOARD}/patients`);
   await page.getByTestId("patients-search").fill(minorLastName);
@@ -1096,8 +1109,11 @@ test("clicking a person's name in the list, an archive/recover round trip, and c
     .click();
   await expect(page).toHaveURL(`${DASHBOARD}/patients/${minorId}`);
 
+  await page.getByTestId("person-menu").click();
   await page.getByTestId("person-archive").click();
+  await page.getByTestId("person-menu").click();
   await expect(page.getByTestId("person-archive")).toHaveText("Archivar");
+  await page.keyboard.press("Escape");
 
   const guardianRow = page
     .getByTestId("guardian-row")
@@ -1301,6 +1317,7 @@ test("archiving a record with an upcoming appointment, even with another profess
 
   await loginAsOwner(page);
   await page.goto(`${DASHBOARD}/patients/${person!.id}`);
+  await page.getByTestId("person-menu").click();
   await page.getByTestId("person-archive").click();
   await page.getByTestId("confirm-action").click();
 
@@ -1315,4 +1332,31 @@ test("archiving a record with an upcoming appointment, even with another profess
     .eq("id", person!.id)
     .single();
   expect(stored?.archived_at).toBeNull();
+});
+
+test("«Archivar» y «Eliminar» viven en «Más acciones» y no al lado de «Editar», para que borrar una ficha no esté a un clic visible", async ({
+  page,
+}) => {
+  const lastName = `Menu${Date.now()}`;
+  const { data, error } = await admin
+    .from("people")
+    .insert({
+      first_name: "Ficha",
+      last_name: lastName,
+      is_patient: true,
+      birth_date: "1990-04-12",
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdPersonIds.push(data!.id);
+
+  await loginAsOwner(page);
+  await page.goto(`${DASHBOARD}/patients/${data!.id}`);
+
+  await expect(page.getByRole("link", { name: "Editar" })).toBeVisible();
+  await expect(page.getByTestId("person-delete")).toHaveCount(0);
+  await page.getByTestId("person-menu").click();
+  await expect(page.getByTestId("person-archive")).toBeVisible();
+  await expect(page.getByTestId("person-delete")).toBeVisible();
 });

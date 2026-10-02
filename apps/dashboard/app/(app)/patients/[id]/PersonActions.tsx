@@ -3,7 +3,15 @@
 import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@clinicalumia/ui/dropdown-menu";
 import { toast } from "@clinicalumia/ui/toast";
+import { Archive, ArchiveRestore, Ellipsis, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
@@ -24,6 +32,9 @@ export function PersonActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [upcoming, setUpcoming] = useState<UpcomingAppointment[]>([]);
+  const [confirming, setConfirming] = useState<"archive" | "delete" | null>(
+    null,
+  );
 
   function handleArchiveToggle() {
     startTransition(async () => {
@@ -55,57 +66,63 @@ export function PersonActions({
         <Button asChild variant="secondary" size="sm">
           <Link href={`/patients/${personId}/edit`}>Editar</Link>
         </Button>
-        {isOwner &&
-          (isArchived ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={pending}
-              data-testid="person-archive"
-              onClick={handleArchiveToggle}
-            >
-              Desarchivar
-            </Button>
-          ) : (
-            <ConfirmDialog
-              trigger={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={pending}
-                  data-testid="person-archive"
-                >
-                  Archivar
-                </Button>
-              }
-              title="¿Archivar esta ficha?"
-              description="Dejará de aparecer entre los pacientes activos. La encontrarás en «Archivados», desde donde podrás desarchivarla."
-              confirmLabel="Archivar"
-              onConfirm={handleArchiveToggle}
-            />
-          ))}
         {isOwner && (
-          <ConfirmDialog
-            trigger={
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
               <Button
                 type="button"
-                variant="danger"
+                variant="secondary"
                 size="sm"
                 disabled={pending}
-                data-testid="person-delete"
+                aria-label="Más acciones"
+                data-testid="person-menu"
               >
-                Eliminar
+                <Ellipsis aria-hidden="true" />
               </Button>
-            }
-            title="¿Eliminar esta ficha?"
-            description="Esta acción no se puede deshacer."
-            confirmLabel="Eliminar"
-            tone="destructive"
-            onConfirm={handleDelete}
-          />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                data-testid="person-archive"
+                onSelect={() =>
+                  isArchived ? handleArchiveToggle() : setConfirming("archive")
+                }
+              >
+                {isArchived ? (
+                  <ArchiveRestore aria-hidden="true" />
+                ) : (
+                  <Archive aria-hidden="true" />
+                )}
+                {isArchived ? "Desarchivar" : "Archivar"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                data-testid="person-delete"
+                className="text-danger-600 [&_svg]:text-danger-600"
+                onSelect={() => setConfirming("delete")}
+              >
+                <Trash2 aria-hidden="true" />
+                Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
+        <ConfirmDialog
+          open={confirming === "archive"}
+          onOpenChange={(open) => !open && setConfirming(null)}
+          title="¿Archivar esta ficha?"
+          description="Dejará de aparecer entre los pacientes activos. La encontrarás en «Archivados», desde donde podrás desarchivarla."
+          confirmLabel="Archivar"
+          onConfirm={handleArchiveToggle}
+        />
+        <ConfirmDialog
+          open={confirming === "delete"}
+          onOpenChange={(open) => !open && setConfirming(null)}
+          title="¿Eliminar esta ficha?"
+          description="Esta acción no se puede deshacer."
+          confirmLabel="Eliminar"
+          tone="destructive"
+          onConfirm={handleDelete}
+        />
       </div>
       {error && upcoming.length > 0 && (
         <Alert data-testid="person-archive-blocked" title={error}>
