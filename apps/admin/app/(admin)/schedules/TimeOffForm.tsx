@@ -9,7 +9,13 @@ import { Input } from "@clinicalumia/ui/input";
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { addTimeOff, type TimeOffState } from "./actions";
 
-export function TimeOffForm({ profileId }: { profileId: string }) {
+export function TimeOffForm({
+  profileId,
+  onDone,
+}: {
+  profileId: string;
+  onDone: () => void;
+}) {
   const [state, formAction, pending] = useActionState<TimeOffState, FormData>(
     addTimeOff,
     undefined,
@@ -17,10 +23,13 @@ export function TimeOffForm({ profileId }: { profileId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state && "ok" in state && state.ok) {
-      formRef.current?.reset();
+    if (!state || !("ok" in state)) return;
+    if (state.affected && state.affected.length === 0) {
+      onDone();
+      return;
     }
-  }, [state]);
+    formRef.current?.reset();
+  }, [state, onDone]);
 
   const affected = state && "ok" in state ? state.affected : undefined;
 
@@ -34,7 +43,7 @@ export function TimeOffForm({ profileId }: { profileId: string }) {
           const formData = new FormData(event.currentTarget);
           startTransition(() => formAction(formData));
         }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-end"
+        className="flex flex-col gap-4"
       >
         <input type="hidden" name="profile_id" value={profileId} />
         <Field label="Desde">

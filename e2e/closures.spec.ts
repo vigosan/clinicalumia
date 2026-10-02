@@ -156,6 +156,7 @@ async function addClosure(
   to: string,
   reason: string,
 ) {
+  await page.getByTestId("closure-new").click();
   const form = page.getByTestId("closure-form");
   await pickRange(form.getByTestId("closure-range"), from, to);
   await form.getByLabel("Motivo").fill(reason);
@@ -185,6 +186,10 @@ test("the owner closes days that already have an appointment, sees it listed wit
   await expect(affected).toContainText(
     `${spanish(addDays(first, 1))} · 10:30 · ${appointment.patient} · Marc Ejemplo`,
   );
+  const drawer = page.getByRole("dialog", { name: "Nuevo día de cierre" });
+  await expect(drawer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
   const row = page.getByTestId("closure-row").filter({ hasText: reason });
   await expect(row).toHaveText(
     new RegExp(`${spanish(first)} – ${spanish(last)} · ${reason}`),
@@ -203,6 +208,8 @@ test("the owner closes days that already have an appointment, sees it listed wit
   await expect(page.getByTestId("closure-error")).toHaveText(
     "Ya hay un cierre en esas fechas.",
   );
+  await expect(drawer).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(
     page.getByTestId("closure-row").filter({ hasText: overlapReason }),
   ).toHaveCount(0);
@@ -215,6 +222,50 @@ test("the owner closes days that already have an appointment, sees it listed wit
     .select("id")
     .eq("reason", reason);
   expect(remaining).toEqual([]);
+});
+
+test("a closure with no appointments in it closes the form straight away and appears in the list", async ({
+  page,
+}) => {
+  const day = addDays(todayInMadrid(), 400 + Math.floor(Math.random() * 150));
+  const reason = `Cierre limpio e2e ${uniqueSuffix()}`;
+  createdReasons.push(reason);
+  const owner = await createStaff("owner");
+
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/schedules`);
+  await addClosure(page, day, day, reason);
+
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByTestId("closure-row").filter({ hasText: reason }),
+  ).toBeVisible();
+});
+
+test("the owner adds an absence from its own drawer, which closes and leaves it listed", async ({
+  page,
+}) => {
+  const owner = await createStaff("owner");
+  const day = addDays(todayInMadrid(), 300 + Math.floor(Math.random() * 150));
+  const reason = `Ausencia e2e ${uniqueSuffix()}`;
+
+  try {
+    await signIn(page, ADMIN, owner.email, owner.password);
+    await page.goto(`${ADMIN}/schedules`);
+    await page.getByTestId("time-off-new").click();
+    const form = page.getByTestId("timeoff-form");
+    await pickDate(form.getByLabel("Desde"), day);
+    await pickDate(form.getByLabel("Hasta"), day);
+    await form.getByLabel("Motivo").fill(reason);
+    await form.getByRole("button", { name: "Añadir ausencia" }).click();
+
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByTestId("timeoff-row").filter({ hasText: reason }),
+    ).toBeVisible();
+  } finally {
+    await admin.from("employee_time_off").delete().eq("reason", reason);
+  }
 });
 
 test("an employee signed in to the panel cannot reach the closures in the admin", async ({

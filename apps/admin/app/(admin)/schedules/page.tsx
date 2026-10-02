@@ -4,11 +4,11 @@ import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { splitClosures } from "@/lib/closures";
-import { ClosureForm } from "./ClosureForm";
+import { AddClosure } from "./AddClosure";
+import { AddTimeOff } from "./AddTimeOff";
 import { ClosureRow } from "./ClosureRow";
 import { EmployeePicker } from "./EmployeePicker";
 import { ScheduleEditor } from "./ScheduleEditor";
-import { TimeOffForm } from "./TimeOffForm";
 import { TimeOffRow } from "./TimeOffRow";
 
 export default async function SchedulesPage({
@@ -68,10 +68,10 @@ export default async function SchedulesPage({
               blocks={blocks ?? []}
             />
             <section className="flex flex-col gap-4">
-              <h2 className="text-xl font-bold text-ink-900">Ausencias</h2>
-              <Card>
-                <TimeOffForm profileId={selected.id} />
-              </Card>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-xl font-bold text-ink-900">Ausencias</h2>
+                <AddTimeOff profileId={selected.id} />
+              </div>
               {timeOff && timeOff.length > 0 ? (
                 <Card className="p-2">
                   <ul>
@@ -90,14 +90,14 @@ export default async function SchedulesPage({
         )
       )}
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-bold text-ink-900">Días de cierre</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-bold text-ink-900">Días de cierre</h2>
+          <AddClosure today={today} />
+        </div>
         <p className="text-[15px] text-ink-800">
           Días en que la clínica no abre. La web no ofrece huecos esos días y
           las citas que ya hay no se cancelan.
         </p>
-        <Card>
-          <ClosureForm today={today} />
-        </Card>
         {upcoming.length > 0 ? (
           <Card className="p-2">
             <ul>

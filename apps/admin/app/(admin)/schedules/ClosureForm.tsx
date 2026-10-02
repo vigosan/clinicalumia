@@ -14,7 +14,13 @@ import {
 } from "react";
 import { addClosure, type ClosureState } from "./actions";
 
-export function ClosureForm({ today }: { today: string }) {
+export function ClosureForm({
+  today,
+  onDone,
+}: {
+  today: string;
+  onDone: () => void;
+}) {
   const [state, formAction, pending] = useActionState<ClosureState, FormData>(
     addClosure,
     undefined,
@@ -23,11 +29,14 @@ export function ClosureForm({ today }: { today: string }) {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state && "ok" in state && state.ok) {
-      formRef.current?.reset();
-      setRange({ from: today, to: today });
+    if (!state || !("ok" in state)) return;
+    if (state.affected && state.affected.length === 0) {
+      onDone();
+      return;
     }
-  }, [state, today]);
+    formRef.current?.reset();
+    setRange({ from: today, to: today });
+  }, [state, today, onDone]);
 
   const affected = state && "ok" in state ? state.affected : undefined;
 
@@ -41,7 +50,7 @@ export function ClosureForm({ today }: { today: string }) {
           const formData = new FormData(event.currentTarget);
           startTransition(() => formAction(formData));
         }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-end"
+        className="flex flex-col gap-4"
       >
         <input type="hidden" name="starts_on" value={range.from} />
         <input type="hidden" name="ends_on" value={range.to} />
@@ -52,14 +61,11 @@ export function ClosureForm({ today }: { today: string }) {
             to={range.to}
             today={today}
             onChange={setRange}
-            className="sm:w-64"
           />
         </Field>
-        <div className="sm:flex-1">
-          <Field label="Motivo">
-            <Input name="reason" maxLength={80} required />
-          </Field>
-        </div>
+        <Field label="Motivo">
+          <Input name="reason" maxLength={80} required />
+        </Field>
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : "Añadir cierre"}
         </Button>
