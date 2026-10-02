@@ -7,6 +7,7 @@ import {
   needsPaymentNote,
   parseAmount,
   paymentError,
+  paymentFailure,
   paymentHistoryLines,
   paymentStatus,
 } from "./payments";
@@ -261,23 +262,117 @@ describe("needsPaymentNote", () => {
   });
 });
 
+describe("paymentFailure", () => {
+  const owner = { isOwner: true, adminUrl: "https://admin.clinicalumia.es" };
+  const employee = {
+    isOwner: false,
+    adminUrl: "https://admin.clinicalumia.es",
+  };
+
+  it("tells the owner the main numbering is missing and links her straight to where she confirms it, since she is the only one who can fix it", () => {
+    expect(
+      paymentFailure(
+        { code: "P0001", message: "invoice_series_not_configured" },
+        owner,
+      ),
+    ).toEqual({
+      error:
+        "Falta configurar la numeración de las facturas: hasta que la confirmes no se pueden registrar cobros.",
+      link: {
+        href: "https://admin.clinicalumia.es/clinic",
+        label: "Configurar la numeración",
+      },
+    });
+  });
+
+  it("tells an employee to warn the owner about the main numbering, without a link to an admin she cannot open", () => {
+    expect(
+      paymentFailure(
+        { code: "P0001", message: "invoice_series_not_configured" },
+        employee,
+      ),
+    ).toEqual({
+      error:
+        "Falta configurar la numeración de las facturas. Avisa a la propietaria para que la confirme en el admin.",
+    });
+  });
+
+  it("names the rectifying numbering when that is the one missing, so nobody confirms the wrong series", () => {
+    expect(
+      paymentFailure(
+        { code: "P0001", message: "rectifying_series_not_configured" },
+        owner,
+      ),
+    ).toEqual({
+      error:
+        "Falta configurar la numeración de las rectificativas: hasta que la confirmes no se pueden anular cobros facturados.",
+      link: {
+        href: "https://admin.clinicalumia.es/clinic",
+        label: "Configurar la numeración",
+      },
+    });
+    expect(
+      paymentFailure(
+        { code: "P0001", message: "rectifying_series_not_configured" },
+        employee,
+      ),
+    ).toEqual({
+      error:
+        "Falta configurar la numeración de las rectificativas. Avisa a la propietaria para que la confirme en el admin.",
+    });
+  });
+
+  it("asks only for the clinic fields that are missing, so the owner does not fill in an address a simplified invoice never needed", () => {
+    expect(
+      paymentFailure(
+        {
+          code: "P0001",
+          message: "clinic_fiscal_data_missing",
+          details: "tax_id",
+        },
+        owner,
+      ),
+    ).toEqual({
+      error:
+        "Faltan datos de la clínica para la factura: NIF. Complétalos en el admin, en Datos de la clínica.",
+    });
+  });
+
+  it("lists several missing clinic fields and tells an employee to warn the owner", () => {
+    expect(
+      paymentFailure(
+        {
+          code: "P0001",
+          message: "clinic_fiscal_data_missing",
+          details: "legal_name,postal_code,city",
+        },
+        employee,
+      ),
+    ).toEqual({
+      error:
+        "Faltan datos de la clínica para la factura: razón social, código postal y ciudad. Avisa a la propietaria para que los complete en el admin.",
+    });
+  });
+
+  it("falls back to the name and tax id every invoice needs when the database does not say which field is missing", () => {
+    expect(
+      paymentFailure(
+        { code: "P0001", message: "clinic_fiscal_data_missing" },
+        employee,
+      ).error,
+    ).toBe(
+      "Faltan datos de la clínica para la factura: razón social y NIF. Avisa a la propietaria para que los complete en el admin.",
+    );
+  });
+
+  it("explains any other refusal the same way for everyone", () => {
+    expect(
+      paymentFailure({ code: "P0001", message: "already_paid" }, owner),
+    ).toEqual({ error: "Esta cita ya está cobrada." });
+  });
+});
+
 describe("paymentError", () => {
-  it("tells the person who charges or corrects an invoice that the clinic's fiscal data or address is missing, because without it the invoice is refused", () => {
-    expect(
-      paymentError({ code: "P0001", message: "clinic_fiscal_data_missing" }),
-    ).toBe(
-      "Faltan datos de la clínica para la factura (razón social, NIF o dirección completa). Pide a la propietaria que los complete en el admin.",
-    );
-  });
-
-  it("tells the person who charges that the invoice numbering is not confirmed yet, because issuing before that could repeat a number of the clinic's spreadsheet", () => {
-    expect(
-      paymentError({ code: "P0001", message: "invoice_series_not_configured" }),
-    ).toBe(
-      "Falta configurar la numeración de facturas. Pide a la propietaria que la complete en el admin (Datos de la clínica → Facturación).",
-    );
-  });
-
   it("explains that a charge over 400 € cannot get a simplified invoice, so the person knows who can solve it", () => {
     expect(
       paymentError({ code: "P0001", message: "full_invoice_required" }),

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(211);
+select plan(213);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -57,6 +57,18 @@ $$;
 
 create or replace function pg_temp.id_of(p_name text) returns uuid language sql stable as $$
   select current_setting('test.' || p_name)::uuid
+$$;
+
+create or replace function pg_temp.error_detail(p_statement text) returns text language plpgsql as $$
+declare
+  detail text;
+begin
+  execute p_statement;
+  return null;
+exception when others then
+  get stacked diagnostics detail = pg_exception_detail;
+  return detail;
+end;
 $$;
 
 create or replace function pg_temp.today() returns date language sql stable as $$
@@ -308,6 +320,13 @@ select throws_ok($$ select public.collect_payment('8b000000-0000-0000-0000-00000
   'without the clinic''s legal name no legal invoice can be issued either');
 reset role;
 update public.clinic_settings set legal_name = 'Clínica de Pruebas, S.L.';
+update public.clinic_settings set tax_id = '', address_line = '';
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select is(pg_temp.error_detail($$ select public.collect_payment('8b000000-0000-0000-0000-0000000000d5', 3000, 'card', '') $$),
+  'tax_id',
+  'a refused charge names only the missing tax id and not the address a simplified invoice does not need, so the owner fills in exactly what is missing');
+reset role;
+update public.clinic_settings set tax_id = 'B12345674', address_line = 'Calle Mayor 1';
 
 insert into public.invoice_series (code, year, format, next_number, configured) values
   ('main', pg_temp.this_year() + 1, 'F{año}-{n:4}', 40, true);
@@ -620,6 +639,15 @@ select throws_ok($$ select public.issue_rectifying_invoice(pg_temp.id_of('s5'), 
   'P0001', 'clinic_fiscal_data_missing',
   'a rectifying invoice must state the clinic''s full address too');
 reset role;
+update public.clinic_settings set legal_name = '', address_line = 'Calle Mayor 1', city = '';
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select is(pg_temp.error_detail(
+  $$ select public.issue_full_invoice(pg_temp.id_of('s5'),
+       '{"name": "Tutor", "tax_id": "12345678Z", "address": "Calle Luna 3", "postal_code": "46800", "city": "Xàtiva"}') $$),
+  'legal_name,city',
+  'a refused full invoice names every missing clinic field it needs, and only those');
+reset role;
+update public.clinic_settings set legal_name = 'Clínica de Pruebas, S.L.';
 update public.clinic_settings set city = 'Xàtiva', address_line = 'Avenida Nueva 5';
 
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
@@ -1037,8 +1065,8 @@ select throws_ok($$ truncate public.invoice_series $$, 'P0001', 'invoice_series_
 insert into public.invoice_series (code, year, format) values ('rectifying', pg_temp.this_year() + 70, 'Z{n}/{aa}');
 select throws_ok(
   $$ select public.next_invoice_number('rectifying', make_timestamptz(pg_temp.this_year() + 71, 3, 1, 12, 0, 0, 'Europe/Madrid')) $$,
-  'P0001', 'invoice_series_not_configured',
-  'a year that follows an unconfirmed series is not confirmed either, so only an owner''s decision starts the numbering');
+  'P0001', 'rectifying_series_not_configured',
+  'a year that follows an unconfirmed series is not confirmed either, so only an owner''s decision starts the numbering, and the error names the rectifying series so staff know which numbering is missing');
 
 insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
   ('8b000000-0000-0000-0000-0000000001d1', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c1',

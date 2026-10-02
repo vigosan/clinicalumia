@@ -1,4 +1,5 @@
 import { createClient } from "@clinicalumia/api/server";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
@@ -13,26 +14,29 @@ import {
 } from "@clinicalumia/ui/table";
 import Link from "next/link";
 import { formatCents } from "@/lib/money";
+import { bookingLabel, isPhoneOnly } from "@/lib/service-booking";
 import { ServiceStatusToggle } from "./ServiceStatusToggle";
-
-function bookingLabel(payment: string, value: number) {
-  if (payment === "fixed") return `Señal ${formatCents(value)}`;
-  if (payment === "percent") return `Señal ${value} %`;
-  if (payment === "full") return "Pago completo";
-  return "Paga en la clínica";
-}
 
 export default async function ServicesPage() {
   const supabase = await createClient();
-  const [{ data: specialties }, { data: services }] = await Promise.all([
-    supabase.from("specialties").select("id, name").order("name"),
-    supabase
-      .from("services")
-      .select(
-        "id, specialty_id, name, duration_minutes, price_cents, vat, bookable_online, booking_payment, booking_payment_value, is_active",
-      )
-      .order("name"),
-  ]);
+  const [{ data: specialties }, { data: services }, { data: settings }] =
+    await Promise.all([
+      supabase.from("specialties").select("id, name").order("name"),
+      supabase
+        .from("services")
+        .select(
+          "id, specialty_id, name, duration_minutes, price_cents, vat, bookable_online, booking_payment, booking_payment_value, is_active",
+        )
+        .order("name"),
+      supabase
+        .from("clinic_settings")
+        .select("online_payments_enabled")
+        .single(),
+    ]);
+  const onlinePaymentsEnabled = settings?.online_payments_enabled ?? false;
+  const anyPhoneOnly = (services ?? []).some((service) =>
+    isPhoneOnly(service, onlinePaymentsEnabled),
+  );
 
   return (
     <>
@@ -45,6 +49,12 @@ export default async function ServicesPage() {
           </Button>
         }
       />
+      {anyPhoneOnly && (
+        <Alert tone="warning" data-testid="services-phone-only-notice">
+          Los cobros online están desactivados: los servicios que piden un pago
+          al reservar no se pueden reservar desde la web, solo por teléfono.
+        </Alert>
+      )}
       {(specialties ?? []).map((specialty) => {
         const list = (services ?? []).filter(
           (s) => s.specialty_id === specialty.id,
@@ -88,13 +98,11 @@ export default async function ServicesPage() {
                           <Badge tone="outline">21 %</Badge>
                         )}
                       </TableCell>
-                      <TableCell label="Reserva web">
-                        {service.bookable_online
-                          ? bookingLabel(
-                              service.booking_payment,
-                              service.booking_payment_value,
-                            )
-                          : "No"}
+                      <TableCell
+                        label="Reserva web"
+                        data-testid="service-booking"
+                      >
+                        {bookingLabel(service, onlinePaymentsEnabled)}
                       </TableCell>
                       <TableCell label="Estado">
                         <Badge tone={service.is_active ? "success" : "neutral"}>

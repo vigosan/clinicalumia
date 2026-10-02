@@ -222,6 +222,39 @@ test("«Enviar por email» propone el email del paciente, valida lo escrito y de
   expect(sends).toEqual([{ sent_to: patientEmail, sent_by: employee.id }]);
 });
 
+test("desde el detalle de la factura también se envía por email con el PDF adjunto, porque esa pantalla genera el PDF por su cuenta", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional Detalle Email");
+  const patientEmail = `paciente-detalle-${uniqueSuffix()}@test.local`;
+  const appointment = await createAppointment(employee.id, date, {
+    email: patientEmail,
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointment.id);
+  const code = await collectAndReadCode(page);
+  const [invoice] = await invoicesOf(appointment.id);
+
+  await page.goto(`${DASHBOARD}/facturas/${invoice!.id}`);
+  await page.getByTestId("invoice-send").click();
+  await expect(page.getByTestId("invoice-send-email")).toHaveValue(
+    patientEmail,
+  );
+  await page.getByTestId("invoice-send-submit").click();
+  await expect(page.getByTestId("invoice-send-result")).toHaveText(
+    `Factura enviada a ${patientEmail}`,
+  );
+  await expect(page.getByTestId("invoice-send-error")).toHaveCount(0);
+
+  const attachments = await latestEmailAttachments(
+    patientEmail,
+    `Factura ${code} · Clínica LUMIA`,
+  );
+  expect(attachments).toEqual([`factura-${code.replace("/", "-")}.pdf`]);
+});
+
 test("«Factura completa» rechaza un NIF inválido y, con uno válido, emite la completa que sustituye a la simplificada", async ({
   page,
 }) => {

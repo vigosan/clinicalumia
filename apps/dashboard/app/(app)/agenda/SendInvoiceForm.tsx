@@ -34,6 +34,8 @@ export function SendInvoiceForm({
         setError(null);
         setSentTo(result.email);
         setOpen(false);
+      } catch {
+        setError("No se ha podido enviar el email. Inténtalo de nuevo.");
       } finally {
         submitGateRef.current.finish();
       }

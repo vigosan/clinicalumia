@@ -3,7 +3,8 @@
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
-import { METHOD_ORDER, parseAmount, paymentError } from "@/lib/payments";
+import { failureFor } from "@/lib/payment-failure";
+import { METHOD_ORDER, parseAmount } from "@/lib/payments";
 
 export async function collectPayment(
   appointmentId: string,
@@ -24,7 +25,7 @@ export async function collectPayment(
   if (error) {
     if (error.code === "P0001" && error.message === "already_paid")
       revalidatePath("/");
-    return { error: paymentError(error) };
+    return failureFor(supabase, error);
   }
 
   revalidatePath("/");
@@ -40,7 +41,7 @@ export async function voidPayment(
     p_payment_id: paymentId,
     p_reason: reason.trim(),
   });
-  if (error) return { error: paymentError(error) };
+  if (error) return failureFor(supabase, error);
 
   revalidatePath("/");
   return { ok: true };

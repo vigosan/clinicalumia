@@ -192,6 +192,7 @@ test("each card on the admin home links to its section", async ({ page }) => {
     ["home-card-services", "/services"],
     ["home-card-schedules", "/schedules"],
     ["home-card-clinic", "/clinic"],
+    ["home-card-billing", "/facturacion"],
   ];
   for (const [testId, href] of sections) {
     await page.getByTestId(testId).click();

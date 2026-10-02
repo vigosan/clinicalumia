@@ -5,7 +5,10 @@ const rpcResult: {
   data: unknown;
   error: { code?: string; message?: string } | null;
 } = { data: null, error: null };
-const rpc = vi.fn(async () => rpcResult);
+const isOwnerResult: { data: boolean | null } = { data: false };
+const rpc = vi.fn(async (name: string, _args?: unknown) =>
+  name === "is_owner" ? { ...isOwnerResult, error: null } : rpcResult,
+);
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
@@ -16,6 +19,8 @@ const { collectPayment, voidPayment } = await import("./actions");
 
 beforeEach(() => {
   rpc.mockClear();
+  isOwnerResult.data = false;
+  vi.unstubAllEnvs();
   vi.mocked(revalidatePath).mockClear();
   rpcResult.data = null;
   rpcResult.error = null;
@@ -81,6 +86,70 @@ describe("collectPayment", () => {
       error: "Indica el motivo del cambio de importe.",
     });
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("collectPayment without invoice numbering", () => {
+  it("links the owner to the admin where she confirms the numbering, since only she can unblock charging", async () => {
+    vi.stubEnv("NEXT_PUBLIC_ADMIN_URL", "https://admin.clinicalumia.es");
+    isOwnerResult.data = true;
+    rpcResult.error = {
+      code: "P0001",
+      message: "invoice_series_not_configured",
+    };
+    const result = await collectPayment("appt-1", {
+      amount: "50",
+      method: "cash",
+      note: "",
+    });
+    expect(result).toEqual({
+      error:
+        "Falta configurar la numeración de las facturas: hasta que la confirmes no se pueden registrar cobros.",
+      link: {
+        href: "https://admin.clinicalumia.es/clinic",
+        label: "Configurar la numeración",
+      },
+    });
+  });
+
+  it("points to the local admin when no admin address is configured, so development links work", async () => {
+    vi.stubEnv("NEXT_PUBLIC_ADMIN_URL", "");
+    isOwnerResult.data = true;
+    rpcResult.error = {
+      code: "P0001",
+      message: "invoice_series_not_configured",
+    };
+    const result = await collectPayment("appt-1", {
+      amount: "50",
+      method: "cash",
+      note: "",
+    });
+    expect(result).toMatchObject({
+      link: { href: "http://localhost:3002/clinic" },
+    });
+  });
+
+  it("tells an employee to warn the owner, without a link to an admin she cannot open", async () => {
+    rpcResult.error = {
+      code: "P0001",
+      message: "invoice_series_not_configured",
+    };
+    const result = await collectPayment("appt-1", {
+      amount: "50",
+      method: "cash",
+      note: "",
+    });
+    expect(result).toEqual({
+      error:
+        "Falta configurar la numeración de las facturas. Avisa a la propietaria para que la confirme en el admin.",
+    });
+  });
+
+  it("does not ask who is charging for errors that read the same for everyone", async () => {
+    rpcResult.error = { code: "P0001", message: "note_required" };
+    await collectPayment("appt-1", { amount: "50", method: "cash", note: "" });
+    expect(rpc).not.toHaveBeenCalledWith("is_owner", undefined);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });
 

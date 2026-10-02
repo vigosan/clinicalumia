@@ -15,6 +15,7 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 const ADMIN = "http://localhost:3002";
+const FISIOTERAPIA_SPECIALTY_ID = "a0000000-0000-0000-0000-00000000001c";
 const createdServiceNames: string[] = [];
 const createdUserIds: string[] = [];
 
@@ -40,6 +41,7 @@ async function loginAsOwner(page: Page) {
   await expect(
     page.getByRole("navigation", { name: "Secciones" }),
   ).toBeVisible();
+  return data.user!.id;
 }
 
 test.afterEach(async () => {
@@ -85,7 +87,72 @@ test("the owner creates a service with a deposit and sees it listed with its pri
   await page.getByTestId("service-submit").click();
   const row = page.getByTestId("service-row").filter({ hasText: name });
   await expect(row).toContainText("50,00 €");
-  await expect(row).toContainText("Señal 10,00 €");
+  await expect(row.getByTestId("service-booking")).toHaveText(
+    "Solo por teléfono",
+  );
+});
+
+test("while online payments are off, the services list says which services can only be booked by phone, with a notice above", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  await page.goto(`${ADMIN}/services`);
+  await expect(page.getByTestId("services-phone-only-notice")).toContainText(
+    "Los cobros online están desactivados",
+  );
+  const rowOf = (name: string) =>
+    page
+      .getByTestId("service-row")
+      .filter({ has: page.getByText(name, { exact: true }) });
+  await expect(
+    rowOf("Psicoterapia individual").getByTestId("service-booking"),
+  ).toHaveText("Solo por teléfono");
+  await expect(
+    rowOf("Sesión de logopedia").getByTestId("service-booking"),
+  ).toHaveText("Paga en la clínica");
+});
+
+test("the admin home says everything is ready, and once something is missing lists it with a link to where it is fixed", async ({
+  page,
+}) => {
+  const { data: before } = await admin
+    .from("clinic_settings")
+    .select("tax_id")
+    .single();
+  try {
+    const ownerId = await loginAsOwner(page);
+    await page.goto(`${ADMIN}/`);
+    await expect(page.getByTestId("pending-none")).toHaveText(
+      "Todo listo: la clínica puede dar citas, cobrar y facturar.",
+    );
+    await expect(page.getByTestId("pending-setup")).toHaveCount(0);
+
+    await admin.from("clinic_settings").update({ tax_id: "" }).eq("id", true);
+    await admin
+      .from("profiles")
+      .update({ specialty_id: FISIOTERAPIA_SPECIALTY_ID })
+      .eq("id", ownerId);
+    await page.reload();
+    await expect(page.getByTestId("pending-none")).toHaveCount(0);
+    await expect(page.getByTestId("pending-setup")).toContainText(
+      "Pendiente de configurar",
+    );
+    await expect(
+      page.getByTestId(`pending-schedule-warning-${ownerId}`),
+    ).toHaveText(
+      "Propietaria de prueba no tiene horario semanal: no tendrá huecos en la agenda ni en la web.",
+    );
+    await page.getByTestId("pending-clinic-fiscal-warning").click();
+    await expect(page).toHaveURL(`${ADMIN}/clinic`);
+    await page.goto(`${ADMIN}/`);
+    await page.getByTestId(`pending-schedule-warning-${ownerId}`).click();
+    await expect(page).toHaveURL(`${ADMIN}/schedules?employee=${ownerId}`);
+  } finally {
+    await admin
+      .from("clinic_settings")
+      .update({ tax_id: before!.tax_id })
+      .eq("id", true);
+  }
 });
 
 test("the owner edits a weekly schedule, is warned about overlaps, and the change survives a reload", async ({

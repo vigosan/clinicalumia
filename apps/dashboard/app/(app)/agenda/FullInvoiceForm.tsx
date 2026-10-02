@@ -5,8 +5,10 @@ import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { useRef, useState, useTransition } from "react";
 import type { RecipientDraft } from "@/lib/invoices";
+import type { PaymentFailure } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { issueFullInvoice } from "../facturas/actions";
+import { ActionError } from "./ActionError";
 
 const FIELDS: {
   key: keyof RecipientDraft;
@@ -57,7 +59,7 @@ export function FullInvoiceForm({
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(recipient);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
 
@@ -68,10 +70,10 @@ export function FullInvoiceForm({
       try {
         const result = await issueFullInvoice(invoiceId, draft);
         if ("error" in result) {
-          setError(result.error);
+          setFailure(result);
           return;
         }
-        setError(null);
+        setFailure(null);
         setOpen(false);
       } finally {
         submitGateRef.current.finish();
@@ -115,15 +117,7 @@ export function FullInvoiceForm({
           />
         </Field>
       ))}
-      {error && (
-        <p
-          role="alert"
-          data-testid="invoice-full-error"
-          className="text-[13px] text-danger-600"
-        >
-          {error}
-        </p>
-      )}
+      {failure && <ActionError failure={failure} testId="invoice-full-error" />}
       <div className="flex gap-2">
         <Button
           type="submit"
@@ -138,7 +132,7 @@ export function FullInvoiceForm({
           variant="ghost"
           size="sm"
           onClick={() => {
-            setError(null);
+            setFailure(null);
             setOpen(false);
           }}
         >

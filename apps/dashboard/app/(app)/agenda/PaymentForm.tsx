@@ -11,11 +11,13 @@ import {
   METHOD_ORDER,
   methodLabel,
   needsPaymentNote,
+  type PaymentFailure,
   type PaymentMethod,
   parseAmount,
 } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { collectPayment } from "../payments/actions";
+import { ActionError } from "./ActionError";
 
 const METHOD_ICONS: Record<PaymentMethod, React.ReactNode> = {
   cash: <Banknote />,
@@ -47,7 +49,7 @@ export function PaymentForm({
   );
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
 
@@ -59,7 +61,7 @@ export function PaymentForm({
     cancelled,
     amount,
     suggestedAmountCents,
-    error,
+    error: failure?.error ?? null,
   });
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -73,11 +75,11 @@ export function PaymentForm({
       });
       submitGateRef.current.finish();
       if ("error" in result) {
-        setError(result.error);
+        setFailure(result);
         onError?.();
         return;
       }
-      setError(null);
+      setFailure(null);
       setOpen(false);
       const parsed = parseAmount(amount);
       onSuccess?.({ cents: "cents" in parsed ? parsed.cents : 0, method });
@@ -134,15 +136,7 @@ export function PaymentForm({
           />
         </Field>
       )}
-      {error && (
-        <p
-          role="alert"
-          data-testid="payment-error"
-          className="text-[13px] text-danger-600"
-        >
-          {error}
-        </p>
-      )}
+      {failure && <ActionError failure={failure} testId="payment-error" />}
       <div>
         <Button
           type="submit"

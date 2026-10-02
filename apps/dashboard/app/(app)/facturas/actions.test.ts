@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const INVOICE_ID = "c3000000-0000-0000-0000-000000000003";
 
-type DbError = { code?: string; message?: string } | null;
+type DbError = { code?: string; message?: string; details?: string } | null;
 
 const rpcResults: Record<string, { data: unknown; error: DbError }> = {};
 const rpc = vi.fn(
@@ -37,6 +37,7 @@ vi.mock("@clinicalumia/invoices", () => ({
 
 const { revalidatePath } = await import("next/cache");
 const { sendEmail } = await import("@clinicalumia/api/email");
+const { renderInvoicePdf } = await import("@clinicalumia/invoices");
 const { issueFullInvoice, issueRectifyingInvoice, sendInvoiceEmail } =
   await import("./actions");
 
@@ -99,6 +100,36 @@ describe("issueFullInvoice", () => {
 });
 
 describe("issueRectifyingInvoice", () => {
+  it("names the rectifying numbering when it is the one missing, and tells an employee to warn the owner", async () => {
+    rpcResults.is_owner = { data: false, error: null };
+    rpcResults.issue_rectifying_invoice = {
+      data: null,
+      error: { code: "P0001", message: "rectifying_series_not_configured" },
+    };
+    const result = await issueRectifyingInvoice(INVOICE_ID, "Error");
+    expect(result).toEqual({
+      error:
+        "Falta configurar la numeración de las rectificativas. Avisa a la propietaria para que la confirme en el admin.",
+    });
+  });
+
+  it("asks the owner for exactly the clinic fields the rectifying invoice is missing", async () => {
+    rpcResults.is_owner = { data: true, error: null };
+    rpcResults.issue_rectifying_invoice = {
+      data: null,
+      error: {
+        code: "P0001",
+        message: "clinic_fiscal_data_missing",
+        details: "address_line,city",
+      },
+    };
+    const result = await issueRectifyingInvoice(INVOICE_ID, "Error");
+    expect(result).toEqual({
+      error:
+        "Faltan datos de la clínica para la factura: dirección y ciudad. Complétalos en el admin, en Datos de la clínica.",
+    });
+  });
+
   it("issues the rectifying invoice with the trimmed reason, which also voids the payment, and refreshes the panel", async () => {
     const result = await issueRectifyingInvoice(
       INVOICE_ID,
@@ -165,6 +196,21 @@ describe("sendInvoiceEmail", () => {
     const result = await sendInvoiceEmail(INVOICE_ID, "ana@correo.test");
     expect(result).toEqual({ error: "Esta factura ya no está disponible." });
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("explains inline that the PDF could not be generated instead of crashing the screen, and sends nothing", async () => {
+    const failure = new Error("Fuente no encontrada");
+    vi.mocked(renderInvoicePdf).mockRejectedValueOnce(failure);
+    const result = await sendInvoiceEmail(INVOICE_ID, "ana@correo.test");
+    expect(result).toEqual({
+      error:
+        "No se ha podido generar el PDF de la factura. Inténtalo de nuevo.",
+    });
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      "No se ha podido generar el PDF de la factura",
+      failure,
+    );
   });
 
   it("does not record a send that failed, so the log only lists emails that left, and logs why it failed", async () => {

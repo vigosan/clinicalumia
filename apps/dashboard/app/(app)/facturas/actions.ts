@@ -10,6 +10,7 @@ import {
   normalizeEmail,
   type RecipientDraft,
 } from "@/lib/invoices";
+import { failureFor } from "@/lib/payment-failure";
 import { paymentError } from "@/lib/payments";
 
 export async function issueFullInvoice(
@@ -27,7 +28,7 @@ export async function issueFullInvoice(
       city: recipient.city.trim(),
     },
   });
-  if (error) return { error: paymentError(error) };
+  if (error) return failureFor(supabase, error);
 
   revalidatePath("/");
   revalidatePath("/facturas");
@@ -44,7 +45,7 @@ export async function issueRectifyingInvoice(
     p_invoice_id: invoiceId,
     p_reason: reason.trim(),
   });
-  if (error) return { error: paymentError(error) };
+  if (error) return failureFor(supabase, error);
 
   revalidatePath("/");
   revalidatePath("/facturas");
@@ -60,7 +61,15 @@ export async function sendInvoiceEmail(
   if (!email) return { error: "Escribe un email válido." };
 
   const supabase = await createClient();
-  const invoice = await loadInvoicePdf(supabase, invoiceId);
+  const invoice = await loadInvoicePdf(supabase, invoiceId).catch((error) => {
+    console.error("No se ha podido generar el PDF de la factura", error);
+    return null;
+  });
+  if (!invoice)
+    return {
+      error:
+        "No se ha podido generar el PDF de la factura. Inténtalo de nuevo.",
+    };
   if ("error" in invoice) return { error: paymentError(invoice.error) };
 
   try {

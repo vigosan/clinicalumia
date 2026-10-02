@@ -135,7 +135,7 @@ export function paymentHistoryLines(
   return lines;
 }
 
-export type DbError = { code?: string; message?: string };
+export type DbError = { code?: string; message?: string; details?: string };
 
 const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   already_paid: "Esta cita ya está cobrada.",
@@ -150,10 +150,6 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   already_voided: "Este cobro ya está anulado.",
   appointment_not_found: "Esta cita ya no está disponible.",
   payment_not_found: "Este cobro ya no está disponible.",
-  clinic_fiscal_data_missing:
-    "Faltan datos de la clínica para la factura (razón social, NIF o dirección completa). Pide a la propietaria que los complete en el admin.",
-  invoice_series_not_configured:
-    "Falta configurar la numeración de facturas. Pide a la propietaria que la complete en el admin (Datos de la clínica → Facturación).",
   full_invoice_required:
     "Este importe supera los 400 € de una factura simplificada. Habla con la propietaria para emitir la factura completa.",
   invoice_already_rectified: "Esta factura ya está rectificada.",
@@ -173,6 +169,74 @@ export function paymentError(error: DbError): string {
     if (mapped) return mapped;
   }
   return "No se ha podido guardar. Inténtalo de nuevo.";
+}
+
+export type ErrorLink = { href: string; label: string };
+
+export type PaymentFailure = { error: string; link?: ErrorLink };
+
+export type Viewer = { isOwner: boolean; adminUrl: string };
+
+const UNCONFIGURED_SERIES: Record<string, { name: string; blocked: string }> = {
+  invoice_series_not_configured: {
+    name: "las facturas",
+    blocked: "no se pueden registrar cobros",
+  },
+  rectifying_series_not_configured: {
+    name: "las rectificativas",
+    blocked: "no se pueden anular cobros facturados",
+  },
+};
+
+const CLINIC_FIELD_LABELS: Record<string, string> = {
+  legal_name: "razón social",
+  tax_id: "NIF",
+  address_line: "dirección",
+  postal_code: "código postal",
+  city: "ciudad",
+};
+
+function listInSpanish(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} y ${items.at(-1)}`;
+}
+
+export function needsViewer(error: DbError): boolean {
+  return (
+    error.code === "P0001" &&
+    (error.message === "clinic_fiscal_data_missing" ||
+      Object.hasOwn(UNCONFIGURED_SERIES, error.message ?? ""))
+  );
+}
+
+export function paymentFailure(error: DbError, viewer: Viewer): PaymentFailure {
+  if (!needsViewer(error)) return { error: paymentError(error) };
+  const series = UNCONFIGURED_SERIES[error.message ?? ""];
+  if (series) {
+    if (!viewer.isOwner)
+      return {
+        error: `Falta configurar la numeración de ${series.name}. Avisa a la propietaria para que la confirme en el admin.`,
+      };
+    return {
+      error: `Falta configurar la numeración de ${series.name}: hasta que la confirmes ${series.blocked}.`,
+      link: {
+        href: `${viewer.adminUrl}/clinic`,
+        label: "Configurar la numeración",
+      },
+    };
+  }
+  const missing = (error.details ?? "")
+    .split(",")
+    .flatMap((field) => CLINIC_FIELD_LABELS[field] ?? []);
+  const fields = listInSpanish(
+    missing.length > 0 ? missing : ["razón social", "NIF"],
+  );
+  const action = viewer.isOwner
+    ? "Complétalos en el admin, en Datos de la clínica."
+    : "Avisa a la propietaria para que los complete en el admin.";
+  return {
+    error: `Faltan datos de la clínica para la factura: ${fields}. ${action}`,
+  };
 }
 
 export function needsPaymentNote({

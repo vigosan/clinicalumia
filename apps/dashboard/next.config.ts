@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@react-pdf/renderer"],
   outputFileTracingIncludes: {
     "/": invoiceAssets,
+    "/facturas/[id]": invoiceAssets,
     "/facturas/[id]/pdf": invoiceAssets,
   },
   allowedDevOrigins: ["127.0.0.1"],

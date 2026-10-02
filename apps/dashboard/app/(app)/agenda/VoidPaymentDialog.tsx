@@ -6,9 +6,11 @@ import { Field } from "@clinicalumia/ui/field";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import { toast } from "@clinicalumia/ui/toast";
 import { useRef, useState, useTransition } from "react";
+import type { PaymentFailure } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { issueRectifyingInvoice } from "../facturas/actions";
 import { voidPayment } from "../payments/actions";
+import { ActionError } from "./ActionError";
 
 export function VoidPaymentDialog({
   paymentId,
@@ -23,7 +25,7 @@ export function VoidPaymentDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
 
@@ -35,10 +37,10 @@ export function VoidPaymentDialog({
         : await voidPayment(paymentId, reason);
       submitGateRef.current.finish();
       if ("error" in result) {
-        setError(result.error);
+        setFailure(result);
         return;
       }
-      setError(null);
+      setFailure(null);
       setOpen(false);
       toast("Cobro anulado");
     });
@@ -89,15 +91,7 @@ export function VoidPaymentDialog({
           onChange={(event) => setReason(event.target.value)}
         />
       </Field>
-      {error && (
-        <p
-          role="alert"
-          data-testid="payment-error"
-          className="text-[13px] text-danger-600"
-        >
-          {error}
-        </p>
-      )}
+      {failure && <ActionError failure={failure} testId="payment-error" />}
     </ConfirmDialog>
   );
 }
