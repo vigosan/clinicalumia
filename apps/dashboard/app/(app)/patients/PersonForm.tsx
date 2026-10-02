@@ -24,6 +24,7 @@ import {
 import {
   createDuplicateChecker,
   type DuplicateFields,
+  hasDuplicateInput,
 } from "@/lib/duplicate-checker";
 import { newPersonToast } from "@/lib/person-toast";
 import { createSubmitGate } from "@/lib/submit-gate";
@@ -35,6 +36,7 @@ import {
   checkDuplicates,
   type Duplicate,
   savePerson,
+  setArchived,
 } from "./actions";
 import { DuplicateWarning } from "./DuplicateWarning";
 import { RELATIONSHIP_OPTIONS } from "./relationship-options";
@@ -116,12 +118,15 @@ export function PersonForm({
       tax_id: String(data.get("tax_id") ?? "").trim(),
       email: String(data.get("email") ?? "").trim(),
       phone: String(data.get("phone") ?? "").trim(),
+      first_name: String(data.get("first_name") ?? "").trim(),
+      last_name: String(data.get("last_name") ?? "").trim(),
+      birth_date: String(data.get("birth_date") ?? "").trim(),
     };
   }
 
   async function resolveDuplicates(): Promise<Duplicate[]> {
     const fields = currentFields();
-    if (!fields.tax_id && !fields.email && !fields.phone) return [];
+    if (!hasDuplicateInput(fields)) return [];
     const found = await checkerRef.current.ensureResolved(fields);
     setDuplicates(found);
     return found;
@@ -171,6 +176,19 @@ export function PersonForm({
       }
       toast("Tutor/a añadido/a");
       router.push(`/patients/${guardianOf.id}`);
+    });
+  }
+
+  function handleUnarchive(id: string) {
+    setUseExistingError(null);
+    startUsingExisting(async () => {
+      const result = await setArchived(id, false);
+      if ("error" in result) {
+        setUseExistingError(result.error);
+        return;
+      }
+      toast("Ficha desarchivada");
+      handleUseExisting(id);
     });
   }
 
@@ -228,6 +246,7 @@ export function PersonForm({
           <Input
             name="first_name"
             defaultValue={person?.first_name ?? consent?.first_name}
+            onBlur={handleDuplicateFieldBlur}
             required
           />
         </Field>
@@ -235,6 +254,7 @@ export function PersonForm({
           <Input
             name="last_name"
             defaultValue={person?.last_name ?? consent?.last_name}
+            onBlur={handleDuplicateFieldBlur}
             required
           />
         </Field>
@@ -243,6 +263,7 @@ export function PersonForm({
             name="birth_date"
             max={todayInMadrid()}
             defaultValue={person?.birth_date ?? consent?.birth_date ?? ""}
+            onBlur={handleDuplicateFieldBlur}
           />
         </Field>
         <Field
@@ -324,6 +345,7 @@ export function PersonForm({
         <DuplicateWarning
           duplicates={duplicates}
           onUseExisting={handleUseExisting}
+          onUnarchive={handleUnarchive}
           onContinue={() => {
             checkerRef.current.markResolved(currentFields(), []);
             setDuplicates([]);
@@ -338,6 +360,18 @@ export function PersonForm({
           className="text-[13px] text-danger-600"
         >
           {state?.error ?? useExistingError}
+          {state?.existingId && (
+            <>
+              {" "}
+              <Link
+                href={`/patients/${state.existingId}`}
+                data-testid="person-error-existing"
+                className="font-medium underline"
+              >
+                Ver la ficha
+              </Link>
+            </>
+          )}
         </p>
       )}
 

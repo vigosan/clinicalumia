@@ -6,6 +6,7 @@ const MATCHED_FIELD_LABEL: Record<string, string> = {
   tax_id: "mismo DNI/NIE",
   email: "mismo email",
   phone: "mismo teléfono",
+  name_birth_date: "mismo nombre y fecha de nacimiento",
 };
 
 function matchedLabel(matched: string[]): string {
@@ -18,10 +19,12 @@ function matchedLabel(matched: string[]): string {
 export function DuplicateWarning({
   duplicates,
   onUseExisting,
+  onUnarchive,
   onContinue,
 }: {
   duplicates: Duplicate[];
   onUseExisting: (id: string) => void;
+  onUnarchive: (id: string) => void;
   onContinue: () => void;
 }) {
   return (
@@ -47,16 +50,39 @@ export function DuplicateWarning({
               </span>
               {duplicate.wards.length > 0 &&
                 ` · ${wardsLabel(duplicate.wards)}`}
+              {duplicate.archived && (
+                <>
+                  {" · "}
+                  <span
+                    data-testid="duplicate-archived"
+                    className="font-medium"
+                  >
+                    Ficha archivada
+                  </span>
+                </>
+              )}
             </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              data-testid="duplicate-use"
-              onClick={() => onUseExisting(duplicate.id)}
-            >
-              Usar esta ficha
-            </Button>
+            {duplicate.archived ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                data-testid="duplicate-unarchive"
+                onClick={() => onUnarchive(duplicate.id)}
+              >
+                Desarchivar y usar esta ficha
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                data-testid="duplicate-use"
+                onClick={() => onUseExisting(duplicate.id)}
+              >
+                Usar esta ficha
+              </Button>
+            )}
           </li>
         ))}
       </ul>

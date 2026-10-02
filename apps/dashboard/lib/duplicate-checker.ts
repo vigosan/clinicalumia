@@ -1,4 +1,16 @@
-export type DuplicateFields = { tax_id: string; email: string; phone: string };
+export type DuplicateFields = {
+  tax_id: string;
+  email: string;
+  phone: string;
+  first_name: string;
+  last_name: string;
+  birth_date: string;
+};
+
+export function hasDuplicateInput(fields: DuplicateFields): boolean {
+  if (fields.tax_id || fields.email || fields.phone) return true;
+  return Boolean(fields.first_name && fields.last_name && fields.birth_date);
+}
 
 function keyOf(fields: DuplicateFields): string {
   return JSON.stringify(fields);

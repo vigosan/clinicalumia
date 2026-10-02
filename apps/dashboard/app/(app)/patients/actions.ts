@@ -14,19 +14,25 @@ import { redirect } from "next/navigation";
 import type { ActionResult } from "@/lib/action-result";
 import { isUuid } from "@/lib/agenda";
 import { consentLinkErrorCode } from "@/lib/consent-link-error";
+import type { DuplicateFields } from "@/lib/duplicate-checker";
 import { guardianErrorCode } from "@/lib/guardian-error";
 import type { Ward } from "@/lib/ward-label";
 import { linkConsent } from "../consentimientos/actions";
 
-export type PersonFormState = { error: string } | undefined;
+export type PersonFormState =
+  | { error: string; existingId?: string }
+  | undefined;
 
 export type Duplicate = {
   id: string;
   first_name: string;
   last_name: string;
   matched: string[];
+  archived: boolean;
   wards: Ward[];
 };
+
+const TAX_ID_TAKEN = "Ya hay una ficha con ese DNI/NIE.";
 
 function mapPersonError(
   error: { code?: string; message?: string; details?: string } | null,
@@ -34,14 +40,34 @@ function mapPersonError(
   if (!error) return null;
   if (error.code === "23505") {
     const text = `${error.message ?? ""} ${error.details ?? ""}`;
-    if (text.includes("people_tax_id_key"))
-      return "Ya hay una ficha con ese DNI/NIE.";
+    if (text.includes("people_tax_id_key")) return TAX_ID_TAKEN;
     return "No se ha podido guardar.";
   }
   if (error.code === "23514")
     return "Revisa los datos: hay un campo no válido.";
   if (error.code === "42501") return "No tienes permiso para hacer esto.";
   return "No se ha podido guardar.";
+}
+
+async function personErrorState(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  message: string,
+  taxId: string | null,
+  exclude: string | undefined,
+): Promise<PersonFormState> {
+  if (message !== TAX_ID_TAKEN || !taxId) return { error: message };
+  const { data } = await supabase.rpc("find_possible_duplicates", {
+    p_tax_id: taxId,
+    p_email: "",
+    p_phone: "",
+    p_exclude: exclude,
+  });
+  const existing = (data as Duplicate[] | null)?.find((row) =>
+    row.matched.includes("tax_id"),
+  );
+  return existing
+    ? { error: message, existingId: existing.id }
+    : { error: message };
 }
 
 export async function savePerson(
@@ -62,7 +88,8 @@ export async function savePerson(
       .eq("id", id)
       .select("id");
     const mapped = mapPersonError(error);
-    if (mapped) return { error: mapped };
+    if (mapped)
+      return personErrorState(supabase, mapped, parsed.person.tax_id, id);
     if (!data || data.length === 0)
       return { error: "No tienes permiso para hacer esto." };
 
@@ -102,7 +129,8 @@ export async function savePerson(
     .select("id")
     .single();
   const mapped = mapPersonError(error);
-  if (mapped) return { error: mapped };
+  if (mapped)
+    return personErrorState(supabase, mapped, parsed.person.tax_id, undefined);
   if (!data) return { error: "No tienes permiso para hacer esto." };
 
   revalidatePath("/patients");
@@ -146,17 +174,17 @@ function safeAppointmentReturn(value: string): string | null {
   return target.startsWith("/appointments/new") ? target : null;
 }
 
-export async function checkDuplicates(input: {
-  tax_id: string;
-  email: string;
-  phone: string;
-  exclude?: string;
-}): Promise<Duplicate[]> {
+export async function checkDuplicates(
+  input: DuplicateFields & { exclude?: string },
+): Promise<Duplicate[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("find_possible_duplicates", {
     p_tax_id: input.tax_id,
     p_email: input.email,
     p_phone: input.phone,
+    p_first_name: input.first_name,
+    p_last_name: input.last_name,
+    p_birth_date: input.birth_date || undefined,
     p_exclude: input.exclude,
   });
   if (error) return [];

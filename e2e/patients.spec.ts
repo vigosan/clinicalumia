@@ -303,11 +303,161 @@ test("adding someone with the seed DNI written with dots and lowercase reports t
 
   await page.getByTestId("person-submit").click();
 
-  await expect(page.getByTestId("person-error")).toHaveText(
+  await expect(page.getByTestId("person-error")).toContainText(
     "Ya hay una ficha con ese DNI/NIE.",
+  );
+  await expect(page.getByTestId("person-error-existing")).toHaveAttribute(
+    "href",
+    "/patients/a0000000-0000-0000-0000-000000000604",
   );
   await expect(page.getByLabel("Apellidos")).toHaveValue(lastName);
   await expect(taxId).toHaveValue("11.223.344-b");
+});
+
+async function insertPerson(person: {
+  first_name: string;
+  last_name: string;
+  birth_date: string;
+  tax_id?: string;
+  archived?: boolean;
+}) {
+  const { archived, ...fields } = person;
+  const { data, error } = await admin
+    .from("people")
+    .insert({
+      ...fields,
+      archived_at: archived ? new Date().toISOString() : null,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdPersonIds.push(data!.id);
+  return data!.id;
+}
+
+function validDni(): string {
+  const number = Date.now() % 1e8;
+  return `${String(number).padStart(8, "0")}${"TRWAGMYFPDXBNJZSQVHLCKE"[number % 23]}`;
+}
+
+test("typing the name of an existing minor without accents or capitals and her birth date warns before creating a second record, since minors rarely have a DNI, email or phone", async ({
+  page,
+}) => {
+  const suffix = String(Date.now());
+  const existingId = await insertPerson({
+    first_name: "Elena",
+    last_name: `Gómez Díaz ${suffix}`,
+    birth_date: "2015-03-22",
+  });
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+
+  await page.getByLabel("Nombre").fill("ELENA");
+  await page.getByLabel("Apellidos").fill(`gomez diaz ${suffix}`);
+  const birthDate = page.getByLabel("Fecha de nacimiento");
+  await birthDate.fill("22/03/2015");
+  await birthDate.blur();
+
+  const warning = page.getByTestId("duplicate-warning");
+  await expect(warning).toBeVisible();
+  const duplicateRow = warning
+    .locator("li")
+    .filter({ hasText: `Elena Gómez Díaz ${suffix}` });
+  await expect(duplicateRow.getByTestId("duplicate-matched")).toHaveText(
+    "mismo nombre y fecha de nacimiento",
+  );
+  await expect(duplicateRow.getByTestId("duplicate-archived")).toHaveCount(0);
+
+  await duplicateRow.getByTestId("duplicate-use").click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${existingId}`);
+
+  const { count } = await admin
+    .from("people")
+    .select("id", { count: "exact", head: true })
+    .ilike("last_name", `%${suffix}`);
+  expect(count).toBe(1);
+});
+
+test("an archived record with the same name and birth date shows up as «Ficha archivada», and «Desarchivar y usar esta ficha» brings it back instead of creating a new one", async ({
+  page,
+}) => {
+  const lastName = `Vuelve ${Date.now()}`;
+  const archivedId = await insertPerson({
+    first_name: "Lucía",
+    last_name: lastName,
+    birth_date: "1975-05-05",
+    archived: true,
+  });
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+
+  await page.getByLabel("Nombre").fill("Lucia");
+  await page.getByLabel("Apellidos").fill(lastName);
+  await page.getByLabel("Fecha de nacimiento").fill("05/05/1975");
+  await page.getByTestId("person-submit").click();
+
+  const duplicateRow = page
+    .getByTestId("duplicate-warning")
+    .locator("li")
+    .filter({ hasText: `Lucía ${lastName}` });
+  await expect(duplicateRow.getByTestId("duplicate-archived")).toHaveText(
+    "Ficha archivada",
+  );
+  await expect(duplicateRow.getByTestId("duplicate-use")).toHaveCount(0);
+
+  await duplicateRow.getByTestId("duplicate-unarchive").click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${archivedId}`);
+  await expect(page.getByTestId("person-archive")).toHaveText("Archivar");
+
+  const { data } = await admin
+    .from("people")
+    .select("id, archived_at")
+    .eq("last_name", lastName);
+  expect(data).toEqual([{ id: archivedId, archived_at: null }]);
+});
+
+test("saving a new record with the DNI of an archived one says so and links to that archived record, so the team can recover it", async ({
+  page,
+}) => {
+  const dni = validDni();
+  const lastName = `Archivado ${Date.now()}`;
+  const archivedId = await insertPerson({
+    first_name: "Mario",
+    last_name: lastName,
+    birth_date: "1960-01-01",
+    tax_id: dni,
+    archived: true,
+  });
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+
+  await page.getByLabel("Nombre").fill("Otro");
+  await page.getByLabel("Apellidos").fill(`Distinto ${Date.now()}`);
+  await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
+  const taxId = page.getByLabel("DNI/NIE");
+  await taxId.fill(dni);
+  await taxId.blur();
+
+  const duplicateRow = page
+    .getByTestId("duplicate-warning")
+    .locator("li")
+    .filter({ hasText: `Mario ${lastName}` });
+  await expect(duplicateRow.getByTestId("duplicate-matched")).toHaveText(
+    "mismo DNI/NIE",
+  );
+  await expect(duplicateRow.getByTestId("duplicate-archived")).toBeVisible();
+  await page.getByTestId("duplicate-continue").click();
+  await page.getByTestId("person-submit").click();
+
+  await expect(page.getByTestId("person-error")).toContainText(
+    "Ya hay una ficha con ese DNI/NIE.",
+  );
+  await page.getByTestId("person-error-existing").click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${archivedId}`);
+  await expect(page.getByRole("main")).toContainText("Ficha archivada");
 });
 
 test("editing the address of a person created by the test saves it", async ({

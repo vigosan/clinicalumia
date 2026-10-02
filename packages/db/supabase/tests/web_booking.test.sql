@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(208);
+select plan(212);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
@@ -910,6 +910,25 @@ reset role;
 select is((select g.relationship::text || ':' || g.is_primary::text || ':' || coalesce(p.email, 'sin email')
   from public.guardianships g join public.people p on p.id = g.minor_id where p.first_name = 'Bebe'),
   'madre:true:sin email', 'the guardianship records the relation and the minor gets no email of her own');
+
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select is(
+  public.add_my_person('MADRE', ' familia ', '1985-04-10', null, null, null, true, false, null),
+  '85000000-0000-0000-0000-0000000000c1'::uuid,
+  'choosing «Es para mí» with the name and birth date of a person already in the account returns that person instead of creating a second record of her');
+select is(
+  public.add_my_person('Acompañante', 'Familia', '1979-09-09', null, null, null, true, false, null),
+  '85000000-0000-0000-0000-0000000000c4'::uuid,
+  'a person of the account without a birth date is reused when the name matches, so a companion created by the team is not duplicated');
+reset role;
+select is((select count(*) from public.people where public.f_unaccent(lower(first_name)) in ('madre', 'acompanante') and last_name = 'Familia'), 2::bigint,
+  'no extra record was created for either of them');
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000011');
+select isnt(
+  public.add_my_person('Madre', 'Familia', '1985-04-10', null, null, null, true, true, '2026-09'),
+  '85000000-0000-0000-0000-0000000000c1'::uuid,
+  'another account with the same name and birth date never gets someone else''s record: only people of the own account are reused');
+reset role;
 
 reset role;
 select set_config('request.jwt.claims', '', true);

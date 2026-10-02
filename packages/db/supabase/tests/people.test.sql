@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(61);
+select plan(70);
 
 insert into auth.users (id, email) values
   ('50000000-0000-0000-0000-000000000001', 'owner-people@test.local'),
@@ -306,8 +306,44 @@ select is(
   'when both the tax id and the phone match the same person, matched reports both fields'
 );
 
-select is((select count(*) from public.find_possible_duplicates(null, null, '600444555')), 0::bigint,
-  'an archived person never appears among possible duplicates');
+select is(
+  (select archived from public.find_possible_duplicates(null, null, '600444555') where id = '50000000-0000-0000-0000-0000000000e5'),
+  true,
+  'an archived person still appears among possible duplicates, flagged as archived, so the team can unarchive her instead of creating a second record');
+
+select is(
+  (select archived from public.find_possible_duplicates('12345678Z', null, null) where id = '50000000-0000-0000-0000-0000000000b1'),
+  false,
+  'an active person is flagged as not archived');
+
+insert into public.people (id, first_name, last_name, birth_date) values
+  ('50000000-0000-0000-0000-0000000000ea', 'Elena', 'Gómez Díaz', '1990-03-22');
+
+insert into public.people (id, first_name, last_name, birth_date, archived_at) values
+  ('50000000-0000-0000-0000-0000000000eb', 'Lucía', 'Pérez', '1985-05-05', now());
+
+select is(
+  (select matched from public.find_possible_duplicates(null, null, null, null, 'ELENA', ' gomez  diaz ', '1990-03-22') where id = '50000000-0000-0000-0000-0000000000ea'),
+  array['name_birth_date'],
+  'the same name and birth date written without accents, in capitals and with extra spaces is reported as a match, since minors rarely have a dni, email or phone');
+
+select is(
+  (select count(*) from public.find_possible_duplicates(null, null, null, null, 'Elena', 'Gómez Díaz', '1990-03-23')), 0::bigint,
+  'the same name with another birth date is a different person, so nothing is reported');
+
+select is(
+  (select count(*) from public.find_possible_duplicates(null, null, null, null, 'Elena', 'Gómez Díaz', null)), 0::bigint,
+  'a name alone is too common to warn about, the birth date is required for the name match');
+
+select is(
+  (select matched::text || ':' || archived::text from public.find_possible_duplicates(null, null, null, null, 'lucia', 'PEREZ', '1985-05-05') where id = '50000000-0000-0000-0000-0000000000eb'),
+  '{name_birth_date}:true',
+  'an archived person is found by name and birth date too, flagged as archived');
+
+select is(
+  (select matched from public.find_possible_duplicates(null, null, '614552808', null, 'Elena', 'Gomez Diaz', '1990-03-22') where id = '50000000-0000-0000-0000-0000000000ea'),
+  array['name_birth_date'],
+  'combining a phone that belongs to another person with a name and date still reports each person once, with only the field that matched her');
 
 select is((select count(*) from public.find_possible_duplicates(null, null, '600444666', '50000000-0000-0000-0000-0000000000e6')), 0::bigint,
   'p_exclude removes the person''s own record from her own duplicate search');
@@ -328,6 +364,21 @@ select pg_temp.act_as('50000000-0000-0000-0000-000000000003');
 
 select is((select count(*) from public.find_possible_duplicates(null, null, '614552808')), 0::bigint,
   'a deactivated employee finds no possible duplicates at all, since the function runs with her own RLS-restricted privileges');
+
+select is((select count(*) from public.find_possible_duplicates(null, null, null, null, 'Elena', 'Gómez Díaz', '1990-03-22')), 0::bigint,
+  'a deactivated employee cannot probe who is a patient by name and birth date either');
+
+reset role;
+insert into auth.users (id, email) values ('50000000-0000-0000-0000-000000000004', 'paciente-people@test.local');
+insert into public.patient_accounts (id, email) values ('50000000-0000-0000-0000-000000000004', 'paciente-people@test.local');
+select pg_temp.act_as('50000000-0000-0000-0000-000000000004');
+
+select is((select count(*) from public.find_possible_duplicates(null, null, null, null, 'Elena', 'Gómez Díaz', '1990-03-22')), 0::bigint,
+  'a signed-in patient cannot use the duplicate search to find out whether someone else is a patient of the clinic');
+
+reset role;
+select is(has_function_privilege('anon', 'public.find_possible_duplicates(text, text, text, uuid, text, text, date)', 'execute'), false,
+  'an anonymous visitor cannot call the duplicate search');
 
 select pg_temp.act_as('50000000-0000-0000-0000-000000000001');
 

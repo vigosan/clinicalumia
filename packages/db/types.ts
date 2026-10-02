@@ -1139,12 +1139,16 @@ export type Database = {
       f_unaccent: { Args: { value: string }; Returns: string }
       find_possible_duplicates: {
         Args: {
+          p_birth_date?: string
           p_email: string
           p_exclude?: string
+          p_first_name?: string
+          p_last_name?: string
           p_phone: string
           p_tax_id: string
         }
         Returns: {
+          archived: boolean
           first_name: string
           id: string
           last_name: string
@@ -1329,6 +1333,7 @@ export type Database = {
           invoice_number: number
         }[]
       }
+      normalize_person_name: { Args: { value: string }; Returns: string }
       normalize_phone: { Args: { value: string }; Returns: string }
       payment_totals: {
         Args: { p_end: string; p_professional_id?: string; p_start: string }

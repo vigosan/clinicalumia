@@ -1,11 +1,51 @@
 import { describe, expect, it, vi } from "vitest";
-import { createDuplicateChecker } from "./duplicate-checker";
+import {
+  createDuplicateChecker,
+  type DuplicateFields,
+  hasDuplicateInput,
+} from "./duplicate-checker";
 
-function fields(
-  overrides: Partial<{ tax_id: string; email: string; phone: string }> = {},
-) {
-  return { tax_id: "", email: "", phone: "", ...overrides };
+function fields(overrides: Partial<DuplicateFields> = {}): DuplicateFields {
+  return {
+    tax_id: "",
+    email: "",
+    phone: "",
+    first_name: "",
+    last_name: "",
+    birth_date: "",
+    ...overrides,
+  };
 }
+
+describe("hasDuplicateInput", () => {
+  it("is false for a form with only a name, since a name alone is too common to search for", () => {
+    expect(
+      hasDuplicateInput(fields({ first_name: "Elena", last_name: "Gómez" })),
+    ).toBe(false);
+  });
+
+  it("is true once the name comes with a birth date, so minors without dni, email or phone are checked too", () => {
+    expect(
+      hasDuplicateInput(
+        fields({
+          first_name: "Elena",
+          last_name: "Gómez",
+          birth_date: "1990-03-22",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("is true with any contact field on its own", () => {
+    expect(hasDuplicateInput(fields({ phone: "600111222" }))).toBe(true);
+    expect(hasDuplicateInput(fields({ email: "a@b.com" }))).toBe(true);
+    expect(hasDuplicateInput(fields({ tax_id: "12345678Z" }))).toBe(true);
+  });
+
+  it("is false for an empty form", () => {
+    expect(hasDuplicateInput(fields())).toBe(false);
+  });
+});
 
 describe("createDuplicateChecker", () => {
   it("shares one in-flight request when submit races the blur check for the same fields, instead of saving before it resolves", async () => {

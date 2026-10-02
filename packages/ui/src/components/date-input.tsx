@@ -49,6 +49,7 @@ export function DateInput({
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedBy,
   "data-testid": testId,
+  onBlur,
 }: {
   name: string;
   defaultValue?: string;
@@ -59,6 +60,7 @@ export function DateInput({
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
   "data-testid"?: string;
+  onBlur?: () => void;
 }) {
   const [text, setText] = useState(toDisplay(defaultValue));
   const [touched, setTouched] = useState(false);
@@ -101,7 +103,10 @@ export function DateInput({
         data-testid={testId}
         value={text}
         onChange={(event) => setText(mask(event.target.value))}
-        onBlur={() => setTouched(true)}
+        onBlur={() => {
+          setTouched(true);
+          onBlur?.();
+        }}
         className={cn(fieldControl, "tabular-nums", className)}
       />
       {showError && (

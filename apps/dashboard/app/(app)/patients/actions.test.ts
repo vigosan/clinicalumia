@@ -6,7 +6,7 @@ const insertResult: {
 } = { data: null, error: null };
 const updateResult: {
   data: { id: string }[] | null;
-  error: { code: string } | null;
+  error: { code: string; message?: string } | null;
 } = { data: null, error: null };
 const rpcResult: { data: unknown; error: { message: string } | null } = {
   data: [],
@@ -120,6 +120,9 @@ describe("savePerson", () => {
     insertResult.error = null;
     updateResult.data = [{ id: "person-1" }];
     updateResult.error = null;
+    rpcResult.data = [];
+    rpcResult.error = null;
+    rpc.mockClear();
     peopleInsert.mockClear();
     insertSelectSingle.mockClear();
     peopleUpdate.mockClear();
@@ -145,6 +148,75 @@ describe("savePerson", () => {
     expect(
       await savePerson(undefined, personForm({ tax_id: "12345678Z" })),
     ).toEqual({ error: "Ya hay una ficha con ese DNI/NIE." });
+  });
+
+  it("links the DNI message to the record that already has that DNI, even an archived one, so the team can open it instead of getting stuck", async () => {
+    insertResult.error = {
+      code: "23505",
+      message:
+        'duplicate key value violates unique constraint "people_tax_id_key"',
+    };
+    rpcResult.data = [
+      {
+        id: "person-phone",
+        first_name: "Otra",
+        last_name: "Persona",
+        matched: ["phone"],
+        archived: false,
+        wards: [],
+      },
+      {
+        id: "person-archived",
+        first_name: "Jorge",
+        last_name: "Ruiz",
+        matched: ["tax_id"],
+        archived: true,
+        wards: [],
+      },
+    ];
+    expect(
+      await savePerson(undefined, personForm({ tax_id: "11.223.344-b" })),
+    ).toEqual({
+      error: "Ya hay una ficha con ese DNI/NIE.",
+      existingId: "person-archived",
+    });
+    expect(rpc).toHaveBeenCalledWith("find_possible_duplicates", {
+      p_tax_id: "11223344B",
+      p_email: "",
+      p_phone: "",
+      p_exclude: undefined,
+    });
+  });
+
+  it("when an edit collides with another record's DNI, links to that other record and never to the one being edited", async () => {
+    updateResult.error = {
+      code: "23505",
+      message:
+        'duplicate key value violates unique constraint "people_tax_id_key"',
+    };
+    rpcResult.data = [
+      {
+        id: "person-other",
+        first_name: "Jorge",
+        last_name: "Ruiz",
+        matched: ["tax_id"],
+        archived: false,
+        wards: [],
+      },
+    ];
+    expect(
+      await savePerson(
+        undefined,
+        personForm({ id: "person-1", tax_id: "11223344B" }),
+      ),
+    ).toEqual({
+      error: "Ya hay una ficha con ese DNI/NIE.",
+      existingId: "person-other",
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      "find_possible_duplicates",
+      expect.objectContaining({ p_exclude: "person-1" }),
+    );
   });
 
   it("reports the generic message for a 23505 error that names a different constraint", async () => {
@@ -283,26 +355,54 @@ describe("checkDuplicates", () => {
     rpcResult.error = null;
   });
 
-  it("passes the parameters straight through to the RPC", async () => {
+  it("passes the parameters straight through to the RPC, including the name and birth date so minors without contact data are matched", async () => {
     await checkDuplicates({
       tax_id: "12345678Z",
       email: "ana@example.com",
       phone: "600111222",
+      first_name: "Ana",
+      last_name: "García",
+      birth_date: "2000-01-01",
       exclude: "person-1",
     });
     expect(rpc).toHaveBeenCalledWith("find_possible_duplicates", {
       p_tax_id: "12345678Z",
       p_email: "ana@example.com",
       p_phone: "600111222",
+      p_first_name: "Ana",
+      p_last_name: "García",
+      p_birth_date: "2000-01-01",
       p_exclude: "person-1",
     });
   });
 
+  it("sends no birth date when the field is empty, since an empty string is not a date", async () => {
+    await checkDuplicates({
+      tax_id: "",
+      email: "",
+      phone: "600111222",
+      first_name: "Ana",
+      last_name: "García",
+      birth_date: "",
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      "find_possible_duplicates",
+      expect.objectContaining({ p_birth_date: undefined }),
+    );
+  });
+
   it("returns an empty list when the RPC fails, since the warning is a help and not a barrier", async () => {
     rpcResult.error = { message: "boom" };
-    expect(await checkDuplicates({ tax_id: "", email: "", phone: "" })).toEqual(
-      [],
-    );
+    expect(
+      await checkDuplicates({
+        tax_id: "",
+        email: "",
+        phone: "",
+        first_name: "",
+        last_name: "",
+        birth_date: "",
+      }),
+    ).toEqual([]);
   });
 });
 
