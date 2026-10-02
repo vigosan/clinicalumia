@@ -7,6 +7,7 @@ import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { startTransition, useActionState, useEffect, useRef } from "react";
+import { firstAffected } from "@/lib/affected-appointments";
 import { addTimeOff, type TimeOffState } from "./actions";
 
 export function TimeOffForm({
@@ -32,6 +33,7 @@ export function TimeOffForm({
   }, [state, onDone]);
 
   const affected = state && "ok" in state ? state.affected : undefined;
+  const listed = affected ? firstAffected(affected) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -99,11 +101,14 @@ export function TimeOffForm({
             desde el panel.
           </p>
           <ul className="mt-2 flex flex-col gap-1">
-            {affected.map((appointment) => (
+            {listed?.shown.map((appointment) => (
               <li key={appointment.id} data-testid="timeoff-affected-item">
                 {appointment.date} · {appointment.time} · {appointment.patient}
               </li>
             ))}
+            {listed && listed.more > 0 && (
+              <li data-testid="timeoff-affected-more">y {listed.more} más</li>
+            )}
           </ul>
         </Alert>
       )}

@@ -43,6 +43,30 @@ export function lastClosedQuarter(now: Date): { year: number; q: Quarter } {
   return { year: current.year, q: (current.q - 1) as Quarter };
 }
 
+const FILING_DEADLINE: Record<Quarter, string> = {
+  1: "04-20",
+  2: "07-20",
+  3: "10-20",
+  4: "01-30",
+};
+
+function filingDeadline(year: number, q: Quarter): string {
+  return `${q === 4 ? year + 1 : year}-${FILING_DEADLINE[q]}`;
+}
+
+export function nextFiling(now: Date): {
+  year: number;
+  q: Quarter;
+  deadline: string;
+} {
+  const closed = lastClosedQuarter(now);
+  const closedDeadline = filingDeadline(closed.year, closed.q);
+  if (todayInMadrid(now) <= closedDeadline)
+    return { ...closed, deadline: closedDeadline };
+  const current = quarterOf(now);
+  return { ...current, deadline: filingDeadline(current.year, current.q) };
+}
+
 export function isCurrentQuarter(year: number, q: Quarter, now: Date): boolean {
   const current = quarterOf(now);
   return current.year === year && current.q === q;

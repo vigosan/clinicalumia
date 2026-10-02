@@ -23,6 +23,35 @@ export function closureLabel({
   return `${days} · ${reason}`;
 }
 
+const MONTHS = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+export function longDay(date: string): string {
+  return `${Number(date.slice(8, 10))} de ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
+}
+
+export function closureDays({
+  starts_on,
+  ends_on,
+}: Pick<Closure, "starts_on" | "ends_on">): string {
+  if (starts_on === ends_on) return longDay(starts_on);
+  if (starts_on.slice(0, 7) === ends_on.slice(0, 7))
+    return `${Number(starts_on.slice(8, 10))}–${longDay(ends_on)}`;
+  return `${longDay(starts_on)} – ${longDay(ends_on)}`;
+}
+
 export type MonthCell = { date: string; inMonth: boolean; closure?: Closure };
 
 export function monthGrid(month: string, closures: Closure[]): MonthCell[][] {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isCurrentQuarter,
   lastClosedQuarter,
+  nextFiling,
   parseQuarter,
   quarterRange,
   quarterYears,
@@ -167,5 +168,52 @@ describe("quarterYears", () => {
     expect(quarterYears(2019, now)).toEqual([
       2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019,
     ]);
+  });
+});
+
+describe("nextFiling", () => {
+  it("asks for the quarter that just closed while its 20-day filing window is open, so the home says what to send to the gestoría now", () => {
+    const now = new Date("2026-10-02T10:00:00Z");
+    expect(nextFiling(now)).toEqual({
+      year: 2026,
+      q: 3,
+      deadline: "2026-10-20",
+    });
+  });
+
+  it("still asks for the closed quarter on the last filing day itself", () => {
+    const now = new Date("2026-07-20T21:30:00Z");
+    expect(nextFiling(now)).toEqual({
+      year: 2026,
+      q: 2,
+      deadline: "2026-07-20",
+    });
+  });
+
+  it("moves on to the running quarter once the window has passed, since nothing is left to file for the old one", () => {
+    const now = new Date("2026-10-20T22:30:00Z");
+    expect(nextFiling(now)).toEqual({
+      year: 2026,
+      q: 4,
+      deadline: "2027-01-30",
+    });
+  });
+
+  it("gives T4 until 30 January of the next year, the longer year-end window", () => {
+    const now = new Date("2027-01-15T10:00:00Z");
+    expect(nextFiling(now)).toEqual({
+      year: 2026,
+      q: 4,
+      deadline: "2027-01-30",
+    });
+  });
+
+  it("after 30 January points to T1 with its deadline of 20 April", () => {
+    const now = new Date("2027-02-01T10:00:00Z");
+    expect(nextFiling(now)).toEqual({
+      year: 2027,
+      q: 1,
+      deadline: "2027-04-20",
+    });
   });
 });

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  closureDays,
   closureLabel,
   closuresInMonth,
+  longDay,
   monthFromParam,
   monthGrid,
   monthLabel,
@@ -121,5 +123,32 @@ describe("shiftMonth", () => {
 describe("monthLabel", () => {
   it("names the month in Spanish with a capital letter, as a heading", () => {
     expect(monthLabel("2026-10")).toBe("Octubre de 2026");
+  });
+});
+
+describe("longDay", () => {
+  it("writes a date the way the owner says it, without the year", () => {
+    expect(longDay("2027-01-30")).toBe("30 de enero");
+    expect(longDay("2026-10-05")).toBe("5 de octubre");
+  });
+});
+
+describe("closureDays", () => {
+  it("names a single closed day once", () => {
+    expect(
+      closureDays({ starts_on: "2026-12-08", ends_on: "2026-12-08" }),
+    ).toBe("8 de diciembre");
+  });
+
+  it("joins the days of a range inside one month so the month is not repeated", () => {
+    expect(
+      closureDays({ starts_on: "2026-12-24", ends_on: "2026-12-26" }),
+    ).toBe("24–26 de diciembre");
+  });
+
+  it("spells out both months when the range crosses into the next one", () => {
+    expect(
+      closureDays({ starts_on: "2026-12-30", ends_on: "2027-01-02" }),
+    ).toBe("30 de diciembre – 2 de enero");
   });
 });

@@ -1,7 +1,9 @@
 "use client";
 
-import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
+import { cn } from "@clinicalumia/ui/cn";
+import { toast } from "@clinicalumia/ui/toast";
+import { LoaderCircle } from "lucide-react";
 import { useState } from "react";
 
 const FALLBACK_ERROR = "No se ha podido preparar el ZIP. Inténtalo de nuevo.";
@@ -18,37 +20,48 @@ async function requestZip(year: number, q: number): Promise<string> {
   return body.url;
 }
 
+const labelClass = "col-start-1 row-start-1 inline-flex justify-center gap-2";
+
 export function QuarterZipButton({ year, q }: { year: number; q: number }) {
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function download() {
     setPending(true);
-    setError(null);
     try {
       window.location.assign(await requestZip(year, q));
     } catch (failure) {
-      setError((failure as Error).message);
+      toast((failure as Error).message, { tone: "error" });
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <div className="flex flex-col items-end gap-3">
-      <Button
-        variant="secondary"
-        disabled={pending}
-        onClick={download}
-        data-testid="quarter-download-zip"
-      >
-        {pending ? "Preparando…" : "Descargar PDF (ZIP)"}
-      </Button>
-      {error && (
-        <Alert data-testid="quarter-zip-error" className="max-w-sm">
-          {error}
-        </Alert>
-      )}
-    </div>
+    <Button
+      variant="secondary"
+      disabled={pending}
+      onClick={download}
+      data-testid="quarter-download-zip"
+    >
+      <span className="grid">
+        <span
+          aria-hidden={pending}
+          className={cn(labelClass, pending && "invisible")}
+        >
+          Descargar PDF (ZIP)
+        </span>
+        <span
+          aria-hidden={!pending}
+          className={cn(labelClass, !pending && "invisible")}
+        >
+          <LoaderCircle
+            aria-hidden="true"
+            data-testid={pending ? "quarter-zip-spinner" : undefined}
+            className={cn("self-center", pending && "motion-safe:animate-spin")}
+          />
+          Preparando…
+        </span>
+      </span>
+    </Button>
   );
 }

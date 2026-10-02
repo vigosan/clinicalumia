@@ -217,6 +217,13 @@ test("la propietaria revisa un trimestre y descarga el libro de facturas con los
 
   await openQuarter(page, year, q);
   await expect(page.getByTestId("quarter-current")).toHaveCount(0);
+  await expect(page.getByTestId("quarter-net")).toHaveText("145,00 €");
+  const heroBox = await page.getByTestId("quarter-net").boundingBox();
+  const vatBox = await page.getByTestId("quarter-vat").boundingBox();
+  expect(heroBox!.y).toBeLessThan(vatBox!.y);
+  await expect(page.getByTestId("quarter-counts")).toHaveText(
+    "Simplificadas 2 · Completas 1 · Rectificativas 1 · Sustituidas 1",
+  );
   await expect(page.getByTestId("quarter-count-simplified")).toHaveText("2");
   await expect(page.getByTestId("quarter-count-full")).toHaveText("1");
   await expect(page.getByTestId("quarter-count-rectifying")).toHaveText("1");
@@ -227,7 +234,9 @@ test("la propietaria revisa un trimestre y descarga el libro de facturas con los
   await expect(page.getByTestId("quarter-vat-21")).toContainText(
     /IVA 21 %.*74,38 €.*15,62 €.*90,00 €/s,
   );
-  await expect(page.getByTestId("quarter-net")).toHaveText("145,00 €");
+  await expect(page.getByTestId("quarter-vat-total")).toContainText(
+    /Total.*129,38 €.*15,62 €.*145,00 €/s,
+  );
 
   const downloading = page.waitForEvent("download");
   await page.getByTestId("quarter-download-xlsx").click();
@@ -334,10 +343,10 @@ test("la propietaria descarga en un ZIP un PDF por factura del trimestre y el li
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(Buffer.from(xlsx!));
   expect(workbook.getWorksheet("Facturas")!.rowCount).toBe(invoices.length + 1);
-  await expect(page.getByTestId("quarter-download-zip")).toHaveText(
+  await expect(page.getByTestId("quarter-download-zip")).toHaveAccessibleName(
     "Descargar PDF (ZIP)",
   );
-  await expect(page.getByTestId("quarter-zip-error")).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
 
   const [first] = await exportsOf(owner.id);
   expect(await exportsOf(owner.id)).toHaveLength(1);
@@ -389,16 +398,23 @@ test("el ZIP del trimestre avisa de que se está preparando y explica el fallo s
       },
     });
   });
-  await page.getByTestId("quarter-download-zip").click();
-  await expect(page.getByTestId("quarter-download-zip")).toHaveText(
-    "Preparando…",
-  );
-  await expect(page.getByTestId("quarter-download-zip")).toBeDisabled();
+  const zip = page.getByTestId("quarter-download-zip");
+  const excel = page.getByTestId("quarter-download-xlsx");
+  const before = [await zip.boundingBox(), await excel.boundingBox()];
+  await zip.click();
+  await expect(zip).toHaveAccessibleName("Preparando…");
+  await expect(zip).toBeDisabled();
+  await expect(page.getByTestId("quarter-zip-spinner")).toBeVisible();
+  expect([await zip.boundingBox(), await excel.boundingBox()]).toEqual(before);
   answer();
-  await expect(page.getByTestId("quarter-zip-error")).toHaveText(
+  const error = page.getByTestId("toast");
+  await expect(error).toHaveText(
     "El ZIP del trimestre pesa más de 50 MB. Descarga las facturas desde el panel.",
   );
-  await expect(page.getByTestId("quarter-download-zip")).toBeEnabled();
+  await expect(error).toHaveAttribute("data-tone", "error");
+  await expect(zip).toBeEnabled();
+  await expect(zip).toHaveAccessibleName("Descargar PDF (ZIP)");
+  expect([await zip.boundingBox(), await excel.boundingBox()]).toEqual(before);
   expect(await exportsOf(owner.id)).toEqual([]);
 });
 

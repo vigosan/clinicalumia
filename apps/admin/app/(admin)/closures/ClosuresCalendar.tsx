@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@clinicalumia/ui/cn";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import {
@@ -49,7 +50,7 @@ export function ClosuresCalendar({
             aria-label="Mes anterior"
             className={navLinkClass}
           >
-            ‹
+            <ChevronLeft aria-hidden="true" className="size-4" />
           </Link>
           <Link
             href={`/closures?month=${today.slice(0, 7)}`}
@@ -62,7 +63,7 @@ export function ClosuresCalendar({
             aria-label="Mes siguiente"
             className={navLinkClass}
           >
-            ›
+            <ChevronRight aria-hidden="true" className="size-4" />
           </Link>
         </div>
       </div>

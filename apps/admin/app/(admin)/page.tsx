@@ -2,59 +2,58 @@ import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
-import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { closureDays, longDay } from "@/lib/closures";
 import { pendingSetup } from "@/lib/pending-setup";
+import { nextFiling } from "@/lib/quarter";
 
-const sections = [
-  {
-    href: "/team",
-    title: "Equipo",
-    text: "Empleados con acceso al dashboard.",
-    testId: "home-card-team",
-  },
-  {
-    href: "/specialties",
-    title: "Especialidades",
-    text: "Catálogo de especialidades de la clínica.",
-    testId: "home-card-specialties",
-  },
-  {
-    href: "/services",
-    title: "Servicios",
-    text: "Duración, precio, IVA y qué se paga al reservar.",
-    testId: "home-card-services",
-  },
-  {
-    href: "/schedules",
-    title: "Horarios",
-    text: "Horario semanal de cada persona del equipo y sus ausencias.",
-    testId: "home-card-schedules",
-  },
-  {
-    href: "/closures",
-    title: "Días de cierre",
-    text: "Festivos y vacaciones en que la clínica no abre.",
-    testId: "home-card-closures",
-  },
-  {
-    href: "/clinic",
-    title: "Datos de la clínica",
-    text: "Datos de facturación y condiciones de reserva.",
-    testId: "home-card-clinic",
-  },
-  {
-    href: "/facturacion",
-    title: "Facturación",
-    text: "Totales del trimestre y libro de facturas para la gestoría.",
-    testId: "home-card-billing",
-  },
+const shortcuts = [
+  { href: "/team", label: "Equipo", testId: "home-link-team" },
+  { href: "/services", label: "Servicios", testId: "home-link-services" },
+  { href: "/schedules", label: "Horarios", testId: "home-link-schedules" },
 ];
+
+function StatusRow({
+  label,
+  testId,
+  action,
+  children,
+}: {
+  label: string;
+  testId: string;
+  action?: { href: string; label: string };
+  children: ReactNode;
+}) {
+  return (
+    <li
+      data-testid={testId}
+      className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-4 [&+&]:border-separator [&+&]:border-t"
+    >
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <p className="text-[13px] text-text-tertiary">{label}</p>
+        <p className="text-[15px] text-ink-900">{children}</p>
+      </div>
+      {action && (
+        <Link
+          href={action.href}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full font-medium text-[15px] text-sage-900 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-sage-800 focus-visible:outline-offset-2"
+        >
+          {action.label}
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </Link>
+      )}
+    </li>
+  );
+}
 
 export default async function AdminHome() {
   const supabase = await createClient();
-  const year = Number(todayInMadrid().slice(0, 4));
+  const today = todayInMadrid();
+  const year = Number(today.slice(0, 4));
+  const filing = nextFiling(new Date());
   const results = await Promise.all([
     supabase
       .from("clinic_settings")
@@ -75,6 +74,13 @@ export default async function AdminHome() {
       .not("specialty_id", "is", null)
       .order("full_name"),
     supabase.from("employee_schedules").select("profile_id"),
+    supabase
+      .from("clinic_closures")
+      .select("starts_on, ends_on, reason")
+      .gte("ends_on", today)
+      .order("starts_on")
+      .limit(1)
+      .maybeSingle(),
   ]);
   const [
     { data: settings },
@@ -82,6 +88,7 @@ export default async function AdminHome() {
     { count: activeServiceCount },
     { data: professionals },
     { data: schedules },
+    { data: closure },
   ] = results;
   const loaded = results.every((result) => !result.error) && settings;
   const scheduled = new Set((schedules ?? []).map((row) => row.profile_id));
@@ -100,51 +107,88 @@ export default async function AdminHome() {
   return (
     <>
       <PageHeader
-        title="Bienvenida"
-        description="Configura la clínica desde aquí."
+        title="Estado de la clínica"
+        description="Lo que falta por configurar y lo que viene."
       />
       {!loaded ? (
         <Alert data-testid="pending-error">
           No se ha podido comprobar qué falta por configurar. Recarga la página.
         </Alert>
-      ) : pending.length > 0 ? (
-        <Alert
-          tone="warning"
-          title="Pendiente de configurar"
-          data-testid="pending-setup"
-        >
-          <ul className="mt-1 flex flex-col gap-1.5">
-            {pending.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={item.href}
-                  data-testid={`pending-${item.id}`}
-                  className="underline underline-offset-2"
-                >
-                  {item.text}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Alert>
       ) : (
-        <p data-testid="pending-none" className="text-[15px] text-ink-800">
-          Todo listo: la clínica puede dar citas, cobrar y facturar.
-        </p>
+        pending.length > 0 && (
+          <Alert
+            tone="warning"
+            title="Pendiente de configurar"
+            data-testid="pending-setup"
+          >
+            <ul className="mt-1 flex flex-col gap-1.5">
+              {pending.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    href={item.href}
+                    data-testid={`pending-${item.id}`}
+                    className="underline underline-offset-2"
+                  >
+                    {item.text}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Alert>
+        )
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {sections.map((section) => (
-          <Card key={section.href} className="flex flex-col gap-1.5">
-            <h2 className="text-lg font-bold text-ink-900">{section.title}</h2>
-            <p className="text-sm text-ink-800">{section.text}</p>
-            <Button asChild variant="secondary" size="sm" className="w-fit">
-              <Link href={section.href} data-testid={section.testId}>
-                Ir a {section.title}
-              </Link>
-            </Button>
-          </Card>
+      <ul className="rounded-card bg-surface">
+        {loaded && pending.length === 0 && (
+          <StatusRow label="Configuración" testId="home-status-setup">
+            <span data-testid="pending-none">
+              Todo listo: la clínica puede dar citas, cobrar y facturar.
+            </span>
+          </StatusRow>
+        )}
+        <StatusRow
+          label="Siguiente trimestre a presentar"
+          testId="home-status-quarter"
+          action={{
+            href: `/facturacion?year=${filing.year}&q=${filing.q}`,
+            label: "Ver facturación",
+          }}
+        >
+          <span className="font-bold">
+            T{filing.q} de {filing.year}
+          </span>{" "}
+          · hasta el {longDay(filing.deadline)}
+        </StatusRow>
+        {closure ? (
+          <StatusRow
+            label="Próximo cierre"
+            testId="home-status-closure"
+            action={{
+              href: `/closures?month=${closure.starts_on.slice(0, 7)}`,
+              label: "Ver cierres",
+            }}
+          >
+            <span className="font-bold">{closureDays(closure)}</span> ·{" "}
+            {closure.reason}
+          </StatusRow>
+        ) : (
+          <StatusRow
+            label="Próximo cierre"
+            testId="home-status-closure"
+            action={{ href: "/closures", label: "Añadir un cierre" }}
+          >
+            No hay cierres previstos.
+          </StatusRow>
+        )}
+      </ul>
+      <nav aria-label="Accesos" className="flex flex-wrap gap-2">
+        {shortcuts.map((shortcut) => (
+          <Button key={shortcut.href} asChild variant="secondary" size="sm">
+            <Link href={shortcut.href} data-testid={shortcut.testId}>
+              {shortcut.label}
+            </Link>
+          </Button>
         ))}
-      </div>
+      </nav>
     </>
   );
 }

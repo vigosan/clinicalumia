@@ -292,6 +292,54 @@ test("the owner adds an absence from its own drawer, which closes and leaves it 
   }
 });
 
+test("an absence is deleted from a quiet trash icon that asks first, so a slip of the finger deletes nothing", async ({
+  page,
+}) => {
+  const employee = await createStaff("employee");
+  const day = addDays(todayInMadrid(), 300 + Math.floor(Math.random() * 150));
+  const reason = `Ausencia borrable ${uniqueSuffix()}`;
+  const { error } = await admin.from("employee_time_off").insert({
+    profile_id: employee.id,
+    starts_at: `${day} 00:00:00 Europe/Madrid`,
+    ends_at: `${addDays(day, 1)} 00:00:00 Europe/Madrid`,
+    reason,
+  });
+  expect(error).toBeNull();
+  const owner = await createStaff("owner");
+
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/schedules?employee=${employee.id}`);
+  const row = page.getByTestId("timeoff-row").filter({ hasText: reason });
+  const remove = row.getByTestId("timeoff-delete");
+  await expect(remove).toHaveText("");
+  await expect(remove).toHaveAccessibleName(/^Eliminar la ausencia/);
+  const box = await remove.boundingBox();
+  expect([box!.width, box!.height]).toEqual([32, 32]);
+
+  await remove.click();
+  const confirm = page.getByRole("alertdialog", {
+    name: "¿Eliminar esta ausencia?",
+  });
+  await confirm.getByRole("button", { name: "Cancelar" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(row).toBeVisible();
+
+  await remove.click();
+  await page.getByTestId("confirm-action").click();
+  await expect(row).toHaveCount(0);
+  const { data: remaining } = await admin
+    .from("employee_time_off")
+    .select("id")
+    .eq("reason", reason);
+  expect(remaining).toEqual([]);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("an employee signed in to the panel cannot reach the closures in the admin", async ({
   page,
 }) => {

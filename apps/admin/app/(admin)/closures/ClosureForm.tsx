@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { firstAffected } from "@/lib/affected-appointments";
 import type { Closure } from "@/lib/closures";
 import { addClosure, type ClosureState, updateClosure } from "./actions";
 
@@ -49,6 +50,7 @@ export function ClosureForm({
   }, [state, day, closure, onDone]);
 
   const affected = state && "ok" in state ? state.affected : undefined;
+  const listed = affected ? firstAffected(affected) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -113,12 +115,15 @@ export function ClosureForm({
         >
           <p>No se ha cancelado ninguna. Revísalas en la agenda del panel.</p>
           <ul className="mt-2 flex flex-col gap-1">
-            {affected.map((appointment) => (
+            {listed?.shown.map((appointment) => (
               <li key={appointment.id} data-testid="closure-affected-item">
                 {appointment.date} · {appointment.time} · {appointment.patient}{" "}
                 · {appointment.professional}
               </li>
             ))}
+            {listed && listed.more > 0 && (
+              <li data-testid="closure-affected-more">y {listed.more} más</li>
+            )}
           </ul>
         </Alert>
       )}

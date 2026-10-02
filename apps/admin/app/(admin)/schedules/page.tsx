@@ -1,5 +1,4 @@
 import { createClient } from "@clinicalumia/api/server";
-import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { scheduleSources } from "@/lib/schedule";
 import { AddTimeOff } from "./AddTimeOff";
@@ -46,9 +45,9 @@ export default async function SchedulesPage({
         description="Horario semanal de cada persona del equipo y sus ausencias. La agenda solo ofrecerá huecos dentro de estos tramos."
       />
       {employees.length === 0 ? (
-        <Card className="text-sm text-ink-800">
+        <p className="text-[15px] text-ink-800">
           Todavía no hay nadie en el equipo.
-        </Card>
+        </p>
       ) : (
         selected && (
           <>
@@ -70,17 +69,15 @@ export default async function SchedulesPage({
                 />
               </div>
               {timeOff && timeOff.length > 0 ? (
-                <Card className="p-2">
-                  <ul>
-                    {timeOff.map((item) => (
-                      <TimeOffRow key={item.id} timeOff={item} />
-                    ))}
-                  </ul>
-                </Card>
+                <ul className="rounded-card bg-surface p-2">
+                  {timeOff.map((item) => (
+                    <TimeOffRow key={item.id} timeOff={item} />
+                  ))}
+                </ul>
               ) : (
-                <Card className="text-sm text-ink-800">
+                <p className="text-[15px] text-ink-800">
                   No hay ausencias previstas.
-                </Card>
+                </p>
               )}
             </section>
           </>

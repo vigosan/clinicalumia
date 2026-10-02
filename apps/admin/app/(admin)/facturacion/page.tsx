@@ -1,8 +1,6 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
-import { Card } from "@clinicalumia/ui/card";
-import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import {
   Table,
@@ -12,6 +10,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
+import { Fragment } from "react";
 import { formatCents } from "@/lib/money";
 import {
   isCurrentQuarter,
@@ -62,6 +61,13 @@ export default async function BillingPage({
         },
       ]
     : [];
+  const totals = (summary?.vatRates ?? []).reduce(
+    (sum, rate) => ({
+      base_cents: sum.base_cents + rate.base_cents,
+      vat_cents: sum.vat_cents + rate.vat_cents,
+    }),
+    { base_cents: 0, vat_cents: 0 },
+  );
 
   return (
     <>
@@ -71,20 +77,33 @@ export default async function BillingPage({
         actions={
           summary &&
           !isEmpty && (
-            <>
+            <div className="flex flex-wrap gap-2">
+              <QuarterZipButton year={year} q={q} />
               <Button asChild data-testid="quarter-download-xlsx">
                 <a href={`/facturacion/excel?year=${year}&q=${q}`} download>
                   Descargar Excel
                 </a>
               </Button>
-              <QuarterZipButton year={year} q={q} />
-            </>
+            </div>
           )
         }
       />
-      <Card>
+      <section className="flex flex-col gap-6 border-separator border-b pb-8 md:flex-row md:items-end md:justify-between">
         <QuarterPicker year={year} q={q} years={quarterYears(year, now)} />
-      </Card>
+        {summary && !isEmpty && (
+          <div className="flex flex-col gap-1 md:items-end">
+            <p className="text-[13px] text-text-tertiary">
+              Total neto del T{q} de {year}
+            </p>
+            <p
+              className="font-bold text-[2.5rem] text-ink-900 leading-none tracking-[-0.015em] tabular-nums"
+              data-testid="quarter-net"
+            >
+              {formatCents(summary.net_cents)}
+            </p>
+          </div>
+        )}
+      </section>
       {isCurrentQuarter(year, q, now) && (
         <Alert tone="warning" data-testid="quarter-current">
           Trimestre en curso: los datos pueden cambiar.
@@ -96,31 +115,43 @@ export default async function BillingPage({
         </Alert>
       )}
       {isEmpty && (
-        <EmptyState
-          data-testid="quarter-empty"
-          title={`No hay facturas en el T${q} de ${year}.`}
-        />
+        <p data-testid="quarter-empty" className="text-[15px] text-ink-800">
+          No hay facturas en el T{q} de {year}.
+        </p>
       )}
       {summary && !isEmpty && (
         <>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-bold text-ink-900">Facturas</h2>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {counts.map((count) => (
-                <Card key={count.key} className="flex flex-col gap-1">
-                  <p className="text-[13px] text-ink-800">{count.label}</p>
-                  <p
-                    className="text-2xl font-bold text-ink-900"
+          <p
+            data-testid="quarter-counts"
+            className="text-[13px] text-ink-800 leading-8"
+          >
+            {counts.map((count, index) => (
+              <Fragment key={count.key}>
+                {index > 0 && " "}
+                <span className="whitespace-nowrap">
+                  {index > 0 && (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="mr-1.5 ml-0.5 text-text-tertiary"
+                      >
+                        ·
+                      </span>{" "}
+                    </>
+                  )}
+                  {count.label}{" "}
+                  <span
+                    className="mr-1.5 ml-1 font-bold text-ink-900 text-xl tabular-nums"
                     data-testid={`quarter-count-${count.key}`}
                   >
                     {count.value}
-                  </p>
-                </Card>
-              ))}
-            </div>
-          </section>
+                  </span>
+                </span>
+              </Fragment>
+            ))}
+          </p>
           <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-bold text-ink-900">Importes por IVA</h2>
+            <h2 className="font-bold text-ink-900 text-xl">Importes por IVA</h2>
             <Table aria-label="Importes por IVA" data-testid="quarter-vat">
               <TableHead>
                 <TableRow>
@@ -161,18 +192,24 @@ export default async function BillingPage({
                   </TableRow>
                 ))}
               </TableBody>
+              <tfoot className="max-md:mt-2 max-md:block">
+                <TableRow
+                  data-testid="quarter-vat-total"
+                  className="border-separator border-double font-bold md:border-t-[3px]"
+                >
+                  <TableCell className="max-md:text-[15px]">Total</TableCell>
+                  <TableCell label="Base" className="text-right tabular-nums">
+                    {formatCents(totals.base_cents)}
+                  </TableCell>
+                  <TableCell label="Cuota" className="text-right tabular-nums">
+                    {formatCents(totals.vat_cents)}
+                  </TableCell>
+                  <TableCell label="Total" className="text-right tabular-nums">
+                    {formatCents(summary.net_cents)}
+                  </TableCell>
+                </TableRow>
+              </tfoot>
             </Table>
-            <Card className="flex items-baseline justify-between gap-4">
-              <p className="font-medium text-ink-900">
-                Total neto del trimestre
-              </p>
-              <p
-                className="text-2xl font-bold tabular-nums text-ink-900"
-                data-testid="quarter-net"
-              >
-                {formatCents(summary.net_cents)}
-              </p>
-            </Card>
             <p className="text-[13px] text-ink-800">{QUARTER_TOTALS_NOTE}</p>
           </section>
         </>

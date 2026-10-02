@@ -33,3 +33,12 @@ export function toAffectedAppointments(
     };
   });
 }
+
+const SHOWN_AFFECTED = 4;
+
+export function firstAffected<T>(items: T[]): { shown: T[]; more: number } {
+  return {
+    shown: items.slice(0, SHOWN_AFFECTED),
+    more: Math.max(items.length - SHOWN_AFFECTED, 0),
+  };
+}

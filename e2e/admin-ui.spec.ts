@@ -198,23 +198,60 @@ test("deactivating a member with upcoming appointments is refused and lists them
   }
 });
 
-test("each card on the admin home links to its section", async ({ page }) => {
+test("the admin home shows the clinic's status: the next quarter to file with its deadline, the next closure and links to the usual sections, without repeating the menu", async ({
+  page,
+}) => {
   await loginAsOwner(page);
   await page.goto(`${ADMIN}/`);
-  const sections: [string, string][] = [
-    ["home-card-team", "/team"],
-    ["home-card-specialties", "/specialties"],
-    ["home-card-services", "/services"],
-    ["home-card-schedules", "/schedules"],
-    ["home-card-closures", "/closures"],
-    ["home-card-clinic", "/clinic"],
-    ["home-card-billing", "/facturacion"],
-  ];
-  for (const [testId, href] of sections) {
-    await page.getByTestId(testId).click();
+  await expect(page.getByTestId("home-card-team")).toHaveCount(0);
+
+  const filing = page.getByTestId("home-status-quarter");
+  await expect(filing).toContainText(
+    /T[1-4] de 20\d\d · hasta el \d{1,2} de (enero|abril|julio|octubre)/,
+  );
+  const [, q, year] =
+    (await filing.textContent())!.match(/T([1-4]) de (20\d\d)/) ?? [];
+  await filing.getByRole("link").click();
+  await expect(page).toHaveURL(`${ADMIN}/facturacion?year=${year}&q=${q}`);
+  await page.goto(`${ADMIN}/`);
+
+  const { data: next } = await admin
+    .from("clinic_closures")
+    .select("starts_on, reason")
+    .gte("ends_on", todayInMadrid())
+    .order("starts_on")
+    .limit(1)
+    .maybeSingle();
+  const closure = page.getByTestId("home-status-closure");
+  if (next) {
+    await expect(closure).toContainText(next.reason);
+    await closure.getByRole("link").click();
+    await expect(page).toHaveURL(
+      `${ADMIN}/closures?month=${next.starts_on.slice(0, 7)}`,
+    );
+  } else {
+    await expect(closure).toContainText("No hay cierres previstos.");
+    await closure.getByRole("link").click();
+    await expect(page).toHaveURL(`${ADMIN}/closures`);
+  }
+  await page.goto(`${ADMIN}/`);
+
+  for (const [testId, href] of [
+    ["home-link-team", "/team"],
+    ["home-link-services", "/services"],
+    ["home-link-schedules", "/schedules"],
+  ]) {
+    await page.getByTestId(testId!).click();
     await expect(page).toHaveURL(`${ADMIN}${href}`);
     await page.goto(`${ADMIN}/`);
   }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(filing).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
 
 test("the section menu marks the current page and stays usable on a phone", async ({
