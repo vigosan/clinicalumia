@@ -122,9 +122,11 @@ export function AppointmentForm({
     setPatient(next);
     setCanNotify(false);
     notifyCheckRef.current = next.id;
-    canNotifyPatient(next.id).then((allowed) => {
-      if (notifyCheckRef.current === next.id) setCanNotify(allowed);
-    });
+    canNotifyPatient(next.id)
+      .then((allowed) => {
+        if (notifyCheckRef.current === next.id) setCanNotify(allowed);
+      })
+      .catch(() => {});
   }
 
   function resetConfirmation() {

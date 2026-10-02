@@ -1,8 +1,10 @@
-import { sendEmail } from "./email";
+import { withDeadline } from "./deadline";
+import { emailSender, sendEmail } from "./email";
 import { icsCalendar } from "./ics";
 import { madridDateTime } from "./madrid-time";
 
 const CLINIC_ADDRESS = "Calle Montesa 7, 46800 Xàtiva";
+const NOTICE_TIMEOUT_MS = 12_000;
 
 export type NoticeAppointment = {
   id: string;
@@ -54,6 +56,7 @@ export function appointmentIcs({
   now,
   updatedAt,
   method = "PUBLISH",
+  recipient,
 }: {
   id: string;
   startsAt: string;
@@ -62,6 +65,7 @@ export function appointmentIcs({
   now: Date;
   updatedAt?: string;
   method?: "PUBLISH" | "REQUEST" | "CANCEL";
+  recipient?: string;
 }): string {
   return icsCalendar({
     name: "Clínica LUMIA",
@@ -78,6 +82,8 @@ export function appointmentIcs({
           sequence: Math.floor(new Date(updatedAt).getTime() / 1000),
         }),
         ...(method === "CANCEL" && { status: "CANCELLED" as const }),
+        ...(method !== "PUBLISH" && { organizer: emailSender() }),
+        ...(method !== "PUBLISH" && recipient && { attendee: recipient }),
       },
     ],
   });
@@ -117,7 +123,9 @@ export function appointmentNoticeEmail(
   notice: AppointmentNotice,
   appointment: NoticeAppointment,
   now: Date,
+  recipient: string,
 ) {
+  const method = notice.kind === "cancelled" ? "CANCEL" : "REQUEST";
   return {
     subject: HEADINGS[notice.kind],
     html: noticeHtml(notice, appointment),
@@ -131,9 +139,10 @@ export function appointmentNoticeEmail(
           serviceName: appointment.serviceName,
           now,
           updatedAt: appointment.updatedAt,
-          method: notice.kind === "cancelled" ? "CANCEL" : "REQUEST",
+          method,
+          recipient,
         }),
-        contentType: "text/calendar",
+        contentType: `text/calendar; method=${method}`,
       },
     ],
   };
@@ -150,14 +159,19 @@ export async function sendAppointmentNotice({
   appointment: NoticeAppointment;
   now?: Date;
 }): Promise<void> {
-  const email = appointmentNoticeEmail(notice, appointment, now);
-  const failures: unknown[] = [];
-  for (const to of recipients) {
-    try {
-      await sendEmail({ to, ...email });
-    } catch (error) {
-      failures.push(error);
-    }
-  }
-  if (failures.length > 0) throw failures[0];
+  const results = await withDeadline(
+    () =>
+      Promise.allSettled(
+        recipients.map((to) =>
+          sendEmail({
+            to,
+            ...appointmentNoticeEmail(notice, appointment, now, to),
+          }),
+        ),
+      ),
+    NOTICE_TIMEOUT_MS,
+    "El aviso al paciente ha tardado demasiado.",
+  );
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
 }

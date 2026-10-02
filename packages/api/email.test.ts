@@ -12,7 +12,7 @@ vi.mock("resend", () => ({
   },
 }));
 
-const { EmailRateLimitError, sendEmail } = await import("./email");
+const { EmailRateLimitError, emailSender, sendEmail } = await import("./email");
 
 const fetchMock = vi.fn();
 
@@ -31,6 +31,7 @@ describe("sendEmail", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
@@ -151,6 +152,38 @@ describe("sendEmail", () => {
 
     await expect(sendEmail(message)).rejects.toThrow("RESEND_API_KEY");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("gives up on Resend after ten seconds, so a stalled provider never leaves the team waiting on a spinner", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    resendSend.mockReturnValue(new Promise(() => {}));
+
+    const sending = sendEmail(message);
+    const outcome = expect(sending).rejects.toThrow("ha tardado demasiado");
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await outcome;
+  });
+
+  it("aborts the Mailpit request after ten seconds, so a stalled local mail server never leaves the team waiting on a spinner", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("RESEND_API_KEY", "");
+    fetchMock.mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(init.signal?.reason),
+          );
+        }),
+    );
+
+    const sending = sendEmail(message);
+    const outcome = expect(sending).rejects.toThrow("ha tardado demasiado");
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await outcome;
   });
 
   it("fails loudly when Mailpit does not accept the email", async () => {
@@ -287,5 +320,29 @@ describe("sendEmail", () => {
       { Email: "ana@example.com" },
       { Email: "luis@example.com" },
     ]);
+  });
+});
+
+describe("emailSender", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("splits the configured sender into name and address, so the calendar invite names the same organizer the email comes from", () => {
+    vi.stubEnv("EMAIL_FROM", "LUMIA <citas@notifications.clinicalumia.es>");
+
+    expect(emailSender()).toEqual({
+      name: "LUMIA",
+      email: "citas@notifications.clinicalumia.es",
+    });
+  });
+
+  it("falls back to the clinic's notifications address", () => {
+    vi.stubEnv("EMAIL_FROM", "");
+
+    expect(emailSender()).toEqual({
+      name: "Clínica LUMIA",
+      email: "no-responder@notifications.clinicalumia.es",
+    });
   });
 });

@@ -20,7 +20,10 @@ vi.mock("@clinicalumia/api/server", () => ({
     },
   }),
 }));
-vi.mock("@clinicalumia/api/email", () => ({ sendEmail }));
+vi.mock("@clinicalumia/api/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@clinicalumia/api/email")>()),
+  sendEmail,
+}));
 
 const { completeBirthDate, confirmBooking, savePerson } = await import(
   "./actions"
@@ -103,7 +106,7 @@ describe("confirmBooking", () => {
     expect(email.html).toContain("Ana García");
     const attachment = email.attachments[0];
     expect(attachment.filename).toBe("cita.ics");
-    expect(attachment.contentType).toBe("text/calendar");
+    expect(attachment.contentType).toBe("text/calendar; method=REQUEST");
     expect(attachment.content).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
     expect(attachment.content).toContain("DTSTART:20261002T070000Z");
     expect(attachment.content).toContain("METHOD:REQUEST");

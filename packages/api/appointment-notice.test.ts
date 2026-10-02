@@ -1,8 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { madridInstant } from "./madrid-time";
 
 const sendEmail = vi.fn();
-vi.mock("./email", () => ({ sendEmail }));
+vi.mock("./email", () => ({
+  sendEmail,
+  emailSender: () => ({
+    name: "Clínica LUMIA",
+    email: "no-responder@notifications.clinicalumia.es",
+  }),
+}));
 
 const { appointmentIcs, appointmentNoticeEmail, sendAppointmentNotice } =
   await import("./appointment-notice");
@@ -20,11 +26,16 @@ const now = new Date("2026-10-01T08:00:00Z");
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.clinicalumia.es";
 
-function attachedIcs(email: ReturnType<typeof appointmentNoticeEmail>) {
+const recipient = "lucia@example.com";
+
+function attachedIcs(
+  email: ReturnType<typeof appointmentNoticeEmail>,
+  method: "REQUEST" | "CANCEL",
+) {
   expect(email.attachments).toHaveLength(1);
   const [attachment] = email.attachments;
   expect(attachment?.filename).toBe("cita.ics");
-  expect(attachment?.contentType).toBe("text/calendar");
+  expect(attachment?.contentType).toBe(`text/calendar; method=${method}`);
   return String(attachment?.content);
 }
 
@@ -34,6 +45,7 @@ describe("appointmentNoticeEmail", () => {
       { kind: "confirmed" },
       appointment,
       now,
+      recipient,
     );
 
     expect(email.subject).toBe("Cita confirmada");
@@ -54,6 +66,7 @@ describe("appointmentNoticeEmail", () => {
       },
       appointment,
       now,
+      recipient,
     );
 
     expect(email.subject).toBe("Cita cambiada");
@@ -73,6 +86,7 @@ describe("appointmentNoticeEmail", () => {
       { kind: "cancelled" },
       appointment,
       now,
+      recipient,
     );
 
     expect(email.subject).toBe("Cita cancelada");
@@ -87,6 +101,7 @@ describe("appointmentNoticeEmail", () => {
       { kind: "confirmed" },
       { ...appointment, personName: "<b>Lucía</b>" },
       now,
+      recipient,
     );
 
     expect(email.html).toContain("&lt;b&gt;Lucía&lt;/b&gt;");
@@ -98,7 +113,10 @@ describe("appointmentNoticeEmail", () => {
       { kind: "confirmed" as const },
       { kind: "changed" as const, previousStartsAt: appointment.startsAt },
     ]) {
-      const ics = attachedIcs(appointmentNoticeEmail(notice, appointment, now));
+      const ics = attachedIcs(
+        appointmentNoticeEmail(notice, appointment, now, recipient),
+        "REQUEST",
+      );
 
       expect(ics).toContain("METHOD:REQUEST\r\n");
       expect(ics).toContain(`UID:${appointment.id}@clinicalumia.es\r\n`);
@@ -113,13 +131,34 @@ describe("appointmentNoticeEmail", () => {
         { kind: "cancelled" },
         { ...appointment, updatedAt: "2026-09-30T11:00:00+00:00" },
         now,
+        recipient,
       ),
+      "CANCEL",
     );
 
     expect(ics).toContain("METHOD:CANCEL\r\n");
     expect(ics).toContain(`UID:${appointment.id}@clinicalumia.es\r\n`);
     expect(ics).toContain("SEQUENCE:1790766000\r\n");
     expect(ics).toContain("STATUS:CANCELLED\r\n");
+  });
+
+  it("addresses the attached event from the clinic to this recipient, so the calendar trusts the update or cancellation and applies it", () => {
+    const ics = attachedIcs(
+      appointmentNoticeEmail(
+        { kind: "cancelled" },
+        appointment,
+        now,
+        recipient,
+      ),
+      "CANCEL",
+    );
+
+    expect(ics).toContain(
+      'ORGANIZER;CN="Clínica LUMIA":mailto:no-responder@notifications.clinicalumi',
+    );
+    expect(ics).toContain(
+      "ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:lucia@ex",
+    );
   });
 });
 
@@ -176,6 +215,19 @@ describe("appointmentIcs", () => {
     expect(ics).toContain("SEQUENCE:1790766000\r\n");
   });
 
+  it("leaves out organizer and attendee in a file the patient downloads, since it is a copy and not an invitation", () => {
+    const ics = appointmentIcs({
+      id: "id",
+      startsAt: "2026-10-06T07:00:00+00:00",
+      endsAt: "2026-10-06T07:45:00+00:00",
+      serviceName: "Sesión de logopedia",
+      now: new Date("2026-10-05T06:00:00Z"),
+    });
+
+    expect(ics).not.toContain("ORGANIZER");
+    expect(ics).not.toContain("ATTENDEE");
+  });
+
   it("escapes a comma in the service name, so punctuation in what the patient booked cannot break the calendar file", () => {
     const ics = appointmentIcs({
       id: "id",
@@ -195,6 +247,10 @@ describe("sendAppointmentNotice", () => {
   beforeEach(() => {
     sendEmail.mockReset();
     sendEmail.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("sends one email per recipient, so two guardians never see each other's address", async () => {
@@ -227,5 +283,54 @@ describe("sendAppointmentNotice", () => {
       }),
     ).rejects.toThrow("buzón inexistente");
     expect(sendEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it("invites each recipient by their own address, so every guardian's calendar recognises the event as theirs", async () => {
+    await sendAppointmentNotice({
+      recipients: ["madre@example.com", "padre@example.com"],
+      notice: { kind: "confirmed" },
+      appointment,
+      now,
+    });
+
+    const invites = sendEmail.mock.calls.map(([email]) =>
+      String(email.attachments[0].content).replace(/\r\n /g, ""),
+    );
+    expect(invites[0]).toContain("mailto:madre@example.com");
+    expect(invites[0]).not.toContain("padre@example.com");
+    expect(invites[1]).toContain("mailto:padre@example.com");
+    expect(invites[1]).not.toContain("madre@example.com");
+  });
+
+  it("writes to every recipient at once, so one slow mailbox does not delay the others", async () => {
+    sendEmail.mockReturnValue(new Promise(() => {}));
+    vi.useFakeTimers();
+
+    const sending = sendAppointmentNotice({
+      recipients: ["madre@example.com", "padre@example.com"],
+      notice: { kind: "confirmed" },
+      appointment,
+      now,
+    });
+    sending.catch(() => {});
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(sendEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up when sending never finishes, so the team's action completes and is told the patient was not notified", async () => {
+    sendEmail.mockReturnValue(new Promise(() => {}));
+    vi.useFakeTimers();
+
+    const sending = sendAppointmentNotice({
+      recipients: ["madre@example.com"],
+      notice: { kind: "changed", previousStartsAt: appointment.startsAt },
+      appointment,
+      now,
+    });
+    const outcome = expect(sending).rejects.toThrow("ha tardado demasiado");
+    await vi.advanceTimersByTimeAsync(12_000);
+
+    await outcome;
   });
 });

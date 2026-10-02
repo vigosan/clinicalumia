@@ -8,6 +8,8 @@ export type IcsEvent = {
   description?: string;
   sequence?: number;
   status?: "CONFIRMED" | "CANCELLED";
+  organizer?: { name: string; email: string };
+  attendee?: string;
 };
 
 function escapeText(text: string): string {
@@ -61,6 +63,20 @@ function eventLines(event: IcsEvent): string[] {
     contentLine("DTEND", formatUtc(event.endsAt)),
     contentLine("SUMMARY", escapeText(event.summary)),
   ];
+  if (event.organizer) {
+    lines.push(
+      foldLine(
+        `ORGANIZER;CN="${event.organizer.name.replace(/"/g, "")}":mailto:${event.organizer.email}`,
+      ),
+    );
+  }
+  if (event.attendee) {
+    lines.push(
+      foldLine(
+        `ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:${event.attendee}`,
+      ),
+    );
+  }
   if (event.location) {
     lines.push(contentLine("LOCATION", escapeText(event.location)));
   }

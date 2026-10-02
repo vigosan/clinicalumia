@@ -1,8 +1,11 @@
 import { Resend } from "resend";
+import { withDeadline } from "./deadline";
 
 const DEFAULT_FROM =
   "Clínica LUMIA <no-responder@notifications.clinicalumia.es>";
 const MAILPIT_SEND = "http://127.0.0.1:54324/api/v1/send";
+const EMAIL_TIMEOUT_MS = 10_000;
+const EMAIL_TIMEOUT_MESSAGE = "El envío del email ha tardado demasiado.";
 
 export class EmailRateLimitError extends Error {}
 
@@ -21,8 +24,13 @@ type Email = {
 function parseSender(from: string) {
   const match = /^(.*?)\s*<([^>]+)>$/.exec(from);
   return match
-    ? { Name: match[1], Email: match[2] }
+    ? { Name: match[1] ?? "", Email: match[2] ?? from }
     : { Name: "", Email: from };
+}
+
+export function emailSender(): { name: string; email: string } {
+  const { Name, Email } = parseSender(process.env.EMAIL_FROM || DEFAULT_FROM);
+  return { name: Name, email: Email };
 }
 
 export async function sendEmail({
@@ -38,19 +46,26 @@ export async function sendEmail({
     if (!apiKey) {
       throw new Error("Falta RESEND_API_KEY para enviar emails en producción.");
     }
-    const { error } = await new Resend(apiKey).emails.send({
-      from,
-      to,
-      subject,
-      html,
-      ...(attachments && {
-        attachments: attachments.map(({ filename, content, contentType }) => ({
-          filename,
-          content: Buffer.from(content).toString("base64"),
-          contentType,
-        })),
-      }),
-    });
+    const { error } = await withDeadline(
+      () =>
+        new Resend(apiKey).emails.send({
+          from,
+          to,
+          subject,
+          html,
+          ...(attachments && {
+            attachments: attachments.map(
+              ({ filename, content, contentType }) => ({
+                filename,
+                content: Buffer.from(content).toString("base64"),
+                contentType,
+              }),
+            ),
+          }),
+        }),
+      EMAIL_TIMEOUT_MS,
+      EMAIL_TIMEOUT_MESSAGE,
+    );
     if (error?.name === "rate_limit_exceeded" || error?.statusCode === 429) {
       throw new EmailRateLimitError(error.message);
     }
@@ -62,23 +77,31 @@ export async function sendEmail({
     return;
   }
 
-  const response = await fetch(MAILPIT_SEND, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      From: parseSender(from),
-      To: [to].flat().map((email) => ({ Email: email })),
-      Subject: subject,
-      HTML: html,
-      ...(attachments && {
-        Attachments: attachments.map(({ filename, content, contentType }) => ({
-          Filename: filename,
-          Content: Buffer.from(content).toString("base64"),
-          ContentType: contentType,
-        })),
+  const response = await withDeadline(
+    (signal) =>
+      fetch(MAILPIT_SEND, {
+        signal,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          From: parseSender(from),
+          To: [to].flat().map((email) => ({ Email: email })),
+          Subject: subject,
+          HTML: html,
+          ...(attachments && {
+            Attachments: attachments.map(
+              ({ filename, content, contentType }) => ({
+                Filename: filename,
+                Content: Buffer.from(content).toString("base64"),
+                ContentType: contentType,
+              }),
+            ),
+          }),
+        }),
       }),
-    }),
-  });
+    EMAIL_TIMEOUT_MS,
+    EMAIL_TIMEOUT_MESSAGE,
+  );
   if (!response.ok) {
     throw new Error(
       `No se ha podido enviar el email a Mailpit: ${response.status}`,

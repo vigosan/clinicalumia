@@ -1057,6 +1057,10 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: boolean
       }
+      appointment_notice_recipients: {
+        Args: { p_appointment_id: string }
+        Returns: string[]
+      }
       available_slots: {
         Args: {
           p_from: string

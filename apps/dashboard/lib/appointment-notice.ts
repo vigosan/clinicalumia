@@ -45,6 +45,17 @@ export async function loadNoticeRecipients(
   );
 }
 
+async function loadAppointmentRecipients(
+  supabase: Client,
+  appointmentId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase.rpc("appointment_notice_recipients", {
+    p_appointment_id: appointmentId,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function loadAppointmentTimes(
   supabase: Client,
   appointmentId: string,
@@ -66,7 +77,7 @@ export async function notifyPatient(
     const { data, error } = await supabase
       .from("appointments")
       .select(
-        "id, patient_id, starts_at, ends_at, updated_at, patient:people(first_name, last_name), service:services(name), professional:profiles!appointments_professional_id_fkey(full_name)",
+        "id, starts_at, ends_at, updated_at, patient:people(first_name, last_name), service:services(name), professional:profiles!appointments_professional_id_fkey(full_name)",
       )
       .eq("id", appointmentId)
       .single();
@@ -74,7 +85,7 @@ export async function notifyPatient(
     if (!data.patient || !data.service || !data.professional)
       throw new Error(`Faltan datos de la cita ${appointmentId}`);
     await sendAppointmentNotice({
-      recipients: await loadNoticeRecipients(supabase, data.patient_id),
+      recipients: await loadAppointmentRecipients(supabase, data.id),
       notice,
       appointment: {
         id: data.id,

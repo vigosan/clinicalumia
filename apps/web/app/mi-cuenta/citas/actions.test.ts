@@ -20,7 +20,10 @@ vi.mock("@clinicalumia/api/server", () => ({
     },
   }),
 }));
-vi.mock("@clinicalumia/api/email", () => ({ sendEmail }));
+vi.mock("@clinicalumia/api/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@clinicalumia/api/email")>()),
+  sendEmail,
+}));
 
 const { cancelAppointment, rescheduleAppointment } = await import("./actions");
 
@@ -93,6 +96,7 @@ describe("cancelAppointment", () => {
     expect(email.html).toContain("Marta &lt;b&gt;Ruiz&lt;/b&gt;");
     const attachment = email.attachments[0];
     expect(attachment.filename).toBe("cita.ics");
+    expect(attachment.contentType).toBe("text/calendar; method=CANCEL");
     expect(attachment.content).toContain("METHOD:CANCEL");
     expect(attachment.content).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
     expect(attachment.content).toContain("STATUS:CANCELLED");
@@ -210,7 +214,7 @@ describe("rescheduleAppointment", () => {
     expect(email.html).toContain("Marta &lt;b&gt;Ruiz&lt;/b&gt;");
     const attachment = email.attachments[0];
     expect(attachment.filename).toBe("cita.ics");
-    expect(attachment.contentType).toBe("text/calendar");
+    expect(attachment.contentType).toBe("text/calendar; method=REQUEST");
     expect(attachment.content).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
     expect(attachment.content).toContain("DTSTART:20261005T083000Z");
     expect(attachment.content).toContain("DTEND:20261005T091500Z");

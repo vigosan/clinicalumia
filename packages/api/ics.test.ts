@@ -167,6 +167,47 @@ describe("icsCalendar", () => {
 
     expect(ics).toContain("METHOD:PUBLISH\r\n");
     expect(ics).not.toContain("SEQUENCE");
+    expect(ics).not.toContain("ORGANIZER");
+    expect(ics).not.toContain("ATTENDEE");
+  });
+
+  it("names the clinic as organizer and the recipient as attendee, because calendar apps only apply an update or a cancellation that comes from the event's organizer", () => {
+    const ics = icsCalendar({
+      name: "Clínica LUMIA",
+      method: "CANCEL",
+      events: [
+        {
+          ...baseEvent,
+          organizer: {
+            name: "Clínica LUMIA",
+            email: "no-responder@notifications.clinicalumia.es",
+          },
+          attendee: "madre@example.com",
+        },
+      ],
+    });
+
+    expect(ics).toContain(
+      'ORGANIZER;CN="Clínica LUMIA":mailto:no-responder@notifications.clinicalumi\r\n a.es\r\n',
+    );
+    expect(ics).toContain(
+      "ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:madre@exa\r\n mple.com\r\n",
+    );
+  });
+
+  it("drops double quotes from the organizer's name, so a sender name cannot break the calendar file", () => {
+    const ics = icsCalendar({
+      name: "Clínica LUMIA",
+      method: "REQUEST",
+      events: [
+        {
+          ...baseEvent,
+          organizer: { name: 'La "LUMIA"', email: "a@b.es" },
+        },
+      ],
+    });
+
+    expect(ics).toContain('ORGANIZER;CN="La LUMIA":mailto:a@b.es\r\n');
   });
 
   it("produces a valid calendar when there are no events", () => {

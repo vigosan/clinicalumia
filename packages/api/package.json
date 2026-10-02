@@ -38,7 +38,8 @@
     "madrid-time.ts",
     "email.ts",
     "ics.ts",
-    "appointment-notice.ts"
+    "appointment-notice.ts",
+    "deadline.ts"
   ],
   "dependencies": {
     "@clinicalumia/db": "workspace:*",

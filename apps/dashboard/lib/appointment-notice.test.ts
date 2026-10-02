@@ -24,16 +24,23 @@ function query(result: Result) {
   return chain;
 }
 
-function client(tables: Record<string, Result>) {
+const rpc = vi.fn();
+
+function client(
+  tables: Record<string, Result>,
+  recipients: Result = { data: [], error: null },
+) {
+  rpc.mockReset();
+  rpc.mockResolvedValue(recipients);
   return {
     from: (table: string) =>
       query(tables[table] ?? { data: null, error: null }),
+    rpc,
   } as unknown as Parameters<typeof notifyPatient>[0];
 }
 
 const appointmentRow = {
   id: "appt-1",
-  patient_id: "person-1",
   starts_at: "2026-10-05T08:00:00+00:00",
   ends_at: "2026-10-05T08:45:00+00:00",
   updated_at: "2026-10-01T09:00:00+00:00",
@@ -120,18 +127,20 @@ describe("notifyPatient", () => {
     sendAppointmentNotice.mockResolvedValue(undefined);
   });
 
-  it("sends the notice with the appointment as it is now to whoever should hear about it", async () => {
-    const supabase = client({
-      appointments: { data: appointmentRow, error: null },
-      people: { data: { email: "leo@example.com" }, error: null },
-      guardianships: { data: [], error: null },
-    });
+  it("sends the notice with the appointment as it is now to whoever the reminders would write to, so a web booking hears from the account that made it", async () => {
+    const supabase = client(
+      { appointments: { data: appointmentRow, error: null } },
+      { data: ["cuenta@example.com"], error: null },
+    );
 
     expect(await notifyPatient(supabase, "appt-1", { kind: "cancelled" })).toBe(
       true,
     );
+    expect(rpc).toHaveBeenCalledWith("appointment_notice_recipients", {
+      p_appointment_id: "appt-1",
+    });
     expect(sendAppointmentNotice).toHaveBeenCalledWith({
-      recipients: ["leo@example.com"],
+      recipients: ["cuenta@example.com"],
       notice: { kind: "cancelled" },
       appointment: {
         id: "appt-1",
@@ -150,11 +159,10 @@ describe("notifyPatient", () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
-    const supabase = client({
-      appointments: { data: appointmentRow, error: null },
-      people: { data: { email: "leo@example.com" }, error: null },
-      guardianships: { data: [], error: null },
-    });
+    const supabase = client(
+      { appointments: { data: appointmentRow, error: null } },
+      { data: ["leo@example.com"], error: null },
+    );
 
     expect(await notifyPatient(supabase, "appt-1", { kind: "confirmed" })).toBe(
       false,
@@ -170,6 +178,22 @@ describe("notifyPatient", () => {
     const supabase = client({
       appointments: { data: null, error: { message: "boom" } },
     });
+
+    expect(await notifyPatient(supabase, "appt-1", { kind: "confirmed" })).toBe(
+      false,
+    );
+    expect(sendAppointmentNotice).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it("reports the failure when the recipients cannot be read, so the team knows the patient was not told", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const supabase = client(
+      { appointments: { data: appointmentRow, error: null } },
+      { data: null, error: { message: "appointment_not_found" } },
+    );
 
     expect(await notifyPatient(supabase, "appt-1", { kind: "confirmed" })).toBe(
       false,
