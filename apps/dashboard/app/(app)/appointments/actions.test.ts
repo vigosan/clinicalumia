@@ -47,8 +47,8 @@ const overlapLimit = vi.fn(() => ({ maybeSingle: overlapMaybeSingle }));
 const overlapNeqId = vi.fn(() => ({ limit: overlapLimit }));
 const overlapGt = vi.fn(() => ({ limit: overlapLimit, neq: overlapNeqId }));
 const overlapLt = vi.fn(() => ({ gt: overlapGt }));
-const overlapNeq = vi.fn(() => ({ lt: overlapLt }));
-const overlapEq = vi.fn(() => ({ neq: overlapNeq }));
+const overlapStatusEq = vi.fn(() => ({ lt: overlapLt }));
+const overlapEq = vi.fn(() => ({ eq: overlapStatusEq }));
 const appointmentsSelect = vi.fn(() => ({ eq: overlapEq }));
 
 const updateResult: {
@@ -300,6 +300,7 @@ describe("createAppointment", () => {
     ).toEqual({
       error: "Marc Ejemplo ya tiene una cita de 16:10 a 16:55.",
     });
+    expect(overlapStatusEq).toHaveBeenCalledWith("status", "scheduled");
   });
 
   it("says the patient is already booked at that time instead of blaming the professional when the overlap is the patient's", async () => {
@@ -854,6 +855,32 @@ describe("restoreFromNoShow", () => {
 
     expect(await restoreFromNoShow("appt-1")).toEqual({
       error: "No se ha podido restaurar la cita.",
+    });
+  });
+
+  it("refuses to undo the no-show once its slot was given to someone else, so the professional never ends up with two appointments at once", async () => {
+    updateResult.data = null;
+    updateResult.error = {
+      code: "23P01",
+      message:
+        'conflicting key value violates exclusion constraint "appointments_no_overlap"',
+    };
+
+    expect(await restoreFromNoShow("appt-1")).toEqual({
+      error: "Esa franja ya está ocupada por otra cita.",
+    });
+  });
+
+  it("still blames the patient when it is the patient who has another appointment at that time", async () => {
+    updateResult.data = null;
+    updateResult.error = {
+      code: "23P01",
+      message:
+        'conflicting key value violates exclusion constraint "appointments_patient_no_overlap"',
+    };
+
+    expect(await restoreFromNoShow("appt-1")).toEqual({
+      error: "Este paciente ya tiene una cita a esa hora.",
     });
   });
 });

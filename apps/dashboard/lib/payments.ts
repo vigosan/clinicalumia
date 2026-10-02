@@ -100,7 +100,7 @@ export function paymentStatus({
       label: `Cobrada · ${formatEuros(payment.amount_cents)} · ${methodLabel(payment.method)}`,
     };
   }
-  if (appointment.status === "cancelled") return { kind: "none", label: "" };
+  if (appointment.status !== "scheduled") return { kind: "none", label: "" };
   if (new Date(appointment.starts_at).getTime() > now.getTime())
     return { kind: "future", label: "" };
   return { kind: "pending", label: "Pendiente de cobro" };

@@ -46,7 +46,7 @@ describe("layoutDay", () => {
       },
     ];
     expect(layoutDay(blocks, "2026-07-15", 15, 20)).toEqual([
-      { id: "a", kind: "own", top: 70, height: 45 },
+      { id: "a", kind: "own", top: 70, height: 45, lane: 0, lanes: 1 },
     ]);
   });
 
@@ -61,7 +61,7 @@ describe("layoutDay", () => {
       },
     ];
     expect(layoutDay(blocks, "2026-07-15", 15, 20)).toEqual([
-      { id: "a", kind: "busy", top: 0, height: 30 },
+      { id: "a", kind: "busy", top: 0, height: 30, lane: 0, lanes: 1 },
     ]);
   });
 
@@ -76,7 +76,7 @@ describe("layoutDay", () => {
       },
     ];
     expect(layoutDay(blocks, "2026-07-15", 15, 20)).toEqual([
-      { id: "a", kind: "time_off", top: 240, height: 60 },
+      { id: "a", kind: "time_off", top: 240, height: 60, lane: 0, lanes: 1 },
     ]);
   });
 
@@ -91,6 +91,45 @@ describe("layoutDay", () => {
       },
     ];
     expect(layoutDay(blocks, "2026-07-15", 15, 20)).toEqual([]);
+  });
+
+  it("puts a no-show and the appointment that took its slot side by side, so neither hides the other", () => {
+    const blocks: Block[] = [
+      {
+        id: "no-show",
+        kind: "own",
+        professionalId: "pro-1",
+        start: "2026-07-15T16:00:00+02:00",
+        end: "2026-07-15T16:30:00+02:00",
+      },
+      {
+        id: "taken",
+        kind: "own",
+        professionalId: "pro-1",
+        start: "2026-07-15T16:15:00+02:00",
+        end: "2026-07-15T16:45:00+02:00",
+      },
+      {
+        id: "later",
+        kind: "own",
+        professionalId: "pro-1",
+        start: "2026-07-15T17:00:00+02:00",
+        end: "2026-07-15T17:30:00+02:00",
+      },
+      {
+        id: "colleague",
+        kind: "own",
+        professionalId: "pro-2",
+        start: "2026-07-15T16:00:00+02:00",
+        end: "2026-07-15T16:30:00+02:00",
+      },
+    ];
+    expect(layoutDay(blocks, "2026-07-15", 15, 20)).toEqual([
+      { id: "no-show", kind: "own", top: 60, height: 30, lane: 0, lanes: 2 },
+      { id: "taken", kind: "own", top: 75, height: 30, lane: 1, lanes: 2 },
+      { id: "later", kind: "own", top: 120, height: 30, lane: 0, lanes: 1 },
+      { id: "colleague", kind: "own", top: 60, height: 30, lane: 0, lanes: 1 },
+    ]);
   });
 });
 

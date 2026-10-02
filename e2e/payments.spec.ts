@@ -667,6 +667,48 @@ test("la pestaña Pendientes cuenta las citas sin cobrar, se cobra desde ella si
   await expect(page.getByTestId("payments-pending-empty")).toBeVisible();
 });
 
+test("una cita no presentada no sale en Pendientes ni en «Registrar cobro», y su panel no la da por pendiente de cobro", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -3);
+  const noShowDate = addDays(todayInMadrid(), -2);
+  const employee = await createEmployee("Profesional No Presentada Cobros");
+  const pendingAppointmentId = await createAppointment(employee.id, date);
+  const noShowAppointmentId = await createAppointment(employee.id, noShowDate);
+  const { error: noShowError } = await admin
+    .from("appointments")
+    .update({ status: "no_show" })
+    .eq("id", noShowAppointmentId);
+  expect(noShowError).toBeNull();
+  const pendingPatientName = await patientNameOf(pendingAppointmentId);
+  const noShowPatientName = await patientNameOf(noShowAppointmentId);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/cobros?tab=pendientes`);
+
+  await expect(page.getByTestId("payments-tab-pendientes")).toHaveText(
+    "Pendientes (1)",
+  );
+  await expect(page.getByTestId("pending-payment-row")).toHaveCount(1);
+  await expect(page.getByTestId("pending-payment-row")).toContainText(
+    pendingPatientName,
+  );
+
+  await page.getByTestId("payments-register").click();
+  const dialog = page.getByTestId("payment-register-dialog");
+  await expect(dialog.getByTestId("payment-candidate")).toHaveText([
+    new RegExp(pendingPatientName),
+  ]);
+  await dialog.getByTestId("payment-candidate-search").fill(noShowPatientName);
+  await expect(dialog.getByTestId("payment-candidates-empty")).toBeVisible();
+
+  await openAppointment(page, noShowDate, noShowAppointmentId);
+  await expect(page.getByTestId("appointment-status")).toHaveText(
+    "No presentada",
+  );
+  await expect(page.getByTestId("appointment-payment-status")).toHaveCount(0);
+});
+
 test("«Registrar cobro» en /cobros pone primero las citas de hoy, busca por paciente y, al cobrar, avisa y actualiza la lista y los totales", async ({
   page,
 }) => {

@@ -236,7 +236,7 @@ describe("patientAppointmentsToCollect", () => {
     expect(rows.map((row) => row.id)).toEqual(["first-day"]);
   });
 
-  it("keeps a no-show collectable, as the clinic may still charge it", () => {
+  it("leaves a no-show out of what to collect, since no-shows carry no charge", () => {
     const rows = patientAppointmentsToCollect(
       [
         appointment({
@@ -247,7 +247,7 @@ describe("patientAppointmentsToCollect", () => {
       ],
       now,
     );
-    expect(rows.map((row) => row.id)).toEqual(["no-show"]);
+    expect(rows.map((row) => row.id)).toEqual([]);
   });
 });
 

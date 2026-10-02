@@ -1561,6 +1561,69 @@ test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer 
   ).not.toHaveClass(/opacity-60/);
 });
 
+test("una no presentada libera su franja: se da a otro paciente, las dos se ven, y deshacerla avisa de que la franja está ocupada", async ({
+  page,
+}) => {
+  const date = pastDate(150 + Math.floor(Math.random() * 30));
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Franja Liberada",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const noShowId = await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+  const { error } = await admin
+    .from("appointments")
+    .update({ status: "no_show" })
+    .eq("id", noShowId);
+  expect(error).toBeNull();
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=10:00&professional=${employee.id}`,
+  );
+  await selectNora(page);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
+  await page.getByTestId("appointment-submit").click();
+  await page.getByTestId("appointment-confirm").click();
+  await page.waitForURL(/\/\?date=/);
+  const takenId = appointmentIdFrom(page);
+  createdAppointmentIds.push(takenId);
+
+  const column = columnFor(page, employee.id);
+  await expect(column.getByTestId("appointment-block")).toHaveCount(2);
+  const noShowBlock = column.locator(
+    `[data-testid="appointment-block"][data-appointment="${noShowId}"]`,
+  );
+  const takenBlock = column.locator(
+    `[data-testid="appointment-block"][data-appointment="${takenId}"]`,
+  );
+  await expect(noShowBlock).toHaveClass(/opacity-60/);
+  await expect(noShowBlock).toContainText("Jorge");
+  await expect(takenBlock).toContainText("Nora");
+  const noShowBox = await noShowBlock.boundingBox();
+  const takenBox = await takenBlock.boundingBox();
+  expect(noShowBox!.x + noShowBox!.width).toBeLessThanOrEqual(takenBox!.x);
+
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${noShowId}`);
+  await page.getByTestId("appointment-restore").click();
+  await expect(page.getByTestId("appointment-action-error")).toHaveText(
+    "Esa franja ya está ocupada por otra cita.",
+  );
+  await expect(page.getByTestId("appointment-status")).toHaveText(
+    "No presentada",
+  );
+});
+
 test("en una cita futura no aparece «Marcar como no presentada»", async ({
   page,
 }) => {

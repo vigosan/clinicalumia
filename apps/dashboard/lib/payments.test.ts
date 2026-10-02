@@ -140,14 +140,14 @@ describe("paymentStatus", () => {
     });
   });
 
-  it("says pending for a no-show without payment, since a missed session can still be charged", () => {
+  it("shows nothing for a no-show without payment, since no-shows carry no charge and staff shouldn't be nagged to collect them", () => {
     const noShow = {
       starts_at: scheduled.starts_at,
       status: "no_show" as const,
     };
     expect(paymentStatus({ appointment: noShow, payment: null, now })).toEqual({
-      kind: "pending",
-      label: "Pendiente de cobro",
+      kind: "none",
+      label: "",
     });
   });
 

@@ -192,7 +192,14 @@ export function DayView({
     const content = contentById.get(entry.id);
     if (!content) continue;
     const list = laidOutByColumn.get(content.block.professionalId) ?? [];
-    list.push({ id: entry.id, top: entry.top, height: entry.height, content });
+    list.push({
+      id: entry.id,
+      top: entry.top,
+      height: entry.height,
+      lane: entry.lane,
+      lanes: entry.lanes,
+      content,
+    });
     laidOutByColumn.set(content.block.professionalId, list);
   }
   const nowOffset = useNowOffset(date, firstHour, windowMinutes);

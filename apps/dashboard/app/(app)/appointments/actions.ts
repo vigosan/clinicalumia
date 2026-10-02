@@ -138,7 +138,7 @@ async function findOverlapTimes(
     .from("appointments")
     .select("starts_at, ends_at")
     .eq("professional_id", appointment.professional_id)
-    .neq("status", "cancelled")
+    .eq("status", "scheduled")
     .lt("starts_at", appointment.ends_at)
     .gt("ends_at", appointment.starts_at);
   if (excludeId) query = query.neq("id", excludeId);
@@ -395,6 +395,8 @@ export async function restoreFromNoShow(id: string): Promise<ActionResult> {
     .update({ status: "scheduled" })
     .eq("id", id)
     .select("id");
+  if (error?.code === "23P01" && !isPatientOverlap(error))
+    return { error: "Esa franja ya está ocupada por otra cita." };
   if (error) return { error: appointmentError(error) };
   if (!data || data.length === 0)
     return { error: "No se ha podido restaurar la cita." };

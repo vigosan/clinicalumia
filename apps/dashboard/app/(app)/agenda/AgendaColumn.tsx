@@ -91,6 +91,8 @@ export type PositionedBlock = {
   id: string;
   top: number;
   height: number;
+  lane: number;
+  lanes: number;
   content: BlockContent;
 };
 
@@ -163,6 +165,10 @@ export function AgendaColumnGrid({
         const blockStyle = {
           top: item.top * PX_PER_MINUTE,
           height: item.height * PX_PER_MINUTE,
+          ...(item.lanes > 1 && {
+            left: `calc(${(item.lane * 100) / item.lanes}% + 4px)`,
+            width: `calc(${100 / item.lanes}% - 8px)`,
+          }),
         };
         const className = `absolute inset-x-1 overflow-hidden rounded-field border px-2 py-1.5 text-xs ${content.toneClass} ${content.dimmed ? "opacity-60" : ""} ${content.testId === "time-off-block" ? "border-dashed" : ""}`;
         if (content.href) {

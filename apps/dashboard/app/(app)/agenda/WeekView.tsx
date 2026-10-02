@@ -127,7 +127,14 @@ export function WeekView({
       .map((entry) => {
         const content = contentById.get(entry.id);
         if (!content) return null;
-        return { id: entry.id, top: entry.top, height: entry.height, content };
+        return {
+          id: entry.id,
+          top: entry.top,
+          height: entry.height,
+          lane: entry.lane,
+          lanes: entry.lanes,
+          content,
+        };
       })
       .filter((item): item is PositionedBlock => item !== null);
     return { day, items };

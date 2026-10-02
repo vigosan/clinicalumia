@@ -21,6 +21,8 @@ export type DayLayoutBlock = {
   kind: Block["kind"];
   top: number;
   height: number;
+  lane: number;
+  lanes: number;
 };
 
 function minutesFromFirstHour(
@@ -47,7 +49,7 @@ export function layoutDay(
   lastHour: number,
 ): DayLayoutBlock[] {
   const windowMinutes = (lastHour - firstHour) * 60;
-  const laidOut: DayLayoutBlock[] = [];
+  const laidOut: (DayLayoutBlock & { professionalId: string })[] = [];
   for (const block of blocks) {
     const top = clamp(
       minutesFromFirstHour(block.start, date, firstHour),
@@ -60,9 +62,50 @@ export function layoutDay(
       windowMinutes,
     );
     if (bottom <= top) continue;
-    laidOut.push({ id: block.id, kind: block.kind, top, height: bottom - top });
+    laidOut.push({
+      id: block.id,
+      kind: block.kind,
+      professionalId: block.professionalId,
+      top,
+      height: bottom - top,
+      lane: 0,
+      lanes: 1,
+    });
   }
-  return laidOut;
+  assignLanes(laidOut.filter((entry) => entry.kind === "own"));
+  return laidOut.map(({ id, kind, top, height, lane, lanes }) => ({
+    id,
+    kind,
+    top,
+    height,
+    lane,
+    lanes,
+  }));
+}
+
+function assignLanes(
+  entries: (DayLayoutBlock & { professionalId: string })[],
+): void {
+  const byProfessional = Map.groupBy(entries, (entry) => entry.professionalId);
+  for (const group of byProfessional.values()) {
+    const sorted = [...group].sort((a, b) => a.top - b.top);
+    let cluster: DayLayoutBlock[] = [];
+    let laneEnds: number[] = [];
+    const closeCluster = () => {
+      for (const entry of cluster) entry.lanes = laneEnds.length;
+      cluster = [];
+      laneEnds = [];
+    };
+    for (const entry of sorted) {
+      if (cluster.length > 0 && entry.top >= Math.max(...laneEnds))
+        closeCluster();
+      const free = laneEnds.findIndex((end) => end <= entry.top);
+      entry.lane = free === -1 ? laneEnds.length : free;
+      laneEnds[entry.lane] = entry.top + entry.height;
+      cluster.push(entry);
+    }
+    closeCluster();
+  }
 }
 
 export type ScheduleBlock = {

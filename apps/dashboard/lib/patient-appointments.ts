@@ -150,7 +150,7 @@ export function patientAppointmentsToCollect(
   return appointments
     .filter(
       (appointment) =>
-        appointment.status !== "cancelled" &&
+        appointment.status === "scheduled" &&
         new Date(appointment.startsAt).getTime() >= since &&
         activePayment(appointment) === null &&
         madridDateTime(appointment.startsAt).date <= today,
