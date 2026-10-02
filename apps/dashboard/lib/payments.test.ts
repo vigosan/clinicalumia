@@ -246,7 +246,7 @@ describe("paymentHistoryLines", () => {
     ]);
   });
 
-  it("says «el sistema» instead of «Alguien» when the collector or voider is not in the directory, so the history never names an anonymous person", () => {
+  it("says «alguien del equipo» when the collector or voider is not in the directory, since a payment is always taken or voided by a person", () => {
     const lines = paymentHistoryLines(
       {
         amount_cents: 4500,
@@ -260,8 +260,8 @@ describe("paymentHistoryLines", () => {
       nameById,
     );
     expect(lines).toEqual([
-      "Cobrada · 45,00 € · Efectivo por el sistema el 28/09 a las 10:12",
-      "Cobro anulado · Importe duplicado por el sistema el 28/09 a las 11:00",
+      "Cobrada · 45,00 € · Efectivo por alguien del equipo el 28/09 a las 10:12",
+      "Cobro anulado · Importe duplicado por alguien del equipo el 28/09 a las 11:00",
     ]);
   });
 

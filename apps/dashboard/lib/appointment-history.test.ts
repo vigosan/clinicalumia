@@ -130,11 +130,11 @@ describe("historyLine", () => {
     );
   });
 
-  it("says «el sistema» instead of an anonymous «Alguien» when the staff actor is not in the directory, so the history never reads as if a stranger touched the appointment", () => {
+  it("says «alguien del equipo» when a staff member whose name cannot be shown made the change, so the history neither invents an automatic process nor reads as a stranger", () => {
     const restored = event({ kind: "restored", actor_id: "missing-actor" });
     const line = historyLine(restored, 0, [restored], appointment, nameById);
     expect(line).toBe(
-      "Se deshizo «no presentada» por el sistema el 28/09 a las 10:12",
+      "Se deshizo «no presentada» por alguien del equipo el 28/09 a las 10:12",
     );
   });
 

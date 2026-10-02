@@ -43,7 +43,11 @@ export function historyLine(
 ): string {
   const actorName =
     (event.actor_id && nameById.get(event.actor_id)) ||
-    (event.actor_kind === "patient" ? "la web" : "el sistema");
+    (event.actor_kind === "patient"
+      ? "la web"
+      : event.actor_id
+        ? "alguien del equipo"
+        : "el sistema");
   const moment = formatHistoryMoment(event.created_at);
 
   if (event.kind === "created") {

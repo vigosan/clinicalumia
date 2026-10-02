@@ -162,12 +162,14 @@ export function paymentHistoryLines(
   payment: PaymentHistoryRow,
   nameById: Map<string, string>,
 ): string[] {
-  const collectorName = nameById.get(payment.collected_by) ?? "el sistema";
+  const collectorName =
+    nameById.get(payment.collected_by) ?? "alguien del equipo";
   const lines = [
     `Cobrada · ${formatEuros(payment.amount_cents)} · ${methodLabel(payment.method)} por ${collectorName} el ${formatHistoryMoment(payment.collected_at)}`,
   ];
   if (payment.voided_at && payment.voided_by) {
-    const voidedByName = nameById.get(payment.voided_by) ?? "el sistema";
+    const voidedByName =
+      nameById.get(payment.voided_by) ?? "alguien del equipo";
     lines.push(
       `Cobro anulado · ${payment.void_reason} por ${voidedByName} el ${formatHistoryMoment(payment.voided_at)}`,
     );
