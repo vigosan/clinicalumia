@@ -15,9 +15,18 @@ const PSICOLOGIA_SPECIALTY_ID = "a0000000-0000-0000-0000-00000000001b";
 const PSICOLOGIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005b1";
 
 const createdUserIds: string[] = [];
+const invitedEmails: string[] = [];
 let editedProfileId: string | null = null;
 
 test.afterEach(async () => {
+  for (const email of invitedEmails.splice(0)) {
+    const { data } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    if (data) createdUserIds.push(data.id);
+  }
   for (const id of createdUserIds.splice(0)) {
     await admin.auth.admin.deleteUser(id);
   }
@@ -516,6 +525,7 @@ test("inviting an employee from its drawer closes it, confirms the email was sen
   await loginAsOwner(page);
   const fullName = `Invitada Drawer ${Date.now()}`;
   const email = `invitada-drawer-${Date.now()}@test.local`;
+  invitedEmails.push(email);
   await page.goto(`${ADMIN}/team`);
 
   await page.getByTestId("member-invite").click();
@@ -531,10 +541,4 @@ test("inviting an employee from its drawer closes it, confirms the email was sen
   await expect(
     page.getByRole("listitem").filter({ hasText: fullName }),
   ).toBeVisible();
-  const { data } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .single();
-  createdUserIds.push(data!.id);
 });
