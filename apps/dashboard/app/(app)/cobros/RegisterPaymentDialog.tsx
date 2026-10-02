@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@clinicalumia/ui/button";
-import { Dialog } from "@clinicalumia/ui/dialog";
+import { Drawer } from "@clinicalumia/ui/drawer";
 import { Input } from "@clinicalumia/ui/input";
 import { Label } from "@clinicalumia/ui/label";
 import { eyebrowClass } from "@clinicalumia/ui/page-header";
@@ -162,7 +162,7 @@ export function RegisterPaymentDialog({
   const groups = groupPaymentCandidates(visible, nowDate);
 
   return (
-    <Dialog
+    <Drawer
       trigger={trigger}
       open={open}
       onOpenChange={handleOpenChange}
@@ -266,7 +266,7 @@ export function RegisterPaymentDialog({
                   : `No hay citas por cobrar hoy ni pendientes en los últimos ${PENDING_WINDOW_DAYS} días.`}
               </p>
             ) : (
-              <div className="-mx-1 flex max-h-[min(24rem,50dvh)] flex-col gap-4 overflow-y-auto px-1">
+              <div className="-mx-1 flex max-h-[min(24rem,40dvh)] flex-col gap-4 overflow-y-auto px-1">
                 <CandidateGroup
                   title="Hoy"
                   testId="payment-candidates-today"
@@ -288,6 +288,6 @@ export function RegisterPaymentDialog({
           </div>
         )}
       </div>
-    </Dialog>
+    </Drawer>
   );
 }

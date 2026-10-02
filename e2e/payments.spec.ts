@@ -501,6 +501,13 @@ test("la pestaña Pendientes cuenta las citas sin cobrar, se cobra desde ella si
     pendingPatientName,
   );
   await expect(dialog.getByTestId("payment-change-appointment")).toHaveCount(0);
+  const viewport = page.viewportSize()!;
+  await expect
+    .poll(async () => {
+      const box = (await dialog.boundingBox())!;
+      return [Math.round(box.x + box.width), Math.round(box.height)];
+    })
+    .toEqual([viewport.width, viewport.height]);
   await dialog.getByTestId("payment-method-cash").check();
   await dialog.getByTestId("payment-submit").click();
 
