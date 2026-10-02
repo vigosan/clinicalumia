@@ -172,8 +172,13 @@ export function WeekView({
           ))}
         </div>
       )}
-      <p className="text-ink-700 text-sm">{personName}</p>
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-surface sm:block">
+      {!(isOwner && candidates.length > 0) && (
+        <p className="text-ink-700 text-sm">{personName}</p>
+      )}
+      <div
+        data-testid="week-grid"
+        className="hidden overflow-x-auto rounded-card border border-line bg-surface sm:block"
+      >
         <div className="relative flex min-w-max">
           <div className="w-16 shrink-0 border-line border-r">
             <div
@@ -201,7 +206,7 @@ export function WeekView({
               key={day.date}
               data-testid="week-day"
               data-date={day.date}
-              className="w-40 shrink-0 border-line border-r last:border-r-0"
+              className="min-w-30 flex-1 border-line border-r last:border-r-0"
             >
               <div
                 className="flex flex-col justify-center gap-0.5 border-line border-b px-2"

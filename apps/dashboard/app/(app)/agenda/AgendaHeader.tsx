@@ -81,76 +81,77 @@ export function AgendaHeader({
       >
         <ChevronRight aria-hidden="true" className="size-4" />
       </Link>
-      <div className="order-1 flex basis-full flex-col sm:order-none sm:mr-auto sm:basis-auto">
+      <div className="order-1 flex basis-full flex-col sm:order-none sm:mr-auto sm:basis-auto xl:min-w-0 xl:flex-1 xl:basis-0">
         <p className={eyebrowClass}>Agenda</p>
         <h1
           data-testid="agenda-title"
-          className="font-bold text-[1.75rem] text-ink-900 leading-tight tracking-[-0.01em] sm:text-title"
+          className="text-balance font-bold text-[1.75rem] text-ink-900 leading-tight tracking-[-0.01em] sm:text-title"
         >
           {titleFor(date, view)}
         </h1>
       </div>
-      <Button
-        asChild
-        variant="secondary"
-        size="sm"
-        data-testid="agenda-today"
-        className="order-2 sm:order-none"
-      >
-        <Link
-          href={buildHref("/", {
-            date: today,
-            view,
-            with: view === "day" ? withParam : undefined,
-            person: view === "week" ? personParam : undefined,
-          })}
+      <div className="order-2 ml-auto flex shrink-0 items-center gap-2 sm:order-none sm:gap-3">
+        <Button
+          asChild
+          variant="secondary"
+          size="sm"
+          data-testid="agenda-today"
         >
-          Hoy
-        </Link>
-      </Button>
-      <div className="order-2 flex overflow-hidden rounded-full border border-line sm:order-none">
-        <Link
-          href={buildHref("/", {
-            date,
-            view: "day",
-            with: view === "day" ? withParam : weekToDayWith,
-          })}
-          data-testid="agenda-view-day"
-          aria-current={view === "day" ? "page" : undefined}
-          className={`px-4 py-2 text-sm ${view === "day" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
+          <Link
+            href={buildHref("/", {
+              date: today,
+              view,
+              with: view === "day" ? withParam : undefined,
+              person: view === "week" ? personParam : undefined,
+            })}
+          >
+            Hoy
+          </Link>
+        </Button>
+        <div className="flex overflow-hidden rounded-full border border-line">
+          <Link
+            href={buildHref("/", {
+              date,
+              view: "day",
+              with: view === "day" ? withParam : weekToDayWith,
+            })}
+            data-testid="agenda-view-day"
+            aria-current={view === "day" ? "page" : undefined}
+            className={`px-4 py-2 text-sm ${view === "day" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
+          >
+            Día
+          </Link>
+          <Link
+            href={buildHref("/", {
+              date,
+              view: "week",
+              person:
+                view === "week" ? personParam : dayToWeekPerson || undefined,
+            })}
+            data-testid="agenda-view-week"
+            aria-current={view === "week" ? "page" : undefined}
+            className={`px-4 py-2 text-sm ${view === "week" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
+          >
+            Semana
+          </Link>
+        </div>
+        <Button
+          asChild
+          size="sm"
+          data-testid="agenda-new"
+          className="max-sm:size-9 max-sm:px-0"
         >
-          Día
-        </Link>
-        <Link
-          href={buildHref("/", {
-            date,
-            view: "week",
-            person:
-              view === "week" ? personParam : dayToWeekPerson || undefined,
-          })}
-          data-testid="agenda-view-week"
-          aria-current={view === "week" ? "page" : undefined}
-          className={`px-4 py-2 text-sm ${view === "week" ? "bg-sage-800 text-cream-50" : "text-ink-900"}`}
-        >
-          Semana
-        </Link>
+          <Link
+            href={buildHref("/appointments/new", {
+              date,
+              professional: isOwner ? undefined : selfId,
+            })}
+          >
+            <Plus aria-hidden="true" />
+            <span className="max-sm:sr-only">Nueva cita</span>
+          </Link>
+        </Button>
       </div>
-      <Button
-        asChild
-        size="sm"
-        data-testid="agenda-new"
-        className="order-2 ml-auto max-sm:size-9 max-sm:px-0 sm:order-none sm:ml-0"
-      >
-        <Link
-          href={buildHref("/appointments/new", {
-            date,
-            professional: isOwner ? undefined : selfId,
-          })}
-        >
-          <Plus aria-hidden="true" />
-          <span className="max-sm:sr-only">Nueva cita</span>
-        </Link>
-      </Button>
     </div>
   );
 }

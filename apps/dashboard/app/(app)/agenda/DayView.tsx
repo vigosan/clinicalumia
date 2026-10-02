@@ -241,7 +241,10 @@ export function DayView({
           className="truncate rounded-card border py-2.5"
         />
       )}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-surface sm:block">
+      <div
+        data-testid="day-grid"
+        className="hidden overflow-x-auto rounded-card border border-line bg-surface sm:block"
+      >
         <div className="relative flex min-w-max">
           <div className="w-16 shrink-0 border-line border-r">
             <div style={{ height: HEADER_HEIGHT }} />
@@ -267,7 +270,7 @@ export function DayView({
                 key={column.id}
                 data-testid="agenda-column"
                 data-professional={column.id}
-                className="w-45 shrink-0 border-line border-r last:border-r-0"
+                className="min-w-45 flex-1 border-line border-r last:border-r-0"
               >
                 <div
                   className="flex flex-col justify-center gap-0.5 border-line border-b px-2"
