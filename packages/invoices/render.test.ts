@@ -206,6 +206,17 @@ describe("renderInvoicePdf", () => {
     expect(text).toContain("Pagado por Bizum");
   });
 
+  it("prints a full invoice issued directly when charging over 400 € with its recipient and no reference to a simplified invoice, since it replaces none", async () => {
+    const text = await pdfText(
+      await renderInvoicePdf({ ...fullWithVat(), related: noRelated }),
+    );
+
+    expect(text).toContain("Factura 35/26");
+    expect(text).toContain("Marta López Ferrer");
+    expect(text).toContain("NIF 87654321X");
+    expect(text).not.toContain("Sustituye a");
+  });
+
   it("marks a rectifying invoice with the original code, the reason and negative amounts, without claiming a payment it reverses", async () => {
     const text = await pdfText(await renderInvoicePdf(rectifying()));
 

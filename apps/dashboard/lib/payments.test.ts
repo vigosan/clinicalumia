@@ -11,6 +11,7 @@ import {
   paymentFailure,
   paymentHistoryLines,
   paymentStatus,
+  recipientRequested,
 } from "./payments";
 
 describe("parseAmount", () => {
@@ -226,28 +227,49 @@ describe("paymentHistoryLines", () => {
 
 describe("needsRecipient", () => {
   it("asks for no recipient up to 400 €, since a simplified invoice is enough", () => {
-    expect(needsRecipient({ amount: "400", error: null })).toBe(false);
+    expect(needsRecipient({ amount: "400", requested: false })).toBe(false);
   });
 
   it("asks for the recipient above 400 €, because only a full invoice is legal there", () => {
-    expect(needsRecipient({ amount: "400,01", error: null })).toBe(true);
-    expect(needsRecipient({ amount: "1.250", error: null })).toBe(true);
+    expect(needsRecipient({ amount: "400,01", requested: false })).toBe(true);
+    expect(needsRecipient({ amount: "1.250", requested: false })).toBe(true);
   });
 
   it("asks for no recipient while the amount cannot be read", () => {
-    expect(needsRecipient({ amount: "abc", error: null })).toBe(false);
+    expect(needsRecipient({ amount: "abc", requested: false })).toBe(false);
   });
 
-  it("asks for the recipient when the database says a full invoice is required, since an online deposit can push a smaller charge over 400 €", () => {
+  it("asks for the recipient when the database requested it, since an online deposit can push a smaller charge over 400 €", () => {
+    expect(needsRecipient({ amount: "395", requested: true })).toBe(true);
+  });
+});
+
+describe("recipientRequested", () => {
+  const fullInvoiceRequired = paymentError({
+    code: "P0001",
+    message: "full_invoice_required",
+  });
+
+  it("starts asking for the recipient when the database says a full invoice is required", () => {
+    expect(recipientRequested(false, fullInvoiceRequired)).toBe(true);
+  });
+
+  it("keeps asking for the recipient after the database refused its NIF, since the deposit still pushes the total over 400 €", () => {
     expect(
-      needsRecipient({
-        amount: "395",
-        error: paymentError({
-          code: "P0001",
-          message: "full_invoice_required",
-        }),
-      }),
+      recipientRequested(
+        true,
+        paymentError({ code: "P0001", message: "recipient_tax_id_invalid" }),
+      ),
     ).toBe(true);
+  });
+
+  it("does not ask for a recipient because of an unrelated error", () => {
+    expect(
+      recipientRequested(
+        false,
+        paymentError({ code: "P0001", message: "note_required" }),
+      ),
+    ).toBe(false);
   });
 });
 

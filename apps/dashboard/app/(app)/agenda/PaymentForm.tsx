@@ -16,6 +16,7 @@ import {
   type PaymentFailure,
   type PaymentMethod,
   parseAmount,
+  recipientRequested,
 } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { collectPayment } from "../payments/actions";
@@ -61,6 +62,7 @@ export function PaymentForm({
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
   const [recipient, setRecipient] = useState(EMPTY_RECIPIENT);
+  const [requested, setRequested] = useState(false);
   const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
@@ -75,10 +77,7 @@ export function PaymentForm({
     suggestedAmountCents,
     error: failure?.error ?? null,
   });
-  const askRecipient = needsRecipient({
-    amount,
-    error: failure?.error ?? null,
-  });
+  const askRecipient = needsRecipient({ amount, requested });
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,6 +92,7 @@ export function PaymentForm({
       submitGateRef.current.finish();
       if ("error" in result) {
         setFailure(result);
+        setRequested((previous) => recipientRequested(previous, result.error));
         onError?.();
         return;
       }

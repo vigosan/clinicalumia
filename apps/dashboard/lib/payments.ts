@@ -261,17 +261,24 @@ export function needsPaymentNote({
 
 const SIMPLIFIED_INVOICE_LIMIT_CENTS = 40_000;
 
+export function recipientRequested(previous: boolean, error: string): boolean {
+  return (
+    previous ||
+    error === paymentError({ code: "P0001", message: "full_invoice_required" })
+  );
+}
+
 export function needsRecipient({
   amount,
-  error,
+  requested,
 }: {
   amount: string;
-  error: string | null;
+  requested: boolean;
 }): boolean {
   const parsed = parseAmount(amount);
   return (
-    ("cents" in parsed && parsed.cents > SIMPLIFIED_INVOICE_LIMIT_CENTS) ||
-    error === paymentError({ code: "P0001", message: "full_invoice_required" })
+    requested ||
+    ("cents" in parsed && parsed.cents > SIMPLIFIED_INVOICE_LIMIT_CENTS)
   );
 }
 

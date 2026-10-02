@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(229);
+select plan(234);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1224,6 +1224,31 @@ select results_eq(
      from pg_temp.record_of('8b000000-0000-0000-0000-0000000002d1') $$,
   $$ values ('alta', current_setting('test.chain_head'), true) $$,
   'the Verifactu record of a direct full invoice is an F1 chained to the previous head of the chain');
+
+select throws_ok(
+  $$ select public.issue_simplified_invoice((select payment_id from pg_temp.invoice_of('8b000000-0000-0000-0000-0000000002d1'))) $$,
+  '23505', null,
+  'a payment already invoiced with a direct full invoice never gets a second invoice, which would count it twice in the quarter');
+select is(has_function_privilege('authenticated', 'public.issue_payment_invoice(uuid, jsonb)', 'execute'), false,
+  'staff cannot issue an invoice for any payment and recipient outside a charge');
+select is(has_function_privilege('authenticated', 'public.invoice_recipient(jsonb)', 'execute'), false,
+  'the recipient check is only used inside the invoice functions');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(
+  public.collect_payment('8b000000-0000-0000-0000-0000000002d3', 39500, 'cash', 'Ajuste',
+    '{"name": "Marta Soler Vidal", "tax_id": "12345678Z", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'when the online deposit pushes the total over 400 €, the charge goes through once the recipient is given');
+reset role;
+select results_eq(
+  $$ select kind::text, replaces_invoice_id, total_cents, snapshot->'payments', snapshot->'recipient'->>'tax_id'
+     from pg_temp.invoice_of('8b000000-0000-0000-0000-0000000002d3') $$,
+  $$ values ('full', null::uuid, 40500,
+       jsonb_build_array(jsonb_build_object('method', 'online', 'amount_cents', 1000),
+                         jsonb_build_object('method', 'cash', 'amount_cents', 39500)),
+       '12345678Z') $$,
+  'the direct full invoice covers the deposit and the charge, listing both payments');
 
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
 select isnt(

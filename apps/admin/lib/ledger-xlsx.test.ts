@@ -235,6 +235,22 @@ describe("ledgerXlsx", () => {
     expect(summed).toBeCloseTo(summarizeInvoices(invoices).net_cents / 100, 2);
   });
 
+  it("lists a full invoice issued directly when charging over 400 € as a «Completa» that adds up and replaces nothing, so the gestoría counts it once", async () => {
+    const direct: QuarterInvoice = {
+      ...invoices[1]!,
+      code: "5/26",
+      replaces: null,
+    };
+    const workbook = await readBack(
+      await ledgerXlsx({ year: 2026, q: 3, invoices: [direct] }),
+    );
+    const row = workbook.getWorksheet("Facturas")!.getRow(2);
+    expect(row.getCell(2).value).toBe("5/26");
+    expect(row.getCell(3).value).toBe("Completa");
+    expect(row.getCell(4).text).toBe("");
+    expect(row.getCell(13).value).toBe("Sí");
+  });
+
   it("writes amounts as real numbers in euros, so the gestoría can add them up in Excel", async () => {
     const workbook = await readBack(
       await ledgerXlsx({ year: 2026, q: 3, invoices }),
