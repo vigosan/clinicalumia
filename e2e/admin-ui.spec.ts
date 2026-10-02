@@ -3,6 +3,7 @@ import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn, totpCode, waitForNextTotpWindow } from "./auth";
+import { slowDownServerActions } from "./server-renders";
 
 const env = execSync("cd ../packages/db && supabase status -o env").toString();
 const serviceKey = env.match(/^SERVICE_ROLE_KEY="?([^"\n]+)/m)?.[1];
@@ -13,6 +14,8 @@ const ADMIN = "http://localhost:3002";
 const DASHBOARD = "http://localhost:3001";
 const PSICOLOGIA_SPECIALTY_ID = "a0000000-0000-0000-0000-00000000001b";
 const PSICOLOGIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005b1";
+const SLOW_SERVER_MS = 3000;
+const BEFORE_SERVER_MS = 1000;
 
 const createdUserIds: string[] = [];
 const invitedEmails: string[] = [];
@@ -70,7 +73,7 @@ async function createSpecialty(page: Page, name: string) {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
-test("deleting a specialty asks for confirmation and only deletes after confirming", async ({
+test("deleting a specialty asks for confirmation, only deletes after confirming, and takes it off the list without waiting for the server", async ({
   page,
 }) => {
   await loginAsOwner(page);
@@ -82,12 +85,22 @@ test("deleting a specialty asks for confirmation and only deletes after confirmi
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "Cancelar" }).click();
   await expect(row).toBeVisible();
+  await slowDownServerActions(page, SLOW_SERVER_MS);
   await row.getByTestId("specialty-delete").click();
   await page.getByTestId("confirm-action").click();
-  await expect(row).toHaveCount(0);
+  await expect(row).toHaveCount(0, { timeout: BEFORE_SERVER_MS });
+  await expect
+    .poll(async () => {
+      const { data: remaining } = await admin
+        .from("specialties")
+        .select("id")
+        .eq("name", name);
+      return remaining;
+    })
+    .toEqual([]);
 });
 
-test("deactivating a team member asks for confirmation, and reactivating is immediate", async ({
+test("deactivating a team member asks for confirmation, and both deactivating and reactivating show at once without waiting for the server", async ({
   page,
 }) => {
   await loginAsOwner(page);
@@ -117,15 +130,27 @@ test("deactivating a team member asks for confirmation, and reactivating is imme
   await page.getByRole("button", { name: "Cancelar" }).click();
   await expect(row.getByRole("button", { name: "Desactivar" })).toBeVisible();
 
+  await slowDownServerActions(page, SLOW_SERVER_MS);
   await row.getByRole("button", { name: "Desactivar" }).click();
   await page.getByTestId("confirm-action").click();
-  await expect(row.getByTestId("member-status")).toBeVisible();
+  await expect(row.getByTestId("member-status")).toBeVisible({
+    timeout: BEFORE_SERVER_MS,
+  });
 
   await row.getByRole("button", { name: "Activar" }).click();
-  await expect(row.getByTestId("member-status")).toHaveCount(0);
+  await expect(row.getByTestId("member-status")).toHaveCount(0, {
+    timeout: BEFORE_SERVER_MS,
+  });
+  await expect(row.getByRole("button", { name: "Desactivar" })).toBeEnabled();
+  const { data: stored } = await admin
+    .from("profiles")
+    .select("is_active")
+    .eq("id", data.user!.id)
+    .single();
+  expect(stored?.is_active).toBe(true);
 });
 
-test("deactivating a member with upcoming appointments is refused and lists them, so they are moved or cancelled first", async ({
+test("deactivating a member with upcoming appointments is refused and lists them, so they are moved or cancelled first, and the row goes back to active", async ({
   page,
 }) => {
   await loginAsOwner(page);
@@ -176,8 +201,12 @@ test("deactivating a member with upcoming appointments is refused and lists them
   try {
     await page.goto(`${ADMIN}/team`);
     const row = page.getByRole("listitem").filter({ hasText: fullName });
+    await slowDownServerActions(page, SLOW_SERVER_MS);
     await row.getByRole("button", { name: "Desactivar" }).click();
     await page.getByTestId("confirm-action").click();
+    await expect(row.getByTestId("member-status")).toBeVisible({
+      timeout: BEFORE_SERVER_MS,
+    });
 
     await expect(row.getByTestId("member-upcoming")).toContainText(
       "Tiene citas pendientes. Muévelas a otra profesional o cancélalas desde el panel y vuelve a intentarlo.",
@@ -610,4 +639,44 @@ test("inviting an employee from its drawer closes it, confirms the email was sen
   await expect(row).toBeVisible();
   await expect(row.getByTestId("member-pending")).toHaveCount(0);
   await expect(row.getByTestId("member-resend-invite")).toHaveCount(0);
+});
+
+test("deactivating and reactivating a service changes its status at once, without waiting for the server", async ({
+  page,
+}) => {
+  const name = `Servicio optimista ${Date.now()}`;
+  const { data: service, error } = await admin
+    .from("services")
+    .insert({
+      specialty_id: PSICOLOGIA_SPECIALTY_ID,
+      name,
+      duration_minutes: 45,
+      price_cents: 4500,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+
+  try {
+    await loginAsOwner(page);
+    await page.goto(`${ADMIN}/services`);
+    const row = page.getByTestId("service-row").filter({ hasText: name });
+    await expect(row).toContainText("Activo");
+    await slowDownServerActions(page, SLOW_SERVER_MS);
+
+    await row.getByTestId("service-toggle").click();
+    await expect(row).toContainText("Inactivo", { timeout: BEFORE_SERVER_MS });
+    await expect(row.getByTestId("service-toggle")).toHaveText("Activar", {
+      timeout: BEFORE_SERVER_MS,
+    });
+    await expect(row.getByTestId("service-toggle")).toBeEnabled();
+    const { data: stored } = await admin
+      .from("services")
+      .select("is_active")
+      .eq("id", service!.id)
+      .single();
+    expect(stored?.is_active).toBe(false);
+  } finally {
+    await admin.from("services").delete().eq("id", service!.id);
+  }
 });

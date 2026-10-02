@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 import { pickDate, pickTime } from "./date-time";
 import { selectOption } from "./select";
+import { slowDownServerActions } from "./server-renders";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -292,7 +293,7 @@ test("the owner adds an absence from its own drawer, which closes and leaves it 
   }
 });
 
-test("an absence is deleted from a quiet trash icon that asks first, so a slip of the finger deletes nothing", async ({
+test("an absence is deleted from a quiet trash icon that asks first, so a slip of the finger deletes nothing, and disappears without waiting for the server", async ({
   page,
 }) => {
   const employee = await createStaff("employee");
@@ -324,14 +325,19 @@ test("an absence is deleted from a quiet trash icon that asks first, so a slip o
   await expect(confirm).toHaveCount(0);
   await expect(row).toBeVisible();
 
+  await slowDownServerActions(page, 3000);
   await remove.click();
   await page.getByTestId("confirm-action").click();
-  await expect(row).toHaveCount(0);
-  const { data: remaining } = await admin
-    .from("employee_time_off")
-    .select("id")
-    .eq("reason", reason);
-  expect(remaining).toEqual([]);
+  await expect(row).toHaveCount(0, { timeout: 1000 });
+  await expect
+    .poll(async () => {
+      const { data: remaining } = await admin
+        .from("employee_time_off")
+        .select("id")
+        .eq("reason", reason);
+      return remaining;
+    })
+    .toEqual([]);
 
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = await page.evaluate(

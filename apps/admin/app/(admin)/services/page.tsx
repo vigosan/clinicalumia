@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { formatCents } from "@/lib/money";
 import { bookingLabel, hasPhoneOnlyServices } from "@/lib/service-booking";
-import { ServiceStatusToggle } from "./ServiceStatusToggle";
+import { ServiceStatus } from "./ServiceStatus";
 
 export default async function ServicesPage() {
   const supabase = await createClient();
@@ -105,27 +105,10 @@ export default async function ServicesPage() {
                       >
                         {bookingLabel(service, onlinePaymentsEnabled)}
                       </TableCell>
-                      <TableCell label="Estado">
-                        <Badge tone={service.is_active ? "success" : "neutral"}>
-                          {service.is_active ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-md:mt-2 max-md:justify-end">
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="secondary"
-                            data-testid="service-edit"
-                          >
-                            <Link href={`/services/${service.id}`}>Editar</Link>
-                          </Button>
-                          <ServiceStatusToggle
-                            id={service.id}
-                            isActive={service.is_active}
-                          />
-                        </div>
-                      </TableCell>
+                      <ServiceStatus
+                        id={service.id}
+                        isActive={service.is_active}
+                      />
                     </TableRow>
                   ))}
                 </TableBody>

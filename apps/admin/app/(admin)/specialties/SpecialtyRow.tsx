@@ -2,7 +2,7 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { deleteSpecialty } from "./actions";
 import { EditSpecialty } from "./EditSpecialty";
 
@@ -14,7 +14,10 @@ type Specialty = {
 
 export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
   const [pending, startTransition] = useTransition();
+  const [deleted, setOptimisticDeleted] = useOptimistic(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (deleted) return null;
 
   return (
     <li
@@ -46,6 +49,7 @@ export function SpecialtyRow({ specialty }: { specialty: Specialty }) {
         confirmLabel="Eliminar"
         onConfirm={() =>
           startTransition(async () => {
+            setOptimisticDeleted(true);
             const result = await deleteSpecialty(specialty.id);
             setError("error" in result ? result.error : null);
           })

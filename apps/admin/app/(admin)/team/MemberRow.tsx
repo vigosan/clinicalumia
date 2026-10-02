@@ -4,7 +4,7 @@ import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import type { AffectedAppointment } from "@/lib/affected-appointments";
 import {
   resendInvite,
@@ -36,6 +36,7 @@ export function MemberRow({
   specialties: Specialty[];
 }) {
   const [pending, startTransition] = useTransition();
+  const [isActive, setOptimisticActive] = useOptimistic(member.is_active);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [upcoming, setUpcoming] = useState<AffectedAppointment[]>([]);
@@ -80,7 +81,7 @@ export function MemberRow({
               Pendiente de aceptar
             </Badge>
           )}
-          {!member.is_active && (
+          {!isActive && (
             <Badge tone="warning" data-testid="member-status">
               Inactivo
             </Badge>
@@ -154,7 +155,7 @@ export function MemberRow({
           />
         )}
         {member.role !== "owner" &&
-          (member.is_active ? (
+          (isActive ? (
             <ConfirmDialog
               tone="destructive"
               trigger={
@@ -170,7 +171,12 @@ export function MemberRow({
               title={`¿Desactivar a ${member.full_name}?`}
               description="Dejará de poder entrar en el dashboard. Si tiene citas pendientes, antes hay que moverlas a otra profesional o cancelarlas. Puedes volver a activarla cuando quieras."
               confirmLabel="Desactivar"
-              onConfirm={() => run(() => setMemberActive(member.id, false))}
+              onConfirm={() =>
+                run(() => {
+                  setOptimisticActive(false);
+                  return setMemberActive(member.id, false);
+                })
+              }
             />
           ) : (
             <Button
@@ -178,7 +184,12 @@ export function MemberRow({
               variant="secondary"
               size="sm"
               disabled={pending}
-              onClick={() => run(() => setMemberActive(member.id, true))}
+              onClick={() =>
+                run(() => {
+                  setOptimisticActive(true);
+                  return setMemberActive(member.id, true);
+                })
+              }
             >
               Activar
             </Button>

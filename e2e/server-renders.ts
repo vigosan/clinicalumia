@@ -10,3 +10,12 @@ export function recordServerRenders(page: Page): string[] {
   });
   return urls;
 }
+
+export async function slowDownServerActions(page: Page, ms: number) {
+  await page.route("**/*", async (route) => {
+    if (route.request().headers()["next-action"]) {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    await route.fallback();
+  });
+}

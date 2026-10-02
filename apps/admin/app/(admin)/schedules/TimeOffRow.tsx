@@ -2,7 +2,7 @@
 
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Trash2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { deleteTimeOff } from "./actions";
 
 type TimeOff = {
@@ -20,8 +20,11 @@ function formatDate(value: string) {
 
 export function TimeOffRow({ timeOff }: { timeOff: TimeOff }) {
   const [pending, startTransition] = useTransition();
+  const [deleted, setOptimisticDeleted] = useOptimistic(false);
   const [error, setError] = useState<string | null>(null);
   const label = `${formatDate(timeOff.starts_at)} – ${formatDate(timeOff.ends_at)}${timeOff.reason ? ` · ${timeOff.reason}` : ""}`;
+
+  if (deleted) return null;
 
   return (
     <li
@@ -47,6 +50,7 @@ export function TimeOffRow({ timeOff }: { timeOff: TimeOff }) {
         confirmLabel="Eliminar"
         onConfirm={() =>
           startTransition(async () => {
+            setOptimisticDeleted(true);
             const result = await deleteTimeOff(timeOff.id);
             if ("error" in result) setError(result.error);
             else setError(null);
