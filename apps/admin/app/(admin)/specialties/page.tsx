@@ -2,7 +2,7 @@ import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
-import { CreateForm } from "./CreateForm";
+import { NewSpecialty } from "./NewSpecialty";
 import { SpecialtyRow } from "./SpecialtyRow";
 
 export default async function SpecialtiesPage() {
@@ -19,12 +19,10 @@ export default async function SpecialtiesPage() {
       <PageHeader
         title="Especialidades"
         description="Catálogo de especialidades. Se asignan a cada empleado al darlo de alta."
+        actions={<NewSpecialty />}
       />
-      <Card>
-        <CreateForm />
-      </Card>
       {list.length === 0 ? (
-        <EmptyState title="Aún no hay especialidades. Crea la primera arriba." />
+        <EmptyState title="Aún no hay especialidades. Crea la primera con «Nueva especialidad»." />
       ) : (
         <Card className="p-2">
           <ul>

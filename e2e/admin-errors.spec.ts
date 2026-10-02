@@ -56,22 +56,27 @@ test("the admin shows an error when a specialty name is already taken", async ({
   const nameB = `Prueba B ${Date.now()}`;
   createdSpecialtyNames.push(nameA, nameB);
 
-  await page.getByTestId("specialty-name-input").fill(nameA);
-  await page.getByTestId("specialty-submit").click();
-  await expect(
-    page.getByTestId("specialty-row").filter({ hasText: nameA }),
-  ).toBeVisible();
-
-  await page.getByTestId("specialty-name-input").fill(nameB);
-  await page.getByTestId("specialty-submit").click();
+  for (const name of [nameA, nameB]) {
+    await page.getByTestId("specialty-new").click();
+    await page.getByTestId("specialty-name-input").fill(name);
+    await page.getByTestId("specialty-submit").click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
   const rowB = page.getByTestId("specialty-row").filter({ hasText: nameB });
   await expect(rowB).toBeVisible();
 
   await rowB.getByTestId("specialty-edit").click();
-  await page.getByTestId("specialty-rename-input").fill(nameA);
-  await page.getByTestId("specialty-save").click();
+  const drawer = page.getByRole("dialog", { name: "Editar especialidad" });
+  await drawer.getByTestId("specialty-rename-input").fill(nameA);
+  await drawer.getByTestId("specialty-save").click();
 
-  await expect(page.getByTestId("specialty-error")).toContainText(
+  await expect(drawer.getByTestId("specialty-error")).toContainText(
     "Ya existe una especialidad con ese nombre.",
   );
+
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+  await rowB.getByTestId("specialty-edit").click();
+  await expect(drawer.getByTestId("specialty-rename-input")).toHaveValue(nameB);
+  await expect(drawer.getByTestId("specialty-error")).toHaveCount(0);
 });

@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn, totpCode, waitForNextTotpWindow } from "./auth";
 
@@ -54,14 +54,20 @@ async function loginAsOwner(page: import("@playwright/test").Page) {
   ).toBeVisible();
 }
 
+async function createSpecialty(page: Page, name: string) {
+  await page.getByTestId("specialty-new").click();
+  await page.getByTestId("specialty-name-input").fill(name);
+  await page.getByTestId("specialty-submit").click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+}
+
 test("deleting a specialty asks for confirmation and only deletes after confirming", async ({
   page,
 }) => {
   await loginAsOwner(page);
   const name = `Borrar ${Date.now()}`;
   await page.goto(`${ADMIN}/specialties`);
-  await page.getByTestId("specialty-name-input").fill(name);
-  await page.getByTestId("specialty-submit").click();
+  await createSpecialty(page, name);
   const row = page.getByTestId("specialty-row").filter({ hasText: name });
   await row.getByTestId("specialty-delete").click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
@@ -465,4 +471,39 @@ test("on a phone each service is a card whose values keep their column names, so
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test("the specialty form opens from the right on a computer and from the bottom on a phone, without covering more than the screen", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  await page.goto(`${ADMIN}/specialties`);
+  const drawer = page.getByRole("dialog", { name: "Nueva especialidad" });
+
+  await page.getByTestId("specialty-new").click();
+  const desktop = page.viewportSize()!;
+  await expect
+    .poll(async () => {
+      const box = (await drawer.boundingBox())!;
+      return {
+        right: Math.round(box.x + box.width),
+        narrower: box.width < desktop.width,
+      };
+    })
+    .toEqual({ right: desktop.width, narrower: true });
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("specialty-new").click();
+  await expect
+    .poll(async () => {
+      const box = (await drawer.boundingBox())!;
+      return {
+        bottom: Math.round(box.y + box.height),
+        width: Math.round(box.width),
+        fits: box.height <= 844 * 0.9 + 1,
+      };
+    })
+    .toEqual({ bottom: 844, width: 390, fits: true });
 });
