@@ -32,6 +32,9 @@ importers:
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
+      lucide-react:
+        specifier: ^1.49.0
+        version: 1.49.0(@types/react@19.2.14)(react@19.2.4)
       next:
         specifier: 16.2.4
         version: 16.2.4(@playwright/test@1.63.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

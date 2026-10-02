@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { expectExitThatOnlyFadesWithReducedMotion } from "../test/motion";
 import { Button } from "./button";
 import { Dialog } from "./dialog";
 
@@ -64,5 +65,14 @@ describe("Dialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("animates out as well as in, and only fades for people who reduce motion", async () => {
+    render(<Example />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Registrar cobro" }),
+    );
+
+    expectExitThatOnlyFadesWithReducedMotion(screen.getByRole("dialog"));
   });
 });

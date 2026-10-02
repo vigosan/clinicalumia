@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
+import { expectExitThatOnlyFadesWithReducedMotion } from "../test/motion";
 import { Drawer } from "./drawer";
 
 function Example() {
@@ -86,5 +87,11 @@ describe("Drawer", () => {
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByRole("button", { name: "Editar" })).toHaveFocus();
+  });
+
+  it("slides out as well as in, and only fades for people who reduce motion", () => {
+    render(<Example />);
+
+    expectExitThatOnlyFadesWithReducedMotion(screen.getByRole("dialog"));
   });
 });

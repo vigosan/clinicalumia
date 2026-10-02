@@ -6,10 +6,10 @@ import type { ComponentProps, ReactElement, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
 export const overlayClass =
-  "fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in motion-reduce:animate-none";
+  "fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out";
 
 export const closeButtonClass =
-  "inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-700 hover:bg-sage-100 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-sage-800";
+  "inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-sage-100 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-sage-800";
 
 export function Dialog({
   trigger,
@@ -42,7 +42,7 @@ export function Dialog({
         <Primitive.Content
           onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={onCloseAutoFocus}
-          className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100vw-1rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-card border border-line bg-surface p-4 shadow-[0_24px_64px_-24px_rgb(58_58_58/0.35)] data-[state=open]:animate-pop-in motion-reduce:animate-none sm:p-6"
+          className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100vw-1rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-card border border-line bg-surface p-4 shadow-[0_24px_64px_-24px_rgb(58_58_58/0.35)] data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out motion-safe:data-[state=open]:animate-pop-in motion-safe:data-[state=closed]:animate-pop-out sm:p-6"
           {...props}
         >
           <div className="flex items-start justify-between gap-4">

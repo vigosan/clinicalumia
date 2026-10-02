@@ -2,6 +2,16 @@ import { createClient } from "@clinicalumia/api/server";
 import { AppShell } from "@clinicalumia/ui/app-shell";
 import logo from "@clinicalumia/ui/logo-dark.png";
 import { Toaster } from "@clinicalumia/ui/toast";
+import {
+  Building2,
+  CalendarOff,
+  Clock,
+  House,
+  Receipt,
+  Shapes,
+  Tag,
+  Users,
+} from "lucide-react";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { logout } from "./actions";
@@ -44,14 +54,18 @@ export default async function AdminLayout({
         }
         section="Administración"
         nav={[
-          { href: "/", label: "Inicio" },
-          { href: "/team", label: "Equipo" },
-          { href: "/specialties", label: "Especialidades" },
-          { href: "/services", label: "Servicios" },
-          { href: "/schedules", label: "Horarios" },
-          { href: "/closures", label: "Días de cierre" },
-          { href: "/clinic", label: "Datos de la clínica" },
-          { href: "/facturacion", label: "Facturación" },
+          { href: "/", label: "Inicio", icon: <House /> },
+          { href: "/team", label: "Equipo", icon: <Users /> },
+          { href: "/specialties", label: "Especialidades", icon: <Shapes /> },
+          { href: "/services", label: "Servicios", icon: <Tag /> },
+          { href: "/schedules", label: "Horarios", icon: <Clock /> },
+          { href: "/closures", label: "Días de cierre", icon: <CalendarOff /> },
+          {
+            href: "/clinic",
+            label: "Datos de la clínica",
+            icon: <Building2 />,
+          },
+          { href: "/facturacion", label: "Facturación", icon: <Receipt /> },
         ]}
         user={{ name: profile.full_name, detail: "Propietaria" }}
         logout={logout}

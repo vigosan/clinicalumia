@@ -15,7 +15,13 @@ import {
 } from "./dropdown-menu";
 import { NavLink } from "./nav-link";
 
-export type NavItem = { href: string; label: string; match?: string[] };
+export type NavItem = {
+  href: string;
+  label: string;
+  match?: string[];
+  icon?: ReactNode;
+  count?: number;
+};
 
 export type UserMenuItem = {
   href: string;
@@ -51,6 +57,8 @@ function Sections({
           key={item.href}
           href={item.href}
           match={item.match}
+          icon={item.icon}
+          count={item.count}
           onClick={onNavigate}
         >
           {item.label}
@@ -92,7 +100,7 @@ function UserMenu({
         </span>
         <ChevronsUpDown
           aria-hidden="true"
-          className="hidden size-4 shrink-0 text-ink-700 lg:block"
+          className="hidden size-4 shrink-0 text-text-tertiary lg:block"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -162,7 +170,7 @@ function MobileMenu({
         <Dialog.Overlay className={overlayClass} />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,85vw)] flex-col gap-8 border-line border-r bg-cream-50 px-5 py-6 shadow-[8px_0_32px_-16px_rgb(58_58_58/0.3)] data-[state=open]:animate-slide-in-left motion-reduce:animate-none"
+          className="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,85vw)] flex-col gap-8 border-line border-r bg-cream-50 px-5 py-6 shadow-[8px_0_32px_-16px_rgb(58_58_58/0.3)] data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out motion-safe:data-[state=open]:animate-slide-in-left motion-safe:data-[state=closed]:animate-slide-out-left"
         >
           <Dialog.Title className="sr-only">Menú</Dialog.Title>
           <div className="flex items-start justify-between gap-3">
@@ -178,7 +186,7 @@ function MobileMenu({
           </div>
           <Sections
             nav={nav}
-            className="flex flex-col gap-1"
+            className="flex flex-col gap-0.5"
             onNavigate={() => setOpen(false)}
           />
         </Dialog.Content>
@@ -214,8 +222,11 @@ export function AppShell({
             {section}
           </span>
         </div>
-        <Sections nav={nav} className="hidden flex-1 flex-col gap-1 lg:flex" />
-        <div className="ml-auto lg:ml-0 lg:border-line lg:border-t lg:pt-4">
+        <Sections
+          nav={nav}
+          className="hidden flex-1 flex-col gap-0.5 lg:flex"
+        />
+        <div className="ml-auto lg:ml-0 lg:border-separator lg:border-t lg:pt-4">
           <UserMenu user={user} menu={menu} logout={logout} />
         </div>
       </aside>

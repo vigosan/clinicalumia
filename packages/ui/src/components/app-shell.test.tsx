@@ -1,7 +1,8 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, FileSignature, Users } from "lucide-react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { expectExitThatOnlyFadesWithReducedMotion } from "../test/motion";
 import { AppShell, type NavItem } from "./app-shell";
 
 const pathname = vi.hoisted(() => ({ current: "/specialties" }));
@@ -12,12 +13,12 @@ const nav: NavItem[] = [
   { href: "/specialties", label: "Especialidades" },
 ];
 
-function renderShell(logout = vi.fn(async () => {})) {
+function renderShell(logout = vi.fn(async () => {}), items: NavItem[] = nav) {
   render(
     <AppShell
       logo={<span>LUMIA</span>}
       section="Administración"
-      nav={nav}
+      nav={items}
       user={{ name: "Patricia Hernán", detail: "Propietaria" }}
       menu={[
         {
@@ -150,5 +151,85 @@ describe("AppShell", () => {
       expect(screen.queryByRole("dialog", { name: "Menú" })).toBeNull(),
     );
     vi.unstubAllGlobals();
+  });
+
+  it("marks the current section subtly, so the page's primary button stays the only solid olive on screen", () => {
+    renderShell();
+    const nav = screen.getByRole("navigation", { name: "Secciones" });
+    const current = within(nav).getByRole("link", { name: "Especialidades" });
+    const other = within(nav).getByRole("link", { name: "Inicio" });
+
+    expect(current).toHaveClass(
+      "bg-sage-100",
+      "text-sage-900",
+      "font-medium",
+      "before:w-[3px]",
+      "before:bg-sage-800",
+    );
+    expect(current).not.toHaveClass("bg-sage-800");
+    expect(other).not.toHaveClass("bg-sage-100", "before:w-[3px]");
+  });
+
+  it("shows each section's icon without adding it to the link name", () => {
+    renderShell(undefined, [
+      { href: "/team", label: "Equipo", icon: <Users data-testid="icon" /> },
+    ]);
+    const link = within(
+      screen.getByRole("navigation", { name: "Secciones" }),
+    ).getByRole("link", { name: "Equipo" });
+
+    expect(within(link).getByTestId("icon")).toBeInTheDocument();
+  });
+
+  it("shows how many things are pending in a section and says it in words to screen readers", () => {
+    renderShell(undefined, [
+      {
+        href: "/consentimientos",
+        label: "Consentimientos",
+        icon: <FileSignature />,
+        count: 3,
+      },
+    ]);
+    const link = within(
+      screen.getByRole("navigation", { name: "Secciones" }),
+    ).getByRole("link", { name: "Consentimientos, 3 pendientes" });
+
+    expect(within(link).getByTestId("nav-count")).toHaveTextContent("3");
+  });
+
+  it("hides the counter when nothing is pending, so a zero never asks for attention", () => {
+    renderShell(undefined, [{ href: "/cobros", label: "Cobros", count: 0 }]);
+    const link = within(
+      screen.getByRole("navigation", { name: "Secciones" }),
+    ).getByRole("link", { name: "Cobros" });
+
+    expect(within(link).queryByTestId("nav-count")).toBeNull();
+  });
+
+  it("keeps icons and counters in the side menu on narrow screens", async () => {
+    renderShell(undefined, [
+      {
+        href: "/consentimientos",
+        label: "Consentimientos",
+        icon: <FileSignature data-testid="icon" />,
+        count: 2,
+      },
+    ]);
+    await userEvent.click(screen.getByTestId("nav-toggle"));
+    const link = within(screen.getByRole("dialog", { name: "Menú" })).getByRole(
+      "link",
+      { name: "Consentimientos, 2 pendientes" },
+    );
+
+    expect(within(link).getByTestId("icon")).toBeInTheDocument();
+  });
+
+  it("slides the side menu out as well as in, and only fades it for people who reduce motion", async () => {
+    renderShell();
+    await userEvent.click(screen.getByTestId("nav-toggle"));
+
+    expectExitThatOnlyFadesWithReducedMotion(
+      screen.getByRole("dialog", { name: "Menú" }),
+    );
   });
 });
