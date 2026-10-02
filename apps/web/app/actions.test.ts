@@ -2,11 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storeConsent = vi.fn();
 const sendEmail = vi.fn();
+const recordAttempt = vi.fn();
+const attemptsInHour = vi.fn();
+const forgetAttempt = vi.fn();
 
 vi.mock("@/lib/consent-store", () => ({ storeConsent }));
 vi.mock("@clinicalumia/api/email", () => ({ sendEmail }));
 vi.mock("@clinicalumia/api/admin", () => ({
   createAdminClient: () => "admin-client",
+}));
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ "x-forwarded-for": "203.0.113.7" }),
+}));
+vi.mock("@/lib/access-attempts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/access-attempts")>()),
+  recordAttempt,
+  attemptsInHour,
+  forgetAttempt,
 }));
 
 const { sendConsent } = await import("./actions");
@@ -32,14 +44,134 @@ function consentForm(overrides: Record<string, string> = {}) {
   return data;
 }
 
+function consentsInHour({
+  fromNetwork,
+  overall,
+}: {
+  fromNetwork: number;
+  overall: number;
+}) {
+  attemptsInHour.mockImplementation(
+    async (
+      _admin: unknown,
+      _kind: string,
+      _until: string,
+      match: { ip_hash?: string },
+    ) => (match.ip_hash ? fromNetwork : overall),
+  );
+}
+
 describe("sendConsent", () => {
   beforeEach(() => {
     storeConsent.mockReset();
     sendEmail.mockReset();
+    recordAttempt.mockReset();
+    recordAttempt.mockResolvedValue({
+      id: "intento-1",
+      created_at: "2026-10-02T10:00:00.000Z",
+    });
+    forgetAttempt.mockReset();
+    consentsInHour({ fromNetwork: 1, overall: 1 });
+    vi.stubEnv("ACCESS_IP_SALT", "sal-de-prueba");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("counts each consent against the signer's network, by a salted hash of it, and the email they left", async () => {
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+
+    await sendConsent(undefined, consentForm());
+
+    expect(recordAttempt).toHaveBeenCalledWith(
+      "admin-client",
+      "consent",
+      "ana@example.com",
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+    );
+  });
+
+  it("counts a consent signed without email too", async () => {
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+
+    await sendConsent(undefined, consentForm({ email: "" }));
+
+    expect(recordAttempt).toHaveBeenCalledWith(
+      "admin-client",
+      "consent",
+      null,
+      expect.any(String),
+    );
+  });
+
+  it("stops the sixth consent in an hour from the same network before storing or emailing, and gives the clinic phone", async () => {
+    consentsInHour({ fromNetwork: 6, overall: 6 });
+
+    const result = await sendConsent(undefined, consentForm());
+
+    expect(result).toEqual({
+      error:
+        "Se han enviado muchos consentimientos desde esta conexión. Inténtalo dentro de una hora o llama al 614 552 808.",
+    });
+    expect(storeConsent).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("still accepts the fifth consent in an hour from the same network, for a family signing together", async () => {
+    consentsInHour({ fromNetwork: 5, overall: 5 });
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+
+    const result = await sendConsent(undefined, consentForm());
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("stops every consent once thirty were sent in the last hour, so a flood cannot spend the email quota the patients' confirmations need", async () => {
+    consentsInHour({ fromNetwork: 1, overall: 31 });
+
+    const result = await sendConsent(undefined, consentForm());
+
+    expect(result).toEqual({
+      error:
+        "Ahora mismo hay muchas peticiones. Inténtalo en unos minutos o llama al 614 552 808.",
+    });
+    expect(storeConsent).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("forgets a stopped consent, so one network hammering the form cannot lock everyone else out", async () => {
+    consentsInHour({ fromNetwork: 6, overall: 6 });
+
+    await sendConsent(undefined, consentForm());
+
+    expect(forgetAttempt).toHaveBeenCalledWith("admin-client", "intento-1");
+  });
+
+  it("does not count a consent that fails validation, since nothing was stored or sent", async () => {
+    await sendConsent(undefined, consentForm({ privacy: "" }));
+
+    expect(recordAttempt).not.toHaveBeenCalled();
+  });
+
+  it("refuses the consent when the captcha is on and was not solved, before counting or storing anything", async () => {
+    vi.stubEnv("TURNSTILE_SITE_KEY", "clave-del-sitio");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "clave-secreta");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ success: false })),
+    );
+
+    const result = await sendConsent(undefined, consentForm());
+
+    expect(result).toEqual({
+      error:
+        "No hemos podido comprobar que no eres un robot. Inténtalo de nuevo.",
+    });
+    expect(recordAttempt).not.toHaveBeenCalled();
+    expect(storeConsent).not.toHaveBeenCalled();
   });
 
   it("keeps the signed consent even when the notification email later fails, so a signature is never lost over a mail outage", async () => {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/PageHero";
 import { consentTitle } from "@/lib/consent-legal";
+import { turnstileSiteKey } from "@/lib/turnstile";
 import { ConsentForm } from "./ConsentForm";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export default function ConsentimientoPage() {
             Rellena tus datos, lee la información sobre protección de datos y
             firma al final.
           </p>
-          <ConsentForm />
+          <ConsentForm turnstileSiteKey={turnstileSiteKey()} />
         </div>
       </section>
     </>

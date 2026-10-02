@@ -1,6 +1,13 @@
 "use client";
 
-import { startTransition, useActionState, useReducer, useRef } from "react";
+import {
+  startTransition,
+  useActionState,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
+import { Turnstile } from "@/components/Turnstile";
 import { consentSources, type SignatureMethod } from "@/lib/consent";
 import {
   consentClauses,
@@ -73,11 +80,16 @@ function SignatureModeSwitch({
   );
 }
 
-export function ConsentForm() {
+export function ConsentForm({
+  turnstileSiteKey,
+}: {
+  turnstileSiteKey?: string;
+}) {
   const [state, formAction, pending] = useActionState(
     sendConsent,
     initialState,
   );
+  const [submits, setSubmits] = useState(0);
   const [signature, dispatch] = useReducer(
     signatureChoice,
     initialSignatureChoice,
@@ -115,6 +127,7 @@ export function ConsentForm() {
             await typedSignaturePng(signature.typedName, typedPreview.current),
           );
         }
+        setSubmits((count) => count + 1);
         startTransition(() => formAction(formData));
       }}
       data-testid="consent-form"
@@ -229,6 +242,10 @@ export function ConsentForm() {
         aria-hidden
         className="hidden"
       />
+
+      {turnstileSiteKey && (
+        <Turnstile key={submits} siteKey={turnstileSiteKey} />
+      )}
 
       {state && "error" in state && (
         <p

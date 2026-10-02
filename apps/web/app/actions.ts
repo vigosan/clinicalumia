@@ -2,12 +2,24 @@
 
 import { createAdminClient } from "@clinicalumia/api/admin";
 import { sendEmail } from "@clinicalumia/api/email";
+import { headers } from "next/headers";
 import { Resend } from "resend";
+import {
+  attemptsInHour,
+  BUSY,
+  forgetAttempt,
+  hashIp,
+  recordAttempt,
+} from "@/lib/access-attempts";
 import { parseConsent } from "@/lib/consent";
 import { consentTitle } from "@/lib/consent-legal";
 import { buildConsentPdf } from "@/lib/consent-pdf";
 import { storeConsent } from "@/lib/consent-store";
 import { site } from "@/lib/site";
+import { CAPTCHA_FAILED, passesCaptcha } from "@/lib/turnstile";
+
+const MAX_CONSENTS_PER_IP = 5;
+const MAX_CONSENTS_PER_HOUR = 30;
 
 export type CollaboratorFormState =
   | { error: string }
@@ -145,11 +157,34 @@ export async function sendConsent(
   formData: FormData,
 ): Promise<ConsentFormState> {
   if (String(formData.get("website") ?? "")) return { ok: true };
+  if (!(await passesCaptcha(formData))) return { error: CAPTCHA_FAILED };
 
   const signedAt = new Date();
   const result = parseConsent(formData, signedAt);
   if ("error" in result) return result;
   const { consent } = result;
+
+  const admin = createAdminClient();
+  const ipHash = hashIp(await headers());
+  const attempt = await recordAttempt(
+    admin,
+    "consent",
+    consent.email || null,
+    ipHash,
+  );
+  const [byIp, total] = await Promise.all([
+    attemptsInHour(admin, "consent", attempt.created_at, { ip_hash: ipHash }),
+    attemptsInHour(admin, "consent", attempt.created_at, {}),
+  ]);
+  if (byIp > MAX_CONSENTS_PER_IP || total > MAX_CONSENTS_PER_HOUR) {
+    await forgetAttempt(admin, attempt.id);
+    return {
+      error:
+        byIp > MAX_CONSENTS_PER_IP
+          ? `Se han enviado muchos consentimientos desde esta conexión. Inténtalo dentro de una hora o llama al ${site.phone.display}.`
+          : BUSY,
+    };
+  }
 
   let pdf: Uint8Array;
   try {
@@ -159,7 +194,7 @@ export async function sendConsent(
   }
 
   try {
-    await storeConsent({ admin: createAdminClient(), consent, signedAt, pdf });
+    await storeConsent({ admin, consent, signedAt, pdf });
   } catch (error) {
     console.error("No se ha podido guardar el consentimiento", error);
     return {

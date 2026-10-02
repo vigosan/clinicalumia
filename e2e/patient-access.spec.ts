@@ -42,6 +42,16 @@ test.afterEach(async () => {
   }
 });
 
+async function patientAccount(email: string) {
+  const { data, error } = await admin
+    .from("patient_accounts")
+    .select("email")
+    .eq("email", email)
+    .maybeSingle();
+  expect(error).toBeNull();
+  return data;
+}
+
 async function requestAccess(page: Page, email: string) {
   await page.goto(`${WEB}/acceder?next=%2Freservar`);
   await page.getByTestId("access-email").fill(email);
@@ -62,19 +72,37 @@ test("a new patient gets a code by email that opens a session and returns to boo
   await page.goto(await latestLinkFor(email, "/acceder/confirmar"));
   await expect(page.getByTestId("access-confirm")).toBeVisible();
   await page.goto(codePage);
-
-  const { data: account } = await admin
-    .from("patient_accounts")
-    .select("email")
-    .eq("email", email)
-    .maybeSingle();
-  expect(account).not.toBeNull();
+  expect(await patientAccount(email)).toBeNull();
 
   await page.getByTestId("access-code").fill(await latestCodeFor(email));
   await page.getByTestId("access-code-submit").click();
 
   await expect(page).toHaveURL(`${WEB}/reservar`);
   await expect(page.getByTestId("reservar-email")).toHaveText(email);
+  expect(await patientAccount(email)).toEqual({ email });
+});
+
+test("asking for a code with someone else's email creates no patient account, so typing an address proves nothing", async ({
+  page,
+}) => {
+  const email = uniqueEmail("paciente-sin-verificar");
+
+  await requestAccess(page, email);
+  await expect(page.getByTestId("access-sent")).toBeVisible();
+  await page.getByTestId("access-code").fill("000000");
+  await page.getByTestId("access-code-submit").click();
+  await expect(page.getByTestId("access-code-error")).toBeVisible();
+
+  expect(await patientAccount(email)).toBeNull();
+});
+
+test("without captcha keys the access form shows no captcha and works as before", async ({
+  page,
+}) => {
+  await page.goto(`${WEB}/acceder`);
+
+  await expect(page.getByTestId("access-email")).toBeVisible();
+  await expect(page.getByTestId("captcha")).toHaveCount(0);
 });
 
 test("the access email tells the person the link and code only last 15 minutes, so they don't try a stale one", async ({
@@ -99,10 +127,12 @@ test("the link in the same email also opens the session, for someone reading mai
   await expect(page.getByTestId("access-sent")).toBeVisible();
 
   await page.goto(await latestLinkFor(email, "/acceder/confirmar"));
+  expect(await patientAccount(email)).toBeNull();
   await page.getByTestId("access-confirm").click();
 
   await expect(page).toHaveURL(`${WEB}/reservar`);
   await expect(page.getByTestId("reservar-email")).toHaveText(email);
+  expect(await patientAccount(email)).toEqual({ email });
 });
 
 test("a used or forged link sends the person back to ask for a new one", async ({

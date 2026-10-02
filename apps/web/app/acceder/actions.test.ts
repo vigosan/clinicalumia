@@ -7,9 +7,11 @@ let authUsers: { id: string; email: string }[];
 let requestHeaders: Headers;
 let otpError: { message: string; status?: number; code?: string } | null;
 let verifyError: { message: string } | null;
+let verifiedUser: { id: string; email: string };
 const createUser = vi.fn();
 const signInWithOtp = vi.fn();
 const verifyOtp = vi.fn();
+const signOut = vi.fn();
 const redirectMock = vi.fn();
 
 function table(name: string) {
@@ -81,7 +83,10 @@ function table(name: string) {
 }
 
 vi.mock("@/lib/site", () => ({
-  site: { url: "https://web.clinicalumia.test" },
+  site: {
+    url: "https://web.clinicalumia.test",
+    phone: { display: "614 552 808" },
+  },
 }));
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders }));
 vi.mock("next/navigation", () => ({
@@ -99,7 +104,7 @@ vi.mock("@clinicalumia/api/admin", () => ({
   }),
 }));
 vi.mock("@clinicalumia/api/server", () => ({
-  createClient: async () => ({ auth: { signInWithOtp, verifyOtp } }),
+  createClient: async () => ({ auth: { signInWithOtp, verifyOtp, signOut } }),
 }));
 
 const { confirmLink, requestAccess, verifyCode } = await import("./actions");
@@ -123,6 +128,10 @@ function codeForm(email: string, code: string, next = "/reservar") {
   return data;
 }
 
+function requests() {
+  return (tables.access_requests ?? []).filter((row) => row.kind === "request");
+}
+
 function fromIp(ip: string) {
   requestHeaders = new Headers({
     "x-forwarded-for": `${ip}, 10.0.0.1`,
@@ -131,6 +140,31 @@ function fromIp(ip: string) {
 }
 
 const TOO_MANY = { error: "Demasiados intentos. Espera unos minutos." };
+const BUSY = {
+  error:
+    "Ahora mismo hay muchas peticiones. Inténtalo en unos minutos o llama al 614 552 808.",
+};
+const CAPTCHA = {
+  error: "No hemos podido comprobar que no eres un robot. Inténtalo de nuevo.",
+};
+
+function codesSentElsewhere(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `sent-${index}`,
+    email: `otra-${index}@example.com`,
+    ip_hash: `red-${index}`,
+    kind: "code_sent",
+    created_at: new Date().toISOString(),
+  }));
+}
+
+function verifyingAs(id: string, email: string) {
+  verifiedUser = { id, email };
+  verifyOtp.mockImplementation(async () => ({
+    data: { user: verifyError ? null : verifiedUser },
+    error: verifyError,
+  }));
+}
 const STAFF = {
   error: "Esta dirección es del equipo de la clínica; entra desde el panel.",
 };
@@ -171,17 +205,14 @@ describe("requestAccess", () => {
     expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
-  it("creates the account for a new email and sends a link that cannot create users on its own", async () => {
+  it("prepares the sign-in for a new email and sends a link that cannot create users on its own, leaving the patient account until the code proves the email is theirs", async () => {
     await requestAccess(undefined, accessForm("  Lucia@Example.com "));
 
     expect(createUser).toHaveBeenCalledWith({
       email: "lucia@example.com",
       email_confirm: true,
     });
-    const [user] = authUsers;
-    expect(tables.patient_accounts).toEqual([
-      { id: user?.id, email: "lucia@example.com" },
-    ]);
+    expect(tables.patient_accounts).toEqual([]);
     expect(signInWithOtp).toHaveBeenCalledWith({
       email: "lucia@example.com",
       options: {
@@ -195,15 +226,13 @@ describe("requestAccess", () => {
     );
   });
 
-  it("ensures the patient account of an existing user that had none, without creating another user", async () => {
+  it("reuses the existing user of an email that had no patient account, without creating another user or the account yet", async () => {
     authUsers.push({ id: "existing-user", email: "marta@example.com" });
 
     await requestAccess(undefined, accessForm("marta@example.com"));
 
     expect(authUsers).toHaveLength(1);
-    expect(tables.patient_accounts).toEqual([
-      { id: "existing-user", email: "marta@example.com" },
-    ]);
+    expect(tables.patient_accounts).toEqual([]);
     expect(signInWithOtp).toHaveBeenCalledTimes(1);
   });
 
@@ -272,7 +301,7 @@ describe("requestAccess", () => {
 
     expect(result).toEqual(TOO_MANY);
     expect(signInWithOtp).toHaveBeenCalledTimes(5);
-    expect(tables.access_requests).toHaveLength(6);
+    expect(requests()).toHaveLength(6);
   });
 
   it("keeps counting rejected attempts, so hammering past the limit never reopens it", async () => {
@@ -280,14 +309,14 @@ describe("requestAccess", () => {
       await requestAccess(undefined, accessForm("lucia@example.com"));
     }
 
-    expect(tables.access_requests).toHaveLength(7);
+    expect(requests()).toHaveLength(7);
     expect(signInWithOtp).toHaveBeenCalledTimes(5);
   });
 
   it("records each email request as a request, apart from wrong codes", async () => {
     await requestAccess(undefined, accessForm("lucia@example.com"));
 
-    expect(tables.access_requests).toEqual([
+    expect(requests()).toEqual([
       expect.objectContaining({ email: "lucia@example.com", kind: "request" }),
     ]);
   });
@@ -346,7 +375,7 @@ describe("requestAccess", () => {
     vi.stubEnv("ACCESS_IP_SALT", "otra-sal");
     await requestAccess(undefined, accessForm("lucia@example.com"));
 
-    const [first, second] = tables.access_requests ?? [];
+    const [first, second] = requests();
     expect(first?.ip_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(first?.ip_hash).not.toContain("203.0.113.7");
     expect(second?.ip_hash).not.toBe(first?.ip_hash);
@@ -417,7 +446,9 @@ describe("requestAccess", () => {
     await requestAccess(undefined, accessForm("lucia@example.com"));
 
     expect(
-      (tables.access_requests ?? []).map((row) => row.email).sort(),
+      [
+        ...new Set((tables.access_requests ?? []).map((row) => row.email)),
+      ].sort(),
     ).toEqual(["lucia@example.com", "reciente@example.com"]);
   });
 
@@ -472,6 +503,122 @@ describe("requestAccess", () => {
     expect(redirectMock).not.toHaveBeenCalled();
   });
 
+  it("stops sending codes once 80 went out in the last hour, below Supabase's 100, and gives the clinic phone instead", async () => {
+    tables.access_requests = codesSentElsewhere(80);
+
+    const result = await requestAccess(
+      undefined,
+      accessForm("lucia@example.com"),
+    );
+
+    expect(result).toEqual(BUSY);
+    expect(signInWithOtp).not.toHaveBeenCalled();
+    expect(createUser).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("still sends the eightieth code of the hour", async () => {
+    tables.access_requests = codesSentElsewhere(79);
+
+    const result = await requestAccess(
+      undefined,
+      accessForm("lucia@example.com"),
+    );
+
+    expect(result).toBeUndefined();
+    expect(signInWithOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets codes sent more than an hour ago when counting the hourly total", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    tables.access_requests = codesSentElsewhere(80).map((row) => ({
+      ...row,
+      created_at: twoHoursAgo,
+    }));
+
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    expect(signInWithOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts towards the hourly total only codes actually sent, so hammering one email from one network cannot lock everyone out", async () => {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await requestAccess(undefined, accessForm("lucia@example.com"));
+    }
+
+    const sent = (tables.access_requests ?? []).filter(
+      (row) => row.kind === "code_sent",
+    );
+    expect(sent).toHaveLength(5);
+  });
+
+  it("does not count a request stopped by the hourly total, so the total reflects only emails that went out", async () => {
+    tables.access_requests = codesSentElsewhere(80);
+
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    const sent = (tables.access_requests ?? []).filter(
+      (row) => row.kind === "code_sent",
+    );
+    expect(sent).toHaveLength(80);
+  });
+
+  it("does not count a team email towards the hourly total, since nothing is sent", async () => {
+    tables.profiles = [{ id: "staff-1", email: "laura@clinicalumia.es" }];
+
+    await requestAccess(undefined, accessForm("laura@clinicalumia.es"));
+
+    expect(
+      (tables.access_requests ?? []).filter((row) => row.kind === "code_sent"),
+    ).toHaveLength(0);
+  });
+
+  it("does not ask Cloudflare anything while the captcha keys are not configured", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(signInWithOtp).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  it("refuses to send a code when the captcha is on and was not solved, before counting or creating anything", async () => {
+    vi.stubEnv("TURNSTILE_SITE_KEY", "clave-del-sitio");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "clave-secreta");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ success: false })),
+    );
+    const form = accessForm("lucia@example.com");
+    form.set("cf-turnstile-response", "token-falso");
+
+    const result = await requestAccess(undefined, form);
+
+    expect(result).toEqual(CAPTCHA);
+    expect(tables.access_requests).toHaveLength(0);
+    expect(createUser).not.toHaveBeenCalled();
+    expect(signInWithOtp).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("sends the code when the captcha is on and solved", async () => {
+    vi.stubEnv("TURNSTILE_SITE_KEY", "clave-del-sitio");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "clave-secreta");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ success: true })),
+    );
+    const form = accessForm("lucia@example.com");
+    form.set("cf-turnstile-response", "token-bueno");
+
+    await requestAccess(undefined, form);
+
+    expect(signInWithOtp).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
   it("tells the person to retry when the email could not be sent", async () => {
     otpError = { message: "smtp down" };
 
@@ -489,13 +636,65 @@ describe("requestAccess", () => {
 
 describe("verifyCode", () => {
   beforeEach(() => {
-    tables = { access_requests: [] };
+    tables = { access_requests: [], profiles: [], patient_accounts: [] };
     fromIp("203.0.113.7");
     vi.stubEnv("ACCESS_IP_SALT", "sal-de-prueba");
     verifyError = null;
     verifyOtp.mockReset();
-    verifyOtp.mockImplementation(async () => ({ error: verifyError }));
+    verifyingAs("user-lucia", "lucia@example.com");
+    signOut.mockReset();
     redirectMock.mockClear();
+  });
+
+  it("creates the patient account only once the code proves the email belongs to the person", async () => {
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(tables.patient_accounts).toEqual([
+      { id: "user-lucia", email: "lucia@example.com" },
+    ]);
+  });
+
+  it("creates no patient account for a wrong code", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+
+    expect(tables.patient_accounts).toEqual([]);
+  });
+
+  it("keeps the existing patient account of someone who comes back", async () => {
+    tables.patient_accounts = [
+      {
+        id: "user-lucia",
+        email: "lucia@example.com",
+        privacy_version: "2026-09",
+      },
+    ];
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(tables.patient_accounts).toEqual([
+      {
+        id: "user-lucia",
+        email: "lucia@example.com",
+        privacy_version: "2026-09",
+      },
+    ]);
+    expect(redirectMock).toHaveBeenCalledWith("/reservar");
+  });
+
+  it("closes the session of a team member who got a code outside the web, instead of turning them into a patient", async () => {
+    tables.profiles = [{ id: "user-lucia", email: "lucia@clinicalumia.es" }];
+
+    const result = await verifyCode(
+      undefined,
+      codeForm("lucia@example.com", "123456"),
+    );
+
+    expect(result).toEqual(STAFF);
+    expect(signOut).toHaveBeenCalled();
+    expect(tables.patient_accounts).toEqual([]);
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 
   it("opens the session with the emailed code and returns to where the person was", async () => {
@@ -547,7 +746,7 @@ describe("verifyCode", () => {
         (row) =>
           row.email === "lucia@example.com" && row.kind === "failed_code",
       );
-      return { error: null };
+      return { data: { user: verifiedUser }, error: null };
     });
 
     await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
@@ -583,10 +782,9 @@ describe("verifyCode", () => {
     expect(tables.access_requests).toHaveLength(0);
   });
 
-  it("stops checking codes for an email after five wrong ones in an hour, so six digits cannot be guessed", async () => {
+  it("stops checking codes for an email from a network after five wrong ones in an hour, so six digits cannot be guessed", async () => {
     verifyError = { message: "Token has expired or is invalid" };
     for (let attempt = 0; attempt < 5; attempt++) {
-      fromIp(`198.51.100.${attempt}`);
       await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
     }
     verifyError = null;
@@ -600,6 +798,38 @@ describe("verifyCode", () => {
     expect(result).toEqual(TOO_MANY);
     expect(verifyOtp).not.toHaveBeenCalled();
     expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("still accepts the right code from the patient's own network after someone else sent five wrong ones for their email", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+    }
+    verifyError = null;
+    fromIp("192.0.2.50");
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(redirectMock).toHaveBeenCalledWith("/reservar");
+  });
+
+  it("stops checking codes for an email after twenty wrong ones in an hour from any networks, so spreading guesses does not help", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 20; attempt++) {
+      fromIp(`198.51.100.${attempt}`);
+      await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+    }
+    verifyError = null;
+    verifyOtp.mockClear();
+    fromIp("192.0.2.50");
+
+    const result = await verifyCode(
+      undefined,
+      codeForm("lucia@example.com", "123456"),
+    );
+
+    expect(result).toEqual(TOO_MANY);
+    expect(verifyOtp).not.toHaveBeenCalled();
   });
 
   it("still accepts the right code after four wrong ones", async () => {
@@ -680,10 +910,38 @@ describe("verifyCode", () => {
 
 describe("confirmLink", () => {
   beforeEach(() => {
+    tables = { profiles: [], patient_accounts: [] };
     verifyError = null;
     verifyOtp.mockReset();
-    verifyOtp.mockImplementation(async () => ({ error: verifyError }));
+    verifyingAs("user-lucia", "lucia@example.com");
+    signOut.mockReset();
     redirectMock.mockClear();
+  });
+
+  it("creates the patient account once the emailed link is used", async () => {
+    await confirmLink(linkForm("hash-1", "/reservar"));
+
+    expect(tables.patient_accounts).toEqual([
+      { id: "user-lucia", email: "lucia@example.com" },
+    ]);
+  });
+
+  it("creates no patient account for a used or forged link", async () => {
+    verifyError = { message: "Email link is invalid or has expired" };
+
+    await confirmLink(linkForm("usado", "/reservar"));
+
+    expect(tables.patient_accounts).toEqual([]);
+  });
+
+  it("closes the session of a team member who used a link, instead of turning them into a patient", async () => {
+    tables.profiles = [{ id: "user-lucia", email: "lucia@clinicalumia.es" }];
+
+    await confirmLink(linkForm("hash-1", "/reservar"));
+
+    expect(signOut).toHaveBeenCalled();
+    expect(tables.patient_accounts).toEqual([]);
+    expect(redirectMock).toHaveBeenCalledWith("/acceder");
   });
 
   function linkForm(tokenHash: string, next: string) {

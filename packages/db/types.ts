@@ -37,21 +37,21 @@ export type Database = {
       access_requests: {
         Row: {
           created_at: string
-          email: string
+          email: string | null
           id: string
           ip_hash: string
           kind: string
         }
         Insert: {
           created_at?: string
-          email: string
+          email?: string | null
           id?: string
           ip_hash: string
           kind?: string
         }
         Update: {
           created_at?: string
-          email?: string
+          email?: string | null
           id?: string
           ip_hash?: string
           kind?: string

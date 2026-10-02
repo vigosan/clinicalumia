@@ -1,25 +1,34 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { createAdminClient } from "@clinicalumia/api/admin";
 import { safeNext } from "@clinicalumia/api/route";
 import { createClient } from "@clinicalumia/api/server";
+import type { User } from "@supabase/supabase-js";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  attemptsInHour,
+  BUSY,
+  forgetAttempt,
+  hashIp,
+  purgeOldAttempts,
+  recordAttempt,
+} from "@/lib/access-attempts";
 import { STAFF_EMAIL } from "@/lib/booking";
 import { site } from "@/lib/site";
+import { CAPTCHA_FAILED, passesCaptcha } from "@/lib/turnstile";
 
 export type AccessState = { error: string } | undefined;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
-type AttemptKind = "request" | "failed_code";
+type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 const MAX_PER_EMAIL = 5;
 const MAX_PER_IP = 20;
-const MAX_FAILED_CODES_PER_EMAIL = 5;
+const MAX_CODES_PER_HOUR = 80;
+const MAX_FAILED_CODES_PER_EMAIL_AND_IP = 5;
+const MAX_FAILED_CODES_PER_EMAIL = 20;
 const MAX_FAILED_CODES_PER_IP = 30;
 const USERS_PAGE = 1000;
 const TOO_MANY = "Demasiados intentos. Espera unos minutos.";
@@ -32,70 +41,6 @@ function field(formData: FormData, name: string) {
 
 function nextFrom(formData: FormData) {
   return safeNext(field(formData, "next") || "/mi-cuenta");
-}
-
-function hashIp(requestHeaders: Headers) {
-  const salt = process.env.ACCESS_IP_SALT;
-  if (!salt && process.env.NODE_ENV === "production") {
-    throw new Error("Falta ACCESS_IP_SALT en el servidor.");
-  }
-  const ip =
-    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    requestHeaders.get("x-real-ip")?.trim() ||
-    "unknown";
-  return createHash("sha256")
-    .update(`${salt ?? ""}:${ip}`)
-    .digest("hex");
-}
-
-async function attemptsInHour(
-  admin: AdminClient,
-  kind: AttemptKind,
-  column: "email" | "ip_hash",
-  value: string,
-  until: string,
-) {
-  const since = new Date(new Date(until).getTime() - HOUR_MS).toISOString();
-  const { count, error } = await admin
-    .from("access_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("kind", kind)
-    .eq(column, value)
-    .gte("created_at", since)
-    .lte("created_at", until);
-  if (error) throw new Error(error.message);
-  return count ?? 0;
-}
-
-async function recordAttempt(
-  admin: AdminClient,
-  kind: AttemptKind,
-  email: string,
-  ipHash: string,
-) {
-  const { data, error } = await admin
-    .from("access_requests")
-    .insert({ email, ip_hash: ipHash, kind })
-    .select("id, created_at")
-    .single();
-  if (error) throw new Error(error.message);
-
-  const [byEmail, byIp] = await Promise.all([
-    attemptsInHour(admin, kind, "email", email, data.created_at),
-    attemptsInHour(admin, kind, "ip_hash", ipHash, data.created_at),
-  ]);
-  return { ...data, byEmail, byIp };
-}
-
-async function purgeOldAttempts(admin: AdminClient, until: string) {
-  const { error } = await admin
-    .from("access_requests")
-    .delete()
-    .lt(
-      "created_at",
-      new Date(new Date(until).getTime() - DAY_MS).toISOString(),
-    );
-  if (error) throw new Error(error.message);
 }
 
 async function findUserId(admin: AdminClient, email: string) {
@@ -125,27 +70,37 @@ async function userIdFor(admin: AdminClient, email: string) {
   return findUserId(admin, email);
 }
 
-async function ensurePatientAccount(
-  admin: AdminClient,
-  email: string,
-  staffIds: string[],
-): Promise<AccessState> {
-  const { data: account, error } = await admin
+async function hasPatientAccount(admin: AdminClient, email: string) {
+  const { data, error } = await admin
     .from("patient_accounts")
     .select("id")
     .eq("email", email)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (account) return undefined;
+  return data !== null;
+}
 
-  const id = await userIdFor(admin, email);
-  if (staffIds.includes(id)) return { error: STAFF_EMAIL };
+async function openPatientAccount(supabase: ServerClient, user: User) {
+  const admin = createAdminClient();
+  const { data: staff, error } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (staff) {
+    await supabase.auth.signOut();
+    return false;
+  }
 
   const { error: upsertError } = await admin
     .from("patient_accounts")
-    .upsert({ id, email }, { onConflict: "id", ignoreDuplicates: true });
+    .upsert(
+      { id: user.id, email: user.email!.toLowerCase() },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
   if (upsertError) throw new Error(upsertError.message);
-  return undefined;
+  return true;
 }
 
 function sentRecently(error: { code?: string; message: string }) {
@@ -162,17 +117,17 @@ export async function requestAccess(
   const email = field(formData, "email").toLowerCase();
   const next = nextFrom(formData);
   if (!EMAIL.test(email)) return { error: "Escribe un email válido." };
+  if (!(await passesCaptcha(formData))) return { error: CAPTCHA_FAILED };
 
-  const requestHeaders = await headers();
+  const ipHash = hashIp(await headers());
   const admin = createAdminClient();
-  const attempt = await recordAttempt(
-    admin,
-    "request",
-    email,
-    hashIp(requestHeaders),
-  );
+  const attempt = await recordAttempt(admin, "request", email, ipHash);
   await purgeOldAttempts(admin, attempt.created_at);
-  if (attempt.byEmail > MAX_PER_EMAIL || attempt.byIp > MAX_PER_IP) {
+  const [byEmail, byIp] = await Promise.all([
+    attemptsInHour(admin, "request", attempt.created_at, { email }),
+    attemptsInHour(admin, "request", attempt.created_at, { ip_hash: ipHash }),
+  ]);
+  if (byEmail > MAX_PER_EMAIL || byIp > MAX_PER_IP) {
     return { error: TOO_MANY };
   }
 
@@ -184,12 +139,22 @@ export async function requestAccess(
     return { error: STAFF_EMAIL };
   }
 
-  const rejected = await ensurePatientAccount(
-    admin,
-    email,
-    staff.map((profile) => profile.id),
-  );
-  if (rejected) return rejected;
+  const sent = await recordAttempt(admin, "code_sent", email, ipHash);
+  if (
+    (await attemptsInHour(admin, "code_sent", sent.created_at, {})) >
+    MAX_CODES_PER_HOUR
+  ) {
+    await forgetAttempt(admin, sent.id);
+    return { error: BUSY };
+  }
+
+  if (!(await hasPatientAccount(admin, email))) {
+    const id = await userIdFor(admin, email);
+    if (staff.some((profile) => profile.id === id)) {
+      await forgetAttempt(admin, sent.id);
+      return { error: STAFF_EMAIL };
+    }
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
@@ -212,42 +177,51 @@ export async function verifyCode(
   formData: FormData,
 ): Promise<AccessState> {
   const email = field(formData, "email").toLowerCase();
+  const ipHash = hashIp(await headers());
   const admin = createAdminClient();
-  const attempt = await recordAttempt(
-    admin,
-    "failed_code",
-    email,
-    hashIp(await headers()),
-  );
+  const attempt = await recordAttempt(admin, "failed_code", email, ipHash);
+  const [byEmailAndIp, byEmail, byIp] = await Promise.all([
+    attemptsInHour(admin, "failed_code", attempt.created_at, {
+      email,
+      ip_hash: ipHash,
+    }),
+    attemptsInHour(admin, "failed_code", attempt.created_at, { email }),
+    attemptsInHour(admin, "failed_code", attempt.created_at, {
+      ip_hash: ipHash,
+    }),
+  ]);
   if (
-    attempt.byEmail > MAX_FAILED_CODES_PER_EMAIL ||
-    attempt.byIp > MAX_FAILED_CODES_PER_IP
+    byEmailAndIp > MAX_FAILED_CODES_PER_EMAIL_AND_IP ||
+    byEmail > MAX_FAILED_CODES_PER_EMAIL ||
+    byIp > MAX_FAILED_CODES_PER_IP
   ) {
     return { error: TOO_MANY };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({
+  const { data, error } = await supabase.auth.verifyOtp({
     email,
     token: field(formData, "code"),
     type: "email",
   });
   if (error) return { error: "El código no es correcto o ha caducado." };
 
-  const { error: deleteError } = await admin
-    .from("access_requests")
-    .delete()
-    .eq("id", attempt.id);
-  if (deleteError) throw new Error(deleteError.message);
+  await forgetAttempt(admin, attempt.id);
+  if (!(await openPatientAccount(supabase, data.user!))) {
+    return { error: STAFF_EMAIL };
+  }
 
   redirect(nextFrom(formData));
 }
 
 export async function confirmLink(formData: FormData): Promise<void> {
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({
+  const { data, error } = await supabase.auth.verifyOtp({
     token_hash: field(formData, "token_hash"),
     type: "email",
   });
-  redirect(error ? "/acceder?caducado=1" : nextFrom(formData));
+  if (error) redirect("/acceder?caducado=1");
+  else if (await openPatientAccount(supabase, data.user!)) {
+    redirect(nextFrom(formData));
+  } else redirect("/acceder");
 }

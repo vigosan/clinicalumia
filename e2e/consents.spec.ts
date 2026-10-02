@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { extractImages, extractText, getDocumentProxy } from "unpdf";
@@ -24,6 +24,7 @@ const createdConsentIds: string[] = [];
 const createdPdfPaths: string[] = [];
 const createdPersonIds: string[] = [];
 const createdUserIds: string[] = [];
+const signerEmails: string[] = [];
 
 function uniqueSuffix() {
   return `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
@@ -55,6 +56,7 @@ type Signer = {
 };
 
 async function fillSigner(page: Page, signer: Signer) {
+  signerEmails.push(signer.email);
   await page.goto(`${WEB}/consentimiento`);
   const form = page.getByTestId("consent-form");
   await form.getByLabel("Nombre", { exact: true }).fill(signer.firstName);
@@ -215,8 +217,22 @@ async function searchConsents(page: Page, query: string) {
   await expect(page).toHaveURL((url) => url.searchParams.get("q") === query);
 }
 
+test.beforeEach(async ({ page }) => {
+  await page.setExtraHTTPHeaders({
+    "x-forwarded-for": `198.18.${randomInt(256)}.${randomInt(256)}`,
+  });
+});
+
 test.afterEach(async () => {
   const errors: unknown[] = [];
+  const emails = signerEmails.splice(0);
+  if (emails.length > 0) {
+    const { error } = await admin
+      .from("access_requests")
+      .delete()
+      .in("email", emails);
+    if (error) errors.push(error);
+  }
   const consentIds = createdConsentIds.splice(0);
   if (consentIds.length > 0) {
     const { error } = await admin
@@ -731,4 +747,46 @@ test("a 390 px la lista de consentimientos se lee sin desplazar la página de la
       return wrapper.scrollWidth <= wrapper.clientWidth;
     }),
   ).toBe(true);
+});
+
+test("without captcha keys the consent form shows no captcha", async ({
+  page,
+}) => {
+  await page.goto(`${WEB}/consentimiento`);
+
+  await expect(page.getByTestId("consent-form")).toBeVisible();
+  await expect(page.getByTestId("captcha")).toHaveCount(0);
+});
+
+test("a sixth consent from the same network within an hour is stopped with the clinic phone, so a script cannot fill the list or spend the email quota", async ({
+  page,
+}) => {
+  for (let signed = 0; signed < 5; signed++) {
+    await signAtWeb(page, {
+      firstName: "Familia",
+      lastName: `Limite${uniqueSuffix()}`,
+      birthDate: "1985-03-01",
+      taxId: uniqueTaxId(),
+      email: `limite-${uniqueSuffix()}@test.local`,
+    });
+  }
+  const taxId = uniqueTaxId();
+  await fillSigner(page, {
+    firstName: "Familia",
+    lastName: `Limite${uniqueSuffix()}`,
+    birthDate: "1985-03-01",
+    taxId,
+    email: `limite-${uniqueSuffix()}@test.local`,
+  });
+  await page.getByTestId("signature-mode-type").check();
+  await page.getByTestId("consent-submit").click();
+
+  await expect(page.getByTestId("consent-error")).toHaveText(
+    "Se han enviado muchos consentimientos desde esta conexión. Inténtalo dentro de una hora o llama al 614 552 808.",
+  );
+  const { data } = await admin
+    .from("consents")
+    .select("id")
+    .eq("tax_id", taxId);
+  expect(data).toEqual([]);
 });
