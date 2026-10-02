@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/recordatorios", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/recordatorios", "schedule": "0 14 * * *" }
+    { "path": "/api/cron/recordatorios", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/cuentas-sin-verificar", "schedule": "0 3 * * *" }
   ]
 }

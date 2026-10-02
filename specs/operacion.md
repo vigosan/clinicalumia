@@ -33,3 +33,21 @@ Cómo se comporta:
 - Si Cloudflare no contesta en 5 segundos o devuelve un error, el formulario no se envía y se pide probar en unos minutos o llamar al 614 552 808. Es deliberado: mientras el captcha esté encendido, nada pasa sin comprobar.
 - El script de Cloudflare solo se carga en esas dos páginas y solo con las claves puestas. La web no tiene `Content-Security-Policy`; si algún día se añade, debe permitir `https://challenges.cloudflare.com` en `script-src` y `frame-src`.
 - Para apagarlo, borra cualquiera de las dos variables en Vercel y vuelve a desplegar.
+
+## Limpieza diaria de cuentas de acceso sin verificar
+
+Pedir un código en `/acceder` crea un usuario de acceso aunque el código no se use nunca. Cada día, sobre las 03:00 UTC (Vercel Hobby lo lanza dentro de esa hora), el cron `/api/cron/cuentas-sin-verificar` de la web borra con la clave de servicio los usuarios que cumplen todo esto:
+
+- nunca han entrado (`last_sign_in_at` vacío);
+- se crearon hace más de 7 días y no han pedido otro código en esos 7 días (`recovery_sent_at` vacío o anterior), para no romper un código que está de camino;
+- no tienen cuenta de paciente (`patient_accounts`);
+- no son del equipo (no tienen fila en `profiles`);
+- no tienen invitación (`invited_at` vacío), pendiente o no.
+
+No se mira si el email está confirmado: `/acceder` crea los usuarios ya confirmados, así que ese dato no distingue a nadie.
+
+- Usa el mismo `CRON_SECRET` que los recordatorios: sin él, o con otro, responde `401` y no borra nada.
+- Si no puede leer los usuarios, el equipo o las cuentas de paciente, falla sin borrar nada. Si falla un borrado, sigue con el resto y lo cuenta.
+- Devuelve `{ deleted, failed }`, que aparece en los logs del cron en Vercel.
+- La programación está en `apps/web/vercel.json`. Hobby permite hasta 100 crons por proyecto, cada uno como mucho una vez al día.
+- Para lanzarlo a mano en local, con la web arrancada: `curl -H "Authorization: Bearer lumia-cron-local" http://localhost:3000/api/cron/cuentas-sin-verificar`.
