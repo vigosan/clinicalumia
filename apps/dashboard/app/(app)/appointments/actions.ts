@@ -1,6 +1,11 @@
 "use server";
 
-import { madridDateTime } from "@clinicalumia/api/madrid-time";
+import {
+  addDays,
+  isValidDate,
+  madridDateTime,
+  madridInstant,
+} from "@clinicalumia/api/madrid-time";
 import { normalizeSearch, toIlikePattern } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
@@ -9,7 +14,9 @@ import type { ActionResult } from "@/lib/action-result";
 import {
   type AppointmentInput,
   appointmentError,
+  freeSlots,
   isPatientOverlap,
+  isUuid,
   parseAppointmentForm,
   pastTimeWarnings,
   scheduleWarnings,
@@ -79,6 +86,68 @@ export async function canNotifyPatient(personId: string): Promise<boolean> {
     console.error("No se ha podido saber a quién avisar", error);
     return false;
   }
+}
+
+export async function loadFreeSlots(
+  professionalId: string,
+  date: string,
+  durationMinutes: number,
+): Promise<string[] | null> {
+  if (
+    !isUuid(professionalId) ||
+    !isValidDate(date) ||
+    !Number.isInteger(durationMinutes) ||
+    durationMinutes < 5 ||
+    durationMinutes > 480
+  )
+    return null;
+
+  const dayStart = madridInstant(date, "00:00");
+  const dayEnd = madridInstant(addDays(date, 1), "00:00");
+  const supabase = await createClient();
+  const [
+    { data: schedules, error: schedulesError },
+    { data: appointments, error: appointmentsError },
+    { data: timeOff, error: timeOffError },
+    closures,
+  ] = await Promise.all([
+    supabase
+      .from("employee_schedules")
+      .select("weekday, starts_at, ends_at")
+      .eq("profile_id", professionalId),
+    supabase
+      .from("appointments")
+      .select("starts_at, ends_at")
+      .eq("professional_id", professionalId)
+      .eq("status", "scheduled")
+      .lt("starts_at", dayEnd)
+      .gt("ends_at", dayStart),
+    supabase.rpc("time_off_between", {
+      p_profile_ids: [professionalId],
+      p_from: dayStart,
+      p_to: dayEnd,
+    }),
+    loadClosures(supabase, date, date),
+  ]);
+  if (
+    schedulesError ||
+    appointmentsError ||
+    timeOffError ||
+    !schedules ||
+    !appointments ||
+    !timeOff ||
+    !closures
+  )
+    return null;
+
+  return freeSlots({
+    date,
+    durationMinutes,
+    schedules,
+    busy: [...appointments, ...timeOff],
+    closed: closureOn(date, closures) !== null,
+    now: new Date(),
+  });
 }
 
 async function resolveProfessional(

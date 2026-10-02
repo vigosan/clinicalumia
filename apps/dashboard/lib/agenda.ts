@@ -276,6 +276,52 @@ export function scheduleWarnings({
   return warnings;
 }
 
+function timeOfDay(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+export function freeSlots({
+  date,
+  durationMinutes,
+  schedules,
+  busy,
+  closed,
+  now,
+}: {
+  date: string;
+  durationMinutes: number;
+  schedules: ScheduleBlock[];
+  busy: { starts_at: string; ends_at: string }[];
+  closed: boolean;
+  now: Date;
+}): string[] {
+  if (closed) return [];
+  const weekday = weekdayOf(date);
+  const busyMs = busy.map((entry) => ({
+    start: new Date(entry.starts_at).getTime(),
+    end: new Date(entry.ends_at).getTime(),
+  }));
+  const slots: string[] = [];
+  for (const [blockStart, blockEnd] of schedules
+    .filter((schedule) => schedule.weekday === weekday)
+    .map(scheduleSpan)
+    .sort(([a], [b]) => a - b)) {
+    for (
+      let start = Math.ceil(blockStart / 15) * 15;
+      start + durationMinutes <= blockEnd;
+      start += 15
+    ) {
+      const startMs = new Date(madridInstant(date, timeOfDay(start))).getTime();
+      const endMs = startMs + durationMinutes * 60_000;
+      if (startMs <= now.getTime()) continue;
+      if (busyMs.some((entry) => startMs < entry.end && endMs > entry.start))
+        continue;
+      slots.push(timeOfDay(start));
+    }
+  }
+  return slots;
+}
+
 export type AppointmentInput = {
   professional_id: string;
   patient_id: string;

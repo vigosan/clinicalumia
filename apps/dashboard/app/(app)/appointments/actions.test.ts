@@ -42,7 +42,16 @@ const overlapResult: {
 const overlapMaybeSingle = vi.fn(async () => overlapResult);
 const overlapLimit = vi.fn(() => ({ maybeSingle: overlapMaybeSingle }));
 const overlapNeqId = vi.fn(() => ({ limit: overlapLimit }));
-const overlapGt = vi.fn(() => ({ limit: overlapLimit, neq: overlapNeqId }));
+const dayAppointmentsResult: { data: unknown; error: unknown } = {
+  data: [],
+  error: null,
+};
+const overlapGt = vi.fn(() =>
+  Object.assign(Promise.resolve(dayAppointmentsResult), {
+    limit: overlapLimit,
+    neq: overlapNeqId,
+  }),
+);
 const overlapLt = vi.fn(() => ({ gt: overlapGt }));
 const overlapStatusEq = vi.fn(() => ({ lt: overlapLt }));
 const overlapEq = vi.fn(() => ({ eq: overlapStatusEq }));
@@ -123,6 +132,7 @@ const {
   moveAppointment,
   cancelAppointment,
   canNotifyPatient,
+  loadFreeSlots,
   markNoShow,
   restoreFromNoShow,
   searchPatients,
@@ -942,5 +952,87 @@ describe("canNotifyPatient", () => {
     expect(await canNotifyPatient("patient-1")).toBe(false);
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+});
+
+describe("loadFreeSlots", () => {
+  const professionalId = "a0000000-0000-0000-0000-000000000001";
+  const wednesday = "2030-07-17";
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T08:00:00Z"));
+    rpc.mockClear();
+    schedulesResult.data = [
+      { weekday: 3, starts_at: "09:00:00", ends_at: "12:00:00" },
+    ];
+    schedulesResult.error = null;
+    schedulesEq.mockClear();
+    dayAppointmentsResult.data = [];
+    dayAppointmentsResult.error = null;
+    overlapEq.mockClear();
+    overlapStatusEq.mockClear();
+    timeOffResult.data = [];
+    timeOffResult.error = null;
+    loadClosures.mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("offers the free times of that professional's day, skipping their scheduled appointments and time off", async () => {
+    dayAppointmentsResult.data = [
+      {
+        starts_at: "2030-07-17T10:00:00+02:00",
+        ends_at: "2030-07-17T10:45:00+02:00",
+      },
+    ];
+    timeOffResult.data = [
+      {
+        starts_at: "2030-07-17T11:15:00+02:00",
+        ends_at: "2030-07-17T12:00:00+02:00",
+        reason: null,
+      },
+    ];
+
+    expect(await loadFreeSlots(professionalId, wednesday, 30)).toEqual([
+      "09:00",
+      "09:15",
+      "09:30",
+      "10:45",
+    ]);
+    expect(schedulesEq).toHaveBeenCalledWith("profile_id", professionalId);
+    expect(overlapEq).toHaveBeenCalledWith("professional_id", professionalId);
+    expect(overlapStatusEq).toHaveBeenCalledWith("status", "scheduled");
+    expect(rpc).toHaveBeenCalledWith(
+      "time_off_between",
+      expect.objectContaining({ p_profile_ids: [professionalId] }),
+    );
+  });
+
+  it("offers nothing on a day the clinic is closed", async () => {
+    loadClosures.mockResolvedValueOnce([
+      {
+        id: "closure-1",
+        startsOn: wednesday,
+        endsOn: wednesday,
+        reason: "Festivo",
+      },
+    ]);
+
+    expect(await loadFreeSlots(professionalId, wednesday, 30)).toEqual([]);
+  });
+
+  it("answers null instead of an empty list when the day cannot be loaded, so the form does not claim there are no free times", async () => {
+    dayAppointmentsResult.error = { message: "boom" };
+    expect(await loadFreeSlots(professionalId, wednesday, 30)).toBeNull();
+  });
+
+  it("answers null for an invalid professional, date or duration instead of querying", async () => {
+    expect(await loadFreeSlots("prof-1", wednesday, 30)).toBeNull();
+    expect(await loadFreeSlots(professionalId, "2030-02-30", 30)).toBeNull();
+    expect(await loadFreeSlots(professionalId, wednesday, 0)).toBeNull();
+    expect(schedulesEq).not.toHaveBeenCalled();
   });
 });

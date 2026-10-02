@@ -6,6 +6,7 @@ import {
   type Block,
   canMarkNoShow,
   canMove,
+  freeSlots,
   isUuid,
   layoutDay,
   newAppointmentDrawerHref,
@@ -1134,5 +1135,91 @@ describe("appointmentFormInitials", () => {
       initialTime: "",
       initialProfessionalId: null,
     });
+  });
+});
+
+describe("freeSlots", () => {
+  const wednesday = "2026-07-15";
+  const morning = { weekday: 3, starts_at: "09:00:00", ends_at: "12:00:00" };
+  const longAgo = new Date("2026-01-01T00:00:00Z");
+
+  function slots(overrides: Partial<Parameters<typeof freeSlots>[0]> = {}) {
+    return freeSlots({
+      date: wednesday,
+      durationMinutes: 60,
+      schedules: [morning],
+      busy: [],
+      closed: false,
+      now: longAgo,
+      ...overrides,
+    });
+  }
+
+  it("offers every quarter of an hour where the whole appointment fits inside the schedule, so reception never picks a time that ends after hours", () => {
+    expect(
+      slots({
+        durationMinutes: 30,
+        schedules: [{ weekday: 3, starts_at: "09:00:00", ends_at: "10:00:00" }],
+      }),
+    ).toEqual(["09:00", "09:15", "09:30"]);
+  });
+
+  it("leaves out the times that would overlap an appointment but keeps the one that starts right when it ends", () => {
+    expect(
+      slots({
+        busy: [
+          {
+            starts_at: "2026-07-15T10:00:00+02:00",
+            ends_at: "2026-07-15T10:45:00+02:00",
+          },
+        ],
+      }),
+    ).toEqual(["09:00", "10:45", "11:00"]);
+  });
+
+  it("leaves out the times covered by a time off of the professional", () => {
+    expect(
+      slots({
+        busy: [
+          {
+            starts_at: "2026-07-15T08:00:00+02:00",
+            ends_at: "2026-07-15T10:30:00+02:00",
+          },
+        ],
+      }),
+    ).toEqual(["10:30", "10:45", "11:00"]);
+  });
+
+  it("offers nothing when the clinic is closed that day, even inside the schedule", () => {
+    expect(slots({ closed: true })).toEqual([]);
+  });
+
+  it("only uses the schedule of that weekday and lists morning and afternoon blocks in order", () => {
+    expect(
+      slots({
+        schedules: [
+          { weekday: 3, starts_at: "16:00:00", ends_at: "17:00:00" },
+          { weekday: 4, starts_at: "09:00:00", ends_at: "12:00:00" },
+          { weekday: 3, starts_at: "09:00:00", ends_at: "10:00:00" },
+        ],
+      }),
+    ).toEqual(["09:00", "16:00"]);
+  });
+
+  it("starts on the next quarter of an hour when the schedule starts at an odd minute, to match the times the time picker offers", () => {
+    expect(
+      slots({
+        durationMinutes: 30,
+        schedules: [{ weekday: 3, starts_at: "09:10:00", ends_at: "10:00:00" }],
+      }),
+    ).toEqual(["09:15", "09:30"]);
+  });
+
+  it("leaves out the times that have already passed today", () => {
+    expect(slots({ now: new Date("2026-07-15T10:20:00+02:00") })).toEqual([
+      "10:30",
+      "10:45",
+      "11:00",
+    ]);
   });
 });

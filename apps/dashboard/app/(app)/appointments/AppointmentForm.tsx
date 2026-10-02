@@ -24,6 +24,7 @@ import { createSubmitGate } from "@/lib/submit-gate";
 import { toastOnRedirect } from "@/lib/toast-on-redirect";
 import { canNotifyPatient, createAppointment } from "./actions";
 import { DurationField } from "./DurationField";
+import { FreeSlots } from "./FreeSlots";
 import { type PatientOption, PatientPicker } from "./PatientPicker";
 
 export type Professional = {
@@ -256,6 +257,17 @@ export function AppointmentForm({
           }}
         />
       </div>
+
+      <FreeSlots
+        professionalId={professionalId}
+        date={date}
+        duration={duration}
+        value={time}
+        onSelect={(next) => {
+          setTime(next);
+          resetConfirmation();
+        }}
+      />
 
       {closure && (
         <Alert tone="warning" data-testid="appointment-closure-warning">

@@ -894,6 +894,62 @@ test("«Nueva cita» se abre en un panel encima de la agenda, para dar la cita s
   expect(serverRenders).toEqual([]);
 });
 
+test("en Nueva cita, al elegir profesional, servicio y fecha aparecen los huecos libres sin los ocupados por citas, y tocar uno rellena la hora", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(63, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Huecos",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const { error: scheduleError } = await admin
+    .from("employee_schedules")
+    .insert({
+      profile_id: employee.id,
+      weekday: isoWeekday(date),
+      starts_at: "09:00",
+      ends_at: "12:00",
+    });
+  expect(scheduleError).toBeNull();
+  await createAppointment({
+    professionalId: employee.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "10:45",
+  });
+
+  await loginAsThrowawayOwner(page, "Propietaria Huecos");
+  await page.goto(`${DASHBOARD}/`);
+  await page.getByTestId("agenda-new").click();
+  const drawer = page.getByTestId("new-appointment-drawer");
+
+  await selectOption(
+    drawer.getByTestId("appointment-professional"),
+    employee.id,
+  );
+  await selectOption(
+    drawer.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
+  await pickDate(drawer.getByTestId("appointment-date"), date);
+
+  const freeSlots = drawer.getByTestId("appointment-free-slots");
+  await expect(freeSlots.getByRole("button")).toHaveText([
+    "09:00",
+    "10:45",
+    "11:00",
+  ]);
+
+  await freeSlots.getByRole("button", { name: "10:45" }).click();
+  await expect(drawer.getByTestId("appointment-time")).toHaveValue("10:45");
+  await expect(
+    freeSlots.getByRole("button", { name: "10:45" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
 test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55", async ({
   page,
 }) => {
