@@ -163,3 +163,21 @@ test.describe("on a phone", () => {
     expect(amount!.x).toBeGreaterThanOrEqual(name!.x + name!.width);
   });
 });
+
+test("the record lists each detail under its own label, so staff scan by label instead of reading «DNI/NIE: —» lines", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, OWNER);
+  await page.goto(`${DASHBOARD}/patients`);
+  await page.getByTestId("patient-link").first().click();
+
+  const details = page.getByTestId("patient-details");
+  for (const label of ["DNI/NIE", "Email", "Teléfono", "Dirección"]) {
+    await expect(
+      details.getByRole("term").filter({ hasText: label }),
+    ).toHaveCount(1);
+  }
+  await expect(details.getByRole("definition")).toHaveCount(
+    await details.getByRole("term").count(),
+  );
+});

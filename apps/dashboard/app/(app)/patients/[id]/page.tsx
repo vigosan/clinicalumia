@@ -309,24 +309,35 @@ export default async function PatientPage({
         </Alert>
       )}
 
-      <Card className="flex flex-col gap-2">
-        <p>
-          <strong>DNI/NIE:</strong> {person.tax_id ?? "—"}
-        </p>
-        <p>
-          <strong>Email:</strong> {person.email ?? "—"}
-        </p>
-        <p>
-          <strong>Teléfono:</strong> {person.phone ?? "—"}
-        </p>
-        <p>
-          <strong>Dirección:</strong> {person.address || "—"}
-        </p>
-        {person.admin_notes && (
-          <p>
-            <strong>Notas:</strong> {person.admin_notes}
-          </p>
-        )}
+      <Card>
+        <dl
+          data-testid="patient-details"
+          className="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          {[
+            { label: "DNI/NIE", value: person.tax_id },
+            { label: "Email", value: person.email },
+            { label: "Teléfono", value: person.phone },
+            { label: "Dirección", value: person.address },
+            ...(person.admin_notes
+              ? [{ label: "Notas", value: person.admin_notes, wide: true }]
+              : []),
+          ].map((detail) => (
+            <div
+              key={detail.label}
+              className={`flex min-w-0 flex-col gap-1 ${"wide" in detail ? "sm:col-span-2 xl:col-span-4" : ""}`}
+            >
+              <dt className="text-[13px] font-medium text-ink-700">
+                {detail.label}
+              </dt>
+              <dd
+                className={`break-words text-[15px] ${detail.value ? "text-ink-900" : "text-ink-500"}`}
+              >
+                {detail.value || "—"}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </Card>
 
       <GuardiansSection
