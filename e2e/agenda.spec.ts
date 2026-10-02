@@ -1612,7 +1612,7 @@ test("una no presentada libera su franja: se da a otro paciente, las dos se ven,
   await expect(takenBlock).toContainText("Nora");
   const noShowBox = await noShowBlock.boundingBox();
   const takenBox = await takenBlock.boundingBox();
-  expect(noShowBox!.x + noShowBox!.width).toBeLessThanOrEqual(takenBox!.x);
+  expect(takenBox!.x + takenBox!.width).toBeLessThanOrEqual(noShowBox!.x);
 
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${noShowId}`);
   await page.getByTestId("appointment-restore").click();

@@ -56,6 +56,7 @@ function buildBlockContents(
       professionalId: appointment.professionalId,
       start: appointment.startsAt,
       end: appointment.endsAt,
+      noShow: appointment.status === "no_show",
     };
     blocks.push(block);
     contentById.set(block.id, {

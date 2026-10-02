@@ -131,6 +131,54 @@ describe("layoutDay", () => {
       { id: "colleague", kind: "own", top: 60, height: 30, lane: 0, lanes: 1 },
     ]);
   });
+
+  it("keeps the live appointment in the first lane when it starts with a no-show, whatever order the database returns them in", () => {
+    const noShow: Block = {
+      id: "a-no-show",
+      kind: "own",
+      professionalId: "pro-1",
+      start: "2026-07-15T16:00:00+02:00",
+      end: "2026-07-15T17:00:00+02:00",
+      noShow: true,
+    };
+    const taken: Block = {
+      id: "b-taken",
+      kind: "own",
+      professionalId: "pro-1",
+      start: "2026-07-15T16:00:00+02:00",
+      end: "2026-07-15T17:00:00+02:00",
+    };
+    const expected = [
+      { id: "a-no-show", kind: "own", top: 60, height: 60, lane: 1, lanes: 2 },
+      { id: "b-taken", kind: "own", top: 60, height: 60, lane: 0, lanes: 2 },
+    ];
+    expect(layoutDay([noShow, taken], "2026-07-15", 15, 20)).toEqual(expected);
+    expect(
+      layoutDay([taken, noShow], "2026-07-15", 15, 20).sort((a, b) =>
+        a.id.localeCompare(b.id),
+      ),
+    ).toEqual(expected);
+  });
+
+  it("orders appointments that start together by id, so their lanes do not swap between reloads", () => {
+    const first: Block = {
+      id: "a",
+      kind: "own",
+      professionalId: "pro-1",
+      start: "2026-07-15T16:00:00+02:00",
+      end: "2026-07-15T16:30:00+02:00",
+    };
+    const second: Block = { ...first, id: "b" };
+    expect(
+      layoutDay([second, first], "2026-07-15", 15, 20).map(({ id, lane }) => [
+        id,
+        lane,
+      ]),
+    ).toEqual([
+      ["b", 1],
+      ["a", 0],
+    ]);
+  });
 });
 
 describe("visibleHours", () => {

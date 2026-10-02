@@ -14,6 +14,7 @@ export type Block = {
   start: string;
   end: string;
   label?: string;
+  noShow?: boolean;
 };
 
 export type DayLayoutBlock = {
@@ -49,7 +50,10 @@ export function layoutDay(
   lastHour: number,
 ): DayLayoutBlock[] {
   const windowMinutes = (lastHour - firstHour) * 60;
-  const laidOut: (DayLayoutBlock & { professionalId: string })[] = [];
+  const laidOut: (DayLayoutBlock & {
+    professionalId: string;
+    noShow: boolean;
+  })[] = [];
   for (const block of blocks) {
     const top = clamp(
       minutesFromFirstHour(block.start, date, firstHour),
@@ -66,6 +70,7 @@ export function layoutDay(
       id: block.id,
       kind: block.kind,
       professionalId: block.professionalId,
+      noShow: block.noShow ?? false,
       top,
       height: bottom - top,
       lane: 0,
@@ -84,7 +89,7 @@ export function layoutDay(
 }
 
 function assignLanes(
-  entries: (DayLayoutBlock & { professionalId: string })[],
+  entries: (DayLayoutBlock & { professionalId: string; noShow: boolean })[],
 ): void {
   const byProfessional = new Map<string, typeof entries>();
   for (const entry of entries)
@@ -93,7 +98,12 @@ function assignLanes(
       entry,
     ]);
   for (const group of byProfessional.values()) {
-    const sorted = [...group].sort((a, b) => a.top - b.top);
+    const sorted = [...group].sort(
+      (a, b) =>
+        a.top - b.top ||
+        Number(a.noShow) - Number(b.noShow) ||
+        a.id.localeCompare(b.id),
+    );
     let cluster: DayLayoutBlock[] = [];
     let laneEnds: number[] = [];
     const closeCluster = () => {
