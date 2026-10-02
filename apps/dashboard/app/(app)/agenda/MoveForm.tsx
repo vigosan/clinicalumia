@@ -33,6 +33,7 @@ export function MoveForm({
   initialDate,
   initialTime,
   canNotify,
+  onPendingChange,
 }: {
   appointmentId: string;
   patientId: string;
@@ -42,6 +43,7 @@ export function MoveForm({
   initialDate: string;
   initialTime: string;
   canNotify: boolean;
+  onPendingChange: (pending: boolean) => void;
 }) {
   const [state, formAction, pending] = useActionState(
     moveAppointmentWithToast,
@@ -54,7 +56,8 @@ export function MoveForm({
 
   useEffect(() => {
     if (!pending) submitGateRef.current.finish();
-  }, [pending]);
+    onPendingChange(pending);
+  }, [pending, onPendingChange]);
 
   const warnings =
     state && "warnings" in state && dismissedStateRef.current !== state

@@ -108,6 +108,7 @@ export function AppointmentPanel({
   const [open, setOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [moving, setMoving] = useState(false);
 
   function handleOpenChange(next: boolean) {
     if (next) return;
@@ -303,6 +304,7 @@ export function AppointmentPanel({
               appointmentId={appointment.id}
               invoiced={appointment.invoice !== null}
               canNotify={appointment.canNotify}
+              disabled={moving}
             />
           )}
           {appointment.canMarkNoShow && (
@@ -312,7 +314,7 @@ export function AppointmentPanel({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={pending}
+                  disabled={pending || moving}
                   data-testid="appointment-no-show"
                 >
                   Marcar como no presentada
@@ -329,7 +331,7 @@ export function AppointmentPanel({
               type="button"
               variant="secondary"
               size="sm"
-              disabled={pending}
+              disabled={pending || moving}
               data-testid="appointment-restore"
               onClick={handleRestore}
             >
@@ -351,6 +353,7 @@ export function AppointmentPanel({
             initialDate={appointment.initialDate}
             initialTime={appointment.initialTime}
             canNotify={appointment.canNotify}
+            onPendingChange={setMoving}
           />
         </div>
       )}

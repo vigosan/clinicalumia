@@ -16,10 +16,12 @@ export function CancelDialog({
   appointmentId,
   invoiced,
   canNotify,
+  disabled,
 }: {
   appointmentId: string;
   invoiced: boolean;
   canNotify: boolean;
+  disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [by, setBy] = useState<"patient" | "clinic">("patient");
@@ -61,6 +63,7 @@ export function CancelDialog({
           type="button"
           variant="danger"
           size="sm"
+          disabled={disabled}
           data-testid="appointment-cancel"
         >
           Cancelar cita

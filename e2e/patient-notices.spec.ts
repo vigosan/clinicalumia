@@ -302,6 +302,43 @@ test("con la casilla desmarcada, mover y cancelar no envían nada al paciente", 
   expect(await messageCount(email)).toBe(0);
 });
 
+test("si se abre Cancelar cita mientras el cambio de hora aún se guarda, la casilla desmarcada se mantiene y no se avisa al paciente", async ({
+  page,
+}) => {
+  const date = weekdayFrom(75);
+  const professional = await professionalWithSchedule(date);
+  const email = `${unique("sin-aviso-rapido")}@test.local`;
+  const patient = await person({ email });
+  const appointmentId = await appointmentFor({
+    professionalId: professional.id,
+    patientId: patient.id,
+    date,
+  });
+
+  await signIn(page, DASHBOARD, professional.email, professional.password);
+  await openAppointment(page, date, appointmentId);
+  await page.getByTestId("notify-patient").uncheck();
+  await pickTime(page.getByTestId("appointment-move-time"), "12:30");
+  await page.getByTestId("appointment-move").click();
+  await page.getByTestId("appointment-cancel").click();
+  const cancelNotify = page
+    .getByRole("alertdialog")
+    .getByTestId("notify-patient");
+  await cancelNotify.uncheck();
+  await page.waitForTimeout(1500);
+
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await expect(cancelNotify).not.toBeChecked();
+  await page.getByTestId("cancel-confirm").click();
+  await expect(
+    page.getByTestId("toast").filter({ hasText: "Cita cambiada" }),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("toast").last()).toHaveText("Cita cancelada");
+
+  await page.waitForTimeout(2000);
+  expect(await messageCount(email)).toBe(0);
+});
+
 test("un paciente sin email ni tutores con email no tiene la casilla en Nueva cita, Cambiar fecha u hora ni Cancelar cita", async ({
   page,
 }) => {
