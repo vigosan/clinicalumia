@@ -301,6 +301,9 @@ describe("personError", () => {
     expect(personError({ message: "phone_too_long" })).toBe(
       "El teléfono es demasiado largo.",
     );
+    expect(personError({ message: "privacy_version_too_long" })).toBe(
+      "Tienes que aceptar la política de privacidad.",
+    );
     expect(personError({ message: "too_many_people_today" })).toBe(
       "Hoy ya has añadido muchas personas. Si necesitas añadir más, llama al 614 552 808.",
     );

@@ -63,6 +63,9 @@ export default async function NewPersonPage({
     consent = data ?? undefined;
   }
 
+  const supabase = await createClient();
+  const { data: isOwner } = await supabase.rpc("is_owner");
+
   const title = guardianOfProp
     ? "Nuevo tutor/a"
     : consent
@@ -93,6 +96,7 @@ export default async function NewPersonPage({
           guardianOf={guardianOfProp}
           returnTo={returnTo}
           consent={consent}
+          isOwner={isOwner === true}
         />
       </Card>
     </>

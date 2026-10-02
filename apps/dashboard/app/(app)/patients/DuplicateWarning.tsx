@@ -18,11 +18,13 @@ function matchedLabel(matched: string[]): string {
 
 export function DuplicateWarning({
   duplicates,
+  isOwner,
   onUseExisting,
   onUnarchive,
   onContinue,
 }: {
   duplicates: Duplicate[];
+  isOwner: boolean;
   onUseExisting: (id: string) => void;
   onUnarchive: (id: string) => void;
   onContinue: () => void;
@@ -59,19 +61,29 @@ export function DuplicateWarning({
                   >
                     Ficha archivada
                   </span>
+                  {!isOwner && (
+                    <>
+                      {" · "}
+                      <span data-testid="duplicate-ask-owner">
+                        pide a la propietaria que la desarchive
+                      </span>
+                    </>
+                  )}
                 </>
               )}
             </span>
             {duplicate.archived ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                data-testid="duplicate-unarchive"
-                onClick={() => onUnarchive(duplicate.id)}
-              >
-                Desarchivar y usar esta ficha
-              </Button>
+              isOwner && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  data-testid="duplicate-unarchive"
+                  onClick={() => onUnarchive(duplicate.id)}
+                >
+                  Desarchivar y usar esta ficha
+                </Button>
+              )
             ) : (
               <Button
                 type="button"

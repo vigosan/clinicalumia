@@ -153,6 +153,7 @@ const PERSON_MESSAGE_BY_CODE: Record<string, string> = {
   name_too_long:
     "El nombre y los apellidos pueden tener como mucho 100 caracteres.",
   phone_too_long: "El teléfono es demasiado largo.",
+  privacy_version_too_long: "Tienes que aceptar la política de privacidad.",
   too_many_people_today: `Hoy ya has añadido muchas personas. Si necesitas añadir más, llama al ${site.phone.display}.`,
 };
 

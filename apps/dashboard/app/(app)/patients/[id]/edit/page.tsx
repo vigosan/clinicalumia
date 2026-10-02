@@ -22,6 +22,7 @@ export default async function EditPersonPage({
     .eq("id", id)
     .maybeSingle();
   if (!person) notFound();
+  const { data: isOwner } = await supabase.rpc("is_owner");
 
   return (
     <>
@@ -38,7 +39,7 @@ export default async function EditPersonPage({
         description={`${person.first_name} ${person.last_name}`}
       />
       <Card>
-        <PersonForm person={person} />
+        <PersonForm person={person} isOwner={isOwner === true} />
       </Card>
     </>
   );

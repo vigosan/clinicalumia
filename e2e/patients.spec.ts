@@ -429,6 +429,39 @@ test("an archived record with the same name and birth date shows up as «Ficha a
   expect(data).toEqual([{ id: archivedId, archived_at: null }]);
 });
 
+test("an employee who finds an archived duplicate is told to ask the owner to unarchive it, instead of a button that would fail", async ({
+  page,
+}) => {
+  const lastName = `ArchivadaEmpleada ${Date.now()}`;
+  await insertPerson({
+    first_name: "Lucía",
+    last_name: lastName,
+    birth_date: "1975-05-05",
+    archived: true,
+  });
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/new`);
+
+  await page.getByLabel("Nombre").fill("Lucia");
+  await page.getByLabel("Apellidos").fill(lastName);
+  await page.getByLabel("Fecha de nacimiento").fill("05/05/1975");
+  await page.getByTestId("person-submit").click();
+
+  const duplicateRow = page
+    .getByTestId("duplicate-warning")
+    .locator("li")
+    .filter({ hasText: `Lucía ${lastName}` });
+  await expect(duplicateRow.getByTestId("duplicate-archived")).toHaveText(
+    "Ficha archivada",
+  );
+  await expect(duplicateRow.getByTestId("duplicate-ask-owner")).toHaveText(
+    "pide a la propietaria que la desarchive",
+  );
+  await expect(duplicateRow.getByTestId("duplicate-unarchive")).toHaveCount(0);
+  await expect(duplicateRow.getByTestId("duplicate-use")).toHaveCount(0);
+});
+
 test("saving a new record with the DNI of an archived one says so and links to that archived record, so the team can recover it", async ({
   page,
 }) => {

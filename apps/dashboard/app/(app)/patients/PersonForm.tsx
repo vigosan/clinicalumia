@@ -71,11 +71,13 @@ export function PersonForm({
   guardianOf,
   returnTo,
   consent,
+  isOwner,
 }: {
   person?: Person;
   guardianOf?: GuardianOf;
   returnTo?: string;
   consent?: ConsentPrefill;
+  isOwner: boolean;
 }) {
   const router = useRouter();
   const personId = person?.id;
@@ -349,6 +351,7 @@ export function PersonForm({
       {duplicates.length > 0 && (
         <DuplicateWarning
           duplicates={duplicates}
+          isOwner={isOwner}
           onUseExisting={handleUseExisting}
           onUnarchive={handleUnarchive}
           onContinue={() => {
