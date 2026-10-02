@@ -324,7 +324,11 @@ export function ConsentForm({
       />
 
       {turnstileSiteKey && (
-        <Turnstile key={submits} siteKey={turnstileSiteKey} />
+        <Turnstile
+          key={submits}
+          siteKey={turnstileSiteKey}
+          action="consentimiento"
+        />
       )}
 
       {error && (

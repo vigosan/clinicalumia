@@ -614,7 +614,13 @@ describe("requestAccess", () => {
     vi.stubEnv("TURNSTILE_SECRET_KEY", "clave-secreta");
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => Response.json({ success: true })),
+      vi.fn(async () =>
+        Response.json({
+          success: true,
+          hostname: "www.clinicalumia.es",
+          action: "acceder",
+        }),
+      ),
     );
     const form = accessForm("lucia@example.com");
     form.set("cf-turnstile-response", "token-bueno");

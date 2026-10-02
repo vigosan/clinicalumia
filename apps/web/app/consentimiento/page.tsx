@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { PageHero } from "@/components/PageHero";
 import { consentTitle } from "@/lib/consent-legal";
 import { turnstileSiteKey } from "@/lib/turnstile";
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ConsentimientoPage() {
+export default async function ConsentimientoPage() {
+  await connection();
+
   return (
     <>
       <PageHero />

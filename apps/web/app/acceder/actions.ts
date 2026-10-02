@@ -16,7 +16,7 @@ import {
 } from "@/lib/access-attempts";
 import { STAFF_EMAIL } from "@/lib/booking";
 import { site } from "@/lib/site";
-import { CAPTCHA_FAILED, passesCaptcha } from "@/lib/turnstile";
+import { captchaError } from "@/lib/turnstile";
 
 export type AccessState = { error: string } | undefined;
 
@@ -120,7 +120,8 @@ export async function requestAccess(
   const email = field(formData, "email").toLowerCase();
   const next = nextFrom(formData);
   if (!EMAIL.test(email)) return { error: "Escribe un email válido." };
-  if (!(await passesCaptcha(formData))) return { error: CAPTCHA_FAILED };
+  const captcha = await captchaError(formData, "acceder");
+  if (captcha) return { error: captcha };
 
   const ipHash = hashIp(await headers());
   const admin = createAdminClient();

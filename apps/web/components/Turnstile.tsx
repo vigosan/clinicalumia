@@ -2,9 +2,13 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
+import type { CaptchaAction } from "@/lib/turnstile";
 
 type TurnstileApi = {
-  render: (container: HTMLElement, options: { sitekey: string }) => string;
+  render: (
+    container: HTMLElement,
+    options: { sitekey: string; action: string },
+  ) => string;
   remove: (widgetId: string) => void;
 };
 
@@ -14,16 +18,25 @@ declare global {
   }
 }
 
-export function Turnstile({ siteKey }: { siteKey: string }) {
+export function Turnstile({
+  siteKey,
+  action,
+}: {
+  siteKey: string;
+  action: CaptchaAction;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const api = window.turnstile;
     if (!loaded || !api || !container.current) return;
-    const widgetId = api.render(container.current, { sitekey: siteKey });
+    const widgetId = api.render(container.current, {
+      sitekey: siteKey,
+      action,
+    });
     return () => api.remove(widgetId);
-  }, [loaded, siteKey]);
+  }, [loaded, siteKey, action]);
 
   return (
     <>

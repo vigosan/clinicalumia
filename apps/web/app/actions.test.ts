@@ -174,6 +174,28 @@ describe("sendConsent", () => {
     expect(storeConsent).not.toHaveBeenCalled();
   });
 
+  it("stores the consent when the captcha is on and was solved for the consent form", async () => {
+    vi.stubEnv("TURNSTILE_SITE_KEY", "clave-del-sitio");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "clave-secreta");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          success: true,
+          hostname: "www.clinicalumia.es",
+          action: "consentimiento",
+        }),
+      ),
+    );
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+    const form = consentForm();
+    form.set("cf-turnstile-response", "token-bueno");
+
+    await sendConsent(undefined, form);
+
+    expect(storeConsent).toHaveBeenCalled();
+  });
+
   it("keeps the signed consent even when the notification email later fails, so a signature is never lost over a mail outage", async () => {
     storeConsent.mockResolvedValue({ id: "c1", personId: null });
     sendEmail.mockRejectedValue(new Error("resend down"));

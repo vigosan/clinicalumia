@@ -64,7 +64,11 @@ export function AccessForm({
             </label>
 
             {turnstileSiteKey && (
-              <Turnstile key={submits} siteKey={turnstileSiteKey} />
+              <Turnstile
+                key={submits}
+                siteKey={turnstileSiteKey}
+                action="acceder"
+              />
             )}
 
             {state?.error && (

@@ -1,7 +1,15 @@
+import { site } from "./site";
+
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+const VERIFY_TIMEOUT_MS = 5000;
+const HOSTNAMES = ["clinicalumia.es", "www.clinicalumia.es"];
+
+export type CaptchaAction = "acceder" | "consentimiento";
 
 export const CAPTCHA_FAILED =
   "No hemos podido comprobar que no eres un robot. Inténtalo de nuevo.";
+
+export const CAPTCHA_UNAVAILABLE = `Ahora mismo no podemos comprobar que no eres un robot. Inténtalo en unos minutos o llama al ${site.phone.display}.`;
 
 function keys() {
   const siteKey = process.env.TURNSTILE_SITE_KEY;
@@ -13,18 +21,34 @@ export function turnstileSiteKey() {
   return keys()?.siteKey;
 }
 
-export async function passesCaptcha(formData: FormData) {
+type Verification = { success?: boolean; hostname?: string; action?: string };
+
+export async function captchaError(
+  formData: FormData,
+  action: CaptchaAction,
+): Promise<string | undefined> {
   const configured = keys();
-  if (!configured) return true;
+  if (!configured) return undefined;
 
   const token = formData.get("cf-turnstile-response");
-  if (typeof token !== "string" || !token) return false;
+  if (typeof token !== "string" || !token) return CAPTCHA_FAILED;
 
-  const response = await fetch(VERIFY_URL, {
-    method: "POST",
-    body: new URLSearchParams({ secret: configured.secret, response: token }),
-  });
-  if (!response.ok) return false;
-  const result: { success?: boolean } = await response.json();
-  return result.success === true;
+  let result: Verification;
+  try {
+    const response = await fetch(VERIFY_URL, {
+      method: "POST",
+      body: new URLSearchParams({ secret: configured.secret, response: token }),
+      signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
+    });
+    if (!response.ok) return CAPTCHA_UNAVAILABLE;
+    result = await response.json();
+  } catch {
+    return CAPTCHA_UNAVAILABLE;
+  }
+
+  const passes =
+    result.success === true &&
+    HOSTNAMES.includes(result.hostname ?? "") &&
+    result.action === action;
+  return passes ? undefined : CAPTCHA_FAILED;
 }

@@ -17,7 +17,7 @@ import { consentTitle } from "@/lib/consent-legal";
 import { buildConsentPdf } from "@/lib/consent-pdf";
 import { storeConsent } from "@/lib/consent-store";
 import { site } from "@/lib/site";
-import { CAPTCHA_FAILED, passesCaptcha } from "@/lib/turnstile";
+import { captchaError } from "@/lib/turnstile";
 
 const MAX_CONSENTS_PER_IP = 15;
 const MAX_CONSENTS_PER_HOUR = 30;
@@ -158,7 +158,8 @@ export async function sendConsent(
   formData: FormData,
 ): Promise<ConsentFormState> {
   if (String(formData.get("website") ?? "")) return { ok: true };
-  if (!(await passesCaptcha(formData))) return { error: CAPTCHA_FAILED };
+  const captcha = await captchaError(formData, "consentimiento");
+  if (captcha) return { error: captcha };
 
   const signedAt = new Date();
   const result = parseConsent(formData, signedAt);
