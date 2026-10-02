@@ -338,12 +338,15 @@ test("staff see a pending consent first, link it by hand to the right record and
   await expect(page.getByTestId("consent-details")).toContainText(
     pending.taxId,
   );
-  await expect(page.getByTestId("consent-details")).toContainText(
+  const detailChoices = page
+    .getByTestId("consent-details")
+    .getByTestId("consent-choice");
+  await expect(detailChoices).toHaveText([
     "Publicidad: Sí",
-  );
-  await expect(page.getByTestId("consent-details")).toContainText(
     "Imágenes para formación: No",
-  );
+  ]);
+  await expect(detailChoices.nth(0)).toHaveAttribute("data-granted", "true");
+  await expect(detailChoices.nth(1)).toHaveAttribute("data-granted", "false");
 
   const picker = page.getByTestId("consent-link-picker");
   await picker.getByTestId("patient-search").fill(surname);
@@ -532,8 +535,13 @@ test("a patient who signs at the web with the DNI and birth date of their record
     .getByTestId("patient-consent");
   await expect(item).toHaveCount(1);
   await expect(item).toContainText(todayInMadrid());
-  await expect(item).toContainText("Publicidad: Sí");
-  await expect(item).toContainText("Imágenes para formación: No");
+  const choices = item.getByTestId("consent-choice");
+  await expect(choices).toHaveText([
+    "Publicidad: Sí",
+    "Imágenes para formación: No",
+  ]);
+  await expect(choices.nth(0)).toHaveAttribute("data-granted", "true");
+  await expect(choices.nth(1)).toHaveAttribute("data-granted", "false");
   const pdfLink = item.getByTestId("patient-consent-pdf");
   await expect(pdfLink).toHaveText("Ver PDF");
   await expect(pdfLink).toHaveAttribute("target", "_blank");
@@ -675,8 +683,13 @@ test("a consent from someone new waits as pending until staff create the record 
     .getByTestId("patient-consents")
     .getByTestId("patient-consent");
   await expect(item).toHaveCount(1);
-  await expect(item).toContainText("Publicidad: No");
-  await expect(item).toContainText("Imágenes para formación: Sí");
+  const choices = item.getByTestId("consent-choice");
+  await expect(choices).toHaveText([
+    "Publicidad: No",
+    "Imágenes para formación: Sí",
+  ]);
+  await expect(choices.nth(0)).toHaveAttribute("data-granted", "false");
+  await expect(choices.nth(1)).toHaveAttribute("data-granted", "true");
 });
 
 test("a DNI that belongs to a record with another birth date stays pending, and creating a record from it warns about the existing one", async ({

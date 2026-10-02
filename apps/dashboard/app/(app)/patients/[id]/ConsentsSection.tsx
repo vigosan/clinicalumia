@@ -1,5 +1,6 @@
 import { Card } from "@clinicalumia/ui/card";
 import { formatSignedAt } from "@/lib/consents";
+import { ConsentChoice } from "../../consentimientos/ConsentChoice";
 
 export type PatientConsent = {
   id: string;
@@ -8,10 +9,6 @@ export type PatientConsent = {
   mediaForTraining: boolean;
   pdfUrl: string | null;
 };
-
-function yesNo(value: boolean): string {
-  return value ? "Sí" : "No";
-}
 
 export function ConsentsSection({
   consents,
@@ -37,10 +34,13 @@ export function ConsentsSection({
               data-testid="patient-consent"
               className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 text-[15px] text-ink-900"
             >
-              <span>
-                {formatSignedAt(consent.signedAt).slice(0, 10)} · Publicidad:{" "}
-                {yesNo(consent.marketing)} · Imágenes para formación:{" "}
-                {yesNo(consent.mediaForTraining)}
+              <span className="flex flex-wrap items-center gap-2">
+                {formatSignedAt(consent.signedAt).slice(0, 10)}
+                <ConsentChoice label="Publicidad" granted={consent.marketing} />
+                <ConsentChoice
+                  label="Imágenes para formación"
+                  granted={consent.mediaForTraining}
+                />
               </span>
               {consent.pdfUrl ? (
                 <a

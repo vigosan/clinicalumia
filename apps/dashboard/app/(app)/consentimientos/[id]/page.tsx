@@ -8,11 +8,8 @@ import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/agenda";
 import { consentLinkErrorMessage } from "@/lib/consent-link-error";
 import { formatSignedAt, linkedPersonLabel } from "@/lib/consents";
+import { ConsentChoice } from "../ConsentChoice";
 import { ConsentActions } from "./ConsentActions";
-
-function yesNo(value: boolean): string {
-  return value ? "Sí" : "No";
-}
 
 export const metadata: Metadata = { title: "Consentimiento" };
 
@@ -84,8 +81,13 @@ export default async function ConsentPage({
           <strong>Cómo nos ha conocido:</strong>{" "}
           {consent.sources.join(", ") || "—"}
         </p>
-        <p>Publicidad: {yesNo(consent.marketing)}</p>
-        <p>Imágenes para formación: {yesNo(consent.media_for_training)}</p>
+        <div className="flex flex-wrap gap-2">
+          <ConsentChoice label="Publicidad" granted={consent.marketing} />
+          <ConsentChoice
+            label="Imágenes para formación"
+            granted={consent.media_for_training}
+          />
+        </div>
         {signed ? (
           <a
             href={signed.signedUrl}
