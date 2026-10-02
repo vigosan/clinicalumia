@@ -256,6 +256,20 @@ describe("createAppointment", () => {
     });
   });
 
+  it("says the patient is already booked at that time instead of blaming the professional when the overlap is the patient's", async () => {
+    insertResult.data = null;
+    insertResult.error = {
+      code: "23P01",
+      message:
+        'conflicting key value violates exclusion constraint "appointments_patient_no_overlap"',
+    };
+
+    expect(
+      await createAppointment(undefined, appointmentForm({ confirm: "1" })),
+    ).toEqual({ error: "Este paciente ya tiene una cita a esa hora." });
+    expect(appointmentsSelect).not.toHaveBeenCalled();
+  });
+
   it("reports the permission message for a 42501 error", async () => {
     insertResult.data = null;
     insertResult.error = { code: "42501" };
@@ -432,6 +446,21 @@ describe("moveAppointment", () => {
       error: "Marc Ejemplo ya tiene una cita de 16:10 a 16:55.",
     });
     expect(overlapNeqId).toHaveBeenCalledWith("id", "appt-1");
+  });
+
+  it("says the patient is already booked at that time when moving onto another of the patient's appointments", async () => {
+    appointmentsSelect.mockClear();
+    updateResult.data = null;
+    updateResult.error = {
+      code: "23P01",
+      message:
+        'conflicting key value violates exclusion constraint "appointments_patient_no_overlap"',
+    };
+
+    expect(
+      await moveAppointment(undefined, moveForm({ confirm: "1" })),
+    ).toEqual({ error: "Este paciente ya tiene una cita a esa hora." });
+    expect(appointmentsSelect).not.toHaveBeenCalled();
   });
 
   it("maps a past-appointment error", async () => {

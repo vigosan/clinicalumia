@@ -86,7 +86,10 @@ describe("confirmBooking", () => {
   it("books the slot, emails the account and shows the confirmation, asking for any free professional when the patient chose 'El primer hueco libre'", async () => {
     answer({
       book_appointment: { data: APPOINTMENT, error: null },
-      my_appointments: { data: [appointmentRow()], error: null },
+      my_appointments: [
+        { data: [], error: null },
+        { data: [appointmentRow()], error: null },
+      ],
     });
 
     await expect(confirmBooking(undefined, confirmForm())).rejects.toThrow(
@@ -136,16 +139,28 @@ describe("confirmBooking", () => {
 
   it("treats a second submit of the same booking as the confirmation and does not email twice, because the first one already booked it", async () => {
     answer({
-      book_appointment: {
-        data: null,
-        error: { message: "slot_not_available" },
-      },
+      book_appointment: { data: APPOINTMENT, error: null },
       my_appointments: { data: [appointmentRow()], error: null },
     });
 
     await expect(confirmBooking(undefined, confirmForm())).rejects.toThrow(
       `redirect:/reservar/confirmada?cita=${APPOINTMENT}`,
     );
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("explains that the person already has another appointment at that time and sends no email", async () => {
+    answer({
+      book_appointment: {
+        data: null,
+        error: { message: "person_has_appointment" },
+      },
+      my_appointments: { data: [], error: null },
+    });
+
+    expect(await confirmBooking(undefined, confirmForm())).toEqual({
+      error: "Esta persona ya tiene una cita a esa hora.",
+    });
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
@@ -172,6 +187,7 @@ describe("confirmBooking", () => {
         data: null,
         error: { message: "service_not_bookable" },
       },
+      my_appointments: { data: [], error: null },
     });
 
     expect(await confirmBooking(undefined, confirmForm())).toEqual({
@@ -183,7 +199,10 @@ describe("confirmBooking", () => {
   it("still confirms when the email fails, because the appointment is already booked", async () => {
     answer({
       book_appointment: { data: APPOINTMENT, error: null },
-      my_appointments: { data: [appointmentRow()], error: null },
+      my_appointments: [
+        { data: [], error: null },
+        { data: [appointmentRow()], error: null },
+      ],
     });
     sendEmail.mockRejectedValue(new Error("Resend caído"));
     const consoleError = vi

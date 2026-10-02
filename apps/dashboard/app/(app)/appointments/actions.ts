@@ -9,6 +9,7 @@ import type { ActionResult } from "@/lib/action-result";
 import {
   type AppointmentInput,
   appointmentError,
+  isPatientOverlap,
   parseAppointmentForm,
   scheduleWarnings,
 } from "@/lib/agenda";
@@ -181,7 +182,7 @@ export async function createAppointment(
     .single();
 
   if (error) {
-    if (error.code === "23P01") {
+    if (error.code === "23P01" && !isPatientOverlap(error)) {
       const clash = await findOverlapTimes(supabase, appointment);
       if (clash) {
         return {
@@ -270,7 +271,7 @@ export async function moveAppointment(
     .select("id");
 
   if (error) {
-    if (error.code === "23P01") {
+    if (error.code === "23P01" && !isPatientOverlap(error)) {
       const clash = await findOverlapTimes(supabase, appointment, id);
       if (clash) {
         return {

@@ -292,7 +292,16 @@ const MESSAGE_BY_CODE: Record<string, string> = {
     "La cita tiene que empezar y terminar el mismo día.",
 };
 
+export function isPatientOverlap(error: DbError): boolean {
+  return (
+    error.code === "23P01" &&
+    Boolean(error.message?.includes("appointments_patient_no_overlap"))
+  );
+}
+
 export function appointmentError(error: DbError): string {
+  if (isPatientOverlap(error))
+    return "Este paciente ya tiene una cita a esa hora.";
   if (error.code === "23P01") return "Ya hay una cita en esa franja.";
   if (error.code === "42501")
     return "No tienes permiso para dar citas a otro profesional.";

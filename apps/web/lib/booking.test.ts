@@ -247,6 +247,12 @@ describe("bookingError", () => {
     );
   });
 
+  it("explains that the person already has another appointment at that time", () => {
+    expect(bookingError({ message: "person_has_appointment" })).toBe(
+      "Esta persona ya tiene una cita a esa hora.",
+    );
+  });
+
   it("maps a phone-only service", () => {
     expect(bookingError({ message: "service_not_bookable" })).toBe(
       "Este servicio se reserva por teléfono.",

@@ -131,6 +131,7 @@ export type DbError = { message?: string };
 const BOOKING_MESSAGE_BY_CODE: Record<string, string> = {
   person_not_in_account: "Esa persona no está en tu cuenta.",
   slot_not_available: "Ese hueco ya no está libre. Elige otro.",
+  person_has_appointment: "Esta persona ya tiene una cita a esa hora.",
   service_not_bookable: "Este servicio se reserva por teléfono.",
 };
 

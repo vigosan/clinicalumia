@@ -274,7 +274,7 @@ select throws_ok(format($$ select public.reschedule_my_appointment(%L, %L) $$, p
 select throws_ok(format($$ select public.cancel_my_appointment(%L) $$, pg_temp.web_id()),
   '42501', null, 'a team member cannot cancel appointments through the patient door');
 select lives_ok(format($$ update public.appointments set starts_at = %L, ends_at = %L where id = %L $$,
-    pg_temp.at_day3('10:00'), pg_temp.at_day3('10:30'), pg_temp.web_id()),
+    pg_temp.at_day3('13:30'), pg_temp.at_day3('14:00'), pg_temp.web_id()),
   'the professional moves the web appointment from the dashboard');
 reset role;
 select is((select actor_kind::text || ':' || actor_id::text from public.appointment_events

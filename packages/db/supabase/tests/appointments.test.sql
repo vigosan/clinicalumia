@@ -24,7 +24,8 @@ insert into public.services (id, specialty_id, name, duration_minutes, price_cen
 insert into public.people (id, first_name, last_name, birth_date, is_patient, archived_at) values
   ('60000000-0000-0000-0000-0000000000c1', 'Paciente', 'Activa', '1990-01-01', true, null),
   ('60000000-0000-0000-0000-0000000000c2', 'Paciente', 'Archivada', '1990-01-01', true, now()),
-  ('60000000-0000-0000-0000-0000000000c3', 'Tutor', 'NoPaciente', null, false, null);
+  ('60000000-0000-0000-0000-0000000000c3', 'Tutor', 'NoPaciente', null, false, null),
+  ('60000000-0000-0000-0000-0000000000c4', 'Paciente', 'DeOtraProfesional', '1990-01-01', true, null);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -61,7 +62,7 @@ insert into public.appointments (id, professional_id, patient_id, service_id, st
 update public.profiles set is_active = true where id = '60000000-0000-0000-0000-000000000004';
 insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
   ('60000000-0000-0000-0000-0000000000f1', '60000000-0000-0000-0000-000000000004',
-   '60000000-0000-0000-0000-0000000000c1', '60000000-0000-0000-0000-0000000000b1',
+   '60000000-0000-0000-0000-0000000000c4', '60000000-0000-0000-0000-0000000000b1',
    '2099-06-01 10:00 Europe/Madrid', '2099-06-01 10:45 Europe/Madrid');
 update public.profiles set is_active = false where id = '60000000-0000-0000-0000-000000000004';
 

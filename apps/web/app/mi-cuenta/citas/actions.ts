@@ -104,7 +104,7 @@ export async function rescheduleAppointment(
     );
   if (error) return { error: accountError(error) };
 
-  if (previous)
+  if (previous && Date.parse(previous.starts_at) !== Date.parse(inicio))
     await emailAccount(supabase, appointmentId, {
       kind: "changed",
       previousStartsAt: previous.starts_at,

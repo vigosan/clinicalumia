@@ -140,6 +140,15 @@ export async function confirmBooking(
     return { error: bookingError({}) };
 
   const supabase = await createClient();
+  const previous = await findAppointment(
+    supabase,
+    (appointment) =>
+      appointment.person_id === persona &&
+      appointment.status !== "cancelled" &&
+      Date.parse(appointment.starts_at) === Date.parse(inicio),
+  );
+  if (previous) redirect(confirmed(previous.id));
+
   const { data, error } = await supabase.rpc("book_appointment", {
     p_person_id: persona,
     p_service_id: servicio,
@@ -149,15 +158,7 @@ export async function confirmBooking(
     p_starts_at: inicio,
   });
 
-  if (error?.message === "slot_not_available") {
-    const previous = await findAppointment(
-      supabase,
-      (appointment) =>
-        appointment.person_id === persona &&
-        appointment.status !== "cancelled" &&
-        Date.parse(appointment.starts_at) === Date.parse(inicio),
-    );
-    if (previous) redirect(confirmed(previous.id));
+  if (error?.message === "slot_not_available")
     redirect(
       reservar({
         ...state,
@@ -166,7 +167,6 @@ export async function confirmBooking(
         aviso: SLOT_TAKEN,
       }),
     );
-  }
   if (error) return { error: bookingError(error) };
 
   await emailConfirmation(supabase, data);

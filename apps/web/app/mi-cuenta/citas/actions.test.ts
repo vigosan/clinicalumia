@@ -222,6 +222,18 @@ describe("rescheduleAppointment", () => {
     expect(attachment.content).toContain("SEQUENCE:");
   });
 
+  it("does not email again when the appointment is already at the chosen time, because a second confirm of the same change changes nothing", async () => {
+    answer({
+      reschedule_my_appointment: { data: APPOINTMENT, error: null },
+      my_appointments: { data: [movedRow], error: null },
+    });
+
+    await expect(
+      rescheduleAppointment(undefined, rescheduleForm()),
+    ).rejects.toThrow("redirect:/mi-cuenta?aviso=cambiada");
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
   it("goes back to the same days of slots with the warning when someone took the slot meanwhile, so the patient can pick another", async () => {
     answer({
       reschedule_my_appointment: {
@@ -287,7 +299,10 @@ describe("rescheduleAppointment", () => {
   it("still goes back with the notice when the email fails, because the appointment has already moved", async () => {
     answer({
       reschedule_my_appointment: { data: APPOINTMENT, error: null },
-      my_appointments: { data: [movedRow], error: null },
+      my_appointments: [
+        { data: [changeableRow], error: null },
+        { data: [movedRow], error: null },
+      ],
     });
     sendEmail.mockRejectedValue(new Error("Resend caído"));
     const consoleError = vi

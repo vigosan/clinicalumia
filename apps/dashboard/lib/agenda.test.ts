@@ -630,6 +630,16 @@ describe("appointmentError", () => {
     );
   });
 
+  it("tells the team the patient already has an appointment then, so undoing a no-show or moving explains itself", () => {
+    expect(
+      appointmentError({
+        code: "23P01",
+        message:
+          'conflicting key value violates exclusion constraint "appointments_patient_no_overlap"',
+      }),
+    ).toBe("Este paciente ya tiene una cita a esa hora.");
+  });
+
   it("maps appointment_not_started", () => {
     expect(
       appointmentError({ code: "23514", message: "appointment_not_started" }),

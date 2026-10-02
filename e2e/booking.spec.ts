@@ -613,6 +613,60 @@ test("two people confirming the same time at once: one gets it and the other is 
   }
 });
 
+async function confirmationCount(email: string): Promise<number> {
+  const query = `to:"${email}" subject:"Cita confirmada"`;
+  const { messages } = await (
+    await fetch(
+      `http://127.0.0.1:54324/api/v1/search?query=${encodeURIComponent(query)}`,
+    )
+  ).json();
+  return messages.length;
+}
+
+test("confirming the same booking again from another tab with «El primer hueco libre» keeps one appointment and one email, instead of booking the second professional too", async ({
+  page,
+}) => {
+  const specialty = await createSpecialty();
+  const service = await createService(specialty.id, null);
+  const suffix = unique();
+  const professionalIds = [
+    await createProfessional(specialty.id, `Ana Doble ${suffix}`, true),
+    await createProfessional(specialty.id, `Bruno Doble ${suffix}`, true),
+  ];
+  const email = uniqueEmail("reserva-doble");
+  const person = await seedPerson(email, "Doble");
+
+  const startsAt = await openChosenSlot(
+    page,
+    slotStepUrl(specialty.id, service.id, "cualquiera", ""),
+  );
+  await identify(page, email);
+  await page.getByTestId("booking-person").click();
+  await expect(page.getByTestId("booking-summary")).toBeVisible();
+  const summary = page.url();
+
+  await page.getByTestId("booking-confirm").click();
+  await expect(page).toHaveURL(/\/reservar\/confirmada\?cita=/);
+  const firstId = new URL(page.url()).searchParams.get("cita");
+  await latestEmailFor(email, "Cita confirmada");
+
+  await page.goto(summary);
+  await page.getByTestId("booking-confirm").click();
+  await expect(page).toHaveURL(/\/reservar\/confirmada\?cita=/);
+  expect(new URL(page.url()).searchParams.get("cita")).toBe(firstId);
+
+  const { data: booked, error } = await admin
+    .from("appointments")
+    .select("professional_id, starts_at")
+    .eq("patient_id", person.id)
+    .neq("status", "cancelled");
+  expect(error).toBeNull();
+  expect(booked).toHaveLength(1);
+  expect(professionalIds).toContain(booked![0]!.professional_id);
+  expect(Date.parse(booked![0]!.starts_at)).toBe(Date.parse(startsAt));
+  expect(await confirmationCount(email)).toBe(1);
+});
+
 test("an account the clinic created is asked to accept privacy when adding a child from the web, since it never accepted it", async ({
   page,
 }) => {

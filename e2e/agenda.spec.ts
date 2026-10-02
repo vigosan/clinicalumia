@@ -897,6 +897,116 @@ test("una cita a las 16:50 contra una de 16:10 a 16:55 da el error de solape y c
   );
 });
 
+async function patientBookedWithAnotherProfessional(date: string) {
+  const other = await createThrowawayUser({
+    fullName: "Profesional Otra Cita",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Mismo Paciente",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const { error: scheduleError } = await admin
+    .from("employee_schedules")
+    .insert(
+      [other.id, employee.id].map((profileId) => ({
+        profile_id: profileId,
+        weekday: isoWeekday(date),
+        starts_at: "09:00",
+        ends_at: "20:00",
+      })),
+    );
+  expect(scheduleError).toBeNull();
+  const lastName = `Solape${Date.now()}`;
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: lastName,
+      is_patient: true,
+      birth_date: "1990-01-01",
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  createdPersonIds.push(person!.id);
+  await createAppointment({
+    professionalId: other.id,
+    patientId: person!.id,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "10:00",
+    endTime: "11:00",
+  });
+  return { employee, patientId: person!.id as string, lastName };
+}
+
+test("dar una cita a un paciente que ya tiene otra a esa hora con otra profesional lo explica y conserva lo escrito", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(64, [1, 2, 3, 4, 5]);
+  const { employee, lastName } =
+    await patientBookedWithAnotherProfessional(date);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=10:30&professional=${employee.id}`,
+  );
+  await page.getByTestId("patient-search").fill(lastName);
+  await page
+    .getByTestId("patient-option")
+    .filter({ hasText: lastName })
+    .click();
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
+  await page.getByTestId("appointment-notes").fill("Nota del doble horario");
+  await page.getByTestId("appointment-submit").click();
+
+  await expect(page.getByTestId("appointment-error")).toHaveText(
+    "Este paciente ya tiene una cita a esa hora.",
+  );
+  await expect(page.getByTestId("patient-selected")).toContainText(lastName);
+  await expect(page.getByTestId("appointment-notes")).toHaveValue(
+    "Nota del doble horario",
+  );
+});
+
+test("mover una cita encima de otra del mismo paciente con otra profesional lo explica y no la mueve", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(65, [1, 2, 3, 4, 5]);
+  const { employee, patientId } =
+    await patientBookedWithAnotherProfessional(date);
+  const appointmentId = await createAppointment({
+    professionalId: employee.id,
+    patientId,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "12:00",
+    endTime: "13:00",
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
+  await expect(page.getByTestId("appointment-panel")).toBeVisible();
+  await pickTime(page.getByTestId("appointment-move-time"), "10:30");
+  await page.getByTestId("appointment-move").click();
+
+  await expect(page.getByTestId("appointment-action-error")).toHaveText(
+    "Este paciente ya tiene una cita a esa hora.",
+  );
+  const { data: unchanged } = await admin
+    .from("appointments")
+    .select("starts_at")
+    .eq("id", appointmentId)
+    .single();
+  expect(madridDateTime(unchanged!.starts_at).time.slice(0, 5)).toBe("12:00");
+});
+
 test("un sábado da el aviso «Queda fuera del horario» y, tras «Dar la cita igualmente», se guarda", async ({
   page,
 }) => {
