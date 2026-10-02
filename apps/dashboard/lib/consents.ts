@@ -135,7 +135,7 @@ export function consentFillOffers(
   const ownTaxId = consentOwnTaxId(consent);
   if (!person.tax_id && ownTaxId)
     offers.push({ field: "tax_id", label: "DNI/NIE", value: ownTaxId });
-  if (!person.email && consent.email)
+  if (!person.email && consent.email && !consent.guardian_name)
     offers.push({ field: "email", label: "Email", value: consent.email });
   if (!person.birth_date)
     offers.push({

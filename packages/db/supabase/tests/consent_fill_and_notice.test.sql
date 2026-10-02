@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(31);
 
 insert into auth.users (id, email) values
   ('8a000000-0000-0000-0000-000000000001', 'empleada-completar@test.local'),
@@ -17,6 +17,7 @@ insert into public.people (id, first_name, last_name, birth_date, tax_id, email,
   ('8a000000-0000-0000-0000-0000000000a4', 'Antigua', 'Ficha', null, null, null, false),
   ('8a000000-0000-0000-0000-0000000000a5', 'Ocupado', 'Dni', '1960-01-01', '11111111H', null, true),
   ('8a000000-0000-0000-0000-0000000000a6', 'Otra', 'Ficha', null, null, null, false),
+  ('8a000000-0000-0000-0000-0000000000a7', 'Hija', 'Ficha', null, null, null, false),
   ('8a000000-0000-0000-0000-0000000000c1', 'Paciente', 'Antelacion', '1990-01-01', null, 'paciente-antelacion@test.local', true);
 
 insert into public.consents (id, signed_at, first_name, last_name, birth_date, tax_id, guardian_tax_id, email, guardian_name, marketing, media_for_training, pdf_path) values
@@ -25,7 +26,8 @@ insert into public.consents (id, signed_at, first_name, last_name, birth_date, t
   ('8a000000-0000-0000-0000-0000000000f3', now(), 'Menor', 'Ficha', '2016-03-03', null, 'X1234567L', 'tutor@test.local', 'Tutor Ficha', false, false, '2026/10/f3.pdf'),
   ('8a000000-0000-0000-0000-0000000000f4', now(), 'Antigua', 'Ficha', '2016-03-03', '87654321X', null, null, 'Tutora Antigua', false, false, '2026/10/f4.pdf'),
   ('8a000000-0000-0000-0000-0000000000f5', now(), 'Otra', 'Ficha', '1985-03-03', '11111111H', null, null, '', false, false, '2026/10/f5.pdf'),
-  ('8a000000-0000-0000-0000-0000000000f6', now(), 'Otra', 'Ficha', '1985-03-03', '22222222J', null, null, '', false, false, '2026/10/f6.pdf');
+  ('8a000000-0000-0000-0000-0000000000f6', now(), 'Otra', 'Ficha', '1985-03-03', '22222222J', null, null, '', false, false, '2026/10/f6.pdf'),
+  ('8a000000-0000-0000-0000-0000000000f7', now(), 'Hija', 'Ficha', '2016-03-03', null, 'Y1234567X', 'madre@test.local', 'Madre Ficha', false, false, '2026/10/f7.pdf');
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -95,6 +97,13 @@ select results_eq(
   $$ select tax_id, birth_date from public.people where id = '8a000000-0000-0000-0000-0000000000a3' $$,
   $$ values (null::text, '2016-03-03'::date) $$,
   'the guardian''s DNI never goes into the minor''s record; the birth date does');
+
+select pg_temp.act_as('8a000000-0000-0000-0000-000000000001');
+select lives_ok($$ select public.link_consent('8a000000-0000-0000-0000-0000000000f7', '8a000000-0000-0000-0000-0000000000a7', array['email']) $$,
+  'an active employee links a minor''s consent asking to fill the email');
+reset role;
+select is((select email from public.people where id = '8a000000-0000-0000-0000-0000000000a7'), null,
+  'a minor''s consent never puts the signer''s email on the minor''s record, so the child does not stay in the parent''s account after 18');
 
 select pg_temp.act_as('8a000000-0000-0000-0000-000000000001');
 select lives_ok($$ select public.link_consent('8a000000-0000-0000-0000-0000000000f4', '8a000000-0000-0000-0000-0000000000a4', array['tax_id']) $$,

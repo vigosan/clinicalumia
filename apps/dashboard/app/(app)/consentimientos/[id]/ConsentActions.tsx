@@ -5,7 +5,7 @@ import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { toast } from "@clinicalumia/ui/toast";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { ConsentFillField, ConsentFillOffer } from "@/lib/consents";
 import {
   type PatientOption,
@@ -25,6 +25,7 @@ export function ConsentActions({
   const [selected, setSelected] = useState<PatientOption | null>(null);
   const [offers, setOffers] = useState<ConsentFillOffer[]>([]);
   const [fill, setFill] = useState<ConsentFillField[]>([]);
+  const requested = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [pending, startTransition] = useTransition();
 
@@ -32,14 +33,17 @@ export function ConsentActions({
     setSelected(patient);
     setOffers([]);
     setFill([]);
+    requested.current = patient.id;
     startTransition(async () => {
       const options = await consentFillOptions(consentId, patient.id);
+      if (requested.current !== patient.id) return;
       setOffers(options);
       setFill(options.map((offer) => offer.field));
     });
   }
 
   function handleClear() {
+    requested.current = null;
     setSelected(null);
     setOffers([]);
     setFill([]);

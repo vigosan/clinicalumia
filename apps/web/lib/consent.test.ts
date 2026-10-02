@@ -127,6 +127,16 @@ describe("parseConsent", () => {
     expect(result).toHaveProperty("consent.guardianDni", "");
   });
 
+  it("ignores a guardian name typed by mistake on an adult's consent, so it is not taken for a minor's", () => {
+    const result = parseConsent(form({ guardian: "Luis García" }), today);
+    expect(result).toHaveProperty("consent.guardian", "");
+  });
+
+  it("stores an old DNI typed without its leading zero with the zero, so it matches the record", () => {
+    const result = parseConsent(form({ dni: "1234567L" }), today);
+    expect(result).toHaveProperty("consent.dni", "01234567L");
+  });
+
   it("rejects a DNI with the wrong letter or without it, so the team does not have to chase a typo", () => {
     for (const dni of ["12345678A", "12345678", "X1234567A"]) {
       expect(parseConsent(form({ dni }), today)).toEqual({
@@ -222,6 +232,10 @@ describe("parseConsent", () => {
 });
 
 describe("checkPersonalId", () => {
+  it("accepts an old DNI written without its leading zero", () => {
+    expect(checkPersonalId("1234567L")).toBe("valid");
+  });
+
   it("recognises a valid DNI and NIE whatever the dots, dashes or case", () => {
     expect(checkPersonalId("12.345.678-z")).toBe("valid");
     expect(checkPersonalId("x1234567l")).toBe("valid");

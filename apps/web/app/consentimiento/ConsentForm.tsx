@@ -32,7 +32,7 @@ const TYPED_SIGNATURE_FAILED =
 const personalIdHints = {
   passport:
     "Parece un pasaporte. Si tienes DNI o NIE, escríbelo; si no, puedes seguir.",
-  invalid: "Revisa el DNI/NIE: los números y la letra no coinciden.",
+  invalid: "Revisa el DNI/NIE.",
 } as const;
 
 const fieldClass =

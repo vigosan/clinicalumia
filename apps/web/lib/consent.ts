@@ -34,8 +34,13 @@ const ADULT_AGE = 18;
 
 export type PersonalIdCheck = "empty" | "valid" | "passport" | "invalid";
 
-export function checkPersonalId(input: string): PersonalIdCheck {
+function normalizePersonalId(input: string): string {
   const id = normalizeTaxId(input.trim());
+  return /^\d{7}[A-Z]$/.test(id) ? `0${id}` : id;
+}
+
+export function checkPersonalId(input: string): PersonalIdCheck {
+  const id = normalizePersonalId(input);
   if (!id) return "empty";
   if (isValidPersonalId(id)) return "valid";
   if (/^(\d{7,8}|[XYZ]\d{7})[A-Z]?$/.test(id)) return "invalid";
@@ -90,10 +95,10 @@ export function parseConsent(
 ): { ok: true; consent: Consent } | { error: string } {
   const firstName = text(formData, "firstName");
   const lastName = text(formData, "lastName");
-  const guardian = text(formData, "guardian");
+  const guardianInput = text(formData, "guardian");
   const birthDate = text(formData, "birthDate");
-  const dni = normalizeTaxId(text(formData, "dni"));
-  const guardianDniInput = normalizeTaxId(text(formData, "guardianDni"));
+  const dni = normalizePersonalId(text(formData, "dni"));
+  const guardianDniInput = normalizePersonalId(text(formData, "guardianDni"));
   const email = text(formData, "email");
   const sources = formData.getAll("source").map(String);
   const signature = text(formData, "signature");
@@ -114,6 +119,7 @@ export function parseConsent(
     return { error: "La fecha de nacimiento no puede ser futura." };
   }
   const minor = ageOn(birth, today) < ADULT_AGE;
+  const guardian = minor ? guardianInput : "";
   if (minor && !guardian) {
     return {
       error:

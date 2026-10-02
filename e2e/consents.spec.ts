@@ -879,7 +879,7 @@ test("a DNI whose letter does not match is pointed out before sending and refuse
   const form = page.getByTestId("consent-form");
   await form.getByLabel("Apellidos", { exact: true }).click();
   await expect(page.getByTestId("consent-dni-hint")).toHaveText(
-    "Revisa el DNI/NIE: los números y la letra no coinciden.",
+    "Revisa el DNI/NIE.",
   );
   await drawSignature(page);
   await page.getByTestId("consent-submit").click();

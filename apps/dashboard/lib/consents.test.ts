@@ -247,7 +247,20 @@ describe("consentFillOffers", () => {
       },
       emptyRecord,
     ).map((offer) => offer.field);
-    expect(fields).toEqual(["email", "birth_date"]);
+    expect(fields).not.toContain("tax_id");
+  });
+
+  it("never offers a minor's consent email for the minor's record, because it is the guardian's and would keep the child in the parent's account after 18", () => {
+    const fields = consentFillOffers(
+      {
+        ...adultConsent,
+        tax_id: "11111111H",
+        guardian_tax_id: "X1234567L",
+        guardian_name: "Luis",
+      },
+      emptyRecord,
+    ).map((offer) => offer.field);
+    expect(fields).toEqual(["tax_id", "birth_date"]);
   });
 
   it("does not offer an email the signer left blank", () => {
