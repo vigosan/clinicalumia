@@ -117,12 +117,12 @@ select ok(exists (
     select 1 from public._free_slots('8e000000-0000-0000-0000-0000000000b1', '8e000000-0000-0000-0000-000000000001',
       pg_temp.day3(), pg_temp.day3(), null) fs
     where fs.starts_at = pg_temp.at_day3('10:00')),
-  'a no-show gives its hour back to the free slots');
+  'free slots only count scheduled appointments as busy, so a no-show still running past the booking notice gives its time back');
 select ok(exists (
     select 1 from public.available_slots('8e000000-0000-0000-0000-0000000000b1', '8e000000-0000-0000-0000-000000000001',
       pg_temp.day3(), pg_temp.day3()) sl
     where sl.starts_at = pg_temp.at_day3('10:00')),
-  'so patients can book that hour on the web too');
+  'and the web booking slots follow the same rule');
 
 select * from finish();
 rollback;

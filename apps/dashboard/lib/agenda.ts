@@ -86,7 +86,12 @@ export function layoutDay(
 function assignLanes(
   entries: (DayLayoutBlock & { professionalId: string })[],
 ): void {
-  const byProfessional = Map.groupBy(entries, (entry) => entry.professionalId);
+  const byProfessional = new Map<string, typeof entries>();
+  for (const entry of entries)
+    byProfessional.set(entry.professionalId, [
+      ...(byProfessional.get(entry.professionalId) ?? []),
+      entry,
+    ]);
   for (const group of byProfessional.values()) {
     const sorted = [...group].sort((a, b) => a.top - b.top);
     let cluster: DayLayoutBlock[] = [];

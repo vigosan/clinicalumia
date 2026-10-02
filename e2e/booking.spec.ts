@@ -635,10 +635,11 @@ test("confirming the same booking again from another tab with «El primer hueco 
   ];
   const email = uniqueEmail("reserva-doble");
   const person = await seedPerson(email, "Doble");
+  const fecha = addDays(todayInMadrid(), 20 + Math.floor(Math.random() * 20));
 
   const startsAt = await openChosenSlot(
     page,
-    slotStepUrl(specialty.id, service.id, "cualquiera", ""),
+    slotStepUrl(specialty.id, service.id, "cualquiera", `&fecha=${fecha}`),
   );
   await identify(page, email);
   await page.getByTestId("booking-person").click();
