@@ -1190,6 +1190,54 @@ test("hacer doble clic en Guardar crea una sola cita", async ({ page }) => {
   expect(data).toHaveLength(1);
 });
 
+test("Nueva cita no ofrece a quien aún no ha aceptado la invitación, ni en la agenda ni desde la ficha", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(91, [1, 2, 3, 4, 5]);
+  const invitedEmail = `agenda-invitada-${Date.now()}@test.local`;
+  const { data, error } =
+    await admin.auth.admin.inviteUserByEmail(invitedEmail);
+  expect(error).toBeNull();
+  const invitedId = data.user!.id;
+  createdUserIds.push(invitedId);
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: invitedId,
+    email: invitedEmail,
+    full_name: "Irene Invitada",
+    role: "employee",
+    specialty_id: PSICOLOGIA_SPECIALTY_ID,
+    is_active: true,
+  });
+  expect(profileError).toBeNull();
+
+  await loginAsThrowawayOwner(page, "Propietaria Invitaciones");
+  const listbox = page.getByRole("listbox");
+
+  await page.goto(`${DASHBOARD}/?date=${date}&new=1`);
+  await page.getByTestId("appointment-professional").click();
+  await expect(listbox.getByTestId(`option-${MARC_ID}`)).toBeVisible();
+  await expect(listbox.getByTestId(`option-${invitedId}`)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  await page.goto(
+    `${DASHBOARD}/appointments/new?patient=${NORA_ID}&professional=${invitedId}`,
+  );
+  await page.getByTestId("appointment-professional").click();
+  await expect(listbox.getByTestId(`option-${MARC_ID}`)).toBeVisible();
+  await expect(listbox.getByTestId(`option-${invitedId}`)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  const { error: passwordError } = await admin.auth.admin.updateUserById(
+    invitedId,
+    { password: "lumia-segura-2026" },
+  );
+  expect(passwordError).toBeNull();
+
+  await page.goto(`${DASHBOARD}/appointments/new?patient=${NORA_ID}`);
+  await page.getByTestId("appointment-professional").click();
+  await expect(listbox.getByTestId(`option-${invitedId}`)).toBeVisible();
+});
+
 test("la propietaria elige profesional y ve los servicios de su especialidad", async ({
   page,
 }) => {

@@ -29,13 +29,19 @@ export async function loadAppointmentForm(params: AppointmentFormParams) {
   const patientId =
     params.patient && isUuid(params.patient) ? params.patient : null;
 
+  const isOwner = ownProfile.role === "owner";
+
   const [
     { data: directory, error: directoryError },
+    { data: pending, error: pendingError },
     { data: services, error: servicesError },
     { data: patient },
     closures,
   ] = await Promise.all([
     supabase.rpc("staff_directory"),
+    isOwner
+      ? supabase.rpc("pending_invitations")
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from("services")
       .select("id, name, duration_minutes, specialty_id")
@@ -53,24 +59,27 @@ export async function loadAppointmentForm(params: AppointmentFormParams) {
     loadClosures(supabase, addDays(todayInMadrid(), -365)),
   ]);
 
-  if (directoryError || servicesError || !closures) {
+  if (directoryError || pendingError || servicesError || !closures) {
     return { ok: false as const };
   }
 
   const initialCanNotify = patient ? await canNotifyPatient(patient.id) : false;
 
-  const professionals = (directory ?? []).map((profile) => ({
-    id: profile.id,
-    fullName: profile.full_name,
-    specialtyId: profile.specialty_id,
-  }));
+  const pendingIds = new Set((pending ?? []).map((row) => row.profile_id));
+  const professionals = (directory ?? [])
+    .filter((profile) => !pendingIds.has(profile.id))
+    .map((profile) => ({
+      id: profile.id,
+      fullName: profile.full_name,
+      specialtyId: profile.specialty_id,
+    }));
 
   return {
     ok: true as const,
     patient,
     form: {
       professionals,
-      fixedProfessionalId: ownProfile.role === "owner" ? null : ownProfile.id,
+      fixedProfessionalId: isOwner ? null : ownProfile.id,
       services: (services ?? []).map((service) => ({
         id: service.id,
         name: service.name,
