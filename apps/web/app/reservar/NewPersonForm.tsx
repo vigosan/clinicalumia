@@ -252,7 +252,7 @@ export function NewPersonForm({
             <Link
               href="/privacidad"
               target="_blank"
-              className="text-sage-600 underline underline-offset-2"
+              className="text-sage-800 underline underline-offset-2"
             >
               política de privacidad
             </Link>
