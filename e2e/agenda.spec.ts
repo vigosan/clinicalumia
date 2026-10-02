@@ -311,6 +311,51 @@ test("la propietaria ve la columna de todas y el nombre del paciente de las cita
   );
 });
 
+test("las citas de Psicología y Fisioterapia llevan su propio matiz con un borde izquierdo de 3 px, para que ninguna se confunda con el ámbar de los cierres", async ({
+  page,
+}) => {
+  const date = futureDate(300 + Math.floor(Math.random() * 30));
+  const lauraAppointment = await createAppointment({
+    professionalId: LAURA_ID,
+    patientId: ELENA_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "16:00",
+    endTime: "17:00",
+  });
+  const marcAppointment = await createAppointment({
+    professionalId: MARC_ID,
+    patientId: JORGE_ID,
+    serviceId: FISIOTERAPIA_SERVICE_ID,
+    date,
+    time: "16:00",
+    endTime: "17:00",
+  });
+
+  await loginAsThrowawayOwner(page, "Propietaria de matices");
+  await page.goto(`${DASHBOARD}/?date=${date}`);
+
+  const psicologia = columnFor(page, LAURA_ID).locator(
+    `[data-testid="appointment-block"][data-appointment="${lauraAppointment}"]`,
+  );
+  await expect(psicologia).toHaveCSS("background-color", "rgb(236, 228, 234)");
+  await expect(psicologia).toHaveCSS("border-left-color", "rgb(181, 162, 176)");
+  await expect(psicologia).toHaveCSS("border-left-width", "3px");
+
+  const fisioterapia = columnFor(page, MARC_ID).locator(
+    `[data-testid="appointment-block"][data-appointment="${marcAppointment}"]`,
+  );
+  await expect(fisioterapia).toHaveCSS(
+    "background-color",
+    "rgb(228, 230, 238)",
+  );
+  await expect(fisioterapia).toHaveCSS(
+    "border-left-color",
+    "rgb(158, 163, 181)",
+  );
+  await expect(fisioterapia).toHaveCSS("border-left-width", "3px");
+});
+
 test("una ausencia aparece como «Ausencia» sin motivo para la empleada y con el motivo para la propietaria", async ({
   page,
   browser,

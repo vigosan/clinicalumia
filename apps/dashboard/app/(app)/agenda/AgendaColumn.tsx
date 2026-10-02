@@ -13,8 +13,8 @@ export const CLOSURE_BAND_HEIGHT = 44;
 
 export const TONE_CLASSES: Record<SpecialtyTone, string> = {
   sage: "border-sage-400 bg-sage-100 text-sage-900",
-  bark: "border-bark-100 bg-bark-100 text-bark-700",
-  pebble: "border-pebble-400 bg-pebble-200 text-pebble-700",
+  bark: "border-[#b5a2b0] bg-[#ece4ea] text-bark-700",
+  pebble: "border-[#9ea3b5] bg-[#e4e6ee] text-pebble-700",
   neutral: "border-line bg-cream-200 text-ink-900",
 };
 
@@ -150,7 +150,7 @@ export function ClosureBand({
     <p
       data-testid="agenda-closure"
       title={text}
-      className={`border-warning-800/25 bg-warning-100 px-3 font-medium text-[13px] text-warning-800 ${className}`}
+      className={`border-warning-800/25 bg-warning-100 px-3 font-semibold text-[13px] text-warning-800 ${className}`}
     >
       {text}
     </p>
@@ -212,7 +212,7 @@ export function AgendaColumnGrid({
             width: `calc(${100 / item.lanes}% - 8px)`,
           }),
         };
-        const className = `absolute inset-x-1 overflow-hidden rounded-field border px-2 py-1.5 text-xs ${content.toneClass} ${content.dimmed ? "opacity-60" : ""} ${content.testId === "time-off-block" ? "border-dashed" : ""}`;
+        const className = `absolute inset-x-1 overflow-hidden rounded-field border border-l-3 px-2 py-1.5 text-xs ${content.toneClass} ${content.dimmed ? "opacity-60" : ""} ${content.testId === "time-off-block" ? "border-dashed" : ""}`;
         if (content.href) {
           return (
             <DrawerLink
@@ -277,7 +277,7 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
             href={content.href}
             data-testid={content.testId}
             data-appointment={content.block.id}
-            className={`rounded-field border px-3 py-2 text-sm ${content.toneClass} ${content.dimmed ? "opacity-60" : ""}`}
+            className={`rounded-field border border-l-3 px-3 py-2 text-sm ${content.toneClass} ${content.dimmed ? "opacity-60" : ""}`}
           >
             {content.webBooking && (
               <Badge tone="neutral" data-testid="web-booking-badge">
@@ -295,7 +295,7 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
           <div
             key={content.block.id}
             data-testid={content.testId}
-            className={`rounded-field border px-3 py-2 text-sm ${content.toneClass}`}
+            className={`rounded-field border border-l-3 px-3 py-2 text-sm ${content.toneClass}`}
           >
             {content.webBooking && (
               <Badge tone="neutral" data-testid="web-booking-badge">

@@ -400,6 +400,7 @@ test("the agenda marks every closed day with the reason in Day and Week, and lea
     await expect(visibleClosure(page)).toHaveText(
       `Clínica cerrada · ${reason}`,
     );
+    await expect(visibleClosure(page)).toHaveCSS("font-weight", "600");
   }
   for (const date of [addDays(first, -1), addDays(last, 1)]) {
     await page.goto(`${DASHBOARD}/?date=${date}`);
