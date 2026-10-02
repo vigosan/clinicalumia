@@ -63,6 +63,15 @@ describe("GET /api/cron/cuentas-sin-verificar", () => {
     });
   });
 
+  it("answers with an error when the run refused to delete too many accounts, so the failed cron shows up in Vercel", async () => {
+    deleteUnverifiedAccounts.mockResolvedValue({ tooMany: 250 });
+
+    const response = await GET(request("Bearer secreto-de-prueba"));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ tooMany: 250 });
+  });
+
   it("runs once a day at night, within what Vercel's Hobby plan allows", () => {
     const runs = vercel.crons.filter(
       (cron) => cron.path === "/api/cron/cuentas-sin-verificar",

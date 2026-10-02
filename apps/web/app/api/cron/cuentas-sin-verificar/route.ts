@@ -13,5 +13,5 @@ export async function GET(request: Request) {
     admin: createAdminClient(),
     now: new Date(),
   });
-  return Response.json(result);
+  return Response.json(result, { status: "tooMany" in result ? 500 : 200 });
 }

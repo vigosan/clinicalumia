@@ -4,6 +4,7 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 
 const USERS_PAGE = 1000;
 const LOOKUP_CHUNK = 100;
+const MAX_DELETIONS = 100;
 const GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 type AuthUser = {
@@ -54,13 +55,23 @@ async function idsWithRows(
   return found;
 }
 
+async function stillNeverVerified(
+  admin: AdminClient,
+  id: string,
+  cutoff: number,
+): Promise<boolean> {
+  const { data, error } = await admin.auth.admin.getUserById(id);
+  if (error || !data.user) return false;
+  return neverVerified(data.user, cutoff);
+}
+
 export async function deleteUnverifiedAccounts({
   admin,
   now,
 }: {
   admin: AdminClient;
   now: Date;
-}): Promise<{ deleted: number; failed: number }> {
+}): Promise<{ deleted: number; failed: number } | { tooMany: number }> {
   const cutoff = now.getTime() - GRACE_MS;
   const candidateIds = (await listAllUsers(admin))
     .filter((user) => neverVerified(user, cutoff))
@@ -70,11 +81,21 @@ export async function deleteUnverifiedAccounts({
     idsWithRows(admin, "profiles", candidateIds),
     idsWithRows(admin, "patient_accounts", candidateIds),
   ]);
+  const doomed = candidateIds.filter(
+    (id) => !staff.has(id) && !patients.has(id),
+  );
+
+  if (doomed.length > MAX_DELETIONS) {
+    console.error(
+      `Limpieza de cuentas sin verificar parada: ${doomed.length} candidatas superan el máximo de ${MAX_DELETIONS}.`,
+    );
+    return { tooMany: doomed.length };
+  }
 
   let deleted = 0;
   let failed = 0;
-  for (const id of candidateIds) {
-    if (staff.has(id) || patients.has(id)) continue;
+  for (const id of doomed) {
+    if (!(await stillNeverVerified(admin, id, cutoff))) continue;
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) {
       failed += 1;
@@ -83,5 +104,8 @@ export async function deleteUnverifiedAccounts({
       deleted += 1;
     }
   }
+  console.info(
+    `Limpieza de cuentas sin verificar: ${JSON.stringify({ deleted, failed })}`,
+  );
   return { deleted, failed };
 }

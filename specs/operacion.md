@@ -48,6 +48,8 @@ No se mira si el email está confirmado: `/acceder` crea los usuarios ya confirm
 
 - Usa el mismo `CRON_SECRET` que los recordatorios: sin él, o con otro, responde `401` y no borra nada.
 - Si no puede leer los usuarios, el equipo o las cuentas de paciente, falla sin borrar nada. Si falla un borrado, sigue con el resto y lo cuenta.
-- Devuelve `{ deleted, failed }`, que aparece en los logs del cron en Vercel.
+- Justo antes de borrar cada usuario lo vuelve a leer y lo deja si entretanto ha entrado, ha pedido otro código o ya no existe.
+- Borra como mucho 100 cuentas por día. Si hay más candidatas, no borra ninguna, deja en el log solo cuántas eran y responde `500`, así que la ejecución sale fallida en Vercel: revisa antes qué ha pasado (un error o un ataque) y lánzalo a mano cuando esté claro.
+- Cada ejecución deja en el log `{ deleted, failed }`, aunque no haya borrado nada.
 - La programación está en `apps/web/vercel.json`. Hobby permite hasta 100 crons por proyecto, cada uno como mucho una vez al día.
 - Para lanzarlo a mano en local, con la web arrancada: `curl -H "Authorization: Bearer lumia-cron-local" http://localhost:3000/api/cron/cuentas-sin-verificar`.
