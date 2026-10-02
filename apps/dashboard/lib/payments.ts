@@ -146,7 +146,7 @@ export function agendaPaymentIcon({
   return { state: "pending", label: "Pendiente de cobro" };
 }
 
-export type MethodTotal = { method: PaymentMethod; cents: number };
+export type MethodTotal = { method: PaymentMethod; cents: number | null };
 
 export type PaymentHistoryRow = {
   amount_cents: number;

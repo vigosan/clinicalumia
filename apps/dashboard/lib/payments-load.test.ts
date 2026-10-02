@@ -287,7 +287,15 @@ describe("loadCobros", () => {
           ["prof-2", "Zoe Profesional"],
         ]),
         isOwner: false,
-        totals: { methods: [], total: 0 },
+        totals: {
+          methods: [
+            { method: "cash", cents: null },
+            { method: "card", cents: null },
+            { method: "bizum", cents: null },
+            { method: "transfer", cents: null },
+          ],
+          total: 0,
+        },
         truncated: false,
       },
     });
@@ -431,12 +439,14 @@ describe("loadCobros", () => {
       methods: [
         { method: "cash", cents: -4500 },
         { method: "card", cents: 5500 },
+        { method: "bizum", cents: null },
+        { method: "transfer", cents: null },
       ],
       total: 1000,
     });
   });
 
-  it("uses the database totals per method, leaving out methods that add up to nothing", async () => {
+  it("lists every payment method the clinic takes in a fixed order, with no amount for those that add up to nothing, so the cash-up always reads the same and an empty method shows as empty instead of disappearing", async () => {
     const { client } = fakeClient({
       totals: [
         { method: "cash", cents: 5500 },
@@ -452,6 +462,8 @@ describe("loadCobros", () => {
     expect(result.ok && result.data.totals).toEqual({
       methods: [
         { method: "cash", cents: 5500 },
+        { method: "card", cents: null },
+        { method: "bizum", cents: null },
         { method: "transfer", cents: 700 },
       ],
       total: 6200,

@@ -133,24 +133,24 @@ export default async function CobrosPage({
                       {formatEuros(totals.total)}
                     </p>
                   </div>
-                  {totals.methods.length > 0 && (
-                    <p className="pb-1 text-[15px] text-ink-800">
-                      {totals.methods.map((entry, index) => (
-                        <Fragment key={entry.method}>
-                          {index > 0 && " · "}
-                          <span
-                            data-testid="payments-total-method"
-                            data-method={entry.method}
-                          >
-                            {methodLabel(entry.method)}{" "}
-                            <span className="text-ink-900 tabular-nums">
-                              {formatEuros(entry.cents)}
-                            </span>
+                  <p className="pb-1 text-[15px] text-ink-800">
+                    {totals.methods.map((entry, index) => (
+                      <Fragment key={entry.method}>
+                        {index > 0 && " · "}
+                        <span
+                          data-testid="payments-total-method"
+                          data-method={entry.method}
+                        >
+                          {methodLabel(entry.method)}{" "}
+                          <span className="text-ink-900 tabular-nums">
+                            {entry.cents === null
+                              ? "—"
+                              : formatEuros(entry.cents)}
                           </span>
-                        </Fragment>
-                      ))}
-                    </p>
-                  )}
+                        </span>
+                      </Fragment>
+                    ))}
+                  </p>
                 </div>
                 <Table
                   aria-label="Cobros"

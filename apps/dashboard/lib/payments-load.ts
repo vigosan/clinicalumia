@@ -7,7 +7,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import type { createClient } from "@clinicalumia/api/server";
 import { isUuid } from "./agenda";
-import type { MethodTotal, PaymentMethod } from "./payments";
+import { METHOD_ORDER, type MethodTotal, type PaymentMethod } from "./payments";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
@@ -196,12 +196,15 @@ export async function loadCobros(
     serviceName: row.service_name,
   }));
 
-  const methods = (totalRows ?? [])
-    .filter((row) => row.cents !== 0)
-    .map((row) => ({ method: row.method as PaymentMethod, cents: row.cents }));
+  const methods = METHOD_ORDER.map((method) => {
+    const cents = (totalRows ?? [])
+      .filter((row) => row.method === method)
+      .reduce((sum, row) => sum + row.cents, 0);
+    return { method, cents: cents === 0 ? null : cents };
+  });
   const totals = {
     methods,
-    total: methods.reduce((sum, entry) => sum + entry.cents, 0),
+    total: methods.reduce((sum, entry) => sum + (entry.cents ?? 0), 0),
   };
 
   return {

@@ -529,7 +529,7 @@ test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la 
   }
 });
 
-test("la página de cobros muestra los cobros del día con sus totales por forma de pago, el anulado el mismo día se ve con su anulación y no suma, y el filtro por profesional funciona", async ({
+test("la página de cobros muestra los cobros del día con sus totales por forma de pago, el anulado el mismo día se ve con su anulación y no suma, el filtro por profesional funciona y el desglose enseña siempre todas las formas de pago, con «—» en las que no suman nada, para que la caja se lea igual cada día", async ({
   page,
 }) => {
   const date = addDays(todayInMadrid(), -1);
@@ -624,7 +624,12 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     "55,00 €",
     "-55,00 €",
   ]);
-  await expect(page.getByTestId("payments-total-method")).toHaveCount(0);
+  await expect(page.getByTestId("payments-total-method")).toHaveText([
+    "Efectivo —",
+    "Tarjeta —",
+    "Bizum —",
+    "Transferencia —",
+  ]);
   await expect(page.getByTestId("payments-total-amount")).toHaveText("0,00 €");
 });
 
@@ -1165,7 +1170,7 @@ test("en Cobros las flechas de día van pegadas al calendario y el profesional e
   );
 });
 
-test("el total del día se lee como una cifra grande y el desglose por forma de pago cabe en una sola línea, sin tarjetas", async ({
+test("el total del día se lee como una cifra grande y el desglose cabe en una sola línea, sin tarjetas, aun enseñando con «—» las formas de pago sin importe para que no parezca que faltan", async ({
   page,
 }) => {
   const date = todayInMadrid();
@@ -1198,7 +1203,12 @@ test("el total del día se lee como una cifra grande y el desglose por forma de 
     await total.evaluate((element) => getComputedStyle(element).fontSize),
   ).toBe("32px");
   const methods = page.getByTestId("payments-total-method");
-  await expect(methods).toHaveCount(2);
+  await expect(methods).toHaveText([
+    "Efectivo 55,00 €",
+    "Tarjeta 55,00 €",
+    "Bizum —",
+    "Transferencia —",
+  ]);
   const boxes = await Promise.all(
     (await methods.all()).map((method) => method.boundingBox()),
   );
