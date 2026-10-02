@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
+    "./clinic-logo": "./clinic-logo.ts",
     "./format": "./format.ts",
     "./logo": "./logo.ts"
   },
@@ -14,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@clinicalumia/api": "workspace:*",
     "@clinicalumia/db": "workspace:*",
     "@react-pdf/renderer": "^4.9.0",
     "qrcode": "^1.5.4",
