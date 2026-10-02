@@ -33,6 +33,12 @@ const sections = [
     testId: "home-card-schedules",
   },
   {
+    href: "/closures",
+    title: "Días de cierre",
+    text: "Festivos y vacaciones en que la clínica no abre.",
+    testId: "home-card-closures",
+  },
+  {
     href: "/clinic",
     title: "Datos de la clínica",
     text: "Datos de facturación y condiciones de reserva.",

@@ -49,6 +49,7 @@ export default async function AdminLayout({
           { href: "/specialties", label: "Especialidades" },
           { href: "/services", label: "Servicios" },
           { href: "/schedules", label: "Horarios" },
+          { href: "/closures", label: "Días de cierre" },
           { href: "/clinic", label: "Datos de la clínica" },
           { href: "/facturacion", label: "Facturación" },
         ]}

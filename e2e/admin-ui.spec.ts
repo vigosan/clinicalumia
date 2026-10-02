@@ -206,6 +206,7 @@ test("each card on the admin home links to its section", async ({ page }) => {
     ["home-card-specialties", "/specialties"],
     ["home-card-services", "/services"],
     ["home-card-schedules", "/schedules"],
+    ["home-card-closures", "/closures"],
     ["home-card-clinic", "/clinic"],
     ["home-card-billing", "/facturacion"],
   ];

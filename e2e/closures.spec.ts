@@ -187,6 +187,15 @@ test("the owner closes days that already have an appointment, sees it listed wit
 
   await signIn(page, ADMIN, owner.email, owner.password);
   await page.goto(`${ADMIN}/schedules`);
+  await expect(page.getByTestId("closure-new")).toHaveCount(0);
+  await page
+    .getByRole("navigation", { name: "Secciones" })
+    .getByRole("link", { name: "Días de cierre" })
+    .click();
+  await expect(page).toHaveURL(`${ADMIN}/closures`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Días de cierre" }),
+  ).toBeVisible();
   await addClosure(page, first, last, reason);
 
   const affected = page.getByTestId("closure-affected");
@@ -241,7 +250,7 @@ test("a closure with no appointments in it closes the form straight away and app
   const owner = await createStaff("owner");
 
   await signIn(page, ADMIN, owner.email, owner.password);
-  await page.goto(`${ADMIN}/schedules`);
+  await page.goto(`${ADMIN}/closures`);
   await addClosure(page, day, day, reason);
 
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -285,7 +294,7 @@ test("an employee signed in to the panel cannot reach the closures in the admin"
 }) => {
   const employee = await createStaff("employee");
   await signIn(page, DASHBOARD, employee.email, employee.password);
-  await page.goto(`${ADMIN}/schedules`);
+  await page.goto(`${ADMIN}/closures`);
   await expect(page).toHaveURL(`${ADMIN}/login`);
   await expect(page.getByTestId("closure-form")).toHaveCount(0);
 });
