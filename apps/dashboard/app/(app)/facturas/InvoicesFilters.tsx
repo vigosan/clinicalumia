@@ -2,7 +2,6 @@
 
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { DateRangePicker } from "@clinicalumia/ui/date-range-picker";
-import { Field } from "@clinicalumia/ui/field";
 import { SearchInput } from "@clinicalumia/ui/search-input";
 import { Select } from "@clinicalumia/ui/select";
 import { useRouter } from "next/navigation";
@@ -53,7 +52,7 @@ export function InvoicesFilters({
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-4">
+    <div className="flex flex-wrap items-center gap-3">
       <div className="min-w-56 flex-1 max-sm:basis-full">
         <SearchInput
           aria-label="Buscar facturas"
@@ -63,39 +62,39 @@ export function InvoicesFilters({
           onChange={(event) => setQuery(event.target.value)}
         />
       </div>
-      <Field label="Fechas">
-        <DateRangePicker
-          data-testid="invoices-range"
-          from={params.desde}
-          to={params.hasta}
-          today={todayInMadrid()}
-          presets={madridRangePresets()}
-          onChange={({ from, to }) => go({ desde: from, hasta: to })}
-        />
-      </Field>
-      <Field label="Tipo">
-        <Select
-          data-testid="invoices-kind"
-          value={params.kind}
-          onValueChange={(value) => go({ kind: value as InvoiceKindFilter })}
-          options={INVOICE_KIND_OPTIONS}
-        />
-      </Field>
+      <DateRangePicker
+        data-testid="invoices-range"
+        aria-label="Fechas"
+        className="w-auto"
+        from={params.desde}
+        to={params.hasta}
+        today={todayInMadrid()}
+        presets={madridRangePresets()}
+        onChange={({ from, to }) => go({ desde: from, hasta: to })}
+      />
+      <Select
+        data-testid="invoices-kind"
+        aria-label="Tipo"
+        className="w-auto max-sm:w-full"
+        value={params.kind}
+        onValueChange={(value) => go({ kind: value as InvoiceKindFilter })}
+        options={INVOICE_KIND_OPTIONS}
+      />
       {isOwner && (
-        <Field label="Profesional">
-          <Select
-            data-testid="invoices-professional"
-            value={params.profesionalId ?? ""}
-            onValueChange={(value) => go({ profesionalId: value || null })}
-            options={[
-              { value: "", label: "Todo el equipo" },
-              ...staffOptions.map((staff) => ({
-                value: staff.id,
-                label: `${staff.fullName} · ${staff.specialtyName ?? "Sin especialidad"}`,
-              })),
-            ]}
-          />
-        </Field>
+        <Select
+          data-testid="invoices-professional"
+          aria-label="Profesional"
+          className="w-auto max-sm:w-full"
+          value={params.profesionalId ?? ""}
+          onValueChange={(value) => go({ profesionalId: value || null })}
+          options={[
+            { value: "", label: "Todo el equipo" },
+            ...staffOptions.map((staff) => ({
+              value: staff.id,
+              label: `${staff.fullName} · ${staff.specialtyName ?? "Sin especialidad"}`,
+            })),
+          ]}
+        />
       )}
     </div>
   );

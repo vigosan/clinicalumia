@@ -5,6 +5,7 @@ import {
   INVOICES_PAGE_SIZE,
   invoiceKindLabel,
   invoiceRecipientLabel,
+  invoiceStatusBadge,
   invoiceStatusLabel,
   invoicesListHref,
   invoicesListParams,
@@ -154,6 +155,35 @@ describe("invoiceStatusLabel", () => {
         rectifiedByCode: null,
       }),
     ).toBe("Emitida");
+  });
+});
+
+describe("invoiceStatusBadge", () => {
+  it("strikes through a replaced invoice in pebble, because it no longer counts and only stays for the record", () => {
+    expect(
+      invoiceStatusBadge({
+        status: "replaced",
+        rectifiedByCode: null,
+      }),
+    ).toEqual({ tone: "neutral", struck: true });
+  });
+
+  it("marks a rectified invoice as a warning, because its amount was compensated by another one", () => {
+    expect(
+      invoiceStatusBadge({
+        status: "issued",
+        rectifiedByCode: "R1/26",
+      }),
+    ).toEqual({ tone: "warning", struck: false });
+  });
+
+  it("keeps an issued invoice neutral, because it is the normal state and should not draw attention", () => {
+    expect(
+      invoiceStatusBadge({
+        status: "issued",
+        rectifiedByCode: null,
+      }),
+    ).toEqual({ tone: "neutral", struck: false });
   });
 });
 

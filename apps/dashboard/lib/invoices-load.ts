@@ -110,6 +110,15 @@ export function invoiceStatusLabel(row: {
   return "Emitida";
 }
 
+export function invoiceStatusBadge(row: {
+  status: "issued" | "replaced";
+  rectifiedByCode: string | null;
+}): { tone: "neutral" | "warning"; struck: boolean } {
+  if (row.status === "replaced") return { tone: "neutral", struck: true };
+  if (row.rectifiedByCode) return { tone: "warning", struck: false };
+  return { tone: "neutral", struck: false };
+}
+
 export function invoiceRecipientLabel(row: {
   recipientName: string | null;
   patientName: string;

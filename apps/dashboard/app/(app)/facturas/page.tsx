@@ -1,6 +1,7 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
+import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
@@ -21,6 +22,7 @@ import {
   formatInvoiceDate,
   invoiceKindLabel,
   invoiceRecipientLabel,
+  invoiceStatusBadge,
   invoiceStatusLabel,
   invoicesListHref,
   invoicesListParams,
@@ -117,7 +119,10 @@ export default async function InvoicesPage({
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id} linked data-testid="invoice-row">
-                  <TableCell className="font-medium" mobile="primary">
+                  <TableCell
+                    className="font-semibold text-[15px] tabular-nums"
+                    mobile="primary"
+                  >
                     <Link
                       href={`/facturas/${row.id}`}
                       data-testid="invoice-open"
@@ -143,7 +148,16 @@ export default async function InvoicesPage({
                     mobile="secondary"
                     data-testid="invoice-status"
                   >
-                    {invoiceStatusLabel(row)}
+                    <Badge
+                      tone={invoiceStatusBadge(row).tone}
+                      className={
+                        invoiceStatusBadge(row).struck
+                          ? "line-through"
+                          : undefined
+                      }
+                    >
+                      {invoiceStatusLabel(row)}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}
