@@ -1109,6 +1109,78 @@ test("los atajos de fechas de Cobros eligen los días de Madrid y el calendario 
   );
 });
 
+test("en Cobros las flechas de día van pegadas al calendario y el profesional en la misma línea, para cambiar de día sin buscar los controles", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page, DASHBOARD, "info@clinicalumia.es");
+  await page.goto(`${DASHBOARD}/cobros`);
+
+  const range = page.getByRole("combobox", { name: "Fechas" });
+  await expect(range).toBeVisible();
+  const prev = await page.getByTestId("payments-prev-day").boundingBox();
+  const field = await range.boundingBox();
+  const next = await page.getByTestId("payments-next-day").boundingBox();
+  const professional = await page
+    .getByRole("combobox", { name: "Profesional" })
+    .boundingBox();
+  expect(prev && field && next && professional).toBeTruthy();
+  expect(field!.x - (prev!.x + prev!.width)).toBeGreaterThanOrEqual(0);
+  expect(field!.x - (prev!.x + prev!.width)).toBeLessThanOrEqual(8);
+  expect(next!.x - (field!.x + field!.width)).toBeGreaterThanOrEqual(0);
+  expect(next!.x - (field!.x + field!.width)).toBeLessThanOrEqual(8);
+  const middle = (box: { y: number; height: number }) => box.y + box.height / 2;
+  expect(Math.abs(middle(prev!) - middle(field!))).toBeLessThanOrEqual(2);
+  expect(Math.abs(middle(professional!) - middle(field!))).toBeLessThanOrEqual(
+    2,
+  );
+});
+
+test("el total del día se lee como una cifra grande y el desglose por forma de pago cabe en una sola línea, sin tarjetas", async ({
+  page,
+}) => {
+  const date = todayInMadrid();
+  const employee = await createEmployee("Profesional Cobros Totales");
+  const cardAppointmentId = await createAppointment(employee.id, date);
+  const cashAppointmentId = await createAppointment(
+    employee.id,
+    date,
+    "12:00",
+    "13:00",
+  );
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, cardAppointmentId);
+  await collect(page, "card");
+  await expect(page.getByTestId("appointment-payment-status")).toContainText(
+    "Cobrada",
+  );
+  await openAppointment(page, date, cashAppointmentId);
+  await collect(page, "cash");
+  await expect(page.getByTestId("appointment-payment-status")).toContainText(
+    "Cobrada",
+  );
+
+  await page.goto(`${DASHBOARD}/cobros`);
+  const total = page.getByTestId("payments-total-amount");
+  await expect(total).toHaveText("110,00 €");
+  expect(
+    await total.evaluate((element) => getComputedStyle(element).fontSize),
+  ).toBe("32px");
+  const methods = page.getByTestId("payments-total-method");
+  await expect(methods).toHaveCount(2);
+  const boxes = await Promise.all(
+    (await methods.all()).map((method) => method.boundingBox()),
+  );
+  const totalBox = await total.boundingBox();
+  for (const box of boxes) {
+    expect(Math.abs(box!.y - boxes[0]!.y)).toBeLessThanOrEqual(2);
+    expect(box!.height).toBeLessThanOrEqual(28);
+    expect(box!.x).toBeGreaterThan(totalBox!.x + totalBox!.width);
+  }
+});
+
 test("a 390 px Cobros y Facturas se leen como tarjetas, sin desplazar la página de lado", async ({
   page,
 }) => {

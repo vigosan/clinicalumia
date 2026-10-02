@@ -2,9 +2,8 @@ import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
-import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
-import { eyebrowClass, PageHeader } from "@clinicalumia/ui/page-header";
+import { PageHeader } from "@clinicalumia/ui/page-header";
 import {
   rowLinkClass,
   Table,
@@ -17,6 +16,7 @@ import {
 import { CircleCheck, Plus, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { patientsListState } from "@/lib/patients-list-state";
 import { pendingTabLabel } from "@/lib/payment-candidates";
 import { formatEuros, methodLabel } from "@/lib/payments";
@@ -122,32 +122,35 @@ export default async function CobrosPage({
               <>
                 <div
                   data-testid="payments-totals"
-                  className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+                  className="flex flex-wrap items-end gap-x-8 gap-y-1"
                 >
-                  <Card className="col-span-2 flex flex-col gap-1 bg-sage-100 p-5 sm:col-span-1">
-                    <p className={eyebrowClass}>Total</p>
+                  <div className="flex flex-col">
+                    <p className="text-ink-700 text-xs">Total</p>
                     <p
                       data-testid="payments-total-amount"
-                      className="font-bold text-2xl text-ink-900 tabular-nums"
+                      className="font-bold text-[32px] text-ink-900 leading-tight tabular-nums"
                     >
                       {formatEuros(totals.total)}
                     </p>
-                  </Card>
-                  {totals.methods.map((entry) => (
-                    <Card
-                      key={entry.method}
-                      data-testid="payments-total-method"
-                      data-method={entry.method}
-                      className="flex flex-col gap-1 p-5"
-                    >
-                      <p className={eyebrowClass}>
-                        {methodLabel(entry.method)}
-                      </p>
-                      <p className="font-semibold text-ink-900 text-xl tabular-nums">
-                        {formatEuros(entry.cents)}
-                      </p>
-                    </Card>
-                  ))}
+                  </div>
+                  {totals.methods.length > 0 && (
+                    <p className="pb-1 text-[15px] text-ink-800">
+                      {totals.methods.map((entry, index) => (
+                        <Fragment key={entry.method}>
+                          {index > 0 && " · "}
+                          <span
+                            data-testid="payments-total-method"
+                            data-method={entry.method}
+                          >
+                            {methodLabel(entry.method)}{" "}
+                            <span className="text-ink-900 tabular-nums">
+                              {formatEuros(entry.cents)}
+                            </span>
+                          </span>
+                        </Fragment>
+                      ))}
+                    </p>
+                  )}
                 </div>
                 <Table
                   aria-label="Cobros"
