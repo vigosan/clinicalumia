@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: ".",
+  globalSetup: "./warm-up.ts",
   snapshotPathTemplate:
     "{testDir}/{testFilePath}-snapshots/{arg}{-snapshotSuffix}{ext}",
   use: { baseURL: "http://localhost:3001", trace: "retain-on-failure" },
