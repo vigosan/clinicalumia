@@ -13,7 +13,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
-import { CircleCheck, Wallet } from "lucide-react";
+import { CircleCheck, Plus, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { patientsListState } from "@/lib/patients-list-state";
@@ -82,6 +82,7 @@ export default async function CobrosPage({
           <RegisterPaymentDialog
             trigger={
               <Button size="sm" data-testid="payments-register">
+                <Plus aria-hidden="true" />
                 Registrar cobro
               </Button>
             }

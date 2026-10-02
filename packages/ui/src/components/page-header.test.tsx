@@ -24,4 +24,22 @@ describe("PageHeader", () => {
       screen.getByRole("heading", { level: 1, name: "Factura 34/26" }),
     );
   });
+
+  it("keeps the actions on the title's line, so the main button sits at the same height on every page whether or not it has a description", () => {
+    render(
+      <PageHeader
+        title="Cobros"
+        description="Dinero recibido por las citas."
+        actions={<button type="button">Registrar cobro</button>}
+      />,
+    );
+
+    const titleRow = screen.getByRole("heading", { level: 1 }).parentElement;
+    expect(titleRow).toContainElement(
+      screen.getByRole("button", { name: "Registrar cobro" }),
+    );
+    expect(titleRow).not.toContainElement(
+      screen.getByText("Dinero recibido por las citas."),
+    );
+  });
 });

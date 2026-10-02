@@ -20,25 +20,25 @@ export function PageHeader({
   breadcrumbs?: Crumb[];
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-6">
-      <div className="flex min-w-0 flex-col gap-1.5">
-        {breadcrumbs && (
-          <div className="mb-1.5">
-            <Breadcrumbs items={breadcrumbs} />
-          </div>
-        )}
-        {eyebrow && <p className={eyebrowClass}>{eyebrow}</p>}
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {breadcrumbs && (
+        <div className="mb-1.5">
+          <Breadcrumbs items={breadcrumbs} />
+        </div>
+      )}
+      {eyebrow && <p className={eyebrowClass}>{eyebrow}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <h1
           data-testid={titleTestId}
-          className="break-words text-title font-bold text-ink-900"
+          className="min-w-0 break-words text-title font-bold text-ink-900"
         >
           {title}
         </h1>
-        {description && (
-          <p className="text-[15px] text-ink-800">{description}</p>
-        )}
+        {actions && <div className="flex gap-2.5">{actions}</div>}
       </div>
-      {actions && <div className="flex gap-2.5">{actions}</div>}
+      {description && (
+        <p className="max-w-[70ch] text-[15px] text-ink-800">{description}</p>
+      )}
     </div>
   );
 }

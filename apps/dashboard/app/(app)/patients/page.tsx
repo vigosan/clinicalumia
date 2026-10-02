@@ -16,7 +16,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
-import { Archive, SearchX, Users } from "lucide-react";
+import { Archive, Plus, SearchX, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -52,7 +52,10 @@ export default async function PatientsPage({
         title="Pacientes"
         actions={
           <Button asChild size="sm" data-testid="patient-new">
-            <Link href="/patients/new">Nuevo paciente</Link>
+            <Link href="/patients/new">
+              <Plus aria-hidden="true" />
+              Nuevo paciente
+            </Link>
           </Button>
         }
       />
