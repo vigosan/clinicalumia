@@ -30,12 +30,12 @@ export function ConsentsSection({
       ) : consents.length === 0 ? (
         <p className="text-sm text-ink-800">Sin consentimientos firmados</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col divide-y divide-line">
           {consents.map((consent) => (
             <li
               key={consent.id}
               data-testid="patient-consent"
-              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-line px-3 py-2 text-[15px] text-ink-900"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 text-[15px] text-ink-900"
             >
               <span>
                 {formatSignedAt(consent.signedAt).slice(0, 10)} · Publicidad:{" "}

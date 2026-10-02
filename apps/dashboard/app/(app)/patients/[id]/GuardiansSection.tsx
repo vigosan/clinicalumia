@@ -53,16 +53,19 @@ export function GuardiansSection({
     <Card className="flex flex-col gap-4" data-testid="guardians-section">
       {showGuardians && (
         <>
-          <h2 className="text-lg font-bold text-ink-900">Tutores</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-ink-900">Tutores</h2>
+            {isMinorPerson && <AddGuardian minorId={personId} />}
+          </div>
           {guardians.length === 0 ? (
             <p className="text-sm text-ink-800">No tiene tutor/a.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col divide-y divide-line">
               {guardians.map((guardian) => (
                 <li
                   key={guardian.id}
                   data-testid="guardian-row"
-                  className="flex flex-wrap items-center justify-between gap-2"
+                  className="flex flex-wrap items-center justify-between gap-2 py-2"
                 >
                   <span className="text-[15px] text-ink-900">
                     <Link
@@ -77,8 +80,9 @@ export function GuardiansSection({
                   {isOwner && (
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
+                      className="ml-auto"
                       disabled={pending}
                       data-testid="guardian-remove"
                       onClick={() => handleRemove(guardian.id)}
@@ -90,18 +94,17 @@ export function GuardiansSection({
               ))}
             </ul>
           )}
-          {isMinorPerson && <AddGuardian minorId={personId} />}
         </>
       )}
       {showWards && (
         <>
           <h2 className="text-lg font-bold text-ink-900">Menores a su cargo</h2>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col divide-y divide-line">
             {wards.map((ward) => (
               <li
                 key={ward.id}
                 data-testid="ward-row"
-                className="text-[15px] text-ink-900"
+                className="py-2 text-[15px] text-ink-900"
               >
                 <Link href={`/patients/${ward.id}`} data-testid="ward-link">
                   {ward.name}

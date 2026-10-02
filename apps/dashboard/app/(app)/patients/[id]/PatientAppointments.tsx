@@ -19,13 +19,13 @@ function AppointmentList({
   return (
     <div className="flex flex-col gap-2">
       <h3 className={eyebrowClass}>{title}</h3>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col divide-y divide-line">
         {rows.map((row) => (
           <li key={row.id}>
             <Link
               href={row.href}
               data-testid="patient-appointment"
-              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-line px-3 py-2 text-[15px] text-ink-900 hover:bg-cream-200"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 -mx-3 rounded-field px-3 py-3 text-[15px] text-ink-900 hover:bg-cream-50"
             >
               <span>
                 {formatDay(row.date)} {row.time} · {row.serviceName} ·{" "}

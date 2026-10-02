@@ -41,12 +41,12 @@ export function PatientPayments({
       {toCollect.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className={eyebrowClass}>Pendientes de cobro</h3>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col divide-y divide-line">
             {toCollect.map((candidate) => (
               <li
                 key={candidate.id}
                 data-testid="patient-pending-payment"
-                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-line px-3 py-2 text-[15px] text-ink-900"
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 text-[15px] text-ink-900"
               >
                 <span>
                   {formatMadridDateTime(candidate.startsAt)} ·{" "}
@@ -75,13 +75,13 @@ export function PatientPayments({
       {payments.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className={eyebrowClass}>Registrados</h3>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col divide-y divide-line">
             {payments.map((payment) => (
               <li key={payment.id}>
                 <Link
                   href={payment.href}
                   data-testid="patient-payment"
-                  className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-line px-3 py-2 text-[15px] text-ink-900 hover:bg-cream-200 ${payment.voided ? "opacity-60" : ""}`}
+                  className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 -mx-3 rounded-field px-3 py-3 text-[15px] text-ink-900 hover:bg-cream-50 ${payment.voided ? "opacity-60" : ""}`}
                 >
                   <span>
                     {payment.date} · {payment.serviceName}

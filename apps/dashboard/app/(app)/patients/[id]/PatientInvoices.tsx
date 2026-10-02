@@ -36,13 +36,13 @@ export function PatientInvoices({
 
   return (
     <div className="flex flex-col gap-2" data-testid="patient-invoices">
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col divide-y divide-line">
         {invoices.map((invoice) => (
           <li key={invoice.id}>
             <Link
               href={`/facturas/${invoice.id}`}
               data-testid="patient-invoice"
-              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-line px-3 py-2 text-[15px] text-ink-900 hover:bg-cream-200"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 -mx-3 rounded-field px-3 py-3 text-[15px] text-ink-900 hover:bg-cream-50"
             >
               <span>
                 {invoice.code} · {formatInvoiceDate(invoice.issuedAt)} ·{" "}

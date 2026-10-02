@@ -309,90 +309,95 @@ export default async function PatientPage({
         </Alert>
       )}
 
-      <Card>
-        <dl
-          data-testid="patient-details"
-          className="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-4"
-        >
-          {[
-            { label: "DNI/NIE", value: person.tax_id },
-            { label: "Email", value: person.email },
-            { label: "Teléfono", value: person.phone },
-            { label: "Dirección", value: person.address },
-            ...(person.admin_notes
-              ? [{ label: "Notas", value: person.admin_notes, wide: true }]
-              : []),
-          ].map((detail) => (
-            <div
-              key={detail.label}
-              className={`flex min-w-0 flex-col gap-1 ${"wide" in detail ? "sm:col-span-2 xl:col-span-4" : ""}`}
+      <div className="grid gap-6 xl:grid-cols-3 xl:items-start">
+        <div className="flex flex-col gap-6 xl:col-start-3 xl:row-start-1">
+          <Card>
+            <dl
+              data-testid="patient-details"
+              className="grid gap-x-8 gap-y-5 sm:grid-cols-2"
             >
-              <dt className="text-[13px] font-medium text-ink-700">
-                {detail.label}
-              </dt>
-              <dd
-                className={`break-words text-[15px] ${detail.value ? "text-ink-900" : "text-ink-500"}`}
-              >
-                {detail.value || "—"}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
+              {[
+                { label: "DNI/NIE", value: person.tax_id },
+                { label: "Email", value: person.email },
+                { label: "Teléfono", value: person.phone },
+                { label: "Dirección", value: person.address },
+                ...(person.admin_notes
+                  ? [{ label: "Notas", value: person.admin_notes, wide: true }]
+                  : []),
+              ].map((detail) => (
+                <div
+                  key={detail.label}
+                  className={`flex min-w-0 flex-col gap-1 ${"wide" in detail ? "sm:col-span-2" : ""}`}
+                >
+                  <dt className="text-[13px] font-medium text-ink-700">
+                    {detail.label}
+                  </dt>
+                  <dd
+                    className={`break-words text-[15px] ${detail.value ? "text-ink-900" : "text-ink-500"}`}
+                  >
+                    {detail.value || "—"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
 
-      <GuardiansSection
-        personId={id}
-        isMinorPerson={minor}
-        guardians={guardians}
-        wards={wards}
-        isOwner={isOwner}
-        initialError={guardianErrorMessage(guardianError)}
-      />
+          <GuardiansSection
+            personId={id}
+            isMinorPerson={minor}
+            guardians={guardians}
+            wards={wards}
+            isOwner={isOwner}
+            initialError={guardianErrorMessage(guardianError)}
+          />
 
-      <ConsentsSection consents={consents} error={Boolean(consentsError)} />
+          <ConsentsSection consents={consents} error={Boolean(consentsError)} />
+        </div>
+        <div className="flex flex-col gap-6 xl:col-span-2 xl:col-start-1 xl:row-start-1">
+          <Card className="flex flex-col gap-2">
+            <h2 className="text-lg font-bold text-ink-900">Citas</h2>
+            <PatientAppointments
+              error={appointmentsFailed}
+              upcoming={upcoming}
+              upcomingTruncated={upcomingTruncated}
+              past={past}
+              pastTruncated={pastTruncated}
+              newAppointmentHref={
+                person.is_patient && !person.archived_at
+                  ? `/appointments/new?patient=${id}`
+                  : null
+              }
+            />
+          </Card>
 
-      <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-bold text-ink-900">Citas</h2>
-        <PatientAppointments
-          error={appointmentsFailed}
-          upcoming={upcoming}
-          upcomingTruncated={upcomingTruncated}
-          past={past}
-          pastTruncated={pastTruncated}
-          newAppointmentHref={
-            person.is_patient && !person.archived_at
-              ? `/appointments/new?patient=${id}`
-              : null
-          }
-        />
-      </Card>
+          <Card className="flex flex-col gap-2" data-testid="patient-payments">
+            <h2
+              id="patient-payments-title"
+              tabIndex={-1}
+              data-testid="patient-payments-title"
+              className="text-lg font-bold text-ink-900 outline-none"
+            >
+              Cobros
+            </h2>
+            <PatientPayments
+              error={paymentsFailed}
+              toCollect={toCollect}
+              payments={patientPayments.rows}
+              truncated={patientPayments.truncated}
+              now={now.toISOString()}
+            />
+          </Card>
 
-      <Card className="flex flex-col gap-2" data-testid="patient-payments">
-        <h2
-          id="patient-payments-title"
-          tabIndex={-1}
-          data-testid="patient-payments-title"
-          className="text-lg font-bold text-ink-900 outline-none"
-        >
-          Cobros
-        </h2>
-        <PatientPayments
-          error={paymentsFailed}
-          toCollect={toCollect}
-          payments={patientPayments.rows}
-          truncated={patientPayments.truncated}
-          now={now.toISOString()}
-        />
-      </Card>
-
-      <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-bold text-ink-900">Facturas</h2>
-        <PatientInvoices
-          error={Boolean(invoicesError)}
-          invoices={invoices}
-          truncated={invoicesTruncated}
-        />
-      </Card>
+          <Card className="flex flex-col gap-2">
+            <h2 className="text-lg font-bold text-ink-900">Facturas</h2>
+            <PatientInvoices
+              error={Boolean(invoicesError)}
+              invoices={invoices}
+              truncated={invoicesTruncated}
+            />
+          </Card>
+        </div>
+      </div>
     </>
   );
 }
