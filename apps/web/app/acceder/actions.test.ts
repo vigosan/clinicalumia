@@ -1013,7 +1013,9 @@ describe("confirmLink", () => {
     await confirmLink(linkForm("hash-1", "/reservar"));
 
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
-    expect(redirectMock).toHaveBeenCalledWith("/acceder?caducado=1");
+    expect(redirectMock).toHaveBeenCalledWith(
+      "/acceder?caducado=1&next=%2Freservar",
+    );
   });
 
   function linkForm(tokenHash: string, next: string) {
@@ -1033,12 +1035,24 @@ describe("confirmLink", () => {
     expect(redirectMock).toHaveBeenCalledWith("/reservar?hueco=1");
   });
 
-  it("sends a used or expired link back to ask for a new one", async () => {
+  it("sends a used or expired link back to ask for a new one, keeping the booking in progress so the patient does not start over", async () => {
     verifyError = { message: "Email link is invalid or has expired" };
 
-    await confirmLink(linkForm("usado", "/reservar"));
+    await confirmLink(
+      linkForm("usado", "/reservar?servicio=s1&inicio=2026-10-05T08:00:00Z"),
+    );
 
-    expect(redirectMock).toHaveBeenCalledWith("/acceder?caducado=1");
+    expect(redirectMock).toHaveBeenCalledWith(
+      `/acceder?caducado=1&next=${encodeURIComponent("/reservar?servicio=s1&inicio=2026-10-05T08:00:00Z")}`,
+    );
+  });
+
+  it("never carries an external next into the expired-link page", async () => {
+    verifyError = { message: "Email link is invalid or has expired" };
+
+    await confirmLink(linkForm("usado", "https://evil.example"));
+
+    expect(redirectMock).toHaveBeenCalledWith("/acceder?caducado=1&next=%2F");
   });
 
   it("opens the account when the link carries no place to return to", async () => {

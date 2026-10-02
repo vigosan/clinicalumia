@@ -20,6 +20,8 @@ const FIELDS = {
   Apellidos: "lastName",
   "Fecha de nacimiento": "birthDate",
   DNI: "dni",
+  "DNI/NIE del paciente": "dni",
+  "DNI/NIE del padre, madre o tutor": "guardianDni",
   Email: "email",
   "Padre, madre o tutor": "guardian",
 } as const;
@@ -153,6 +155,7 @@ export function parseConsentText(
   formData.set("guardian", values.guardian ?? "");
   formData.set("birthDate", `${year}-${month}-${day}`);
   formData.set("dni", values.dni ?? "");
+  formData.set("guardianDni", values.guardianDni ?? "");
   formData.set("email", values.email ?? "");
   for (const source of sources) formData.append("source", source);
   if (privacy?.checked) formData.set("privacy", "on");
@@ -163,7 +166,9 @@ export function parseConsentText(
     formData.set("signature_method", "typed");
   }
 
-  const result = parseConsent(formData, signedAt);
+  const result = parseConsent(formData, signedAt, {
+    signedBeforeIdChecks: true,
+  });
   if ("error" in result) return result;
   return { ok: true, consent: result.consent, signedAt };
 }
@@ -180,13 +185,16 @@ export type ImportSummary = {
 
 async function alreadyStored(
   admin: AdminClient,
-  taxId: string,
+  consent: Consent,
   signedAt: Date,
 ) {
   const { data, error } = await admin
     .from("consents")
     .select("id")
-    .eq("tax_id", taxId)
+    .eq(
+      consent.dni ? "tax_id" : "guardian_tax_id",
+      consent.dni || consent.guardianDni,
+    )
     .gte("signed_at", signedAt.toISOString())
     .lt("signed_at", new Date(signedAt.getTime() + 60_000).toISOString())
     .limit(1);
@@ -229,11 +237,8 @@ export async function importConsents({
     const { consent, signedAt } = parsed;
 
     try {
-      const key = `${consent.dni}|${signedAt.toISOString()}`;
-      if (
-        seen.has(key) ||
-        (await alreadyStored(admin, consent.dni, signedAt))
-      ) {
+      const key = `${consent.dni}|${consent.guardianDni}|${signedAt.toISOString()}`;
+      if (seen.has(key) || (await alreadyStored(admin, consent, signedAt))) {
         summary.repeated++;
         continue;
       }

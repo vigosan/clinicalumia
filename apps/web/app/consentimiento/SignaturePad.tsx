@@ -2,24 +2,41 @@
 
 import { useEffect, useRef, useState } from "react";
 
+function prepare(el: HTMLCanvasElement) {
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  el.width = el.offsetWidth * ratio;
+  el.height = el.offsetHeight * ratio;
+  const context = el.getContext("2d");
+  if (!context) return;
+  context.scale(ratio, ratio);
+  context.lineWidth = 2.5;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.strokeStyle = "#3f3f3f";
+}
+
 export function SignaturePad({ name }: { name: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const signed = useRef(false);
   const [value, setValue] = useState("");
+  const [resized, setResized] = useState(false);
 
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    el.width = el.offsetWidth * ratio;
-    el.height = el.offsetHeight * ratio;
-    const context = el.getContext("2d");
-    if (!context) return;
-    context.scale(ratio, ratio);
-    context.lineWidth = 2.5;
-    context.lineCap = "round";
-    context.lineJoin = "round";
-    context.strokeStyle = "#3f3f3f";
+    let width = 0;
+    const observer = new ResizeObserver(() => {
+      if (el.offsetWidth === 0 || el.offsetWidth === width) return;
+      width = el.offsetWidth;
+      prepare(el);
+      if (!signed.current) return;
+      signed.current = false;
+      setValue("");
+      setResized(true);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -32,6 +49,7 @@ export function SignaturePad({ name }: { name: string }) {
     if (!context) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     drawing.current = true;
+    setResized(false);
     const { x, y } = point(event);
     context.beginPath();
     context.moveTo(x, y);
@@ -51,12 +69,14 @@ export function SignaturePad({ name }: { name: string }) {
   const end = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current) return;
     drawing.current = false;
+    signed.current = true;
     setValue(event.currentTarget.toDataURL("image/png"));
   };
 
   const clear = () => {
     const el = canvas.current;
     el?.getContext("2d")?.clearRect(0, 0, el.width, el.height);
+    signed.current = false;
     setValue("");
   };
 
@@ -73,6 +93,16 @@ export function SignaturePad({ name }: { name: string }) {
         className="h-48 w-full touch-none rounded-2xl border border-sage-400/60 border-dashed bg-white"
       />
       <input type="hidden" name={name} value={value} />
+      {resized && (
+        <p
+          role="status"
+          data-testid="signature-resized"
+          className="text-ink-600 text-sm"
+        >
+          Hemos borrado la firma porque ha cambiado el tamaño de la pantalla.
+          Vuelve a firmar.
+        </p>
+      )}
       <div className="flex items-center justify-between text-ink-400 text-sm">
         <span>Firma aquí con el dedo o el ratón</span>
         <button

@@ -974,3 +974,24 @@ test("the contact page of a person of another account does not exist for this ac
   await expect(page.getByTestId("contact-phone")).toHaveCount(0);
   await expect(page.getByText("Calle Montesa 9")).toHaveCount(0);
 });
+
+test("the public web links to Mi cuenta from the header, the mobile menu and the footer, so a patient without the email can still get in", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(WEB);
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Mi cuenta" }),
+  ).toHaveAttribute("href", "/mi-cuenta");
+  await expect(
+    page.getByRole("contentinfo").getByRole("link", { name: "Mi cuenta" }),
+  ).toHaveAttribute("href", "/mi-cuenta");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("menu-toggle").click();
+  await page
+    .getByTestId("mobile-menu")
+    .getByRole("link", { name: "Mi cuenta" })
+    .click();
+  await expect(page).toHaveURL(/\/(mi-cuenta|acceder)/);
+});

@@ -5,6 +5,7 @@ import {
   accountError,
   accountNotice,
   canMoveTo,
+  changeWindowBeforeBooking,
   changeWindowText,
   parseContactForm,
   splitAppointments,
@@ -85,6 +86,26 @@ describe("changeWindowText", () => {
     });
     expect(changeWindowText(row)).toBe(
       "Puedes cambiarla o cancelarla hasta el domingo 25 a las 18:00",
+    );
+  });
+});
+
+describe("changeWindowBeforeBooking", () => {
+  const now = new Date(madridInstant("2026-10-02", "10:00"));
+
+  it("tells the patient before confirming until when they will be able to change or cancel online", () => {
+    expect(
+      changeWindowBeforeBooking(madridInstant("2026-10-08", "09:00"), 24, now),
+    ).toBe(
+      "Podrás cambiarla o cancelarla desde Mi cuenta hasta el miércoles 7 a las 09:00.",
+    );
+  });
+
+  it("warns before confirming when the appointment will already be outside the change window, so nobody books a slot they cannot undo online", () => {
+    expect(
+      changeWindowBeforeBooking(madridInstant("2026-10-03", "11:00"), 48, now),
+    ).toBe(
+      `Esta cita no se podrá cambiar ni cancelar desde la web. Si lo necesitas, llama al ${site.phone.display}.`,
     );
   });
 });

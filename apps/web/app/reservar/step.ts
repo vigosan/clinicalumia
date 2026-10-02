@@ -6,6 +6,7 @@ import {
   NEW_PERSON,
   personError,
   SLOT_TAKEN,
+  SLOT_TOO_SOON,
   type Slot,
 } from "@/lib/booking";
 import type { PickerDay } from "./SlotPicker";
@@ -20,6 +21,7 @@ export type CatalogService = {
   durationMinutes: number;
   priceCents: number;
   phoneOnly: boolean;
+  cancellationHours: number;
 };
 
 export type CatalogSpecialty = {
@@ -90,6 +92,24 @@ export type BookingStep =
       startsAt: string;
       person: AccountPerson;
     } & Chosen);
+
+export const BOOKING_STEPS = 6;
+
+const STEP_NUMBERS = {
+  specialty: 1,
+  service: 2,
+  phoneOnly: 2,
+  professional: 3,
+  slots: 4,
+  who: 5,
+  details: 5,
+  birthDate: 5,
+  summary: 6,
+} as const;
+
+export function bookingStepNumber(kind: keyof typeof STEP_NUMBERS): number {
+  return STEP_NUMBERS[kind];
+}
 
 export function possibleGuardians(people: AccountPerson[]): AccountPerson[] {
   return people.filter(
@@ -198,7 +218,9 @@ export function bookingStep({
         needsPrivacy: !privacyAccepted,
         guardians: possibleGuardians(people),
         warning:
-          state.aviso && state.aviso !== SLOT_TAKEN
+          state.aviso &&
+          state.aviso !== SLOT_TAKEN &&
+          state.aviso !== SLOT_TOO_SOON
             ? personError({ message: state.aviso })
             : null,
       };

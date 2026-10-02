@@ -58,6 +58,37 @@ describe("appointmentNoticeEmail", () => {
     );
   });
 
+  it("tells where the clinic is and its phone in the confirmation, so the patient does not have to look them up", () => {
+    const email = appointmentNoticeEmail(
+      { kind: "confirmed" },
+      appointment,
+      now,
+      recipient,
+    );
+
+    expect(email.html).toContain(
+      "<strong>Dónde:</strong> Calle Montesa 7, 46800 Xàtiva",
+    );
+    expect(email.html).toContain("<strong>Teléfono:</strong> 614 552 808");
+  });
+
+  it("says until when the appointment can be changed or cancelled, so the patient knows before the deadline passes", () => {
+    const email = appointmentNoticeEmail(
+      { kind: "confirmed" },
+      {
+        ...appointment,
+        changeWindow:
+          "Puedes cambiarla o cancelarla hasta el jueves 1 a las 09:30",
+      },
+      now,
+      recipient,
+    );
+
+    expect(email.html).toContain(
+      "<p>Puedes cambiarla o cancelarla hasta el jueves 1 a las 09:30</p>",
+    );
+  });
+
   it("says «Cita cambiada» with the previous and the new time, so a moved appointment never looks like a second one", () => {
     const email = appointmentNoticeEmail(
       {

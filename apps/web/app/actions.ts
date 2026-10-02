@@ -12,7 +12,7 @@ import {
   purgeOldAttempts,
   recordAttempt,
 } from "@/lib/access-attempts";
-import { parseConsent } from "@/lib/consent";
+import { consentFileName, parseConsent } from "@/lib/consent";
 import { consentTitle } from "@/lib/consent-legal";
 import { buildConsentPdf } from "@/lib/consent-pdf";
 import { storeConsent } from "@/lib/consent-store";
@@ -201,19 +201,46 @@ export async function sendConsent(
 
   const to = process.env.CONSENT_TO_EMAIL ?? site.email;
   const fullName = `${consent.firstName} ${consent.lastName}`;
-  const fileName = `consentimiento-${consent.dni}-${signedAt.toISOString().slice(0, 10)}.pdf`;
+  const signer = consent.guardian || fullName;
+  const ids = [
+    consent.dni && `DNI/NIE ${consent.dni}`,
+    consent.guardianDni && `DNI/NIE del tutor/a ${consent.guardianDni}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const attachments = [
+    {
+      filename: consentFileName(consent, signedAt),
+      content: pdf,
+      contentType: "application/pdf",
+    },
+  ];
 
   try {
     await sendEmail({
       to,
       subject: `${consentTitle} — ${fullName}`,
-      html: `<p>${escapeHtml(fullName)} (DNI ${escapeHtml(consent.dni)}) ha firmado el consentimiento de protección de datos. Se adjunta el documento firmado.</p>`,
-      attachments: [
-        { filename: fileName, content: pdf, contentType: "application/pdf" },
-      ],
+      html: `<p>${escapeHtml(fullName)} (${escapeHtml(ids)}) ha firmado el consentimiento de protección de datos. Se adjunta el documento firmado.</p>`,
+      attachments,
     });
   } catch (error) {
     console.error("No se ha podido enviar el consentimiento por email", error);
+  }
+
+  if (consent.email) {
+    try {
+      await sendEmail({
+        to: consent.email,
+        subject: "Tu consentimiento firmado · Clínica LUMIA",
+        html: `<p>Hola, ${escapeHtml(signer)}:</p><p>Te enviamos una copia del ${escapeHtml(consentTitle.toLowerCase())} de ${escapeHtml(fullName)} que has firmado hoy. Guárdala como justificante.</p><p>Si tienes cualquier duda, llámanos al ${escapeHtml(site.phone.display)}.</p><p>Clínica LUMIA</p>`,
+        attachments,
+      });
+    } catch (error) {
+      console.error(
+        "No se ha podido enviar la copia del consentimiento al firmante",
+        error,
+      );
+    }
   }
 
   return { ok: true };

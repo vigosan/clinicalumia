@@ -21,6 +21,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { consentOwnTaxId } from "@/lib/consents";
 import {
   createDuplicateChecker,
   type DuplicateFields,
@@ -61,9 +62,10 @@ export type ConsentPrefill = {
   first_name: string;
   last_name: string;
   birth_date: string;
-  tax_id: string;
+  tax_id: string | null;
+  guardian_tax_id: string | null;
   email: string | null;
-  guardian_name: string | null;
+  guardian_name: string;
 };
 
 export function PersonForm({
@@ -276,7 +278,7 @@ export function PersonForm({
         <Field
           label="DNI/NIE"
           hint={
-            consent?.guardian_name
+            consent?.guardian_name && !consent.guardian_tax_id
               ? `El DNI del consentimiento puede ser del tutor/a: ${consent.tax_id}`
               : undefined
           }
@@ -284,8 +286,7 @@ export function PersonForm({
           <Input
             name="tax_id"
             defaultValue={
-              person?.tax_id ??
-              (consent && !consent.guardian_name ? consent.tax_id : "")
+              person?.tax_id ?? (consent && consentOwnTaxId(consent)) ?? ""
             }
             onBlur={handleDuplicateFieldBlur}
           />

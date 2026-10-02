@@ -10,6 +10,7 @@ const consent: Consent = {
   guardian: "",
   birthDate: "1990-05-10",
   dni: "12345678Z",
+  guardianDni: "",
   email: "ana@example.com",
   sources: ["Familiares o amigos"],
   marketing: false,
@@ -78,5 +79,24 @@ describe("buildConsentPdf", () => {
     const text = await textOf(await buildConsentPdf(typed, signedAt));
     expect(text).toContain("Firma escrita con el nombre");
     expect(text).not.toContain("Firma dibujada");
+  });
+
+  it("shows the patient's DNI and, for a minor, the guardian's DNI on separate lines, so nobody mistakes one for the other", async () => {
+    const minor = {
+      ...consent,
+      birthDate: "2015-01-01",
+      guardian: "Luis García",
+      dni: "",
+      guardianDni: "X1234567L",
+    };
+    const text = await textOf(await buildConsentPdf(minor, signedAt));
+    expect(text).toContain("DNI/NIE del paciente: —");
+    expect(text).toContain("DNI/NIE del padre, madre o tutor: X1234567L");
+  });
+
+  it("does not print a guardian DNI line for an adult who signs for themselves", async () => {
+    const text = await textOf(await buildConsentPdf(consent, signedAt));
+    expect(text).toContain("DNI/NIE del paciente: 12345678Z");
+    expect(text).not.toContain("DNI/NIE del padre");
   });
 });

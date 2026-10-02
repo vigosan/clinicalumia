@@ -97,3 +97,51 @@ export async function hasPendingConsents(supabase: Client): Promise<boolean> {
     .is("person_id", null);
   return (count ?? 0) > 0;
 }
+
+export const CONSENT_FILL_FIELDS = ["tax_id", "email", "birth_date"] as const;
+
+export type ConsentFillField = (typeof CONSENT_FILL_FIELDS)[number];
+
+export type ConsentFillOffer = {
+  field: ConsentFillField;
+  label: string;
+  value: string;
+};
+
+export function consentOwnTaxId(consent: {
+  tax_id: string | null;
+  guardian_tax_id: string | null;
+  guardian_name: string;
+}): string | null {
+  if (consent.guardian_name && !consent.guardian_tax_id) return null;
+  return consent.tax_id;
+}
+
+export function consentFillOffers(
+  consent: {
+    tax_id: string | null;
+    guardian_tax_id: string | null;
+    guardian_name: string;
+    email: string | null;
+    birth_date: string;
+  },
+  person: {
+    tax_id: string | null;
+    email: string | null;
+    birth_date: string | null;
+  },
+): ConsentFillOffer[] {
+  const offers: ConsentFillOffer[] = [];
+  const ownTaxId = consentOwnTaxId(consent);
+  if (!person.tax_id && ownTaxId)
+    offers.push({ field: "tax_id", label: "DNI/NIE", value: ownTaxId });
+  if (!person.email && consent.email)
+    offers.push({ field: "email", label: "Email", value: consent.email });
+  if (!person.birth_date)
+    offers.push({
+      field: "birth_date",
+      label: "Fecha de nacimiento",
+      value: consent.birth_date.split("-").reverse().join("/"),
+    });
+  return offers;
+}

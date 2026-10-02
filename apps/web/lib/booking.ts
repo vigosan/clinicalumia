@@ -132,6 +132,7 @@ export type DbError = { message?: string };
 const BOOKING_MESSAGE_BY_CODE: Record<string, string> = {
   person_not_in_account: "Esa persona no está en tu cuenta.",
   slot_not_available: "Ese hueco ya no está libre. Elige otro.",
+  slot_too_soon: "Ese hueco ya no se puede reservar con tan poca antelación.",
   person_has_appointment: "Esta persona ya tiene una cita a esa hora.",
   service_not_bookable: "Este servicio se reserva por teléfono.",
   minor_needs_guardian: `Para pedir cita a un menor tiene que hacerlo su madre, padre o tutor/a desde su propia cuenta. Si necesitas ayuda, llama al ${site.phone.display}.`,
@@ -185,6 +186,7 @@ export function isTeamSession(error: unknown): boolean {
 export const ANY_PROFESSIONAL = "cualquiera";
 export const NEW_PERSON = "nueva";
 export const SLOT_TAKEN = "ocupado";
+export const SLOT_TOO_SOON = "antelacion";
 export const PRIVACY_VERSION = "2026-09";
 
 export type BookingState = {
@@ -218,7 +220,10 @@ function isPersona(value: string): boolean {
 
 function isWarning(value: string): boolean {
   return (
-    value === SLOT_TAKEN || value === PERSON_NOT_SAVED || isPersonCode(value)
+    value === SLOT_TAKEN ||
+    value === SLOT_TOO_SOON ||
+    value === PERSON_NOT_SAVED ||
+    isPersonCode(value)
   );
 }
 

@@ -219,4 +219,91 @@ describe("sendConsent", () => {
     expect(storeConsent).not.toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
   });
+
+  it("sends the signer a copy of the signed PDF when they leave an email, as their proof of what they signed", async () => {
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+
+    await sendConsent(undefined, consentForm());
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "ana@example.com",
+        subject: "Tu consentimiento firmado · Clínica LUMIA",
+        attachments: [
+          expect.objectContaining({
+            filename: expect.stringMatching(
+              /^consentimiento-12345678Z-\d{4}-\d{2}-\d{2}\.pdf$/,
+            ),
+            contentType: "application/pdf",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("sends the copy to the guardian's email when a minor's consent is signed by them", async () => {
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+
+    await sendConsent(
+      undefined,
+      consentForm({
+        birthDate: "2015-01-01",
+        guardian: "Luis García",
+        guardianDni: "X1234567L",
+        dni: "",
+        email: "luis@example.com",
+      }),
+    );
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "luis@example.com" }),
+    );
+    const copy = sendEmail.mock.calls.find(
+      ([email]) => email.to === "luis@example.com",
+    )?.[0];
+    expect(copy.html).toContain("Luis García");
+  });
+
+  it("only emails the clinic when the signer leaves no email", async () => {
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+
+    await sendConsent(undefined, consentForm({ email: "" }));
+
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "info@clinicalumia.es" }),
+    );
+  });
+
+  it("still sends the signer's copy when the clinic's email fails, since the two are independent", async () => {
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+    sendEmail.mockRejectedValueOnce(new Error("resend down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await sendConsent(undefined, consentForm());
+
+    expect(result).toEqual({ ok: true });
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "ana@example.com" }),
+    );
+  });
+
+  it("names the clinic's attachment only with letters and digits from the identifier", async () => {
+    storeConsent.mockResolvedValue({ id: "c1", personId: null });
+
+    await sendConsent(undefined, consentForm({ dni: "PAA-123.456" }));
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "info@clinicalumia.es",
+        attachments: [
+          expect.objectContaining({
+            filename: expect.stringMatching(
+              /^consentimiento-PAA123456-\d{4}-\d{2}-\d{2}\.pdf$/,
+            ),
+          }),
+        ],
+      }),
+    );
+  });
 });

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   CONSENTS_PAGE_SIZE,
+  consentFillOffers,
+  consentOwnTaxId,
   consentsListHref,
   consentsListParams,
   consentsListResult,
@@ -174,5 +176,85 @@ describe("consentsListResult", () => {
     expect(
       consentsListResult({ data: [{ id: "a" }], error: null, count: 30 }),
     ).toEqual({ consents: [{ id: "a" }], failed: false, total: 30 });
+  });
+});
+
+const adultConsent = {
+  tax_id: "12345678Z",
+  guardian_tax_id: null,
+  guardian_name: "",
+  email: "ana@example.com",
+  birth_date: "1985-03-03",
+};
+const emptyRecord = { tax_id: null, email: null, birth_date: null };
+
+describe("consentOwnTaxId", () => {
+  it("is the DNI of an adult who signed for themselves", () => {
+    expect(consentOwnTaxId(adultConsent)).toBe("12345678Z");
+  });
+
+  it("is the minor's own DNI when the guardian's came in its own field", () => {
+    expect(
+      consentOwnTaxId({
+        tax_id: "11111111H",
+        guardian_tax_id: "X1234567L",
+        guardian_name: "Luis",
+      }),
+    ).toBe("11111111H");
+  });
+
+  it("is unknown for an older minor's consent, whose single DNI may be the guardian's", () => {
+    expect(
+      consentOwnTaxId({
+        tax_id: "11111111H",
+        guardian_tax_id: null,
+        guardian_name: "Luis",
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("consentFillOffers", () => {
+  it("offers every field the record is missing, with the value it would get, so staff see what will change", () => {
+    expect(consentFillOffers(adultConsent, emptyRecord)).toEqual([
+      { field: "tax_id", label: "DNI/NIE", value: "12345678Z" },
+      { field: "email", label: "Email", value: "ana@example.com" },
+      {
+        field: "birth_date",
+        label: "Fecha de nacimiento",
+        value: "03/03/1985",
+      },
+    ]);
+  });
+
+  it("offers nothing the record already has, because a consent never overwrites the record", () => {
+    expect(
+      consentFillOffers(adultConsent, {
+        tax_id: "87654321X",
+        email: "otra@example.com",
+        birth_date: "1985-03-03",
+      }),
+    ).toEqual([]);
+  });
+
+  it("never offers the guardian's DNI for a minor's record", () => {
+    const fields = consentFillOffers(
+      {
+        ...adultConsent,
+        tax_id: null,
+        guardian_tax_id: "X1234567L",
+        guardian_name: "Luis",
+      },
+      emptyRecord,
+    ).map((offer) => offer.field);
+    expect(fields).toEqual(["email", "birth_date"]);
+  });
+
+  it("does not offer an email the signer left blank", () => {
+    const fields = consentFillOffers(
+      { ...adultConsent, email: null },
+      emptyRecord,
+    ).map((offer) => offer.field);
+    expect(fields).toEqual(["tax_id", "birth_date"]);
   });
 });

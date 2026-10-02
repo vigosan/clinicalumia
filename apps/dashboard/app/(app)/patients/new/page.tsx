@@ -55,7 +55,7 @@ export default async function NewPersonPage({
     const { data } = await supabase
       .from("consents")
       .select(
-        "id, first_name, last_name, birth_date, tax_id, email, guardian_name",
+        "id, first_name, last_name, birth_date, tax_id, guardian_tax_id, email, guardian_name",
       )
       .eq("id", consentimiento)
       .is("person_id", null)

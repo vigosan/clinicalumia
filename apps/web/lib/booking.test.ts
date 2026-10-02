@@ -471,3 +471,17 @@ describe("firstFreeSlots", () => {
     ]);
   });
 });
+
+describe("bookingError for the minimum notice", () => {
+  it("explains that the slot became too close to book, instead of saying it was taken", () => {
+    expect(bookingError({ message: "slot_too_soon" })).toBe(
+      "Ese hueco ya no se puede reservar con tan poca antelación.",
+    );
+  });
+
+  it("keeps the too-soon warning in the booking address so the slot step can show it", () => {
+    expect(bookingState.decode({ aviso: "antelacion" })).toMatchObject({
+      aviso: "antelacion",
+    });
+  });
+});

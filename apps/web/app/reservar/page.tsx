@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PageHero } from "@/components/PageHero";
+import { changeWindowBeforeBooking } from "@/lib/account";
 import {
   ANY_PROFESSIONAL,
   type BookingState,
@@ -13,6 +14,7 @@ import {
   isTeamSession,
   NEW_PERSON,
   SLOT_TAKEN,
+  SLOT_TOO_SOON,
   type Slot,
 } from "@/lib/booking";
 import { pageMetadata } from "@/lib/metadata";
@@ -30,8 +32,10 @@ import { NewPersonForm } from "./NewPersonForm";
 import { SlotPicker } from "./SlotPicker";
 import {
   type AccountPerson,
+  BOOKING_STEPS,
   type BookingStep,
   bookingStep,
+  bookingStepNumber,
   type CatalogService,
   type CatalogSpecialty,
   pickerDays,
@@ -61,12 +65,12 @@ function formatPrice(cents: number): string {
 }
 
 function Step({
-  number,
+  kind,
   title,
   back,
   children,
 }: {
-  number: number;
+  kind: Parameters<typeof bookingStepNumber>[0];
   title: string;
   back?: string;
   children: ReactNode;
@@ -81,7 +85,9 @@ function Step({
           ← Volver
         </Link>
       )}
-      <p className="mt-4 text-ink-500 text-sm">Paso {number} de 7</p>
+      <p data-testid="booking-step" className="mt-4 text-ink-500 text-sm">
+        Paso {bookingStepNumber(kind)} de {BOOKING_STEPS}
+      </p>
       <h1 className="mt-1 font-bold text-ink-600 text-section">{title}</h1>
       <div className="mt-8">{children}</div>
     </div>
@@ -101,7 +107,7 @@ function PhoneLink({ children }: { children: ReactNode }) {
 
 function SpecialtyStep({ catalog }: { catalog: CatalogSpecialty[] }) {
   return (
-    <Step number={1} title="¿Qué especialidad necesitas?">
+    <Step kind="specialty" title="¿Qué especialidad necesitas?">
       <ul className="flex flex-col gap-3">
         {catalog.map((specialty) => (
           <li key={specialty.id}>
@@ -132,7 +138,7 @@ function ServiceSummary({ service }: { service: CatalogService }) {
 
 function ServiceStep({ specialty }: { specialty: CatalogSpecialty }) {
   return (
-    <Step number={2} title={specialty.name} back={reservar({})}>
+    <Step kind="service" title={specialty.name} back={reservar({})}>
       <p className="-mt-4 mb-6 text-ink-500">Elige el servicio.</p>
       <ul className="flex flex-col gap-3">
         {specialty.services.map((service) => (
@@ -176,7 +182,7 @@ function PhoneOnlyStep({
 }) {
   return (
     <Step
-      number={2}
+      kind="phoneOnly"
       title={service.name}
       back={reservar({ especialidad: specialty.id })}
     >
@@ -204,7 +210,7 @@ function ProfessionalStep({
   ];
   return (
     <Step
-      number={3}
+      kind="professional"
       title="¿Con quién?"
       back={reservar({ especialidad: specialty.id })}
     >
@@ -233,7 +239,7 @@ async function SlotStep({
   nextFrom,
   today,
   signedIn,
-  slotTaken,
+  slotWarning,
 }: {
   specialty: CatalogSpecialty;
   service: CatalogService;
@@ -242,7 +248,7 @@ async function SlotStep({
   nextFrom: string | null;
   today: string;
   signedIn: boolean;
-  slotTaken: boolean;
+  slotWarning: string | null;
 }) {
   const base = {
     especialidad: specialty.id,
@@ -257,20 +263,20 @@ async function SlotStep({
   const days = pickerDays(slots, today, hrefFor);
   return (
     <Step
-      number={4}
+      kind="slots"
       title="Elige día y hora"
       back={reservar({ especialidad: specialty.id, servicio: service.id })}
     >
       <p className="-mt-4 mb-6 text-ink-500">
         {service.name} · {service.durationMinutes} min
       </p>
-      {slotTaken && (
+      {slotWarning && (
         <p
           role="alert"
           data-testid="booking-error"
           className="mb-6 rounded-2xl bg-cream-100 px-4 py-3 text-ink-600 text-sm"
         >
-          {bookingError({ message: "slot_not_available" })}
+          {slotWarning}
         </p>
       )}
       {days.length > 0 ? (
@@ -324,7 +330,8 @@ function AppointmentSummary({
 }: ChosenProps & { testId: string; person?: AccountPerson }) {
   const professionalName =
     specialty.professionals.find((candidate) => candidate.id === professional)
-      ?.full_name ?? "El primer hueco libre";
+      ?.full_name ??
+    "El primer hueco libre: verás quién te atiende al confirmar";
   return (
     <dl
       data-testid={testId}
@@ -385,7 +392,7 @@ function WhoView(props: ChosenProps & { people: AccountPerson[] }) {
   const chosen = { ...chosenBase(props), inicio: props.startsAt };
   return (
     <Step
-      number={6}
+      kind="who"
       title="¿Para quién es la cita?"
       back={reservar(chosenBase(props))}
     >
@@ -410,7 +417,7 @@ function DetailsView(
   const chosen = { ...chosenBase(props), inicio: props.startsAt };
   return (
     <Step
-      number={6}
+      kind="details"
       title={props.firstTime ? "Tus datos" : "Otra persona"}
       back={props.firstTime ? reservar(chosenBase(props)) : reservar(chosen)}
     >
@@ -434,7 +441,7 @@ function BirthDateView(
   const chosen = { ...chosenBase(props), inicio: props.startsAt };
   return (
     <Step
-      number={6}
+      kind="birthDate"
       title={`${props.person.first_name} ${props.person.last_name}`}
       back={reservar(chosen)}
     >
@@ -452,13 +459,31 @@ function BirthDateView(
 function SummaryView(props: ChosenProps & { person: AccountPerson }) {
   const chosen = { ...chosenBase(props), inicio: props.startsAt };
   return (
-    <Step number={7} title="Revisa tu cita" back={reservar(chosen)}>
+    <Step kind="summary" title="Revisa tu cita" back={reservar(chosen)}>
       <AppointmentSummary testId="booking-summary" {...props} />
+      <p
+        data-testid="booking-change-window"
+        className="mt-4 text-ink-500 text-sm"
+      >
+        {changeWindowBeforeBooking(
+          props.startsAt,
+          props.service.cancellationHours,
+          new Date(),
+        )}
+      </p>
       <ConfirmForm
         estado={bookingState.encode({ ...chosen, persona: props.person.id })}
       />
     </Step>
   );
+}
+
+function slotWarningFor(aviso: string | undefined): string | null {
+  if (aviso === SLOT_TAKEN)
+    return bookingError({ message: "slot_not_available" });
+  if (aviso === SLOT_TOO_SOON)
+    return bookingError({ message: "slot_too_soon" });
+  return null;
 }
 
 function EmptyStep() {
@@ -477,12 +502,12 @@ function StepView({
   step,
   today,
   signedIn,
-  slotTaken,
+  slotWarning,
 }: {
   step: BookingStep;
   today: string;
   signedIn: boolean;
-  slotTaken: boolean;
+  slotWarning: string | null;
 }) {
   switch (step.kind) {
     case "empty":
@@ -509,7 +534,7 @@ function StepView({
           nextFrom={step.nextFrom}
           today={today}
           signedIn={signedIn}
-          slotTaken={slotTaken}
+          slotWarning={slotWarning}
         />
       );
     case "chosen":
@@ -574,7 +599,7 @@ export default async function ReservarPage({
             step={step}
             today={today}
             signedIn={signedIn}
-            slotTaken={state.aviso === SLOT_TAKEN}
+            slotWarning={slotWarningFor(state.aviso)}
           />
         </div>
       </section>

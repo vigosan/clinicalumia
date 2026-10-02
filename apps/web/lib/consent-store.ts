@@ -7,15 +7,27 @@ function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
-export async function matchConsentPerson(admin: AdminClient, consent: Consent) {
+async function matchByTaxId(
+  admin: AdminClient,
+  consent: Consent,
+  taxId: string,
+) {
   const { data: matches, error } = await admin.rpc("match_consent_person", {
-    p_tax_id: consent.dni,
+    p_tax_id: taxId,
     p_email: consent.email,
     p_birth_date: consent.birthDate,
     p_first_name: consent.firstName,
   });
   if (error) throw new Error(error.message);
   return matches[0] ?? null;
+}
+
+export async function matchConsentPerson(admin: AdminClient, consent: Consent) {
+  const own = consent.dni
+    ? await matchByTaxId(admin, consent, consent.dni)
+    : null;
+  if (own || !consent.guardianDni) return own;
+  return matchByTaxId(admin, consent, consent.guardianDni);
 }
 
 export async function storeConsent({
@@ -46,7 +58,8 @@ export async function storeConsent({
       first_name: consent.firstName,
       last_name: consent.lastName,
       birth_date: consent.birthDate,
-      tax_id: consent.dni,
+      tax_id: consent.dni || null,
+      guardian_tax_id: consent.guardianDni || null,
       email: consent.email ? consent.email.toLowerCase() : null,
       guardian_name: consent.guardian,
       sources: consent.sources,

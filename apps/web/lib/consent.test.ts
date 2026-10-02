@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseConsent } from "./consent";
+import { checkPersonalId, consentFileName, parseConsent } from "./consent";
 
 const signature = "data:image/png;base64,iVBORw0KGgo=";
 const today = new Date("2026-09-22T12:00:00Z");
@@ -38,6 +38,7 @@ describe("parseConsent", () => {
         guardian: "",
         birthDate: "1990-05-10",
         dni: "12345678Z",
+        guardianDni: "",
         email: "ana@example.com",
         sources: ["Familiares o amigos"],
         marketing: false,
@@ -86,9 +87,70 @@ describe("parseConsent", () => {
     });
   });
 
-  it("accepts a minor when a guardian signs on their behalf", () => {
-    const minor = form({ birthDate: "2015-01-01", guardian: "Luis García" });
+  it("accepts a minor when a guardian signs on their behalf with their own DNI", () => {
+    const minor = form({
+      birthDate: "2015-01-01",
+      guardian: "Luis García",
+      guardianDni: "X1234567L",
+    });
     expect(parseConsent(minor, today)).toHaveProperty("ok", true);
+  });
+
+  it("keeps the minor's DNI and the guardian's DNI apart, so the guardian's never ends up as the child's", () => {
+    const result = parseConsent(
+      form({
+        birthDate: "2015-01-01",
+        guardian: "Luis García",
+        dni: "",
+        guardianDni: "x-1234567-l",
+      }),
+      today,
+    );
+    expect(result).toHaveProperty("consent.dni", "");
+    expect(result).toHaveProperty("consent.guardianDni", "X1234567L");
+  });
+
+  it("asks for the guardian's DNI when the patient is a minor, because the guardian is who signs", () => {
+    const minor = form({
+      birthDate: "2015-01-01",
+      guardian: "Luis García",
+      guardianDni: "",
+    });
+    expect(parseConsent(minor, today)).toEqual({
+      error:
+        "Si el paciente es menor, indica el DNI/NIE del padre, madre o tutor.",
+    });
+  });
+
+  it("ignores a guardian DNI on an adult's consent, since an adult signs for themselves", () => {
+    const result = parseConsent(form({ guardianDni: "X1234567L" }), today);
+    expect(result).toHaveProperty("consent.guardianDni", "");
+  });
+
+  it("rejects a DNI with the wrong letter or without it, so the team does not have to chase a typo", () => {
+    for (const dni of ["12345678A", "12345678", "X1234567A"]) {
+      expect(parseConsent(form({ dni }), today)).toEqual({
+        error:
+          "El DNI/NIE del paciente no es válido. Revisa los números y la letra.",
+      });
+    }
+  });
+
+  it("rejects a guardian DNI with the wrong letter", () => {
+    const minor = form({
+      birthDate: "2015-01-01",
+      guardian: "Luis García",
+      guardianDni: "12345678A",
+    });
+    expect(parseConsent(minor, today)).toEqual({
+      error:
+        "El DNI/NIE del padre, madre o tutor no es válido. Revisa los números y la letra.",
+    });
+  });
+
+  it("accepts what looks like a passport, because some patients have neither DNI nor NIE", () => {
+    const result = parseConsent(form({ dni: "paa123456" }), today);
+    expect(result).toHaveProperty("consent.dni", "PAA123456");
   });
 
   it("treats someone turning 18 today as an adult", () => {
@@ -156,5 +218,51 @@ describe("parseConsent", () => {
   it("normalises the DNI so the same person is always recorded the same way", () => {
     const result = parseConsent(form({ dni: " 12345678-z " }), today);
     expect(result).toHaveProperty("consent.dni", "12345678Z");
+  });
+});
+
+describe("checkPersonalId", () => {
+  it("recognises a valid DNI and NIE whatever the dots, dashes or case", () => {
+    expect(checkPersonalId("12.345.678-z")).toBe("valid");
+    expect(checkPersonalId("x1234567l")).toBe("valid");
+  });
+
+  it("flags a DNI or NIE whose letter does not match or is missing as invalid", () => {
+    expect(checkPersonalId("12345678A")).toBe("invalid");
+    expect(checkPersonalId("12345678")).toBe("invalid");
+    expect(checkPersonalId("Y1234567")).toBe("invalid");
+  });
+
+  it("treats other letters and digits as a passport, which only deserves a soft warning", () => {
+    expect(checkPersonalId("PAA123456")).toBe("passport");
+    expect(checkPersonalId("AB1234567")).toBe("passport");
+  });
+
+  it("rejects symbols or lengths no identity document has", () => {
+    expect(checkPersonalId("12<script>")).toBe("invalid");
+    expect(checkPersonalId("AB1")).toBe("invalid");
+    expect(checkPersonalId("")).toBe("empty");
+  });
+});
+
+describe("consentFileName", () => {
+  const signedAt = new Date("2026-09-22T10:30:00Z");
+
+  it("names the attachment after the patient's DNI and the date, so the clinic can file it", () => {
+    expect(consentFileName({ dni: "12345678Z" }, signedAt)).toBe(
+      "consentimiento-12345678Z-2026-09-22.pdf",
+    );
+  });
+
+  it("keeps only letters and digits from the identifier, so a typed value cannot shape the file name", () => {
+    expect(consentFileName({ dni: "../A<b>1" }, signedAt)).toBe(
+      "consentimiento-Ab1-2026-09-22.pdf",
+    );
+  });
+
+  it("still gives a name when a minor has no DNI", () => {
+    expect(consentFileName({ dni: "" }, signedAt)).toBe(
+      "consentimiento-2026-09-22.pdf",
+    );
   });
 });

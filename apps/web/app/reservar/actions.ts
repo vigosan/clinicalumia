@@ -4,6 +4,7 @@ import { sendAppointmentNotice } from "@clinicalumia/api/appointment-notice";
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { redirect } from "next/navigation";
+import { changeWindowText } from "@/lib/account";
 import {
   ANY_PROFESSIONAL,
   type BookingState,
@@ -13,6 +14,7 @@ import {
   parseNewPersonForm,
   personError,
   SLOT_TAKEN,
+  SLOT_TOO_SOON,
 } from "@/lib/booking";
 import { addPerson, PHONE_REQUIRED, saveMinor } from "./people";
 
@@ -125,6 +127,7 @@ async function emailConfirmation(supabase: Client, appointmentId: string) {
         serviceName: appointment.service_name,
         professionalName: appointment.professional_name,
         personName: appointment.person_name,
+        changeWindow: changeWindowText(appointment),
       },
     });
   } catch (error) {
@@ -163,13 +166,16 @@ export async function confirmBooking(
     p_starts_at: inicio,
   });
 
-  if (error?.message === "slot_not_available")
+  if (
+    error?.message === "slot_not_available" ||
+    error?.message === "slot_too_soon"
+  )
     redirect(
       reservar({
         ...state,
         inicio: undefined,
         persona: undefined,
-        aviso: SLOT_TAKEN,
+        aviso: error.message === "slot_too_soon" ? SLOT_TOO_SOON : SLOT_TAKEN,
       }),
     );
   if (error) return { error: bookingError(error) };

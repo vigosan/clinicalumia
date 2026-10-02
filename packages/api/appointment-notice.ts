@@ -4,6 +4,7 @@ import { icsCalendar } from "./ics";
 import { madridDateTime } from "./madrid-time";
 
 const CLINIC_ADDRESS = "Calle Montesa 7, 46800 Xàtiva";
+const CLINIC_PHONE = "614 552 808";
 const NOTICE_TIMEOUT_MS = 12_000;
 
 export type NoticeAppointment = {
@@ -14,6 +15,7 @@ export type NoticeAppointment = {
   serviceName: string;
   professionalName: string;
   personName: string;
+  changeWindow?: string;
 };
 
 export type AppointmentNotice =
@@ -112,7 +114,10 @@ function noticeHtml(
       : `<p><strong>Cuándo:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}</p>`;
   const footer =
     notice.kind === "confirmed"
-      ? `<p>Puedes verla o cambiarla en <a href="${siteUrl()}/mi-cuenta">Mi cuenta</a>.</p>`
+      ? `<p><strong>Dónde:</strong> ${escapeHtml(CLINIC_ADDRESS)}</p>
+      <p><strong>Teléfono:</strong> ${CLINIC_PHONE}</p>
+      ${appointment.changeWindow ? `<p>${escapeHtml(appointment.changeWindow)}</p>` : ""}
+      <p>Puedes verla o cambiarla en <a href="${siteUrl()}/mi-cuenta">Mi cuenta</a>.</p>`
       : `<p><a href="${siteUrl()}/mi-cuenta">Ver Mi cuenta</a></p>`;
   return `
       <h2>${HEADINGS[notice.kind]}</h2>

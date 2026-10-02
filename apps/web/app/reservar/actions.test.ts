@@ -141,6 +141,53 @@ describe("confirmBooking", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
+  it("sends the patient back to the slots saying the slot is now too close to book, when it ran past the minimum notice while they identified", async () => {
+    answer({
+      book_appointment: { data: null, error: { message: "slot_too_soon" } },
+      my_appointments: { data: [], error: null },
+    });
+
+    const thrown = (await confirmBooking(undefined, confirmForm()).catch(
+      (error: Error) => error,
+    )) as Error;
+
+    const url = new URL(thrown.message.replace("redirect:", ""), "http://x");
+    expect(url.pathname).toBe("/reservar");
+    expect(url.searchParams.get("aviso")).toBe("antelacion");
+    expect(url.searchParams.get("inicio")).toBeNull();
+    expect(url.searchParams.get("persona")).toBeNull();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("puts the deadline to change or cancel in the confirmation email, as the patient area computes it", async () => {
+    answer({
+      book_appointment: { data: APPOINTMENT, error: null },
+      my_appointments: [
+        { data: [], error: null },
+        {
+          data: [
+            {
+              ...appointmentRow(),
+              change_deadline: "2026-10-01T07:00:00+00:00",
+              can_change: true,
+              invoiced: false,
+            },
+          ],
+          error: null,
+        },
+      ],
+    });
+
+    await expect(confirmBooking(undefined, confirmForm())).rejects.toThrow(
+      `redirect:/reservar/confirmada?cita=${APPOINTMENT}`,
+    );
+
+    const email = sendEmail.mock.calls[0]?.[0];
+    expect(email.html).toContain(
+      "Puedes cambiarla o cancelarla hasta el jueves 1 a las 09:00",
+    );
+  });
+
   it("treats a second submit of the same booking as the confirmation and does not email twice, because the first one already booked it", async () => {
     answer({
       book_appointment: { data: APPOINTMENT, error: null },

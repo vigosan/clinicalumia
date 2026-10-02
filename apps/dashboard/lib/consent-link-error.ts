@@ -3,6 +3,7 @@ export type ConsentLinkErrorCode =
   | "person-not-found"
   | "consent-not-found"
   | "already-linked"
+  | "tax-id-taken"
   | "unknown";
 
 export const CONSENT_LINK_ERROR_MESSAGES: Record<ConsentLinkErrorCode, string> =
@@ -11,6 +12,8 @@ export const CONSENT_LINK_ERROR_MESSAGES: Record<ConsentLinkErrorCode, string> =
     "person-not-found": "Esa ficha ya no existe o está archivada.",
     "consent-not-found": "Ese consentimiento ya no existe.",
     "already-linked": "Este consentimiento ya está asociado.",
+    "tax-id-taken":
+      "Ese DNI/NIE ya está en otra ficha. Desmarca el DNI/NIE para asociarlo sin él.",
     unknown: "No se ha podido guardar.",
   };
 

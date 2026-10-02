@@ -39,6 +39,35 @@ describe("linkConsent", () => {
     );
   });
 
+  it("links and fills the chosen fields of the record in one step, so a refused fill never leaves the consent half linked", async () => {
+    const result = await linkConsent(CONSENT_ID, PERSON_ID, [
+      "tax_id",
+      "birth_date",
+    ]);
+    expect(result).toEqual({ ok: true });
+    expect(rpc).toHaveBeenCalledWith("link_consent", {
+      p_consent_id: CONSENT_ID,
+      p_person_id: PERSON_ID,
+      p_fill: ["tax_id", "birth_date"],
+    });
+    expect(revalidatePath).toHaveBeenCalledWith(`/patients/${PERSON_ID}`);
+  });
+
+  it("refuses fields that cannot be filled from a consent without asking the database", async () => {
+    expect(
+      await linkConsent(CONSENT_ID, PERSON_ID, ["phone" as "tax_id"]),
+    ).toEqual({ error: "No se ha podido guardar." });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("explains that the DNI is already on another record, so staff can link without it", async () => {
+    rpcResult.error = { code: "P0001", message: "tax_id_taken" };
+    expect(await linkConsent(CONSENT_ID, PERSON_ID, ["tax_id"])).toEqual({
+      error:
+        "Ese DNI/NIE ya está en otra ficha. Desmarca el DNI/NIE para asociarlo sin él.",
+    });
+  });
+
   it("explains that the chosen record is gone instead of a generic failure", async () => {
     rpcResult.error = { code: "P0001", message: "person_not_found" };
     expect(await linkConsent(CONSENT_ID, PERSON_ID)).toEqual({

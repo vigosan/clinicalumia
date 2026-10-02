@@ -1,15 +1,17 @@
 "use client";
 
 import { Button } from "@clinicalumia/ui/button";
+import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { toast } from "@clinicalumia/ui/toast";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import type { ConsentFillField, ConsentFillOffer } from "@/lib/consents";
 import {
   type PatientOption,
   PatientPicker,
 } from "../../appointments/PatientPicker";
-import { linkConsent, unlinkConsent } from "../actions";
+import { consentFillOptions, linkConsent, unlinkConsent } from "../actions";
 
 export function ConsentActions({
   consentId,
@@ -21,16 +23,47 @@ export function ConsentActions({
   initialError?: string;
 }) {
   const [selected, setSelected] = useState<PatientOption | null>(null);
+  const [offers, setOffers] = useState<ConsentFillOffer[]>([]);
+  const [fill, setFill] = useState<ConsentFillField[]>([]);
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [pending, startTransition] = useTransition();
+
+  function handleSelect(patient: PatientOption) {
+    setSelected(patient);
+    setOffers([]);
+    setFill([]);
+    startTransition(async () => {
+      const options = await consentFillOptions(consentId, patient.id);
+      setOffers(options);
+      setFill(options.map((offer) => offer.field));
+    });
+  }
+
+  function handleClear() {
+    setSelected(null);
+    setOffers([]);
+    setFill([]);
+  }
+
+  function toggleFill(field: ConsentFillField, checked: boolean) {
+    setFill((current) =>
+      checked
+        ? [...current, field]
+        : current.filter((candidate) => candidate !== field),
+    );
+  }
 
   function handleLink() {
     if (!selected) return;
     startTransition(async () => {
-      const result = await linkConsent(consentId, selected.id);
-      setSelected(null);
-      setError("error" in result ? result.error : null);
-      if (!("error" in result)) toast("Consentimiento asociado");
+      const result = await linkConsent(consentId, selected.id, fill);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      handleClear();
+      setError(null);
+      toast("Consentimiento asociado");
     });
   }
 
@@ -69,11 +102,32 @@ export function ConsentActions({
           <div data-testid="consent-link-picker">
             <PatientPicker
               selected={selected}
-              onSelect={setSelected}
-              onClear={() => setSelected(null)}
+              onSelect={handleSelect}
+              onClear={handleClear}
               hideNewPerson
             />
           </div>
+          {offers.length > 0 && (
+            <fieldset
+              data-testid="consent-fill"
+              className="flex flex-col gap-2"
+            >
+              <legend className="mb-1 text-[15px] font-medium text-ink-900">
+                Completar la ficha con los datos del consentimiento
+              </legend>
+              {offers.map((offer) => (
+                <CheckboxField
+                  key={offer.field}
+                  label={`${offer.label}: ${offer.value}`}
+                  checked={fill.includes(offer.field)}
+                  onChange={(event) =>
+                    toggleFill(offer.field, event.target.checked)
+                  }
+                  data-testid={`consent-fill-${offer.field}`}
+                />
+              ))}
+            </fieldset>
+          )}
           <div className="flex flex-wrap gap-2.5">
             <Button
               type="button"

@@ -31,7 +31,7 @@ export default async function ConsentPage({
   const { data: consent, error } = await supabase
     .from("consents")
     .select(
-      "id, signed_at, first_name, last_name, birth_date, tax_id, email, guardian_name, sources, marketing, media_for_training, pdf_path, person:people(id, first_name, last_name, archived_at)",
+      "id, signed_at, first_name, last_name, birth_date, tax_id, guardian_tax_id, email, guardian_name, sources, marketing, media_for_training, pdf_path, person:people(id, first_name, last_name, archived_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -60,8 +60,14 @@ export default async function ConsentPage({
       />
       <Card className="flex flex-col gap-2" data-testid="consent-details">
         <p>
-          <strong>DNI/NIE:</strong> {consent.tax_id}
+          <strong>DNI/NIE del paciente:</strong> {consent.tax_id ?? "—"}
         </p>
+        {consent.guardian_tax_id && (
+          <p>
+            <strong>DNI/NIE del padre, madre o tutor/a:</strong>{" "}
+            {consent.guardian_tax_id}
+          </p>
+        )}
         <p>
           <strong>Fecha de nacimiento:</strong>{" "}
           {`${consent.birth_date.slice(8, 10)}/${consent.birth_date.slice(5, 7)}/${consent.birth_date.slice(0, 4)}`}

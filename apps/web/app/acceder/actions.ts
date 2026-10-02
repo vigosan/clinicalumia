@@ -225,11 +225,12 @@ export async function confirmLink(formData: FormData): Promise<void> {
     token_hash: field(formData, "token_hash"),
     type: "email",
   });
-  if (error) redirect("/acceder?caducado=1");
+  const expired = `/acceder?caducado=1&next=${encodeURIComponent(nextFrom(formData))}`;
+  if (error) redirect(expired);
   else {
     const outcome = await openPatientAccount(supabase, data.user!);
     if (outcome === "opened") redirect(nextFrom(formData));
     else if (outcome === "staff") redirect("/acceder");
-    else redirect("/acceder?caducado=1");
+    else redirect(expired);
   }
 }

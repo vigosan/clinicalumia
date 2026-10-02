@@ -384,6 +384,7 @@ export type Database = {
           email: string | null
           first_name: string
           guardian_name: string
+          guardian_tax_id: string | null
           id: string
           last_name: string
           link_method: Database["public"]["Enums"]["consent_link_method"] | null
@@ -397,7 +398,7 @@ export type Database = {
           search_text: string | null
           signed_at: string
           sources: string[]
-          tax_id: string
+          tax_id: string | null
         }
         Insert: {
           birth_date: string
@@ -405,6 +406,7 @@ export type Database = {
           email?: string | null
           first_name: string
           guardian_name?: string
+          guardian_tax_id?: string | null
           id?: string
           last_name: string
           link_method?:
@@ -420,7 +422,7 @@ export type Database = {
           search_text?: string | null
           signed_at: string
           sources?: string[]
-          tax_id: string
+          tax_id?: string | null
         }
         Update: {
           birth_date?: string
@@ -428,6 +430,7 @@ export type Database = {
           email?: string | null
           first_name?: string
           guardian_name?: string
+          guardian_tax_id?: string | null
           id?: string
           last_name?: string
           link_method?:
@@ -443,7 +446,7 @@ export type Database = {
           search_text?: string | null
           signed_at?: string
           sources?: string[]
-          tax_id?: string
+          tax_id?: string | null
         }
         Relationships: [
           {
@@ -1114,6 +1117,7 @@ export type Database = {
         Args: never
         Returns: {
           bookable_online: boolean
+          cancellation_hours: number
           duration_minutes: number
           phone_only: boolean
           price_cents: number
@@ -1256,10 +1260,19 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: string
       }
-      link_consent: {
-        Args: { p_consent_id: string; p_person_id: string }
-        Returns: undefined
-      }
+      link_consent:
+        | {
+            Args: { p_consent_id: string; p_person_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_consent_id: string
+              p_fill: string[]
+              p_person_id: string
+            }
+            Returns: undefined
+          }
       list_invoices: {
         Args: {
           p_end?: string

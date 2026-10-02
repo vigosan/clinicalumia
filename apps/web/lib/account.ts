@@ -62,6 +62,19 @@ export function changeWindowText(
   return `Puedes cambiarla o cancelarla hasta ${changeDeadlineText(row.change_deadline)}`;
 }
 
+export function changeWindowBeforeBooking(
+  startsAt: string,
+  cancellationHours: number,
+  now: Date,
+): string {
+  const deadline = new Date(
+    Date.parse(startsAt) - cancellationHours * 60 * 60 * 1000,
+  ).toISOString();
+  if (now.getTime() >= Date.parse(deadline))
+    return `Esta cita no se podrá cambiar ni cancelar desde la web. Si lo necesitas, llama al ${site.phone.display}.`;
+  return `Podrás cambiarla o cancelarla desde Mi cuenta hasta ${changeDeadlineText(deadline)}.`;
+}
+
 export function canMoveTo(
   row: Pick<AppointmentRow, "starts_at" | "change_deadline">,
   startsAt: string,

@@ -8,7 +8,11 @@ import {
   useState,
 } from "react";
 import { Turnstile } from "@/components/Turnstile";
-import { consentSources, type SignatureMethod } from "@/lib/consent";
+import {
+  checkPersonalId,
+  consentSources,
+  type SignatureMethod,
+} from "@/lib/consent";
 import {
   consentClauses,
   marketingLabel,
@@ -22,6 +26,15 @@ import { TypedSignature, typedSignaturePng } from "./TypedSignature";
 
 const initialState: ConsentFormState = undefined;
 
+const TYPED_SIGNATURE_FAILED =
+  "No se ha podido generar la firma. Prueba a dibujarla.";
+
+const personalIdHints = {
+  passport:
+    "Parece un pasaporte. Si tienes DNI o NIE, escríbelo; si no, puedes seguir.",
+  invalid: "Revisa el DNI/NIE: los números y la letra no coinciden.",
+} as const;
+
 const fieldClass =
   "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600";
 
@@ -34,6 +47,37 @@ function Field({
       <span className="text-ink-600 text-sm">{label}</span>
       <input {...props} className={fieldClass} />
     </label>
+  );
+}
+
+function PersonalIdField({ label, name }: { label: string; name: string }) {
+  const [check, setCheck] =
+    useState<ReturnType<typeof checkPersonalId>>("empty");
+  const hint =
+    check === "passport" || check === "invalid" ? personalIdHints[check] : null;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="flex flex-col gap-1.5">
+        <span className="text-ink-600 text-sm">{label}</span>
+        <input
+          name={name}
+          autoComplete="off"
+          onBlur={(event) => setCheck(checkPersonalId(event.target.value))}
+          aria-describedby={hint ? `${name}-hint` : undefined}
+          data-testid={`consent-${name}`}
+          className={fieldClass}
+        />
+      </label>
+      {hint && (
+        <span
+          id={`${name}-hint`}
+          data-testid={`consent-${name}-hint`}
+          className="text-ink-500 text-sm"
+        >
+          {hint}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -90,11 +134,15 @@ export function ConsentForm({
     initialState,
   );
   const [submits, setSubmits] = useState(0);
+  const [preparing, setPreparing] = useState(false);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
   const [signature, dispatch] = useReducer(
     signatureChoice,
     initialSignatureChoice,
   );
   const typedPreview = useRef<HTMLDivElement>(null);
+  const error =
+    signatureError ?? (state && "error" in state ? state.error : null);
 
   if (state && "ok" in state) {
     return (
@@ -109,6 +157,8 @@ export function ConsentForm({
 
   return (
     <form
+      action={formAction}
+      method="POST"
       onChange={(event) => {
         const data = new FormData(event.currentTarget);
         dispatch({
@@ -120,15 +170,30 @@ export function ConsentForm({
       }}
       onSubmit={async (event) => {
         event.preventDefault();
+        if (preparing || pending) return;
         const formData = new FormData(event.currentTarget);
+        setSignatureError(null);
+        setPreparing(true);
         if (signature.method === "typed" && typedPreview.current) {
-          formData.set(
-            "signature",
-            await typedSignaturePng(signature.typedName, typedPreview.current),
-          );
+          try {
+            formData.set(
+              "signature",
+              await typedSignaturePng(
+                signature.typedName,
+                typedPreview.current,
+              ),
+            );
+          } catch {
+            setPreparing(false);
+            setSignatureError(TYPED_SIGNATURE_FAILED);
+            return;
+          }
         }
         setSubmits((count) => count + 1);
-        startTransition(() => formAction(formData));
+        startTransition(() => {
+          setPreparing(false);
+          formAction(formData);
+        });
       }}
       data-testid="consent-form"
       className="flex flex-col gap-6"
@@ -156,8 +221,23 @@ export function ConsentForm({
           type="date"
           required
         />
-        <Field label="DNI / NIE" name="dni" required />
-        <Field label="Email" name="email" type="email" autoComplete="email" />
+        <PersonalIdField label="DNI/NIE del paciente" name="dni" />
+        <PersonalIdField
+          label="Si es menor: DNI/NIE del padre, madre o tutor"
+          name="guardianDni"
+        />
+        <div className="flex flex-col gap-1.5">
+          <Field
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            aria-describedby="email-hint"
+          />
+          <span id="email-hint" className="text-ink-500 text-sm">
+            Te enviaremos una copia del consentimiento firmado.
+          </span>
+        </div>
       </div>
 
       <fieldset className="flex flex-col gap-2">
@@ -247,23 +327,23 @@ export function ConsentForm({
         <Turnstile key={submits} siteKey={turnstileSiteKey} />
       )}
 
-      {state && "error" in state && (
+      {error && (
         <p
           role="alert"
           data-testid="consent-error"
           className="text-red-700 text-sm"
         >
-          {state.error}
+          {error}
         </p>
       )}
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || preparing}
         data-testid="consent-submit"
         className="mt-2 cursor-pointer self-start rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {pending ? "Enviando…" : "Firmar y enviar"}
+        {pending || preparing ? "Enviando…" : "Firmar y enviar"}
       </button>
     </form>
   );

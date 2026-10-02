@@ -107,11 +107,13 @@ export async function buildConsentPdf(
     ["Nombre", consent.firstName],
     ["Apellidos", consent.lastName],
     ["Fecha de nacimiento", consent.birthDate.split("-").reverse().join("/")],
-    ["DNI", consent.dni],
+    ["DNI/NIE del paciente", consent.dni || "—"],
     ["Email", consent.email || "—"],
     ["Padre, madre o tutor", consent.guardian || "—"],
-    ["Cómo nos ha conocido", consent.sources.join(", ")],
   ];
+  if (consent.guardianDni)
+    rows.push(["DNI/NIE del padre, madre o tutor", consent.guardianDni]);
+  rows.push(["Cómo nos ha conocido", consent.sources.join(", ")]);
   for (const [label, value] of rows) write(`${label}: ${value}`);
   y -= 10;
 

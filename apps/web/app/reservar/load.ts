@@ -27,6 +27,7 @@ export async function loadCatalog(): Promise<CatalogSpecialty[]> {
       durationMinutes: row.duration_minutes,
       priceCents: row.price_cents,
       phoneOnly: row.phone_only,
+      cancellationHours: row.cancellation_hours,
     });
     specialties.set(row.specialty_id, specialty);
   }

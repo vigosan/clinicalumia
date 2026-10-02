@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   type AccountPerson,
+  BOOKING_STEPS,
   bookingStep,
+  bookingStepNumber,
   type CatalogSpecialty,
   pickerDays,
   slotWindow,
@@ -27,6 +29,7 @@ const catalog: CatalogSpecialty[] = [
         durationMinutes: 45,
         priceCents: 4500,
         phoneOnly: false,
+        cancellationHours: 24,
       },
       {
         id: PHONE_SERVICE,
@@ -34,6 +37,7 @@ const catalog: CatalogSpecialty[] = [
         durationMinutes: 60,
         priceCents: 6000,
         phoneOnly: true,
+        cancellationHours: 24,
       },
     ],
   },
@@ -261,6 +265,15 @@ describe("bookingStep", () => {
       });
     });
 
+    it("does not show a slot warning as a person warning when the patient adds someone after picking another slot", () => {
+      const step = bookingStep({
+        ...session,
+        state: { ...chosenState, persona: "nueva", aviso: "antelacion" },
+        people: [mother],
+      });
+      expect(step).toMatchObject({ kind: "details", warning: null });
+    });
+
     it("shows no warning on the new-person form when nothing was refused", () => {
       const step = bookingStep({
         ...session,
@@ -353,5 +366,28 @@ describe("pickerDays", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("bookingStepNumber", () => {
+  it("numbers the steps the patient sees one after another without gaps, since signing in is not a numbered step", () => {
+    const shown = (
+      [
+        "specialty",
+        "service",
+        "professional",
+        "slots",
+        "who",
+        "summary",
+      ] as const
+    ).map(bookingStepNumber);
+    expect(shown).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(BOOKING_STEPS).toBe(6);
+  });
+
+  it("gives the same number to every way of answering for whom the appointment is", () => {
+    expect(bookingStepNumber("details")).toBe(bookingStepNumber("who"));
+    expect(bookingStepNumber("birthDate")).toBe(bookingStepNumber("who"));
+    expect(bookingStepNumber("phoneOnly")).toBe(bookingStepNumber("service"));
   });
 });

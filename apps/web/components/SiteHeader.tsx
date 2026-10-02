@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/servicios", label: "Servicios" },
   { href: "/preguntas-frecuentes", label: "Preguntas frecuentes" },
   { href: "/contacto", label: "Contacto" },
+  { href: "/mi-cuenta", label: "Mi cuenta" },
 ];
 
 export function SiteHeader() {
@@ -32,7 +33,7 @@ export function SiteHeader() {
         </Link>
 
         <div className="hidden items-center pt-10 xl:flex">
-          <nav className="flex items-center gap-[2.708vw]">
+          <nav className="flex items-center gap-[2.083vw]">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -44,7 +45,7 @@ export function SiteHeader() {
             ))}
           </nav>
 
-          <div className="ml-[7.083vw] flex items-center gap-[1.354vw]">
+          <div className="ml-[3.385vw] flex items-center gap-[1.354vw]">
             <Link
               href="/reservar"
               className={pillClassName(

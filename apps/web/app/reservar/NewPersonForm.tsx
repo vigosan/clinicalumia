@@ -173,7 +173,7 @@ export function NewPersonForm({
 
       {!forMinor && (
         <PersonFields
-          legend="Tus datos"
+          legend="Para ti"
           hideLegend
           prefix=""
           today={today}
@@ -201,7 +201,7 @@ export function NewPersonForm({
           </label>
         ) : (
           <PersonFields
-            legend="Tus datos como madre, padre o tutor"
+            legend="Tú, como madre, padre o tutor"
             prefix="guardian_"
             today={today}
             adult

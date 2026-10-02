@@ -5,7 +5,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { extractImages, extractText, getDocumentProxy } from "unpdf";
 import { signIn } from "./auth";
-import { latestEmailAttachments } from "./mail";
+import { latestEmailAttachments, latestEmailFor } from "./mail";
 
 const WEB = "http://localhost:3000";
 const DASHBOARD = "http://localhost:3001";
@@ -61,6 +61,7 @@ type Signer = {
   taxId: string;
   email: string;
   guardian?: string;
+  guardianTaxId?: string;
   marketing?: boolean;
   mediaForTraining?: boolean;
 };
@@ -75,7 +76,11 @@ async function fillSigner(page: Page, signer: Signer) {
       .getByLabel("Si es menor: nombre del padre, madre o tutor")
       .fill(signer.guardian);
   await form.getByLabel("Fecha de nacimiento").fill(signer.birthDate);
-  await form.getByLabel("DNI / NIE").fill(signer.taxId);
+  await form.getByLabel("DNI/NIE del paciente").fill(signer.taxId);
+  if (signer.guardianTaxId)
+    await form
+      .getByLabel("Si es menor: DNI/NIE del padre, madre o tutor")
+      .fill(signer.guardianTaxId);
   await form.getByLabel("Email", { exact: true }).fill(signer.email);
   await form.getByLabel("Web de LUMIA").check();
   await form.getByLabel(/doy mi consentimiento y autorizo/).check();
@@ -85,11 +90,11 @@ async function fillSigner(page: Page, signer: Signer) {
     await form.getByLabel(/Autorizo el uso de mis fotografías/).check();
 }
 
-async function storedConsent(taxId: string) {
+async function storedConsent(taxId: string, column = "tax_id") {
   const { data, error } = await admin
     .from("consents")
-    .select("id, pdf_path, person_id, link_method")
-    .eq("tax_id", taxId)
+    .select("id, pdf_path, person_id, link_method, tax_id, guardian_tax_id")
+    .eq(column, taxId)
     .single();
   expect(error).toBeNull();
   createdConsentIds.push(data!.id);
@@ -112,9 +117,7 @@ async function storedPdf(path: string) {
   return { text, images };
 }
 
-async function signAtWeb(page: Page, signer: Signer) {
-  await fillSigner(page, signer);
-
+async function drawSignature(page: Page) {
   const pad = page.getByTestId("signature-pad");
   await pad.scrollIntoViewIfNeeded();
   const box = await pad.boundingBox();
@@ -124,11 +127,18 @@ async function signAtWeb(page: Page, signer: Signer) {
   await page.mouse.move(box!.x + 120, box!.y + 90, { steps: 8 });
   await page.mouse.move(box!.x + 200, box!.y + 50, { steps: 8 });
   await page.mouse.up();
+}
+
+async function signAtWeb(page: Page, signer: Signer) {
+  await fillSigner(page, signer);
+  await drawSignature(page);
 
   await page.getByTestId("consent-submit").click();
   await expect(page.getByTestId("consent-success")).toBeVisible();
 
-  return storedConsent(signer.taxId);
+  return signer.taxId
+    ? storedConsent(signer.taxId)
+    : storedConsent(signer.guardianTaxId ?? "", "guardian_tax_id");
 }
 
 async function loginAsThrowawayEmployee(page: Page) {
@@ -186,10 +196,12 @@ async function createConsent({
   firstName,
   lastName,
   personId = null,
+  email = null,
 }: {
   firstName: string;
   lastName: string;
   personId?: string | null;
+  email?: string | null;
 }) {
   const id = randomUUID();
   const now = new Date();
@@ -207,7 +219,7 @@ async function createConsent({
     last_name: lastName,
     birth_date: "1985-03-03",
     tax_id: taxId,
-    email: null,
+    email,
     sources: ["Web de LUMIA"],
     marketing: true,
     media_for_training: false,
@@ -564,17 +576,18 @@ test("a patient who would rather not draw signs by typing their name, and the PD
   expect(images[0]!.data.some((value) => value > 0)).toBe(true);
 });
 
-test("a consent from someone new waits as pending until staff create the record from it, without copying a DNI that may be the guardian's, and cancelling keeps it pending", async ({
+test("a consent from someone new waits as pending until staff create the record from it, never copying the guardian's DNI into the minor's record, and cancelling keeps it pending", async ({
   page,
 }) => {
   const surname = `Nueva${uniqueSuffix()}`;
-  const taxId = uniqueTaxId();
+  const guardianTaxId = uniqueTaxId();
   const email = `nueva-${uniqueSuffix()}@test.local`;
   const consent = await signAtWeb(page, {
     firstName: "Martina",
     lastName: surname,
     birthDate: "2015-06-20",
-    taxId,
+    taxId: "",
+    guardianTaxId,
     email,
     guardian: "Carmen Tutora",
     mediaForTraining: true,
@@ -597,9 +610,7 @@ test("a consent from someone new waits as pending until staff create the record 
     "20/06/2015",
   );
   await expect(form.getByLabel("DNI/NIE")).toHaveValue("");
-  await expect(form).toContainText(
-    `El DNI del consentimiento puede ser del tutor/a: ${taxId}`,
-  );
+  await expect(form).not.toContainText(guardianTaxId);
   await expect(form.getByLabel("Email")).toHaveValue(email);
   await expect(
     form.getByLabel("Es paciente (recibe tratamiento)", { exact: true }),
@@ -797,4 +808,235 @@ test("a sixteenth consent from the same network within an hour is stopped with t
     .select("id")
     .eq("tax_id", taxId);
   expect(data).toEqual([]);
+});
+
+test("the signer gets a copy of the signed PDF at the email they gave, as proof of what they signed", async ({
+  page,
+}) => {
+  const surname = `Copia${uniqueSuffix()}`;
+  const taxId = uniqueTaxId();
+  const email = `copia-${uniqueSuffix()}@test.local`;
+
+  await signAtWeb(page, {
+    firstName: "Lucia",
+    lastName: surname,
+    birthDate: "1990-04-12",
+    taxId,
+    email,
+  });
+
+  expect(
+    await latestEmailAttachments(email, "Tu consentimiento firmado"),
+  ).toEqual([
+    expect.stringMatching(
+      new RegExp(`^consentimiento-${taxId}-\\d{4}-\\d{2}-\\d{2}\\.pdf$`),
+    ),
+  ]);
+});
+
+test("a minor's consent keeps the patient's and the guardian's DNI apart, the PDF shows both and the guardian gets the copy", async ({
+  page,
+}) => {
+  const surname = `Menor${uniqueSuffix()}`;
+  const taxId = uniqueTaxId();
+  const guardianTaxId = uniqueTaxId();
+  const email = `tutora-${uniqueSuffix()}@test.local`;
+
+  const consent = await signAtWeb(page, {
+    firstName: "Leo",
+    lastName: surname,
+    birthDate: "2016-02-02",
+    taxId,
+    guardianTaxId,
+    email,
+    guardian: "Carmen Tutora",
+  });
+
+  expect(consent).toMatchObject({
+    tax_id: taxId,
+    guardian_tax_id: guardianTaxId,
+  });
+  const { text } = await storedPdf(consent.pdf_path);
+  expect(text).toContain(`DNI/NIE del paciente: ${taxId}`);
+  expect(text).toContain(`DNI/NIE del padre, madre o tutor: ${guardianTaxId}`);
+  expect(await latestEmailFor(email, "Tu consentimiento firmado")).toContain(
+    "Carmen Tutora",
+  );
+});
+
+test("a DNI whose letter does not match is pointed out before sending and refused, while a passport only gets a soft warning and is accepted", async ({
+  page,
+}) => {
+  const surname = `Pasaporte${uniqueSuffix()}`;
+  const passport = `PA${String(randomInt(1e7)).padStart(7, "0")}`;
+  await fillSigner(page, {
+    firstName: "Anna",
+    lastName: surname,
+    birthDate: "1990-04-12",
+    taxId: "12345678A",
+    email: "",
+  });
+  const form = page.getByTestId("consent-form");
+  await form.getByLabel("Apellidos", { exact: true }).click();
+  await expect(page.getByTestId("consent-dni-hint")).toHaveText(
+    "Revisa el DNI/NIE: los números y la letra no coinciden.",
+  );
+  await drawSignature(page);
+  await page.getByTestId("consent-submit").click();
+  await expect(page.getByTestId("consent-error")).toHaveText(
+    "El DNI/NIE del paciente no es válido. Revisa los números y la letra.",
+  );
+
+  await form.getByLabel("DNI/NIE del paciente").fill(passport);
+  await form.getByLabel("Apellidos", { exact: true }).click();
+  await expect(page.getByTestId("consent-dni-hint")).toHaveText(
+    "Parece un pasaporte. Si tienes DNI o NIE, escríbelo; si no, puedes seguir.",
+  );
+  await page.getByTestId("consent-submit").click();
+  await expect(page.getByTestId("consent-success")).toBeVisible();
+  await storedConsent(passport);
+});
+
+test("a consent form sent before the page has loaded its scripts goes by POST, so the DNI and birth date never end up in the address", async ({
+  browser,
+}) => {
+  const ip = `198.18.${randomInt(256)}.${randomInt(256)}`;
+  networkHashes.push(networkHash(ip));
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    extraHTTPHeaders: { "x-forwarded-for": ip },
+  });
+  try {
+    const noScript = await context.newPage();
+    const methods: string[] = [];
+    noScript.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/consentimiento")
+        methods.push(request.method());
+    });
+    const taxId = uniqueTaxId();
+    await fillSigner(noScript, {
+      firstName: "Sin",
+      lastName: `Script${uniqueSuffix()}`,
+      birthDate: "1990-04-12",
+      taxId,
+      email: "",
+    });
+    await noScript.getByTestId("consent-submit").click();
+    await noScript.waitForLoadState();
+
+    expect(methods).toContain("POST");
+    expect(noScript.url()).toBe(`${WEB}/consentimiento`);
+    expect(noScript.url()).not.toContain(taxId);
+  } finally {
+    await context.close();
+  }
+});
+
+test("the send button locks from the first click while a typed signature is being prepared, so a double tap cannot send it twice", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    document.fonts.load = () => new Promise(() => {});
+  });
+  await fillSigner(page, {
+    firstName: "Doble",
+    lastName: `Toque${uniqueSuffix()}`,
+    birthDate: "1990-04-12",
+    taxId: uniqueTaxId(),
+    email: "",
+  });
+  await page.getByTestId("signature-mode-type").check();
+
+  await page.getByTestId("consent-submit").click();
+
+  await expect(page.getByTestId("consent-submit")).toBeDisabled();
+  await expect(page.getByTestId("consent-submit")).toHaveText("Enviando…");
+});
+
+test("when the typed signature cannot be drawn, the signer is told to draw it instead of the button doing nothing", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    document.fonts.load = () => Promise.reject(new Error("sin fuente"));
+  });
+  await fillSigner(page, {
+    firstName: "Fuente",
+    lastName: `Rota${uniqueSuffix()}`,
+    birthDate: "1990-04-12",
+    taxId: uniqueTaxId(),
+    email: "",
+  });
+  await page.getByTestId("signature-mode-type").check();
+
+  await page.getByTestId("consent-submit").click();
+
+  await expect(page.getByTestId("consent-error")).toHaveText(
+    "No se ha podido generar la firma. Prueba a dibujarla.",
+  );
+  await expect(page.getByTestId("consent-submit")).toBeEnabled();
+});
+
+test("turning the phone clears the drawn signature with a notice, so a distorted signature never reaches the PDF", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await fillSigner(page, {
+    firstName: "Gira",
+    lastName: `Movil${uniqueSuffix()}`,
+    birthDate: "1990-04-12",
+    taxId: uniqueTaxId(),
+    email: "",
+  });
+  await drawSignature(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await expect(page.getByTestId("signature-resized")).toBeVisible();
+  await page.getByTestId("consent-submit").click();
+  await expect(page.getByTestId("consent-error")).toHaveText("Falta la firma.");
+});
+
+test("linking a consent offers to fill what the record is missing, and fills only what staff keep checked", async ({
+  page,
+}) => {
+  const surname = `Completar${uniqueSuffix()}`;
+  const personId = await createPerson({
+    firstName: "Ficha",
+    lastName: surname,
+  });
+  const email = `completar-${uniqueSuffix()}@test.local`;
+  const consent = await createConsent({
+    firstName: "Ficha",
+    lastName: surname,
+    email,
+  });
+  await loginAsThrowawayEmployee(page);
+  await page.goto(`${DASHBOARD}/consentimientos/${consent.id}`);
+
+  await page
+    .getByTestId("consent-link-picker")
+    .getByTestId("patient-search")
+    .fill(surname);
+  await page
+    .getByTestId("patient-option")
+    .filter({ hasText: `Ficha ${surname}` })
+    .click();
+
+  const fill = page.getByTestId("consent-fill");
+  await expect(page.getByTestId("consent-fill-tax_id")).toBeChecked();
+  await expect(fill).toContainText(`DNI/NIE: ${consent.taxId}`);
+  await expect(page.getByTestId("consent-fill-email")).toBeChecked();
+  await expect(page.getByTestId("consent-fill-birth_date")).toHaveCount(0);
+  await page.getByTestId("consent-fill-email").uncheck();
+  await page.getByTestId("consent-link").click();
+
+  await expect(page.getByTestId("consent-status")).toHaveText(
+    `Asociado a la ficha de Ficha ${surname}`,
+  );
+  const { data: person } = await admin
+    .from("people")
+    .select("tax_id, email")
+    .eq("id", personId)
+    .single();
+  expect(person).toEqual({ tax_id: consent.taxId, email: null });
 });

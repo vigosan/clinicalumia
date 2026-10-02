@@ -135,16 +135,28 @@ test("the link in the same email also opens the session, for someone reading mai
   expect(await patientAccount(email)).toEqual({ email });
 });
 
-test("a used or forged link sends the person back to ask for a new one", async ({
+test("a used or forged link sends the person back to ask for a new one, keeping the booking in progress so they continue where they were", async ({
   page,
 }) => {
+  const email = uniqueEmail("paciente-caducado");
+  const booking = "/reservar?fecha=2026-12-01";
   await page.goto(
-    `${WEB}/acceder/confirmar?token_hash=caducado&type=email&next=%2Freservar`,
+    `${WEB}/acceder/confirmar?token_hash=caducado&type=email&next=${encodeURIComponent(booking)}`,
   );
   await page.getByTestId("access-confirm").click();
 
-  await expect(page).toHaveURL(`${WEB}/acceder?caducado=1`);
+  await expect(page).toHaveURL(
+    `${WEB}/acceder?caducado=1&next=${encodeURIComponent(booking)}`,
+  );
   await expect(page.getByTestId("access-link-expired")).toBeVisible();
+
+  await page.getByTestId("access-email").fill(email);
+  await page.getByTestId("access-submit").click();
+  await expect(page.getByTestId("access-sent")).toBeVisible();
+  await page.getByTestId("access-code").fill(await latestCodeFor(email));
+  await page.getByTestId("access-code-submit").click();
+
+  await expect(page).toHaveURL(`${WEB}${booking}`);
 });
 
 test("the sixth request in an hour for the same email is stopped, so the web cannot flood an inbox", async ({

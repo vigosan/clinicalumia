@@ -476,6 +476,8 @@ test("a new patient picks a time, identifies with the emailed code, gives their 
 
   await expect(page.getByTestId("booking-who")).toHaveCount(0);
   await expect(page.getByTestId("new-person-form")).toBeVisible();
+  await expect(page.getByTestId("booking-step")).toHaveText("Paso 5 de 6");
+  await expect(page.getByText("Tus datos")).toHaveCount(1);
   await fillPerson(page, "", {
     first: "Marta",
     last: "Reserva",
@@ -488,18 +490,39 @@ test("a new patient picks a time, identifies with the emailed code, gives their 
   await expect(page.getByTestId("booking-summary")).toContainText(
     "Marta Reserva",
   );
+  await expect(page.getByTestId("booking-step")).toHaveText("Paso 6 de 6");
+  await expect(page.getByTestId("booking-summary")).toContainText(
+    "El primer hueco libre: verás quién te atiende al confirmar",
+  );
+  await expect(page.getByTestId("booking-change-window")).toHaveText(
+    /^Podrás cambiarla o cancelarla desde Mi cuenta hasta el \S+ \d+ a las \d{2}:\d{2}\.$/,
+  );
   await page.getByTestId("booking-confirm").click();
 
   await expect(page).toHaveURL(/\/reservar\/confirmada\?cita=/);
+  await expect(
+    page.getByText(`Te hemos enviado la confirmación a ${email}.`),
+  ).toBeVisible();
   const confirmed = page.getByTestId("booking-confirmed");
-  await expect(confirmed).toContainText(withHours);
+  await expect(
+    confirmed.getByTestId("booking-confirmed-professional"),
+  ).toHaveText(withHours);
+  await expect(confirmed).toContainText("Te atenderá");
   await expect(confirmed).toContainText("Marta Reserva");
-  await expect(page.getByRole("link", { name: "Mi cuenta" })).toHaveAttribute(
-    "href",
-    "/mi-cuenta",
-  );
+  await expect(
+    page.getByRole("main").getByRole("link", { name: "Mi cuenta" }),
+  ).toHaveAttribute("href", "/mi-cuenta");
 
   const appointmentId = new URL(page.url()).searchParams.get("cita") ?? "";
+  await expect(page.getByTestId("booking-add-to-calendar")).toHaveAttribute(
+    "href",
+    `/mi-cuenta/citas/${appointmentId}/cita.ics`,
+  );
+  const ics = await page.request.get(
+    `${WEB}/mi-cuenta/citas/${appointmentId}/cita.ics`,
+  );
+  expect(ics.status()).toBe(200);
+  expect(await ics.text()).toContain("BEGIN:VEVENT");
   const { data: appointment, error } = await admin
     .from("appointments")
     .select("origin, starts_at, professional_id, service_id")
@@ -525,6 +548,13 @@ test("a new patient picks a time, identifies with the emailed code, gives their 
   expect(html).toContain("Marta Reserva");
   expect(html).toMatch(
     /Puedes verla o cambiarla en <a href="[^"]*\/mi-cuenta">Mi cuenta<\/a>\./,
+  );
+  expect(html).toContain(
+    "<strong>Dónde:</strong> Calle Montesa 7, 46800 Xàtiva",
+  );
+  expect(html).toContain("<strong>Teléfono:</strong> 614 552 808");
+  expect(html).toMatch(
+    /Puedes cambiarla o cancelarla hasta el \S+ \d+ a las \d{2}:\d{2}/,
   );
   const attachments = await latestEmailAttachments(email, "Cita confirmada");
   expect(attachments).toContain("cita.ics");

@@ -98,7 +98,7 @@ export default async function ConsentsPage({
                       {consent.first_name} {consent.last_name}
                     </Link>
                   </TableCell>
-                  <TableCell label="DNI/NIE">{consent.tax_id}</TableCell>
+                  <TableCell label="DNI/NIE">{consent.tax_id ?? "—"}</TableCell>
                   <TableCell
                     className="max-md:block max-md:text-left"
                     data-testid="consent-status"

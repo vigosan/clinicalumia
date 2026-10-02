@@ -11,6 +11,7 @@ const consent: Consent = {
   guardian: "",
   birthDate: "1990-05-10",
   dni: "12345678Z",
+  guardianDni: "",
   email: "Ana@Example.com",
   sources: ["Familiares o amigos"],
   marketing: false,
@@ -127,6 +128,26 @@ describe("storeConsent", () => {
     );
   });
 
+  it("stores the guardian's DNI apart from the patient's, and no patient DNI when a minor has none", async () => {
+    const { admin, insert } = fakeAdmin();
+
+    await storeConsent({
+      admin,
+      consent: {
+        ...consent,
+        guardian: "Luis García",
+        dni: "",
+        guardianDni: "X1234567L",
+      },
+      signedAt,
+      pdf,
+    });
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_id: null, guardian_tax_id: "X1234567L" }),
+    );
+  });
+
   it("stores no email when the signer left it blank, instead of an empty string", async () => {
     const { admin, insert } = fakeAdmin();
 
@@ -211,6 +232,56 @@ describe("matchConsentPerson", () => {
 
     await expect(matchConsentPerson(admin, consent)).rejects.toThrow(
       "rpc down",
+    );
+  });
+
+  it("looks a minor up through the guardian's DNI when the minor's own DNI finds nobody, so the guardian's record still links the child", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [], error: null })
+      .mockResolvedValueOnce({
+        data: [{ person_id: "hijo", method: "auto_guardian" }],
+        error: null,
+      });
+    const admin = { rpc } as unknown as AdminClient;
+    const minor = {
+      ...consent,
+      guardian: "Luis García",
+      dni: "11111111H",
+      guardianDni: "X1234567L",
+    };
+
+    const match = await matchConsentPerson(admin, minor);
+
+    expect(match).toEqual({ person_id: "hijo", method: "auto_guardian" });
+    expect(rpc).toHaveBeenNthCalledWith(1, "match_consent_person", {
+      p_tax_id: "11111111H",
+      p_email: "Ana@Example.com",
+      p_birth_date: "1990-05-10",
+      p_first_name: "Ana",
+    });
+    expect(rpc).toHaveBeenNthCalledWith(
+      2,
+      "match_consent_person",
+      expect.objectContaining({ p_tax_id: "X1234567L" }),
+    );
+  });
+
+  it("goes straight to the guardian's DNI when the minor has no DNI", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const admin = { rpc } as unknown as AdminClient;
+
+    await matchConsentPerson(admin, {
+      ...consent,
+      guardian: "Luis García",
+      dni: "",
+      guardianDni: "X1234567L",
+    });
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith(
+      "match_consent_person",
+      expect.objectContaining({ p_tax_id: "X1234567L" }),
     );
   });
 });

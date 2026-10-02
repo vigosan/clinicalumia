@@ -21,6 +21,7 @@ const minor: Consent = {
   guardian: "Carmen Ferrer Soler",
   birthDate: "2016-03-04",
   dni: "12345678Z",
+  guardianDni: "",
   email: "familia@example.com",
   sources: ["Internet (Google, etc.)", "Otros"],
   marketing: true,
@@ -35,6 +36,7 @@ const adult: Consent = {
   guardian: "",
   birthDate: "1990-05-10",
   dni: "87654321X",
+  guardianDni: "",
   email: "",
   sources: ["Familiares o amigos"],
   marketing: false,
@@ -116,6 +118,26 @@ describe("parseConsentText", () => {
     if (!("ok" in result)) throw new Error(result.error);
     expect(result.consent.guardian).toBe(long.guardian);
     expect(result.signedAt).toEqual(summerSignature);
+  });
+
+  it("reads a minor's consent with the patient's and the guardian's DNI on their own lines, keeping them apart", async () => {
+    const both = { ...minor, dni: "", guardianDni: "X1234567L" };
+
+    const result = parseConsentText(await pdfText(both, summerSignature));
+
+    if (!("ok" in result)) throw new Error(result.error);
+    expect(withoutSignature(result.consent)).toEqual(withoutSignature(both));
+  });
+
+  it("still files a consent signed before the DNI was checked, even with a DNI the web would now refuse, so no signed document is left out", async () => {
+    const typo = { ...adult, dni: "12345678A" };
+
+    const result = parseConsentText(
+      await readPdfText(await buildConsentPdfV2(typo, summerSignature)),
+    );
+
+    if (!("ok" in result)) throw new Error(result.error);
+    expect(result.consent.dni).toBe("12345678A");
   });
 
   it("normalizes a DNI written with dots and lowercase, so it matches the same person as the web", async () => {
@@ -316,6 +338,27 @@ describe("importConsents", () => {
       "lt:signed_at": "2026-09-22T10:31:00.000Z",
     });
     expect(summary).toMatchObject({ imported: 0, repeated: 1 });
+  });
+
+  it("looks a repeated minor's consent up by the guardian's DNI when the minor has none", async () => {
+    const { admin, lookups } = fakeAdmin();
+
+    await importConsents({
+      admin,
+      pdfs: [
+        await buildConsentPdf(
+          { ...minor, dni: "", guardianDni: "X1234567L" },
+          summerSignature,
+        ),
+      ],
+      dry: false,
+    });
+
+    expect(lookups[0]).toEqual({
+      "eq:guardian_tax_id": "X1234567L",
+      "gte:signed_at": "2026-09-22T10:30:00.000Z",
+      "lt:signed_at": "2026-09-22T10:31:00.000Z",
+    });
   });
 
   it("imports the same consent only once when the folder holds two copies of it", async () => {

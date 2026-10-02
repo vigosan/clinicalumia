@@ -439,8 +439,8 @@ select is((select professionals from public.booking_catalog() where service_id =
   jsonb_build_array(jsonb_build_object('id', '84000000-0000-0000-0000-000000000006', 'full_name', 'Profesional F')),
   'only the active professional of the specialty is offered, never the deactivated one');
 select is(pg_get_function_result('public.booking_catalog()'::regprocedure),
-  'TABLE(specialty_id uuid, specialty_name text, service_id uuid, service_name text, duration_minutes integer, price_cents integer, bookable_online boolean, phone_only boolean, professionals jsonb)',
-  'the catalog exposes only service and professional names, never an email, a phone or a note');
+  'TABLE(specialty_id uuid, specialty_name text, service_id uuid, service_name text, duration_minutes integer, price_cents integer, bookable_online boolean, phone_only boolean, professionals jsonb, cancellation_hours integer)',
+  'the catalog exposes only service and professional names and the change deadline, never an email, a phone or a note');
 select is(has_function_privilege('anon', 'public.booking_catalog()', 'execute'), true,
   'anon can browse the public booking catalog');
 select is(has_function_privilege('authenticated', 'public.booking_catalog()', 'execute'), true,
@@ -959,7 +959,7 @@ select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
 select throws_ok($$
   select public.book_appointment('85000000-0000-0000-0000-0000000000c8', '84000000-0000-0000-0000-0000000000b7',
     '84000000-0000-0000-0000-000000000004', current_setting('test.inside_notice')::timestamptz)
-$$, 'P0001', 'slot_not_available', 'a scheduled, free slot less than 24 hours away is refused: the notice protects the clinic from last-minute bookings');
+$$, 'P0001', 'slot_too_soon', 'a scheduled, free slot less than 24 hours away is refused with its own code: the notice protects the clinic from last-minute bookings and the patient learns why');
 select lives_ok($$
   select public.book_appointment('85000000-0000-0000-0000-0000000000c8', '84000000-0000-0000-0000-0000000000b7',
     '84000000-0000-0000-0000-000000000004', current_setting('test.after_notice')::timestamptz)
