@@ -399,6 +399,16 @@ test("the owner picks the numbering of a future year from examples or writes her
     );
     await form.getByTestId("invoice-series-main-submit").click();
     await expect(page.getByTestId("invoice-series-main-saved")).toBeVisible();
+    await selectOption(form.getByTestId("invoice-series-main-format-choice"), {
+      label: "Otro formato",
+    });
+    await form
+      .getByTestId("invoice-series-main-year")
+      .fill(String(currentYear));
+    await expect(form.getByTestId("invoice-series-main-format")).toHaveCount(0);
+    await expect(
+      form.getByTestId("invoice-series-main-format-choice"),
+    ).toContainText(`1/${String(currentYear).slice(-2)}`);
     const { data: saved } = await admin
       .from("invoice_series")
       .select("format, next_number, locked")

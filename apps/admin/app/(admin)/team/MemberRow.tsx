@@ -126,7 +126,7 @@ export function MemberRow({
             data-testid="member-resend-invite"
             onClick={() =>
               run(
-                () => resendInvite(member.email),
+                () => resendInvite(member.id),
                 () => setSuccess("Invitación reenviada."),
               )
             }

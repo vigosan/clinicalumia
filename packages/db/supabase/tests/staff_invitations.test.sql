@@ -1,11 +1,16 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(15);
 
 insert into auth.users (id, email, invited_at, encrypted_password) values
   ('8e000000-0000-0000-0000-000000000001', 'owner-invitations@test.local', null, 'hash'),
   ('8e000000-0000-0000-0000-000000000002', 'activa-invitations@test.local', now() - interval '3 days', 'hash'),
-  ('8e000000-0000-0000-0000-000000000003', 'invitada-invitations@test.local', now(), '');
+  ('8e000000-0000-0000-0000-000000000003', 'invitada-invitations@test.local', now(), ''),
+  ('8e000000-0000-0000-0000-000000000010', 'paciente-invitations@test.local', null, '');
+insert into public.patient_accounts (id, email) values
+  ('8e000000-0000-0000-0000-000000000010', 'paciente-invitations@test.local');
+insert into public.people (id, first_name, last_name, birth_date, email, is_patient) values
+  ('8e000000-0000-0000-0000-0000000000c1', 'Paciente', 'Invitaciones', '1990-01-01', 'paciente-invitations@test.local', true);
 insert into public.specialties (id, name, slug) values
   ('8e000000-0000-0000-0000-0000000000aa', 'Invitaciones test', 'invitaciones-test');
 insert into public.profiles (id, email, full_name, role, is_active, specialty_id) values
@@ -76,6 +81,23 @@ reset role;
 select pg_temp.act_as('8e000000-0000-0000-0000-000000000001', 'aal1');
 select throws_ok('select * from public.pending_invitations()', '42501', null,
   'the owner without her second factor cannot read it either');
+reset role;
+
+select is(has_function_privilege('anon', 'public._account_activated(uuid)', 'execute'), false,
+  'anonymous visitors cannot probe whether an arbitrary account set a password');
+select is(has_function_privilege('authenticated', 'public._account_activated(uuid)', 'execute'), false,
+  'signed-in users cannot probe it either; only the booking functions use it');
+
+select pg_temp.act_as('8e000000-0000-0000-0000-000000000010', 'aal1');
+select throws_ok($$
+  select public.book_appointment('8e000000-0000-0000-0000-0000000000c1', '8e000000-0000-0000-0000-0000000000b1',
+    '8e000000-0000-0000-0000-000000000003', (pg_temp.day(4)::timestamp + '10:00'::time) at time zone 'Europe/Madrid')
+$$, 'P0001', 'slot_not_available',
+  'a patient calling the API directly cannot book the professional who has not activated her account');
+select lives_ok($$
+  select public.book_appointment('8e000000-0000-0000-0000-0000000000c1', '8e000000-0000-0000-0000-0000000000b1',
+    '8e000000-0000-0000-0000-000000000002', (pg_temp.day(4)::timestamp + '10:00'::time) at time zone 'Europe/Madrid')
+$$, 'the same time with the activated professional books fine, so the refusal is about the pending account');
 reset role;
 
 update auth.users set encrypted_password = 'hash' where id = '8e000000-0000-0000-0000-000000000003';

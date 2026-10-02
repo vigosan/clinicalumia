@@ -7,7 +7,18 @@ const result = { error: null as null | { code: string; message: string } };
 const updateEq = vi.fn(async () => result);
 const updateFn = vi.fn(() => ({ eq: updateEq }));
 const rpcResult = { error: null as null | { code: string; message: string } };
-const rpcFn = vi.fn(async () => rpcResult);
+const pendingResult = {
+  data: [{ profile_id: "invited-1" }] as { profile_id: string }[] | null,
+  error: null as null | { code: string; message: string },
+};
+const rpcFn = vi.fn(async (name: string) =>
+  name === "pending_invitations" ? pendingResult : rpcResult,
+);
+const profileResult = {
+  data: { email: "nueva@lumia.test" } as { email: string } | null,
+  error: null as null | { code: string; message: string },
+};
+const profileEq = vi.fn(() => ({ single: async () => profileResult }));
 
 type UpcomingRow = {
   id: string;
@@ -49,7 +60,9 @@ vi.mock("@clinicalumia/api/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({
     from: (table: string) =>
-      table === "appointments" ? upcomingQuery : { update: updateFn },
+      table === "appointments"
+        ? upcomingQuery
+        : { update: updateFn, select: () => ({ eq: profileEq }) },
     rpc: rpcFn,
   }),
 }));
@@ -81,6 +94,11 @@ describe("team actions", () => {
     updateFn.mockClear();
     rpcResult.error = null;
     rpcFn.mockClear();
+    pendingResult.data = [{ profile_id: "invited-1" }];
+    pendingResult.error = null;
+    profileResult.data = { email: "nueva@lumia.test" };
+    profileResult.error = null;
+    profileEq.mockClear();
     vi.mocked(createAdminClient).mockClear();
     revalidatePathMock.mockClear();
     upcomingResult.data = [];
@@ -225,24 +243,42 @@ describe("team actions", () => {
 
   it("refuses resendInvite for a non-owner and never touches the admin client", async () => {
     ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
-    expect(await resendInvite("nuevo@lumia.test")).toEqual({
+    expect(await resendInvite("invited-1")).toEqual({
       error: "No tienes permiso para hacer esto.",
     });
     expect(createAdminClient).not.toHaveBeenCalled();
   });
 
-  it("resends the invitation email to a member who has not opened it yet", async () => {
+  it("resends the invitation to the member's own email, read on the server instead of trusting the browser", async () => {
     const inviteUserByEmail = vi.fn(async () => ({ data: {}, error: null }));
     const resetPasswordForEmail = vi.fn();
     vi.mocked(createAdminClient).mockReturnValue({
       auth: { admin: { inviteUserByEmail }, resetPasswordForEmail },
     } as unknown as ReturnType<typeof createAdminClient>);
-    expect(await resendInvite("nueva@lumia.test")).toEqual({ ok: true });
+    expect(await resendInvite("invited-1")).toEqual({ ok: true });
+    expect(profileEq).toHaveBeenCalledWith("id", "invited-1");
     expect(inviteUserByEmail).toHaveBeenCalledWith("nueva@lumia.test");
     expect(resetPasswordForEmail).not.toHaveBeenCalled();
   });
 
-  it("sends a set-password link instead when she opened the invitation but never chose a password, since Supabase refuses to invite a confirmed email again", async () => {
+  it("refuses a member who already accepted, so nobody active gets a set-password email from a forged call", async () => {
+    pendingResult.data = [];
+    expect(await resendInvite("invited-1")).toEqual({
+      error: "Ya ha aceptado la invitación.",
+    });
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("does not resend when it cannot check whether the invitation is pending", async () => {
+    pendingResult.data = null;
+    pendingResult.error = { code: "500", message: "boom" };
+    expect(await resendInvite("invited-1")).toEqual({
+      error: "No se ha podido reenviar la invitación.",
+    });
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("sends a set-password link instead when she opened the invitation but never chose a password, since Supabase refuses to invite an existing account again", async () => {
     const resetPasswordForEmail = vi.fn(async () => ({
       data: {},
       error: null,
@@ -253,6 +289,7 @@ describe("team actions", () => {
           inviteUserByEmail: vi.fn(async () => ({
             data: { user: null },
             error: {
+              code: "email_exists",
               message:
                 "A user with this email address has already been registered",
             },
@@ -261,17 +298,36 @@ describe("team actions", () => {
         resetPasswordForEmail,
       },
     } as unknown as ReturnType<typeof createAdminClient>);
-    expect(await resendInvite("nueva@lumia.test")).toEqual({ ok: true });
+    expect(await resendInvite("invited-1")).toEqual({ ok: true });
     expect(resetPasswordForEmail).toHaveBeenCalledWith("nueva@lumia.test");
   });
 
-  it("reports a Spanish error when neither email can be sent", async () => {
+  it("does not send a set-password link when the invitation fails for any other reason", async () => {
+    const resetPasswordForEmail = vi.fn();
     vi.mocked(createAdminClient).mockReturnValue({
       auth: {
         admin: {
           inviteUserByEmail: vi.fn(async () => ({
             data: { user: null },
-            error: { message: "already been registered" },
+            error: { code: "over_email_send_rate_limit", message: "rate" },
+          })),
+        },
+        resetPasswordForEmail,
+      },
+    } as unknown as ReturnType<typeof createAdminClient>);
+    expect(await resendInvite("invited-1")).toEqual({
+      error: "No se ha podido reenviar la invitación.",
+    });
+    expect(resetPasswordForEmail).not.toHaveBeenCalled();
+  });
+
+  it("reports a Spanish error when the set-password link cannot be sent either", async () => {
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: {
+        admin: {
+          inviteUserByEmail: vi.fn(async () => ({
+            data: { user: null },
+            error: { code: "email_exists", message: "already been registered" },
           })),
         },
         resetPasswordForEmail: vi.fn(async () => ({
@@ -280,7 +336,7 @@ describe("team actions", () => {
         })),
       },
     } as unknown as ReturnType<typeof createAdminClient>);
-    expect(await resendInvite("nueva@lumia.test")).toEqual({
+    expect(await resendInvite("invited-1")).toEqual({
       error: "No se ha podido reenviar la invitación.",
     });
   });

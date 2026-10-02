@@ -129,7 +129,7 @@ export function InvoiceSeriesForm({
                 setYear(nextYear);
                 if (row) {
                   setFormat(row.format);
-                  if (!isPreset(row.format)) setCustomFormat(true);
+                  setCustomFormat(!isPreset(row.format));
                   setNextNumber(row.next_number);
                 }
               }}

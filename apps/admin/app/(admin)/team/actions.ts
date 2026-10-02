@@ -159,14 +159,32 @@ export async function setMemberActive(
   return { ok: true };
 }
 
-export async function resendInvite(email: string): Promise<ActionResult> {
-  const owner = await requireOwner(await createClient());
+export async function resendInvite(memberId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const owner = await requireOwner(supabase);
   if (!owner.ok) return { error: owner.error };
 
+  const [{ data: pending, error: pendingError }, { data: member }] =
+    await Promise.all([
+      supabase.rpc("pending_invitations"),
+      supabase.from("profiles").select("email").eq("id", memberId).single(),
+    ]);
+  if (pendingError || !pending || !member)
+    return { error: "No se ha podido reenviar la invitación." };
+  if (!pending.some((row) => row.profile_id === memberId))
+    return { error: "Ya ha aceptado la invitación." };
+
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.inviteUserByEmail(email);
+  const { error } = await admin.auth.admin.inviteUserByEmail(member.email);
   if (error) {
-    const { error: linkError } = await admin.auth.resetPasswordForEmail(email);
+    const alreadyExists =
+      error.code === "email_exists" ||
+      error.message?.toLowerCase().includes("already");
+    if (!alreadyExists)
+      return { error: "No se ha podido reenviar la invitación." };
+    const { error: linkError } = await admin.auth.resetPasswordForEmail(
+      member.email,
+    );
     if (linkError) return { error: "No se ha podido reenviar la invitación." };
   }
 
