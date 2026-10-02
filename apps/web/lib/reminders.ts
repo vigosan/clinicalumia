@@ -64,6 +64,8 @@ export function patientIcs(candidate: ReminderCandidate, now: Date): string {
 const STALE_CLAIM_MS = 60 * 60 * 1000;
 const PAUSE_BETWEEN_EMAILS_MS = 600;
 const RATE_LIMIT_RETRY_MS = 2000;
+const SAVE_SENT_ATTEMPTS = 3;
+const SAVE_SENT_RETRY_MS = 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -156,6 +158,23 @@ async function settle(
   if (error) throw error;
 }
 
+async function settleSent(
+  admin: AdminClient,
+  claimId: string,
+  sentAt: string,
+  wait: (ms: number) => Promise<void>,
+) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await settle(admin, claimId, { status: "sent", sent_at: sentAt });
+      return;
+    } catch (error) {
+      if (attempt === SAVE_SENT_ATTEMPTS) throw error;
+      await wait(SAVE_SENT_RETRY_MS);
+    }
+  }
+}
+
 export async function sendDailyReminders({
   admin,
   now,
@@ -219,10 +238,14 @@ export async function sendDailyReminders({
           continue;
         }
 
-        await settle(admin, claimId, {
-          status: "sent",
-          sent_at: now.toISOString(),
-        });
+        try {
+          await settleSent(admin, claimId, now.toISOString(), wait);
+        } catch (saveError) {
+          console.error(
+            "Recordatorio enviado sin poder guardarlo como enviado",
+            saveError,
+          );
+        }
         result.sent++;
       } catch (unexpected) {
         console.error("No se ha podido enviar el recordatorio", unexpected);

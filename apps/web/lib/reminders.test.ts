@@ -35,6 +35,7 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
 let candidates: Candidate[];
 let reminders: Row[];
 let unreachableAppointment: string | null;
+let unsavedStatusFailures: number;
 const rpc = vi.fn();
 const wait = vi.fn(async (_ms: number) => {});
 
@@ -94,6 +95,10 @@ function fakeAdmin() {
         update: (values: Row) => {
           const conditions: ((row: Row) => boolean)[] = [];
           const apply = async (column: string, value: unknown) => {
+            if (values.status === "sent" && unsavedStatusFailures > 0) {
+              unsavedStatusFailures--;
+              return { error: { code: "08006", message: "conexión perdida" } };
+            }
             conditions.push((row) => row[column] === value);
             for (const row of reminders.filter((row) =>
               matches(row, conditions),
@@ -126,6 +131,7 @@ beforeEach(() => {
   candidates = [];
   reminders = [];
   unreachableAppointment = null;
+  unsavedStatusFailures = 0;
   rpc.mockReset();
   wait.mockClear();
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -512,6 +518,43 @@ describe("sendDailyReminders", () => {
 
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(wait).not.toHaveBeenCalledWith(2000);
+  });
+
+  it("tries again to save a reminder as sent when the database hiccups after Resend accepted it, so the log tells the truth about what the patient received", async () => {
+    candidates = [candidate()];
+    unsavedStatusFailures = 1;
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(logged()[0]).toMatchObject({
+      status: "sent",
+      sent_at: now.toISOString(),
+    });
+    expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
+  });
+
+  it("never marks a delivered reminder as failed when saving it as sent keeps failing, so the next run finds it claimed and the patient is not emailed twice", async () => {
+    candidates = [candidate()];
+    unsavedStatusFailures = Number.POSITIVE_INFINITY;
+
+    const first = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+    unsavedStatusFailures = 0;
+    const second = await sendDailyReminders({
+      admin: fakeAdmin(),
+      now: new Date(now.getTime() + 10 * 60 * 1000),
+      wait,
+    });
+
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(logged()).toEqual([
+      expect.objectContaining({
+        recipient: "lucia@example.com",
+        status: "pending",
+      }),
+    ]);
+    expect(first).toEqual({ sent: 1, failed: 0, skipped: 0 });
+    expect(second).toEqual({ sent: 0, failed: 0, skipped: 1 });
   });
 
   it("keeps reminding the rest of the day when claiming one appointment fails unexpectedly, so a single database hiccup does not leave every later patient without a reminder", async () => {
