@@ -813,7 +813,7 @@ describe("professionalOptions", () => {
     { id: "p-owner", full_name: "Patricia Hernán", specialty_id: null },
   ];
 
-  it("lists first the active professionals of the service's specialty, who can take the appointment, then the rest", () => {
+  it("lists only the active professionals of the service's specialty, since nobody else can take the appointment", () => {
     expect(
       professionalOptions({
         directory,
@@ -823,8 +823,6 @@ describe("professionalOptions", () => {
     ).toEqual([
       { value: "p-ana", label: "Ana Soler" },
       { value: "p-zoe", label: "Zoe Ruiz" },
-      { value: "p-marc", label: "Marc Ejemplo" },
-      { value: "p-owner", label: "Patricia Hernán" },
     ]);
   });
 
@@ -838,9 +836,6 @@ describe("professionalOptions", () => {
     ).toEqual([
       { value: "p-gone", label: "Laura Ejemplo (inactiva)", disabled: true },
       { value: "p-marc", label: "Marc Ejemplo" },
-      { value: "p-ana", label: "Ana Soler" },
-      { value: "p-owner", label: "Patricia Hernán" },
-      { value: "p-zoe", label: "Zoe Ruiz" },
     ]);
   });
 });

@@ -63,13 +63,22 @@ export async function loadAppointmentTimes(
   starts_at: string;
   ends_at: string;
   professional_id: string;
+  professional_name: string;
 } | null> {
   const { data } = await supabase
     .from("appointments")
-    .select("starts_at, ends_at, professional_id")
+    .select(
+      "starts_at, ends_at, professional_id, professional:profiles!appointments_professional_id_fkey(full_name)",
+    )
     .eq("id", appointmentId)
     .maybeSingle();
-  return data;
+  if (!data) return null;
+  return {
+    starts_at: data.starts_at,
+    ends_at: data.ends_at,
+    professional_id: data.professional_id,
+    professional_name: data.professional?.full_name ?? "",
+  };
 }
 
 export async function notifyPatient(

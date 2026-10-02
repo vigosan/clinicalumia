@@ -206,6 +206,7 @@ export async function loadAgenda({
       self,
       directoryColumns,
       personId,
+      toColumn,
     });
   }
 
@@ -349,27 +350,64 @@ async function loadWeekAgenda(
     self,
     directoryColumns,
     personId,
+    toColumn,
   }: {
     date: string;
     isOwner: boolean;
     self: AgendaColumn;
     directoryColumns: AgendaColumn[];
     personId: string | null;
+    toColumn: (profile: {
+      id: string;
+      full_name: string;
+      role: "owner" | "employee";
+      specialty_id: string | null;
+    }) => AgendaColumn;
   },
 ): Promise<LoadAgendaResult> {
-  const targetPersonId =
-    isOwner && personId && directoryColumns.some((c) => c.id === personId)
-      ? personId
-      : self.id;
-  const person =
-    directoryColumns.find((column) => column.id === targetPersonId) ?? self;
-
   const start = weekStart(date);
   const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
   const bounds = {
     start: madridDayBounds(start).start,
     end: madridDayBounds(addDays(start, 6)).end,
   };
+
+  let candidates = isOwner ? directoryColumns : [];
+  if (isOwner) {
+    const { data: weekRows, error: weekError } = await supabase
+      .from("appointments")
+      .select("professional_id")
+      .neq("status", "cancelled")
+      .lt("starts_at", bounds.end)
+      .gt("ends_at", bounds.start);
+    if (weekError || !weekRows) return { ok: false };
+    const formerIds = [
+      ...new Set(
+        weekRows
+          .map((row) => row.professional_id)
+          .filter((id) => !directoryColumns.some((c) => c.id === id)),
+      ),
+    ];
+    if (formerIds.length > 0) {
+      const { data: formerRows, error: formerError } = await supabase
+        .from("profiles")
+        .select("id, full_name, role, specialty_id")
+        .in("id", formerIds)
+        .order("full_name", { ascending: true });
+      if (formerError || !formerRows) return { ok: false };
+      candidates = [
+        ...directoryColumns,
+        ...formerRows.map((row) => ({ ...toColumn(row), inactive: true })),
+      ];
+    }
+  }
+
+  const targetPersonId =
+    isOwner && personId && candidates.some((c) => c.id === personId)
+      ? personId
+      : self.id;
+  const person =
+    candidates.find((column) => column.id === targetPersonId) ?? self;
 
   const [
     { data: appointmentRows, error: appointmentsError },
@@ -428,7 +466,7 @@ async function loadWeekAgenda(
       personId: person.id,
       personName: person.fullName,
       personSpecialtySlug: person.specialtySlug,
-      candidates: isOwner ? directoryColumns : [],
+      candidates,
       days: weekDays,
       firstHour,
       lastHour,

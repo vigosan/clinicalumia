@@ -75,6 +75,7 @@ const loadAppointmentTimes = vi.fn(async () => ({
   starts_at: "2026-10-06T08:00:00+00:00",
   ends_at: "2026-10-06T09:00:00+00:00",
   professional_id: "prof-1",
+  professional_name: "Marc Ejemplo",
 }));
 const loadNoticeRecipients = vi.fn(async (): Promise<string[]> => []);
 vi.mock("@/lib/appointment-notice", () => ({
@@ -467,6 +468,7 @@ describe("moveAppointment", () => {
       starts_at: "2026-10-06T09:00:00.000Z",
       ends_at: "2026-10-06T10:00:00.000Z",
       professional_id: "prof-1",
+      professional_name: "Marc Ejemplo",
     });
 
     await expect(
@@ -479,6 +481,7 @@ describe("moveAppointment", () => {
     expect(notifyPatient).toHaveBeenCalledWith(expect.anything(), "appt-1", {
       kind: "changed",
       previousStartsAt: "2026-10-06T09:00:00.000Z",
+      previousProfessionalName: "Marc Ejemplo",
     });
   });
 
@@ -529,6 +532,7 @@ describe("moveAppointment", () => {
       starts_at: "2026-10-06T09:00:00.000Z",
       ends_at: "2026-10-06T10:00:00.000Z",
       professional_id: "prof-1",
+      professional_name: "Marc Ejemplo",
     });
 
     await expect(

@@ -81,6 +81,26 @@ describe("appointmentNoticeEmail", () => {
     );
   });
 
+  it("names the previous and the new professional when the appointment was handed to someone else, so the patient sees what changed even if the time did not", () => {
+    const email = appointmentNoticeEmail(
+      {
+        kind: "changed",
+        previousStartsAt: appointment.startsAt,
+        previousProfessionalName: "Laura <Ejemplo>",
+      },
+      appointment,
+      now,
+      recipient,
+    );
+
+    expect(email.html).toContain(
+      "<strong>Ahora:</strong> Viernes, 2 de octubre a las 09:30 con Ana García",
+    );
+    expect(email.html).toContain(
+      "<strong>Antes:</strong> Viernes, 2 de octubre a las 09:30 con Laura &lt;Ejemplo&gt;",
+    );
+  });
+
   it("says «Cita cancelada» with the appointment that will not happen", () => {
     const email = appointmentNoticeEmail(
       { kind: "cancelled" },

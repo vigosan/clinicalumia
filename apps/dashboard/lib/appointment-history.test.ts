@@ -18,6 +18,7 @@ function event(
     kind: "created",
     previous_starts_at: null,
     previous_ends_at: null,
+    previous_professional_id: null,
     actor_id: "actor-1",
     actor_kind: "staff",
     created_at: "2026-09-28T08:12:00Z",
@@ -27,11 +28,42 @@ function event(
 
 const appointment = {
   starts_at: "2026-09-28T14:00:00Z",
+  professional_id: "prof-now",
   cancelled_by: null as "patient" | "clinic" | null,
   cancel_reason: "",
 };
 
 describe("historyLine", () => {
+  it("says who handed the appointment over, from whom and to whom, so the team knows why it changed hands", () => {
+    const names = new Map([
+      ...nameById,
+      ["prof-old", "Marta Saliente"],
+      ["prof-mid", "Ana Relevo"],
+      ["prof-now", "Bea Final"],
+    ]);
+    const first = event({
+      id: "e1",
+      kind: "reassigned",
+      previous_professional_id: "prof-old",
+      actor_id: "actor-2",
+      created_at: "2026-09-28T08:12:00Z",
+    });
+    const second = event({
+      id: "e2",
+      kind: "reassigned",
+      previous_professional_id: "prof-mid",
+      actor_id: "actor-2",
+      created_at: "2026-09-28T09:00:00Z",
+    });
+    const events = [first, second];
+    expect(historyLine(first, 0, events, appointment, names)).toBe(
+      "Reasignada de Marta Saliente a Ana Relevo por Patricia el 28/09 a las 10:12",
+    );
+    expect(historyLine(second, 1, events, appointment, names)).toBe(
+      "Reasignada de Ana Relevo a Bea Final por Patricia el 28/09 a las 11:00",
+    );
+  });
+
   it("says the appointment was booked from the web instead of naming an actor, since the patient who booked it isn't in the staff directory", () => {
     const created = event({
       kind: "created",

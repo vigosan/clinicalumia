@@ -230,6 +230,7 @@ async function notifyMove(
     starts_at: string;
     ends_at: string;
     professional_id: string;
+    professional_name: string;
   } | null,
   appointment: AppointmentInput,
 ): Promise<boolean> {
@@ -243,6 +244,9 @@ async function notifyMove(
   return notifyPatient(supabase, id, {
     kind: "changed",
     previousStartsAt: previous.starts_at,
+    ...(previous.professional_id !== appointment.professional_id && {
+      previousProfessionalName: previous.professional_name,
+    }),
   });
 }
 

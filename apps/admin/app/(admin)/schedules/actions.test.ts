@@ -139,7 +139,7 @@ describe("addTimeOff", () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it("looks for that professional's non-cancelled appointments during the absence, from the first midnight to the midnight after the last day", async () => {
+  it("looks for that professional's upcoming non-cancelled appointments during the absence, from the first midnight to the midnight after the last day, leaving out those already held", async () => {
     await addTimeOff(undefined, timeOffForm());
     expect(appointmentsCalls).toEqual([
       [
@@ -150,6 +150,7 @@ describe("addTimeOff", () => {
       ["neq", "status", "cancelled"],
       ["lt", "starts_at", "2026-12-27T00:00:00+01:00"],
       ["gt", "ends_at", "2026-12-24T00:00:00+01:00"],
+      ["gt", "starts_at", expect.any(String)],
       ["order", "starts_at", { ascending: true }],
     ]);
   });

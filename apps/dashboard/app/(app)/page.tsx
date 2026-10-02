@@ -93,7 +93,7 @@ async function loadAppointmentDetail(
     supabase
       .from("appointment_events")
       .select(
-        "id, kind, previous_starts_at, previous_ends_at, actor_id, actor_kind, created_at",
+        "id, kind, previous_starts_at, previous_ends_at, previous_professional_id, actor_id, actor_kind, created_at",
       )
       .eq("appointment_id", appointmentId)
       .order("created_at", { ascending: true }),
@@ -135,13 +135,17 @@ async function loadAppointmentDetail(
   const isOwner =
     (directory ?? []).find((profile) => profile.id === user.id)?.role ===
     "owner";
-  if (isOwner && !nameById.has(appt.professional_id)) {
+  const formerIds = [
+    appt.professional_id,
+    ...(events ?? []).map((event) => event.previous_professional_id),
+  ].filter((id): id is string => id !== null && !nameById.has(id));
+  if (isOwner && formerIds.length > 0) {
     const { data: former } = await supabase
       .from("profiles")
-      .select("full_name")
-      .eq("id", appt.professional_id)
-      .maybeSingle();
-    if (former) nameById.set(appt.professional_id, former.full_name);
+      .select("id, full_name")
+      .in("id", formerIds);
+    for (const profile of former ?? [])
+      nameById.set(profile.id, profile.full_name);
   }
   const professionalName = nameById.get(appt.professional_id) ?? "Profesional";
 

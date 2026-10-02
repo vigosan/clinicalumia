@@ -156,7 +156,9 @@ export function WeekView({
                   : "border-line text-ink-900"
               }`}
             >
-              {candidate.fullName}
+              {candidate.inactive
+                ? `${candidate.fullName} (inactiva)`
+                : candidate.fullName}
             </Link>
           ))}
         </div>

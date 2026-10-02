@@ -18,7 +18,11 @@ export type NoticeAppointment = {
 
 export type AppointmentNotice =
   | { kind: "confirmed" }
-  | { kind: "changed"; previousStartsAt: string }
+  | {
+      kind: "changed";
+      previousStartsAt: string;
+      previousProfessionalName?: string;
+    }
   | { kind: "cancelled" };
 
 function siteUrl(): string {
@@ -99,10 +103,12 @@ function noticeHtml(
   notice: AppointmentNotice,
   appointment: NoticeAppointment,
 ): string {
+  const withWhom = (name: string | undefined) =>
+    name ? ` con ${escapeHtml(name)}` : "";
   const when =
     notice.kind === "changed"
-      ? `<p><strong>Ahora:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}</p>
-      <p><strong>Antes:</strong> ${escapeHtml(formatWhen(notice.previousStartsAt))}</p>`
+      ? `<p><strong>Ahora:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}${withWhom(notice.previousProfessionalName && appointment.professionalName)}</p>
+      <p><strong>Antes:</strong> ${escapeHtml(formatWhen(notice.previousStartsAt))}${withWhom(notice.previousProfessionalName)}</p>`
       : `<p><strong>Cuándo:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}</p>`;
   const footer =
     notice.kind === "confirmed"

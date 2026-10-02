@@ -4,9 +4,16 @@ import { type PaymentHistoryRow, paymentHistoryLines } from "./payments";
 
 export type AppointmentEventRow = {
   id: string;
-  kind: "created" | "moved" | "cancelled" | "no_show" | "restored";
+  kind:
+    | "created"
+    | "moved"
+    | "reassigned"
+    | "cancelled"
+    | "no_show"
+    | "restored";
   previous_starts_at: string | null;
   previous_ends_at: string | null;
+  previous_professional_id: string | null;
   actor_id: string | null;
   actor_kind: "staff" | "patient";
   created_at: string;
@@ -14,6 +21,7 @@ export type AppointmentEventRow = {
 
 export type HistoryAppointment = {
   starts_at: string;
+  professional_id: string;
   cancelled_by: "patient" | "clinic" | null;
   cancel_reason: string;
 };
@@ -62,6 +70,17 @@ export function historyLine(
     const dateChanged =
       madridDateTime(fromStart).date !== madridDateTime(toStart).date;
     return `Movida de ${formatMoveTime(fromStart, dateChanged)} a ${formatMoveTime(toStart, dateChanged)} por ${actorName} el ${moment}`;
+  }
+
+  if (event.kind === "reassigned") {
+    const nextReassign = events
+      .slice(index + 1)
+      .find((candidate) => candidate.kind === "reassigned");
+    const toId =
+      nextReassign?.previous_professional_id ?? appointment.professional_id;
+    const nameOf = (id: string | null) =>
+      (id && nameById.get(id)) || "Profesional";
+    return `Reasignada de ${nameOf(event.previous_professional_id)} a ${nameOf(toId)} por ${actorName} el ${moment}`;
   }
 
   if (event.kind === "cancelled") {

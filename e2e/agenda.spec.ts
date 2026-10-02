@@ -1173,6 +1173,16 @@ test("la propietaria ve la columna de una profesional desactivada con citas ese 
   expect(deactivateError).toBeNull();
 
   await loginAsThrowawayOwner(page, "Propietaria Relevo");
+  await page.goto(`${DASHBOARD}/?date=${date}&view=week`);
+  const leavingWeek = page.locator(
+    `[data-testid="week-person"][data-person="${leaving.id}"]`,
+  );
+  await expect(leavingWeek).toContainText("(inactiva)");
+  await leavingWeek.click();
+  await expect(
+    weekDayFor(page, date).getByTestId("appointment-block"),
+  ).toContainText("Jorge Ruiz Pérez");
+
   await page.goto(`${DASHBOARD}/?date=${date}`);
 
   const leavingColumn = columnFor(page, leaving.id);
@@ -1196,6 +1206,12 @@ test("la propietaria ve la columna de una profesional desactivada con citas ese 
     columnFor(page, colleague.id).getByTestId("appointment-block"),
   ).toContainText("Jorge Ruiz Pérez");
   await expect(columnFor(page, leaving.id)).toHaveCount(0);
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Reasignada de Saliente",
+  );
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "a Relevo",
+  );
   const { data: stored } = await admin
     .from("appointments")
     .select("professional_id, starts_at")

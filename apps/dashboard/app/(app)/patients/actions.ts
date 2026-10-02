@@ -331,6 +331,8 @@ export async function setArchived(
     .update({ archived_at: archived ? new Date().toISOString() : null })
     .eq("id", id)
     .select("id");
+  if (error?.message === "person_has_upcoming_appointments")
+    return { error: "Cancela o mueve antes estas citas." };
   if (error) return { error: "No se ha podido actualizar." };
   if (!data || data.length === 0)
     return { error: "No se ha podido actualizar." };

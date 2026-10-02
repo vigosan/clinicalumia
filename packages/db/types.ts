@@ -67,6 +67,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["appointment_event_kind"]
           previous_ends_at: string | null
+          previous_professional_id: string | null
           previous_starts_at: string | null
         }
         Insert: {
@@ -77,6 +78,7 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["appointment_event_kind"]
           previous_ends_at?: string | null
+          previous_professional_id?: string | null
           previous_starts_at?: string | null
         }
         Update: {
@@ -87,6 +89,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["appointment_event_kind"]
           previous_ends_at?: string | null
+          previous_professional_id?: string | null
           previous_starts_at?: string | null
         }
         Relationships: [
@@ -102,6 +105,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_events_previous_professional_id_fkey"
+            columns: ["previous_professional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1433,6 +1443,7 @@ export type Database = {
         | "cancelled"
         | "no_show"
         | "restored"
+        | "reassigned"
       appointment_modality: "in_person" | "online"
       appointment_origin: "staff" | "web"
       appointment_status: "scheduled" | "cancelled" | "no_show"
@@ -1591,6 +1602,7 @@ export const Constants = {
         "cancelled",
         "no_show",
         "restored",
+        "reassigned",
       ],
       appointment_modality: ["in_person", "online"],
       appointment_origin: ["staff", "web"],

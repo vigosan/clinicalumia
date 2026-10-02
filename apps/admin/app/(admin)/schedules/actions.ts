@@ -84,6 +84,7 @@ export async function addTimeOff(
     .neq("status", "cancelled")
     .lt("starts_at", madridInstant(addDays(to, 1), "00:00"))
     .gt("ends_at", madridInstant(from, "00:00"))
+    .gt("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
   if (appointmentsError) return { ok: true, affected: null };
 

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(27);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -146,6 +146,31 @@ select throws_ok($$
   update public.appointments set professional_id = '8f000000-0000-0000-0000-000000000006'
   where id = '8f000000-0000-0000-0000-0000000000d3'
 $$, '23514', 'professional_inactive', 'not even maintenance hands an appointment to an inactive professional');
+
+reset role;
+select results_eq($$
+  select kind::text, previous_professional_id, actor_id from public.appointment_events
+  where appointment_id = '8f000000-0000-0000-0000-0000000000d3' and kind = 'reassigned'
+$$, $$ values ('reassigned'::text, '8f000000-0000-0000-0000-000000000005'::uuid, '8f000000-0000-0000-0000-000000000001'::uuid) $$,
+  'handing an appointment over is recorded in its history with who had it before and who did it');
+
+select pg_temp.act_as('8f000000-0000-0000-0000-000000000004');
+select throws_ok($$
+  update public.people set archived_at = now() where id = '8f000000-0000-0000-0000-0000000000c1'
+$$, '23514', 'person_has_upcoming_appointments',
+  'a record with upcoming appointments cannot be archived, not even by writing to the table directly');
+select lives_ok($$
+  update public.people set archived_at = now() where id = '8f000000-0000-0000-0000-0000000000c2'
+$$, 'a record with only past or cancelled appointments can be archived');
+select lives_ok($$
+  update public.people set admin_notes = 'Llamar antes' where id = '8f000000-0000-0000-0000-0000000000c1'
+$$, 'other changes to a record with upcoming appointments are not blocked');
+
+reset role;
+select set_config('request.jwt.claims', '', true);
+update public.people set archived_at = now() where id = '8f000000-0000-0000-0000-0000000000c1';
+select isnt((select archived_at from public.people where id = '8f000000-0000-0000-0000-0000000000c1'), null,
+  'maintenance without a signed-in user can still archive, so existing data can be repaired');
 
 select * from finish();
 rollback;

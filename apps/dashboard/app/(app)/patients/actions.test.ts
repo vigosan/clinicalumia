@@ -512,6 +512,18 @@ describe("setArchived", () => {
     expect(peopleUpdate).not.toHaveBeenCalled();
   });
 
+  it("explains the refusal when an appointment is given between the check and the archive and the database refuses it", async () => {
+    updateResult.data = null;
+    updateResult.error = {
+      code: "23514",
+      message: "person_has_upcoming_appointments",
+    };
+
+    expect(await setArchived("person-1", true)).toEqual({
+      error: "Cancela o mueve antes estas citas.",
+    });
+  });
+
   it("does not archive when it cannot check the upcoming appointments", async () => {
     rpcResult.data = null;
     rpcResult.error = { message: "boom" };

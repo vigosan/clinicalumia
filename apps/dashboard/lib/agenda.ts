@@ -387,18 +387,10 @@ export function professionalOptions({
   specialtyId: string | null;
   current: { id: string; name: string };
 }): { value: string; label: string; disabled?: boolean }[] {
-  const byName = (a: { full_name: string }, b: { full_name: string }): number =>
-    a.full_name.localeCompare(b.full_name, "es");
-  const sameSpecialty = directory
+  const active = directory
     .filter((member) => member.specialty_id === specialtyId)
-    .sort(byName);
-  const others = directory
-    .filter((member) => member.specialty_id !== specialtyId)
-    .sort(byName);
-  const active = [...sameSpecialty, ...others].map((member) => ({
-    value: member.id,
-    label: member.full_name,
-  }));
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, "es"))
+    .map((member) => ({ value: member.id, label: member.full_name }));
   if (directory.some((member) => member.id === current.id)) return active;
   return [
     { value: current.id, label: `${current.name} (inactiva)`, disabled: true },
