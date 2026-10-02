@@ -1,7 +1,6 @@
 "use client";
 
 import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   type Block,
@@ -10,6 +9,7 @@ import {
   specialtyTone,
 } from "@/lib/agenda";
 import type { Closure } from "@/lib/closures";
+import { showUrl } from "../url-drawer";
 import {
   AgendaColumnGrid,
   AgendaColumnList,
@@ -177,7 +177,6 @@ export function DayView({
   firstHour: number;
   lastHour: number;
 }) {
-  const router = useRouter();
   const windowMinutes = (lastHour - firstHour) * 60;
   const { blocks, contentById } = buildBlockContents(
     columns,
@@ -228,7 +227,7 @@ export function DayView({
     const hour = firstHour + Math.floor(snapped / 60);
     const minute = snapped % 60;
     const time = `${pad(hour)}:${pad(minute)}`;
-    router.push(
+    showUrl(
       buildHref("/", {
         date,
         with: withParam,
@@ -236,7 +235,6 @@ export function DayView({
         time,
         professional: selfId,
       }),
-      { scroll: false },
     );
   }
 
@@ -305,14 +303,13 @@ export function DayView({
                   onClick={(event) => handleColumnClick(event, column.id)}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter" && event.key !== " ") return;
-                    router.push(
+                    showUrl(
                       buildHref("/", {
                         date,
                         with: withParam,
                         new: "1",
                         professional: selfId,
                       }),
-                      { scroll: false },
                     );
                   }}
                 />

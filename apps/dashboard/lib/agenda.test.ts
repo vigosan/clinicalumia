@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   adjacentAppointments,
   appointmentError,
+  appointmentFormInitials,
   type Block,
   canMarkNoShow,
   canMove,
@@ -985,5 +986,42 @@ describe("newAppointmentDrawerHref", () => {
 
   it("falls back to today's agenda when the link carries no day", () => {
     expect(newAppointmentDrawerHref({})).toBe("/?new=1");
+  });
+});
+
+describe("appointmentFormInitials", () => {
+  const PRO = "11111111-1111-4111-8111-111111111111";
+  const professionals = [{ id: PRO }];
+
+  it("starts the form on the slot staff clicked, so they only pick patient and service", () => {
+    expect(
+      appointmentFormInitials(
+        { date: "2026-10-05", time: "10:30", professional: PRO },
+        professionals,
+        "2026-10-01",
+      ),
+    ).toEqual({
+      initialDate: "2026-10-05",
+      initialTime: "10:30",
+      initialProfessionalId: PRO,
+    });
+  });
+
+  it("ignores a hand-edited link with an invalid day, hour or someone not in the team, instead of showing garbage", () => {
+    expect(
+      appointmentFormInitials(
+        {
+          date: "2026-13-45",
+          time: "25:00",
+          professional: "22222222-2222-4222-8222-222222222222",
+        },
+        professionals,
+        "2026-10-01",
+      ),
+    ).toEqual({
+      initialDate: "2026-10-01",
+      initialTime: "",
+      initialProfessionalId: null,
+    });
   });
 });

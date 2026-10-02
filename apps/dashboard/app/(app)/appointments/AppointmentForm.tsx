@@ -5,6 +5,7 @@ import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { DatePicker } from "@clinicalumia/ui/date-picker";
+import { DrawerClose } from "@clinicalumia/ui/drawer";
 import { Field } from "@clinicalumia/ui/field";
 import { Select } from "@clinicalumia/ui/select";
 import { Textarea } from "@clinicalumia/ui/textarea";
@@ -64,7 +65,7 @@ export function AppointmentForm({
   initialPatient?: PatientOption | null;
   initialCanNotify: boolean;
   closures: Closure[];
-  cancelHref: string;
+  cancelHref?: string;
 }) {
   const [state, formAction, pending] = useActionState(
     createAppointmentWithToast,
@@ -317,9 +318,17 @@ export function AppointmentForm({
         >
           {pending ? "Guardando…" : "Dar cita"}
         </Button>
-        <Button asChild variant="secondary">
-          <Link href={cancelHref}>Cancelar</Link>
-        </Button>
+        {cancelHref ? (
+          <Button asChild variant="secondary">
+            <Link href={cancelHref}>Cancelar</Link>
+          </Button>
+        ) : (
+          <DrawerClose asChild>
+            <Button type="button" variant="secondary">
+              Cancelar
+            </Button>
+          </DrawerClose>
+        )}
       </div>
     </form>
   );

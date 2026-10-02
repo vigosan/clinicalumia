@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
@@ -9,8 +10,9 @@ import type { SelectOption } from "@clinicalumia/ui/select";
 import { toast } from "@clinicalumia/ui/toast";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { adjacentAppointments, isUuid } from "@/lib/agenda";
 import { formatMinutes } from "@/lib/duration";
 import {
   type CurrentInvoice,
@@ -20,8 +22,12 @@ import {
 import { paymentToastMessage } from "@/lib/payment-candidates";
 import type { PaymentMethod } from "@/lib/payments";
 import { markNoShow, restoreFromNoShow } from "../appointments/actions";
+import { DrawerLink, showUrl } from "../url-drawer";
+import { buildHref } from "./AgendaColumn";
+import { fetchAppointmentDetail } from "./actions";
 import { CancelDialog } from "./CancelDialog";
 import { FullInvoiceForm } from "./FullInvoiceForm";
+import type { AppointmentDetailResult } from "./load-detail";
 import { MoveForm } from "./MoveForm";
 import { PaymentForm } from "./PaymentForm";
 import { SendInvoiceForm } from "./SendInvoiceForm";
@@ -98,39 +104,14 @@ function formatPrice(cents: number): string {
   return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 }
 
-export function AppointmentPanel({
+function AppointmentDetails({
   appointment,
-  closeHref,
-  previousHref,
-  nextHref,
 }: {
   appointment: AppointmentDetail;
-  closeHref: string;
-  previousHref: string | null;
-  nextHref: string | null;
 }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [moving, setMoving] = useState(false);
-
-  function handleOpenChange(next: boolean) {
-    if (next) return;
-    setOpen(false);
-    router.push(closeHref, { scroll: false });
-  }
-
-  function focusAppointment(event: Event) {
-    const block = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        `[data-appointment="${appointment.id}"]`,
-      ),
-    ).find((element) => element.getClientRects().length > 0);
-    if (!block) return;
-    event.preventDefault();
-    block.focus();
-  }
 
   function handlePaid({
     cents,
@@ -167,59 +148,7 @@ export function AppointmentPanel({
   }
 
   return (
-    <Drawer
-      open={open}
-      onOpenChange={handleOpenChange}
-      onCloseAutoFocus={focusAppointment}
-      data-testid="appointment-panel"
-      description={
-        <span data-testid="appointment-panel-date">
-          {dateOf(appointment.startsAt)} · {timeOf(appointment.startsAt)} –{" "}
-          {timeOf(appointment.endsAt)} · {appointment.professionalName}
-        </span>
-      }
-      title={
-        <Link
-          href={`/patients/${appointment.patientId}`}
-          className="underline-offset-2 hover:underline"
-        >
-          {appointment.patientName}
-        </Link>
-      }
-    >
-      <p className="-mt-4 text-[13px] text-ink-800">
-        {appointment.serviceName} · {formatMinutes(appointment.durationMinutes)}
-      </p>
-
-      {(previousHref || nextHref) && (
-        <nav aria-label="Otras citas de la agenda" className="flex gap-2">
-          {previousHref && (
-            <Button asChild variant="secondary" size="sm">
-              <Link
-                href={previousHref}
-                scroll={false}
-                data-testid="appointment-previous"
-              >
-                <ChevronLeft aria-hidden="true" className="-ml-1" />
-                Cita anterior
-              </Link>
-            </Button>
-          )}
-          {nextHref && (
-            <Button asChild variant="secondary" size="sm" className="ml-auto">
-              <Link
-                href={nextHref}
-                scroll={false}
-                data-testid="appointment-next"
-              >
-                Cita siguiente
-                <ChevronRight aria-hidden="true" className="-mr-1" />
-              </Link>
-            </Button>
-          )}
-        </nav>
-      )}
-
+    <>
       <div className="flex items-center gap-2">
         <Badge
           tone={STATUS_TONE[appointment.status]}
@@ -408,6 +337,172 @@ export function AppointmentPanel({
           ))}
         </ul>
       </div>
+    </>
+  );
+}
+
+type AppointmentSummary = {
+  id: string;
+  professionalId: string;
+  startsAt: string;
+  endsAt: string;
+  patientName: string;
+  serviceName: string;
+};
+
+export function AppointmentPanel({
+  serverAppointmentId,
+  serverResult,
+  appointments,
+  columnOrder,
+  closeHref,
+  linkParams,
+}: {
+  serverAppointmentId: string | null;
+  serverResult: AppointmentDetailResult;
+  appointments: AppointmentSummary[];
+  columnOrder: string[];
+  closeHref: string;
+  linkParams: Record<string, string | undefined>;
+}) {
+  const searchParams = useSearchParams();
+  const requested = searchParams.get("appointment");
+  const id = requested && isUuid(requested) ? requested : null;
+  const [lastId, setLastId] = useState(id);
+  if (id !== null && id !== lastId) setLastId(id);
+  const shownId = id ?? lastId;
+  const fromServer =
+    shownId !== null && shownId === serverAppointmentId ? serverResult : null;
+  const [fetched, setFetched] = useState<{
+    id: string;
+    result: AppointmentDetailResult;
+  } | null>(null);
+  const result =
+    fromServer ?? (fetched?.id === shownId ? fetched.result : null);
+  const needsFetch = id !== null && fromServer === null;
+
+  useEffect(() => {
+    if (!id || !needsFetch) return;
+    let current = true;
+    fetchAppointmentDetail(id).then((loaded) => {
+      if (current) setFetched({ id, result: loaded });
+    });
+    return () => {
+      current = false;
+    };
+  }, [id, needsFetch]);
+
+  const summary = appointments.find(
+    (appointment) => appointment.id === shownId,
+  );
+  const detail = result?.status === "ok" ? result.detail : null;
+  const { previousId, nextId } = shownId
+    ? adjacentAppointments(appointments, shownId, columnOrder)
+    : { previousId: null, nextId: null };
+  const previousHref = previousId
+    ? buildHref("/", { ...linkParams, appointment: previousId })
+    : null;
+  const nextHref = nextId
+    ? buildHref("/", { ...linkParams, appointment: nextId })
+    : null;
+
+  function handleOpenChange(next: boolean) {
+    if (next) return;
+    showUrl(closeHref);
+  }
+
+  function focusAppointment(event: Event) {
+    const block = Array.from(
+      document.querySelectorAll<HTMLElement>(`[data-appointment="${shownId}"]`),
+    ).find((element) => element.getClientRects().length > 0);
+    if (!block) return;
+    event.preventDefault();
+    block.focus();
+  }
+
+  return (
+    <Drawer
+      open={id !== null && result?.status !== "none"}
+      onOpenChange={handleOpenChange}
+      onCloseAutoFocus={focusAppointment}
+      data-testid="appointment-panel"
+      description={
+        detail ? (
+          <span data-testid="appointment-panel-date">
+            {dateOf(detail.startsAt)} · {timeOf(detail.startsAt)} –{" "}
+            {timeOf(detail.endsAt)} · {detail.professionalName}
+          </span>
+        ) : summary ? (
+          `${dateOf(summary.startsAt)} · ${timeOf(summary.startsAt)} – ${timeOf(summary.endsAt)}`
+        ) : (
+          "Cita"
+        )
+      }
+      title={
+        detail ? (
+          <Link
+            href={`/patients/${detail.patientId}`}
+            className="underline-offset-2 hover:underline"
+          >
+            {detail.patientName}
+          </Link>
+        ) : (
+          (summary?.patientName ?? "Cargando…")
+        )
+      }
+    >
+      <p className="-mt-4 text-[13px] text-ink-800">
+        {detail
+          ? `${detail.serviceName} · ${formatMinutes(detail.durationMinutes)}`
+          : summary?.serviceName}
+      </p>
+
+      {(previousHref || nextHref) && (
+        <nav aria-label="Otras citas de la agenda" className="flex gap-2">
+          {previousHref && (
+            <Button asChild variant="secondary" size="sm">
+              <DrawerLink
+                href={previousHref}
+                scroll={false}
+                data-testid="appointment-previous"
+              >
+                <ChevronLeft aria-hidden="true" className="-ml-1" />
+                Cita anterior
+              </DrawerLink>
+            </Button>
+          )}
+          {nextHref && (
+            <Button asChild variant="secondary" size="sm" className="ml-auto">
+              <DrawerLink
+                href={nextHref}
+                scroll={false}
+                data-testid="appointment-next"
+              >
+                Cita siguiente
+                <ChevronRight aria-hidden="true" className="-mr-1" />
+              </DrawerLink>
+            </Button>
+          )}
+        </nav>
+      )}
+
+      {detail ? (
+        <AppointmentDetails key={detail.id} appointment={detail} />
+      ) : result?.status === "error" ? (
+        <Alert data-testid="appointment-panel-error">
+          No se ha podido cargar la cita.
+        </Alert>
+      ) : (
+        <div
+          role="status"
+          data-testid="appointment-panel-loading"
+          className="flex flex-col gap-3"
+        >
+          <span className="sr-only">Cargando…</span>
+          <div className="h-5 w-40 animate-pulse rounded-lg bg-cream-200" />
+          <div className="h-24 animate-pulse rounded-card bg-cream-200" />
+        </div>
+      )}
     </Drawer>
   );
 }

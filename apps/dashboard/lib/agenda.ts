@@ -482,3 +482,26 @@ export function newAppointmentDrawerHref(params: {
   if (params.patient) search.set("patient", params.patient);
   return `/?${search.toString()}`;
 }
+
+export function appointmentFormInitials(
+  params: { date?: string; time?: string; professional?: string },
+  professionals: { id: string }[],
+  today: string,
+): {
+  initialDate: string;
+  initialTime: string;
+  initialProfessionalId: string | null;
+} {
+  return {
+    initialDate: params.date && isValidDate(params.date) ? params.date : today,
+    initialTime: params.time && isValidTime(params.time) ? params.time : "",
+    initialProfessionalId:
+      params.professional &&
+      isUuid(params.professional) &&
+      professionals.some(
+        (professional) => professional.id === params.professional,
+      )
+        ? params.professional
+        : null,
+  };
+}

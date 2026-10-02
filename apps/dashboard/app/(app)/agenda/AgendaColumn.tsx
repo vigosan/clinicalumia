@@ -1,10 +1,10 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { Badge } from "@clinicalumia/ui/badge";
 import { CircleCheck, Euro, UserX } from "lucide-react";
-import Link from "next/link";
 import type { Block, ScheduleBlock, SpecialtyTone } from "@/lib/agenda";
 import type { Closure } from "@/lib/closures";
 import type { AgendaPaymentIcon, AgendaPaymentState } from "@/lib/payments";
+import { DrawerLink } from "../url-drawer";
 
 export const PX_PER_MINUTE = 2;
 export const SLOT_MINUTES = 15;
@@ -215,7 +215,7 @@ export function AgendaColumnGrid({
         const className = `absolute inset-x-1 overflow-hidden rounded-field border px-2 py-1.5 text-xs ${content.toneClass} ${content.dimmed ? "opacity-60" : ""} ${content.testId === "time-off-block" ? "border-dashed" : ""}`;
         if (content.href) {
           return (
-            <Link
+            <DrawerLink
               key={item.id}
               href={content.href}
               data-testid={content.testId}
@@ -238,7 +238,7 @@ export function AgendaColumnGrid({
                 className="truncate font-medium"
               />
               <p className="truncate">{content.subtitle}</p>
-            </Link>
+            </DrawerLink>
           );
         }
         return (
@@ -272,7 +272,7 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
       {items.length === 0 && <p className="text-ink-700 text-sm">Sin citas.</p>}
       {items.map((content) =>
         content.href ? (
-          <Link
+          <DrawerLink
             key={content.block.id}
             href={content.href}
             data-testid={content.testId}
@@ -290,7 +290,7 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
               className="font-medium"
             />
             <p className="text-xs">{content.subtitle}</p>
-          </Link>
+          </DrawerLink>
         ) : (
           <div
             key={content.block.id}

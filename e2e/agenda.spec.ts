@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
 import { pickDate, pickTime } from "./date-time";
 import { selectOption } from "./select";
+import { recordServerRenders } from "./server-renders";
 
 const DASHBOARD = "http://localhost:3001";
 
@@ -821,20 +822,21 @@ test("«Cancelar» en Nueva cita vuelve al día de la agenda del que se venía, 
   await page.goto(`${DASHBOARD}/appointments/new?date=${date}`);
   await page
     .getByTestId("new-appointment-drawer")
-    .getByRole("link", { name: "Cancelar" })
+    .getByRole("button", { name: "Cancelar" })
     .click();
 
   await expect(page).toHaveURL(`${DASHBOARD}/?date=${date}`);
   await expect(page.getByTestId("new-appointment-drawer")).toHaveCount(0);
 });
 
-test("«Nueva cita» se abre en un panel encima de la agenda, para dar la cita sin perder de vista el día", async ({
+test("«Nueva cita» se abre en un panel encima de la agenda, para dar la cita sin perder de vista el día, y abre y cierra sin esperar al servidor", async ({
   page,
 }) => {
   const date = dateWithWeekday(61, [1, 2, 3, 4, 5]);
 
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
   await page.goto(`${DASHBOARD}/?date=${date}`);
+  const serverRenders = recordServerRenders(page);
   await page.getByTestId("agenda-new").click();
 
   const drawer = page.getByTestId("new-appointment-drawer");
@@ -844,6 +846,11 @@ test("«Nueva cita» se abre en un panel encima de la agenda, para dar la cita s
   expect(url.pathname).toBe("/");
   expect(url.searchParams.get("date")).toBe(date);
   expect(url.searchParams.get("new")).toBe("1");
+
+  await drawer.getByRole("button", { name: "Cerrar" }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page).not.toHaveURL(/new=1/);
+  expect(serverRenders).toEqual([]);
 });
 
 test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55", async ({
@@ -1483,10 +1490,12 @@ test("en el panel de la cita, «Siguiente» y «Anterior» pasan a las otras cit
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${second}`);
   const panel = page.getByTestId("appointment-panel");
   await expect(panel).toContainText("Elena");
+  const serverRenders = recordServerRenders(page);
 
   await panel.getByTestId("appointment-next").click();
   await expect(page).toHaveURL(new RegExp(`appointment=${third}`));
   await expect(panel).toContainText("Nora");
+  await expect(panel.getByTestId("appointment-history")).toBeVisible();
   await expect(panel.getByTestId("appointment-next")).toHaveCount(0);
 
   await panel.getByTestId("appointment-previous").click();
@@ -1496,6 +1505,7 @@ test("en el panel de la cita, «Siguiente» y «Anterior» pasan a las otras cit
   await expect(page).toHaveURL(new RegExp(`appointment=${first}`));
   await expect(panel).toContainText("Jorge");
   await expect(panel.getByTestId("appointment-previous")).toHaveCount(0);
+  expect(serverRenders).toEqual([]);
 
   await page.goto(`${DASHBOARD}/?date=${date}&view=week&appointment=${first}`);
   await expect(panel).toContainText("Jorge");
@@ -1505,7 +1515,7 @@ test("en el panel de la cita, «Siguiente» y «Anterior» pasan a las otras cit
   await expect(panel).toContainText("Elena");
 });
 
-test("el panel de la cita retiene el foco mientras está abierto, y Escape lo cierra y devuelve el foco a la cita de la agenda", async ({
+test("el panel de la cita retiene el foco mientras está abierto, y Escape lo cierra sin recargar la agenda y devuelve el foco a la cita", async ({
   page,
 }) => {
   const date = dateWithWeekday(104, [1, 2, 3, 4, 5]);
@@ -1525,6 +1535,7 @@ test("el panel de la cita retiene el foco mientras está abierto, y Escape lo ci
 
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/?date=${date}`);
+  const serverRenders = recordServerRenders(page);
   const block = columnFor(page, employee.id).locator(
     `[data-appointment="${appointmentId}"]`,
   );
@@ -1547,6 +1558,7 @@ test("el panel de la cita retiene el foco mientras está abierto, y Escape lo ci
   await expect(page.getByTestId("appointment-panel")).toHaveCount(0);
   await expect(page).not.toHaveURL(/appointment=/);
   await expect(block).toBeFocused();
+  expect(serverRenders).toEqual([]);
 });
 
 test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer «no presentada»» la devuelve", async ({
@@ -1585,6 +1597,9 @@ test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer 
   );
 
   await page.getByTestId("appointment-restore").click();
+  await expect(page.getByTestId("appointment-status")).toHaveText("Realizada", {
+    timeout: 1000,
+  });
 
   await expect(page.getByTestId("appointment-history")).toContainText(
     "Se deshizo «no presentada»",

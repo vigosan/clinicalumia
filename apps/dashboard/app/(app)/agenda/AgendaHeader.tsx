@@ -8,6 +8,7 @@ import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { weekTitle } from "@/lib/agenda";
+import { DrawerLink } from "../url-drawer";
 
 function buildHref(base: string, params: Record<string, string | undefined>) {
   const search = new URLSearchParams();
@@ -141,7 +142,7 @@ export function AgendaHeader({
           data-testid="agenda-new"
           className="max-sm:size-9 max-sm:px-0"
         >
-          <Link
+          <DrawerLink
             href={buildHref("/", {
               date,
               view: view === "week" ? view : undefined,
@@ -153,7 +154,7 @@ export function AgendaHeader({
           >
             <Plus aria-hidden="true" />
             <span className="max-sm:sr-only">Nueva cita</span>
-          </Link>
+          </DrawerLink>
         </Button>
       </div>
     </div>

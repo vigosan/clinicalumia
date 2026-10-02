@@ -1,11 +1,6 @@
-import {
-  addDays,
-  isValidDate,
-  isValidTime,
-  todayInMadrid,
-} from "@clinicalumia/api/madrid-time";
+import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
-import { isUuid } from "@/lib/agenda";
+import { appointmentFormInitials, isUuid } from "@/lib/agenda";
 import { loadClosures } from "@/lib/closures";
 import { canNotifyPatient } from "./actions";
 
@@ -70,9 +65,6 @@ export async function loadAppointmentForm(params: AppointmentFormParams) {
     specialtyId: profile.specialty_id,
   }));
 
-  const initialDate =
-    params.date && isValidDate(params.date) ? params.date : todayInMadrid();
-
   return {
     ok: true as const,
     patient,
@@ -85,16 +77,7 @@ export async function loadAppointmentForm(params: AppointmentFormParams) {
         durationMinutes: service.duration_minutes,
         specialtyId: service.specialty_id,
       })),
-      initialDate,
-      initialTime: params.time && isValidTime(params.time) ? params.time : "",
-      initialProfessionalId:
-        params.professional &&
-        isUuid(params.professional) &&
-        professionals.some(
-          (professional) => professional.id === params.professional,
-        )
-          ? params.professional
-          : null,
+      ...appointmentFormInitials(params, professionals, todayInMadrid()),
       initialPatient: patient,
       initialCanNotify,
       closures,
