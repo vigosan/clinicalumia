@@ -4,7 +4,7 @@ import { Button } from "@clinicalumia/ui/button";
 import { Drawer } from "@clinicalumia/ui/drawer";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import { createSpecialty, type SpecialtyFormState } from "./actions";
 
 const initialState: SpecialtyFormState = undefined;
@@ -42,6 +42,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
 export function NewSpecialty() {
   const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
   return (
     <Drawer
       open={open}
@@ -54,7 +55,7 @@ export function NewSpecialty() {
       title="Nueva especialidad"
       description="Especialidades"
     >
-      <CreateForm onDone={() => setOpen(false)} />
+      <CreateForm onDone={close} />
     </Drawer>
   );
 }

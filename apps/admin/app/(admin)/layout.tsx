@@ -1,6 +1,7 @@
 import { createClient } from "@clinicalumia/api/server";
 import { AppShell } from "@clinicalumia/ui/app-shell";
 import logo from "@clinicalumia/ui/logo-dark.png";
+import { Toaster } from "@clinicalumia/ui/toast";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { logout } from "./actions";
@@ -31,29 +32,32 @@ export default async function AdminLayout({
   }
 
   return (
-    <AppShell
-      logo={
-        <Image
-          src={logo}
-          alt="LUMIA · Clínica Logopedia miofuncional"
-          width={150}
-          priority
-        />
-      }
-      section="Administración"
-      nav={[
-        { href: "/", label: "Inicio" },
-        { href: "/team", label: "Equipo" },
-        { href: "/specialties", label: "Especialidades" },
-        { href: "/services", label: "Servicios" },
-        { href: "/schedules", label: "Horarios" },
-        { href: "/clinic", label: "Datos de la clínica" },
-        { href: "/facturacion", label: "Facturación" },
-      ]}
-      user={{ name: profile.full_name, detail: "Propietaria" }}
-      logout={logout}
-    >
-      {children}
-    </AppShell>
+    <>
+      <AppShell
+        logo={
+          <Image
+            src={logo}
+            alt="LUMIA · Clínica Logopedia miofuncional"
+            width={150}
+            priority
+          />
+        }
+        section="Administración"
+        nav={[
+          { href: "/", label: "Inicio" },
+          { href: "/team", label: "Equipo" },
+          { href: "/specialties", label: "Especialidades" },
+          { href: "/services", label: "Servicios" },
+          { href: "/schedules", label: "Horarios" },
+          { href: "/clinic", label: "Datos de la clínica" },
+          { href: "/facturacion", label: "Facturación" },
+        ]}
+        user={{ name: profile.full_name, detail: "Propietaria" }}
+        logout={logout}
+      >
+        {children}
+      </AppShell>
+      <Toaster />
+    </>
   );
 }

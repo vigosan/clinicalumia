@@ -4,9 +4,6 @@ import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
-import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
-import { Select } from "@clinicalumia/ui/select";
 import { useState, useTransition } from "react";
 import type { AffectedAppointment } from "@/lib/affected-appointments";
 import {
@@ -14,8 +11,8 @@ import {
   resetTwoFactor,
   revokeCalendarLink,
   setMemberActive,
-  updateMember,
 } from "./actions";
+import { EditMember } from "./EditMember";
 
 type Specialty = { id: string; name: string };
 
@@ -36,7 +33,6 @@ export function MemberRow({
   member: Member;
   specialties: Specialty[];
 }) {
-  const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -65,69 +61,6 @@ export function MemberRow({
     (s) => s.id === member.specialty_id,
   )?.name;
 
-  if (editing) {
-    return (
-      <li className="flex flex-wrap items-center gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t">
-        <form
-          action={(formData) =>
-            run(
-              () => updateMember(member.id, formData),
-              () => setEditing(false),
-            )
-          }
-          className="grid flex-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"
-        >
-          <Field label="Nombre">
-            <Input
-              name="full_name"
-              defaultValue={member.full_name}
-              required
-              autoFocus
-            />
-          </Field>
-          <Field label="Especialidad">
-            <Select
-              name="specialty_id"
-              defaultValue={member.specialty_id ?? ""}
-              options={[
-                { value: "", label: "Sin asignar" },
-                ...specialties.map((s) => ({ value: s.id, label: s.name })),
-              ]}
-            />
-          </Field>
-          <Field label="Nº de colegiado">
-            <Input
-              name="license_number"
-              defaultValue={member.license_number ?? ""}
-            />
-          </Field>
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={pending}>
-              {pending ? "Guardando…" : "Guardar"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setEditing(false)}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </form>
-        {error && (
-          <p
-            role="alert"
-            data-testid="member-error"
-            className="w-full text-[13px] text-danger-600"
-          >
-            {error}
-          </p>
-        )}
-      </li>
-    );
-  }
-
   return (
     <li className="flex flex-wrap items-center gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t">
       <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto sm:flex-1">
@@ -153,14 +86,7 @@ export function MemberRow({
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setEditing(true)}
-        >
-          Editar
-        </Button>
+        <EditMember member={member} specialties={specialties} />
         <ConfirmDialog
           tone="destructive"
           trigger={

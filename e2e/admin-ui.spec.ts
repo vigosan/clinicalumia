@@ -259,19 +259,21 @@ test("the seed owner is listed first as Propietaria without a deactivate button,
   expect(ownerIndex).toBeLessThan(marcIndex);
 
   await expect(
-    page.getByText("Aún no hay empleados. Invita al primero arriba."),
+    page.getByText(
+      "Aún no hay empleados. Invita al primero con «Invitar a un empleado».",
+    ),
   ).toHaveCount(0);
 
   editedProfileId = "a0000000-0000-0000-0000-000000000002";
   const lauraRow = page
     .getByRole("listitem")
     .filter({ hasText: "Laura Ejemplo" });
-  await lauraRow.getByRole("button", { name: "Editar" }).click();
-  const editingRow = page
-    .getByRole("listitem")
-    .filter({ has: page.getByRole("button", { name: "Guardar" }) });
-  await editingRow.getByLabel("Nº de colegiado").fill("46-12345");
-  await editingRow.getByRole("button", { name: "Guardar" }).click();
+  await lauraRow.getByTestId("member-edit").click();
+  const drawer = page.getByRole("dialog", { name: "Editar empleado" });
+  await expect(drawer).toBeVisible();
+  await drawer.getByLabel("Nº de colegiado").fill("46-12345");
+  await drawer.getByRole("button", { name: "Guardar" }).click();
+  await expect(drawer).toHaveCount(0);
   await expect(lauraRow.getByTestId("member-license")).toHaveText(
     "Nº colegiado 46-12345",
   );
@@ -506,4 +508,33 @@ test("the specialty form opens from the right on a computer and from the bottom 
       };
     })
     .toEqual({ bottom: 844, width: 390, fits: true });
+});
+
+test("inviting an employee from its drawer closes it, confirms the email was sent and lists the new member", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  const fullName = `Invitada Drawer ${Date.now()}`;
+  const email = `invitada-drawer-${Date.now()}@test.local`;
+  await page.goto(`${ADMIN}/team`);
+
+  await page.getByTestId("member-invite").click();
+  const drawer = page.getByRole("dialog", { name: "Invitar a un empleado" });
+  await drawer.getByLabel("Email").fill(email);
+  await drawer.getByLabel("Nombre completo").fill(fullName);
+  await drawer.getByRole("button", { name: "Invitar" }).click();
+
+  await expect(drawer).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toHaveText(
+    "Invitación enviada por email",
+  );
+  await expect(
+    page.getByRole("listitem").filter({ hasText: fullName }),
+  ).toBeVisible();
+  const { data } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .single();
+  createdUserIds.push(data!.id);
 });

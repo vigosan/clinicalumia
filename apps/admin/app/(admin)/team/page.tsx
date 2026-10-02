@@ -2,7 +2,7 @@ import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
-import { CreateForm } from "./CreateForm";
+import { InviteMember } from "./InviteMember";
 import { MemberRow } from "./MemberRow";
 
 export default async function TeamPage() {
@@ -30,13 +30,11 @@ export default async function TeamPage() {
     <>
       <PageHeader
         title="Equipo"
-        description="Empleados con acceso al dashboard. Al invitar a alguien recibirá un email para crear su contraseña."
+        description="Empleados con acceso al dashboard."
+        actions={<InviteMember specialties={specialtyList} />}
       />
-      <Card>
-        <CreateForm specialties={specialtyList} />
-      </Card>
       {!hasEmployees && (
-        <EmptyState title="Aún no hay empleados. Invita al primero arriba." />
+        <EmptyState title="Aún no hay empleados. Invita al primero con «Invitar a un empleado»." />
       )}
       <Card className="p-2">
         <ul>
