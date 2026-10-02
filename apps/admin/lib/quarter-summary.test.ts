@@ -54,6 +54,8 @@ function invoice(overrides: Partial<QuarterInvoice> = {}): QuarterInvoice {
     replaces: null,
     rectifies: null,
     replaced_by: null,
+    rectified_by: null,
+    corrected_by: null,
     snapshot: snapshot(),
     ...overrides,
   };
@@ -438,6 +440,22 @@ describe("ledgerRows", () => {
       invoice({ status: "replaced", replaced_by: null }),
     ]);
     expect(row?.status).not.toContain("null");
+  });
+
+  it("dice «Rectificada por» en la factura rectificada, igual que la lista de Facturas del panel, para que la gestoría no la tome por vigente", () => {
+    const [row] = ledgerRows([invoice({ rectified_by: "R5/26" })]);
+    expect(row?.status).toBe("Rectificada por R5/26");
+  });
+
+  it("dice también qué completa la corrige cuando se corrigió el destinatario, para que la gestoría encuentre la factura vigente", () => {
+    const [row] = ledgerRows([
+      invoice({
+        kind: "full",
+        rectified_by: "R6/26",
+        corrected_by: "12/26",
+      }),
+    ]);
+    expect(row?.status).toBe("Rectificada por R6/26 · Corregida por 12/26");
   });
 
   it("muestra «Consumidor final» cuando una simplificada no tiene destinatario", () => {

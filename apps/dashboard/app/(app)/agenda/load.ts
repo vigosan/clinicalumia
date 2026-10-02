@@ -9,6 +9,7 @@ import { createClient } from "@clinicalumia/api/server";
 import type { ScheduleBlock } from "@/lib/agenda";
 import { isUuid, visibleHours, visibleWeekHours } from "@/lib/agenda";
 import { type Closure, closureOn, loadClosures } from "@/lib/closures";
+import { type AgendaPaymentIcon, agendaPaymentIcon } from "@/lib/payments";
 
 export type AgendaColumn = {
   id: string;
@@ -28,6 +29,7 @@ export type AgendaAppointment = {
   origin: "staff" | "web";
   patientName: string;
   serviceName: string;
+  paymentIcon: AgendaPaymentIcon | null;
 };
 
 export type AgendaBusy = {
@@ -94,27 +96,38 @@ function overlapsDay(
   );
 }
 
-function toAppointment(row: {
-  id: string;
-  professional_id: string;
-  starts_at: string;
-  ends_at: string;
-  status: string;
-  origin: string;
-  patient: { first_name: string; last_name: string } | null;
-  service: { name: string } | null;
-}): AgendaAppointment {
+function toAppointment(
+  row: {
+    id: string;
+    professional_id: string;
+    starts_at: string;
+    ends_at: string;
+    status: string;
+    origin: string;
+    patient: { first_name: string; last_name: string } | null;
+    service: { name: string } | null;
+    payments: { voided_at: string | null }[];
+  },
+  now: Date,
+): AgendaAppointment {
+  const status = row.status as "scheduled" | "no_show";
   return {
     id: row.id,
     professionalId: row.professional_id,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
-    status: row.status as "scheduled" | "no_show",
+    status,
     origin: row.origin as "staff" | "web",
     patientName: row.patient
       ? `${row.patient.first_name} ${row.patient.last_name}`
       : "",
     serviceName: row.service?.name ?? "",
+    paymentIcon: agendaPaymentIcon({
+      status,
+      startsAt: row.starts_at,
+      paid: row.payments.some((payment) => payment.voided_at === null),
+      now,
+    }),
   };
 }
 
@@ -230,7 +243,7 @@ export async function loadAgenda({
   const appointmentsQuery = supabase
     .from("appointments")
     .select(
-      "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name)",
+      "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name), payments(voided_at)",
     )
     .neq("status", "cancelled")
     .lt("starts_at", bounds.end)
@@ -286,7 +299,9 @@ export async function loadAgenda({
   const columns = [...activeColumns, ...formerColumns];
   const columnIds = columns.map((column) => column.id);
 
-  const appointments: AgendaAppointment[] = appointmentRows.map(toAppointment);
+  const appointments: AgendaAppointment[] = appointmentRows.map((row) =>
+    toAppointment(row, new Date()),
+  );
 
   const colleagueIds = isOwner ? [] : columnIds.filter((id) => id !== self.id);
 
@@ -418,7 +433,7 @@ async function loadWeekAgenda(
     supabase
       .from("appointments")
       .select(
-        "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name)",
+        "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name), payments(voided_at)",
       )
       .eq("professional_id", targetPersonId)
       .neq("status", "cancelled")
@@ -441,7 +456,9 @@ async function loadWeekAgenda(
   if (schedulesError || !scheduleRows) return { ok: false };
   if (!closures) return { ok: false };
 
-  const appointments = appointmentRows.map(toAppointment);
+  const appointments = appointmentRows.map((row) =>
+    toAppointment(row, new Date()),
+  );
   const timeOff = timeOffRows.map(toTimeOff);
 
   const weekDays: WeekDayData[] = days.map((day) => ({

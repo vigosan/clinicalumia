@@ -1,8 +1,10 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { Badge } from "@clinicalumia/ui/badge";
+import { CircleCheck, Euro, UserX } from "lucide-react";
 import Link from "next/link";
 import type { Block, ScheduleBlock, SpecialtyTone } from "@/lib/agenda";
 import type { Closure } from "@/lib/closures";
+import type { AgendaPaymentIcon, AgendaPaymentState } from "@/lib/payments";
 
 export const PX_PER_MINUTE = 2;
 export const SLOT_MINUTES = 15;
@@ -85,7 +87,47 @@ export type BlockContent = {
   dimmed: boolean;
   toneClass: string;
   webBooking?: boolean;
+  paymentIcon?: AgendaPaymentIcon | null;
 };
+
+const PAYMENT_ICONS: Record<AgendaPaymentState, typeof CircleCheck> = {
+  paid: CircleCheck,
+  pending: Euro,
+  no_show: UserX,
+};
+
+const PAYMENT_ICON_TONES: Record<AgendaPaymentState, string> = {
+  paid: "",
+  pending: "text-warning-800",
+  no_show: "",
+};
+
+function BlockTitle({
+  title,
+  paymentIcon,
+  className,
+}: {
+  title: string;
+  paymentIcon?: AgendaPaymentIcon | null;
+  className: string;
+}) {
+  if (!paymentIcon) return <p className={className}>{title}</p>;
+  const Icon = PAYMENT_ICONS[paymentIcon.state];
+  return (
+    <p className={`flex items-center gap-1 ${className}`}>
+      <span
+        data-testid="appointment-payment-icon"
+        data-state={paymentIcon.state}
+        title={paymentIcon.label}
+        className={`shrink-0 ${PAYMENT_ICON_TONES[paymentIcon.state]}`}
+      >
+        <Icon aria-hidden className="size-3.5" />
+        <span className="sr-only">{paymentIcon.label}</span>
+      </span>
+      <span className="truncate">{title}</span>
+    </p>
+  );
+}
 
 export type PositionedBlock = {
   id: string;
@@ -190,7 +232,11 @@ export function AgendaColumnGrid({
                   Reserva web
                 </Badge>
               )}
-              <p className="truncate font-medium">{content.title}</p>
+              <BlockTitle
+                title={content.title}
+                paymentIcon={content.paymentIcon}
+                className="truncate font-medium"
+              />
               <p className="truncate">{content.subtitle}</p>
             </Link>
           );
@@ -238,7 +284,11 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
                 Reserva web
               </Badge>
             )}
-            <p className="font-medium">{content.title}</p>
+            <BlockTitle
+              title={content.title}
+              paymentIcon={content.paymentIcon}
+              className="font-medium"
+            />
             <p className="text-xs">{content.subtitle}</p>
           </Link>
         ) : (

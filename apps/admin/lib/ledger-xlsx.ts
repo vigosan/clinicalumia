@@ -15,7 +15,7 @@ const LEDGER_COLUMNS: { header: string; width: number; numFmt?: string }[] = [
   { header: "Número", width: 12 },
   { header: "Tipo", width: 14 },
   { header: "Sustituye a / Rectifica a", width: 24 },
-  { header: "Estado", width: 22 },
+  { header: "Estado", width: 40 },
   { header: "Cliente", width: 28 },
   { header: "NIF", width: 12 },
   { header: "Concepto", width: 40 },

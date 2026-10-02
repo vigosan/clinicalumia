@@ -507,7 +507,7 @@ test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la 
   }
 });
 
-test("la página de cobros muestra los cobros del día con sus totales por forma de pago, el anulado se ve pero no suma, y el filtro por profesional funciona", async ({
+test("la página de cobros muestra los cobros del día con sus totales por forma de pago, el anulado el mismo día se ve con su anulación y no suma, y el filtro por profesional funciona", async ({
   page,
 }) => {
   const date = addDays(todayInMadrid(), -1);
@@ -561,12 +561,16 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
       .filter({ hasText: cashPatientName })
       .getByTestId("payment-state"),
   ).toHaveText("Válido");
+  const today = todayInMadrid();
   await expect(
     page
       .getByTestId("payment-row")
       .filter({ hasText: voidedPatientName })
       .getByTestId("payment-state"),
-  ).toHaveText("Anulado · Cobrado por error");
+  ).toHaveText([
+    `Anulado el ${today.slice(8, 10)}/${today.slice(5, 7)}`,
+    "Anulado · Cobrado por error",
+  ]);
 
   await selectOption(page.getByTestId("payments-professional"), employee.id);
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
@@ -589,12 +593,129 @@ test("la página de cobros muestra los cobros del día con sus totales por forma
     page.getByTestId("payments-professional"),
     otherEmployee.id,
   );
-  await expect(page.getByTestId("payment-row")).toHaveCount(1);
-  await expect(page.getByTestId("payment-state")).toHaveText(
-    "Anulado · Cobrado por error",
-  );
+  await expect(page.getByTestId("payment-row")).toHaveCount(2);
+  await expect(page.getByTestId("payment-row-amount")).toHaveText([
+    "55,00 €",
+    "-55,00 €",
+  ]);
   await expect(page.getByTestId("payments-total-method")).toHaveCount(0);
   await expect(page.getByTestId("payments-total-amount")).toHaveText("0,00 €");
+});
+
+test("una anulación sale en Cobros el día en que se anula, en negativo, y la caja del día del cobro no cambia", async ({
+  page,
+}) => {
+  const today = todayInMadrid();
+  const yesterday = addDays(today, -1);
+  const employee = await createEmployee("Profesional Anulación Otro Día");
+  const appointmentId = await createAppointment(
+    employee.id,
+    addDays(today, -3),
+  );
+  collectAsStaff(employee.id, appointmentId, 5500);
+  const { error: backdateError } = await admin
+    .from("payments")
+    .update({ collected_at: `${yesterday} 12:00:00 Europe/Madrid` })
+    .eq("appointment_id", appointmentId);
+  expect(backdateError).toBeNull();
+
+  await signIn(page, DASHBOARD, "info@clinicalumia.es");
+  await openAppointment(page, addDays(today, -3), appointmentId);
+  await page.getByTestId("payment-void").click();
+  await page.getByTestId("payment-void-reason").fill("Devuelto al paciente");
+  await page.getByTestId("payment-void-confirm").click();
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Pendiente de cobro",
+  );
+
+  await page.goto(
+    `${DASHBOARD}/cobros?desde=${yesterday}&hasta=${yesterday}&profesional=${employee.id}`,
+  );
+  await expect(page.getByTestId("payment-row")).toHaveCount(1);
+  await expect(page.getByTestId("payment-row")).toHaveAttribute(
+    "data-entry",
+    "collected",
+  );
+  await expect(page.getByTestId("payment-row-amount")).toHaveText("55,00 €");
+  await expect(page.getByTestId("payment-state")).toHaveText(
+    `Anulado el ${today.slice(8, 10)}/${today.slice(5, 7)}`,
+  );
+  await expect(page.getByTestId("payments-total-amount")).toHaveText("55,00 €");
+
+  await page.goto(
+    `${DASHBOARD}/cobros?desde=${today}&hasta=${today}&profesional=${employee.id}`,
+  );
+  await expect(page.getByTestId("payment-row")).toHaveCount(1);
+  await expect(page.getByTestId("payment-row")).toHaveAttribute(
+    "data-entry",
+    "voided",
+  );
+  await expect(page.getByTestId("payment-row-amount")).toHaveText("-55,00 €");
+  await expect(page.getByTestId("payment-state")).toHaveText(
+    "Anulado · Devuelto al paciente",
+  );
+  await expect(
+    page.locator('[data-testid="payments-total-method"][data-method="card"]'),
+  ).toContainText("-55,00 €");
+  await expect(page.getByTestId("payments-total-amount")).toHaveText(
+    "-55,00 €",
+  );
+
+  await page.goto(
+    `${DASHBOARD}/cobros?desde=${yesterday}&hasta=${today}&profesional=${employee.id}`,
+  );
+  await expect(page.getByTestId("payment-row")).toHaveCount(2);
+  await expect(page.getByTestId("payments-total-amount")).toHaveText("0,00 €");
+});
+
+test("la agenda marca cada cita con un icono de cobrada, pendiente o no presentada, también en el móvil", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -3);
+  const employee = await createEmployee("Profesional Iconos Agenda");
+  const paidId = await createAppointment(employee.id, date, "09:00", "10:00");
+  const pendingId = await createAppointment(
+    employee.id,
+    date,
+    "11:00",
+    "12:00",
+  );
+  const noShowId = await createAppointment(employee.id, date, "13:00", "14:00");
+  collectAsStaff(employee.id, paidId, 5500);
+  const { error: noShowError } = await admin
+    .from("appointments")
+    .update({ status: "no_show" })
+    .eq("id", noShowId);
+  expect(noShowError).toBeNull();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${date}`);
+
+  const block = (appointmentId: string) =>
+    page
+      .locator(
+        `[data-testid="appointment-block"][data-appointment="${appointmentId}"]`,
+      )
+      .filter({ visible: true });
+  const icon = (appointmentId: string) =>
+    block(appointmentId).getByTestId("appointment-payment-icon");
+  const expectIcons = async () => {
+    await expect(icon(paidId)).toHaveAttribute("data-state", "paid");
+    await expect(icon(paidId)).toHaveText("Cobrada");
+    await expect(icon(pendingId)).toHaveAttribute("data-state", "pending");
+    await expect(icon(pendingId)).toHaveText("Pendiente de cobro");
+    await expect(icon(noShowId)).toHaveAttribute("data-state", "no_show");
+    await expect(icon(noShowId)).toHaveText("No presentada");
+    for (const id of [paidId, pendingId, noShowId]) {
+      await expect(icon(id).locator("svg")).toBeVisible();
+    }
+  };
+  await expectIcons();
+  await expect(block(pendingId)).toContainText(await patientNameOf(pendingId));
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expectIcons();
 });
 
 test("la pestaña Pendientes cuenta las citas sin cobrar, se cobra desde ella sin salir de Cobros, y una cancelada no aparece", async ({

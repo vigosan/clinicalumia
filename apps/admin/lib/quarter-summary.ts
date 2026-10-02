@@ -17,6 +17,8 @@ export type QuarterInvoice = {
   replaces: string | null;
   rectifies: string | null;
   replaced_by: string | null;
+  rectified_by: string | null;
+  corrected_by: string | null;
   snapshot: InvoiceSnapshot;
 };
 
@@ -39,7 +41,7 @@ type QuarterSummary = {
 };
 
 export const QUARTER_TOTALS_NOTE =
-  "Las rectificativas restan. Una completa que sustituye a una simplificada aparece en el libro pero no suma: ya cuenta la simplificada original.";
+  "Las rectificativas restan: la factura rectificada sigue sumando y su rectificativa la anula en negativo, también cuando es una completa. Una completa que sustituye a una simplificada aparece en el libro pero no suma: ya cuenta la simplificada original. Al corregir el destinatario de una completa, su rectificativa la anula y la nueva completa suma en su lugar.";
 
 function addsToTotals(invoice: QuarterInvoice): boolean {
   return !(invoice.kind === "full" && invoice.replaces !== null);
@@ -105,6 +107,9 @@ function relatedCode(invoice: QuarterInvoice): string {
 function statusLabel(invoice: QuarterInvoice): string {
   if (invoice.status === "replaced")
     return `Sustituida por ${invoice.replaced_by ?? ""}`;
+  if (invoice.rectified_by && invoice.corrected_by)
+    return `Rectificada por ${invoice.rectified_by} · Corregida por ${invoice.corrected_by}`;
+  if (invoice.rectified_by) return `Rectificada por ${invoice.rectified_by}`;
   return "Emitida";
 }
 

@@ -167,12 +167,12 @@ export default async function CobrosPage({
                   <TableBody>
                     {payments.map((payment) => (
                       <TableRow
-                        key={payment.id}
+                        key={`${payment.id}-${payment.entry}`}
                         data-testid="payment-row"
-                        className={payment.voidedAt ? "opacity-60" : undefined}
+                        data-entry={payment.entry}
                       >
                         <TableCell label={momentHeader(showDate)}>
-                          {formatPaymentMoment(payment.collectedAt, showDate)}
+                          {formatPaymentMoment(payment.moment, showDate)}
                         </TableCell>
                         <TableCell className="font-medium max-md:order-first max-md:text-[15px]">
                           <Link href={`/patients/${payment.patientId}`}>
@@ -186,7 +186,10 @@ export default async function CobrosPage({
                           {nameById.get(payment.professionalId) ??
                             "Profesional"}
                         </TableCell>
-                        <TableCell label="Importe">
+                        <TableCell
+                          label="Importe"
+                          data-testid="payment-row-amount"
+                        >
                           {formatEuros(payment.amountCents)}
                         </TableCell>
                         <TableCell label="Forma de pago">

@@ -106,6 +106,27 @@ export function paymentStatus({
   return { kind: "pending", label: "Pendiente de cobro" };
 }
 
+export type AgendaPaymentState = "paid" | "pending" | "no_show";
+
+export type AgendaPaymentIcon = { state: AgendaPaymentState; label: string };
+
+export function agendaPaymentIcon({
+  status,
+  startsAt,
+  paid,
+  now,
+}: {
+  status: "scheduled" | "no_show";
+  startsAt: string;
+  paid: boolean;
+  now: Date;
+}): AgendaPaymentIcon | null {
+  if (paid) return { state: "paid", label: "Cobrada" };
+  if (status === "no_show") return { state: "no_show", label: "No presentada" };
+  if (new Date(startsAt).getTime() > now.getTime()) return null;
+  return { state: "pending", label: "Pendiente de cobro" };
+}
+
 export type MethodTotal = { method: PaymentMethod; cents: number };
 
 export type PaymentHistoryRow = {

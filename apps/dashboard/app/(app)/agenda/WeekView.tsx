@@ -60,6 +60,7 @@ function buildDayBlocks(
       dimmed: appointment.status === "no_show",
       toneClass,
       webBooking: appointment.origin === "web",
+      paymentIcon: appointment.paymentIcon,
     });
   }
 

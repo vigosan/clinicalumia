@@ -1293,8 +1293,10 @@ export type Database = {
           amount_cents: number
           collected_at: string
           collected_by: string
+          entry: string
           id: string
           method: Database["public"]["Enums"]["payment_method"]
+          moment: string
           patient_id: string
           patient_name: string
           professional_id: string

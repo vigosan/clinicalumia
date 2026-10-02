@@ -65,6 +65,8 @@ const invoices: QuarterInvoice[] = [
     replaces: null,
     rectifies: null,
     replaced_by: null,
+    rectified_by: "R3/26",
+    corrected_by: null,
     snapshot,
   },
   {
@@ -76,6 +78,8 @@ const invoices: QuarterInvoice[] = [
     replaces: null,
     rectifies: "1347/26",
     replaced_by: null,
+    rectified_by: null,
+    corrected_by: null,
     snapshot: {
       ...snapshot,
       lines: snapshot.lines.map((line) => ({

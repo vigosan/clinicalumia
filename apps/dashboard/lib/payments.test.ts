@@ -1,6 +1,7 @@
 import { madridInstant } from "@clinicalumia/api/madrid-time";
 import { describe, expect, it } from "vitest";
 import {
+  agendaPaymentIcon,
   canVoidPayment,
   formatEuros,
   methodLabel,
@@ -568,5 +569,65 @@ describe("canVoidPayment", () => {
         now: new Date(madridInstant("2026-11-15", "10:00")),
       }),
     ).toBe(true);
+  });
+});
+
+describe("agendaPaymentIcon", () => {
+  const now = new Date("2026-09-30T12:00:00Z");
+  const started = "2026-09-30T10:00:00Z";
+
+  it("marks a collected appointment as paid, so closing the day doesn't need opening each one", () => {
+    expect(
+      agendaPaymentIcon({
+        status: "scheduled",
+        startsAt: started,
+        paid: true,
+        now,
+      }),
+    ).toEqual({ state: "paid", label: "Cobrada" });
+  });
+
+  it("marks a started appointment without a payment as pending, the ones still to collect", () => {
+    expect(
+      agendaPaymentIcon({
+        status: "scheduled",
+        startsAt: started,
+        paid: false,
+        now,
+      }),
+    ).toEqual({ state: "pending", label: "Pendiente de cobro" });
+  });
+
+  it("marks a no-show as such and not as pending, since it is not charged", () => {
+    expect(
+      agendaPaymentIcon({
+        status: "no_show",
+        startsAt: started,
+        paid: false,
+        now,
+      }),
+    ).toEqual({ state: "no_show", label: "No presentada" });
+  });
+
+  it("still says paid for a no-show that was charged anyway, because the money is what the till needs to know", () => {
+    expect(
+      agendaPaymentIcon({
+        status: "no_show",
+        startsAt: started,
+        paid: true,
+        now,
+      }),
+    ).toEqual({ state: "paid", label: "Cobrada" });
+  });
+
+  it("shows nothing for an appointment that hasn't started, so future blocks stay clean", () => {
+    expect(
+      agendaPaymentIcon({
+        status: "scheduled",
+        startsAt: "2026-09-30T15:00:00Z",
+        paid: false,
+        now,
+      }),
+    ).toBeNull();
   });
 });

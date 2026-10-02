@@ -70,13 +70,18 @@ export function momentHeader(includeDate: boolean): string {
 }
 
 export function paymentStateLabel({
+  entry,
   voidedAt,
   voidReason,
 }: {
+  entry: PaymentEntry;
   voidedAt: string | null;
   voidReason: string;
 }): string {
-  return voidedAt ? `Anulado · ${voidReason}` : "Válido";
+  if (entry === "voided") return `Anulado · ${voidReason}`;
+  if (!voidedAt) return "Válido";
+  const { date } = madridDateTime(voidedAt);
+  return `Anulado el ${date.slice(8, 10)}/${date.slice(5, 7)}`;
 }
 
 export type StaffOption = {
@@ -85,8 +90,12 @@ export type StaffOption = {
   specialtyName: string | null;
 };
 
+export type PaymentEntry = "collected" | "voided";
+
 export type PaymentRow = {
   id: string;
+  entry: PaymentEntry;
+  moment: string;
   amountCents: number;
   method: PaymentMethod;
   collectedAt: string;
@@ -173,6 +182,8 @@ export async function loadCobros(
 
   const payments: PaymentRow[] = (rows ?? []).map((row) => ({
     id: row.id,
+    entry: row.entry as PaymentEntry,
+    moment: row.moment,
     amountCents: row.amount_cents,
     method: row.method as PaymentMethod,
     collectedAt: row.collected_at,
@@ -186,7 +197,7 @@ export async function loadCobros(
   }));
 
   const methods = (totalRows ?? [])
-    .filter((row) => row.cents > 0)
+    .filter((row) => row.cents !== 0)
     .map((row) => ({ method: row.method as PaymentMethod, cents: row.cents }));
   const totals = {
     methods,

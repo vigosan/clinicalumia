@@ -258,11 +258,11 @@ select pg_temp.act_as('8a000000-0000-0000-0000-000000000003');
 select is(public.suggested_amount('8a000000-0000-0000-0000-0000000000d2'), 4500,
   'the owner can see the proposed amount for any professional''s appointment');
 select results_eq(
-  $$ select patient_name, voided_at is not null, void_reason
+  $$ select entry, patient_name, voided_at is not null, void_reason
      from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'))
      where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1') $$,
-  $$ values ('Marta ListaCobros', true, 'Pagó en efectivo') $$,
-  'the owner sees any employee''s voided payment in the list, with who and why');
+  $$ values ('collected', 'Marta ListaCobros', true, 'Pagó en efectivo'), ('voided', 'Marta ListaCobros', true, 'Pagó en efectivo') $$,
+  'the owner sees any employee''s voided payment in the list, as collected and as voided, with who and why');
 select is(
   (select count(*) from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'), '8a000000-0000-0000-0000-000000000001')
    where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1')),
@@ -271,8 +271,8 @@ select is(
 select is(
   (select count(*) from public.list_payments(pg_temp.at_madrid(0, '00:00'), pg_temp.at_madrid(1, '00:00'), '8a000000-0000-0000-0000-000000000002')
    where id = (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000e1')),
-  1::bigint,
-  'filtering the list by the right professional includes the payment');
+  2::bigint,
+  'filtering the list by the right professional includes the payment and its same-day void');
 select lives_ok($$ select public.void_payment(
     (select id from public.payments where appointment_id = '8a000000-0000-0000-0000-0000000000d4'), 'Revisión de caja') $$,
   'the owner can void a payment taken by anyone');

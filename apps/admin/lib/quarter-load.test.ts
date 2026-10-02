@@ -56,6 +56,8 @@ function row(overrides: Record<string, unknown> = {}) {
     replaces: null,
     rectifies: null,
     replaced_by: [],
+    rectified_by: [],
+    corrected_by: [],
     ...overrides,
   };
 }
@@ -75,11 +77,11 @@ describe("loadQuarterInvoices", () => {
     await loadQuarterInvoices(client as never, 2026, 3);
     const columns = String(calls.select.mock.calls[0]?.[0]).replace(/\s+/g, "");
     expect(columns).toBe(
-      "id,code,kind,status,issued_at,snapshot,replaces:replaces_invoice_id(code),rectifies:rectifies_invoice_id(code),replaced_by:invoices!replaces_invoice_id(code)",
+      "id,code,kind,status,issued_at,snapshot,replaces:replaces_invoice_id(code),rectifies:rectifies_invoice_id(code),replaced_by:invoices!replaces_invoice_id(code),rectified_by:invoices!rectifies_invoice_id(code),corrected_by:invoices!corrects_invoice_id(code)",
     );
   });
 
-  it("flattens the related invoices to their codes, so the ledger can say who replaces or rectifies whom", async () => {
+  it("flattens the related invoices to their codes, so the ledger can say who replaces, rectifies or corrects whom", async () => {
     const { client } = fakeClient([
       {
         data: [
@@ -90,6 +92,12 @@ describe("loadQuarterInvoices", () => {
             kind: "rectifying",
             rectifies: { code: "3/26" },
           }),
+          row({
+            code: "3/26",
+            kind: "full",
+            rectified_by: [{ code: "R1/26" }],
+            corrected_by: [{ code: "4/26" }],
+          }),
         ],
         error: null,
       },
@@ -98,16 +106,56 @@ describe("loadQuarterInvoices", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(
-      result.invoices.map(({ code, replaces, rectifies, replaced_by }) => ({
-        code,
-        replaces,
-        rectifies,
-        replaced_by,
-      })),
+      result.invoices.map(
+        ({
+          code,
+          replaces,
+          rectifies,
+          replaced_by,
+          rectified_by,
+          corrected_by,
+        }) => ({
+          code,
+          replaces,
+          rectifies,
+          replaced_by,
+          rectified_by,
+          corrected_by,
+        }),
+      ),
     ).toEqual([
-      { code: "1/26", replaces: null, rectifies: null, replaced_by: "2/26" },
-      { code: "2/26", replaces: "1/26", rectifies: null, replaced_by: null },
-      { code: "R1/26", replaces: null, rectifies: "3/26", replaced_by: null },
+      {
+        code: "1/26",
+        replaces: null,
+        rectifies: null,
+        replaced_by: "2/26",
+        rectified_by: null,
+        corrected_by: null,
+      },
+      {
+        code: "2/26",
+        replaces: "1/26",
+        rectifies: null,
+        replaced_by: null,
+        rectified_by: null,
+        corrected_by: null,
+      },
+      {
+        code: "R1/26",
+        replaces: null,
+        rectifies: "3/26",
+        replaced_by: null,
+        rectified_by: null,
+        corrected_by: null,
+      },
+      {
+        code: "3/26",
+        replaces: null,
+        rectifies: null,
+        replaced_by: null,
+        rectified_by: "R1/26",
+        corrected_by: "4/26",
+      },
     ]);
   });
 

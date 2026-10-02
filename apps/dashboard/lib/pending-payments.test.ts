@@ -78,7 +78,7 @@ describe("loadPendingPayments", () => {
     });
   });
 
-  it("lists the most recent unpaid visit first, like the «Registrar cobro» dialog", async () => {
+  it("lists the oldest unpaid visit first, as spec 4a asks, so the visits closest to dropping out of the window are collected first", async () => {
     const row = (id: string, startsAt: string) => ({
       appointment_id: id,
       starts_at: startsAt,
@@ -90,14 +90,14 @@ describe("loadPendingPayments", () => {
     });
     const { client } = fakeClient({
       rows: [
-        row("old", "2026-09-01T09:00:00Z"),
         row("recent", "2026-09-27T09:00:00Z"),
+        row("old", "2026-09-01T09:00:00Z"),
       ],
     });
     const result = await loadPendingPayments(client as never, NOW);
     expect(result.ok && result.data.map((r) => r.id)).toEqual([
-      "recent",
       "old",
+      "recent",
     ]);
   });
 

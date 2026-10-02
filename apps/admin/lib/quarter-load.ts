@@ -8,7 +8,7 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 export const QUARTER_PAGE_SIZE = 1000;
 
 const COLUMNS =
-  "id, code, kind, status, issued_at, snapshot, replaces:replaces_invoice_id(code), rectifies:rectifies_invoice_id(code), replaced_by:invoices!replaces_invoice_id(code)";
+  "id, code, kind, status, issued_at, snapshot, replaces:replaces_invoice_id(code), rectifies:rectifies_invoice_id(code), replaced_by:invoices!replaces_invoice_id(code), rectified_by:invoices!rectifies_invoice_id(code), corrected_by:invoices!corrects_invoice_id(code)";
 
 export async function loadQuarterInvoices(
   supabase: Client,
@@ -40,6 +40,8 @@ export async function loadQuarterInvoices(
         replaces: row.replaces?.code ?? null,
         rectifies: row.rectifies?.code ?? null,
         replaced_by: row.replaced_by[0]?.code ?? null,
+        rectified_by: row.rectified_by[0]?.code ?? null,
+        corrected_by: row.corrected_by[0]?.code ?? null,
       });
     }
   }

@@ -66,6 +66,8 @@ const invoices: QuarterInvoice[] = [
     replaces: null,
     rectifies: null,
     replaced_by: "2/26",
+    rectified_by: null,
+    corrected_by: null,
     snapshot: snapshot(),
   },
   {
@@ -77,6 +79,8 @@ const invoices: QuarterInvoice[] = [
     replaces: "1/26",
     rectifies: null,
     replaced_by: null,
+    rectified_by: null,
+    corrected_by: null,
     snapshot: snapshot({
       recipient: {
         name: "Empresa Cliente SL",
@@ -96,6 +100,8 @@ const invoices: QuarterInvoice[] = [
     replaces: null,
     rectifies: null,
     replaced_by: null,
+    rectified_by: "R1/26",
+    corrected_by: null,
     snapshot: snapshot({
       lines: [line(), RATE_21],
       totals: { base_cents: 12938, vat_cents: 1562, total_cents: 14500 },
@@ -114,6 +120,8 @@ const invoices: QuarterInvoice[] = [
     replaces: null,
     rectifies: "3/26",
     replaced_by: null,
+    rectified_by: null,
+    corrected_by: null,
     snapshot: snapshot({
       lines: [
         line({ base_cents: -5500, total_cents: -5500 }),
@@ -251,6 +259,23 @@ describe("ledgerXlsx", () => {
     expect(row.getCell(13).value).toBe("Sí");
   });
 
+  it("says in the «Estado» column which rectifying invoice cancels a rectified one, so the gestoría sees it on the row itself and not only in the panel", async () => {
+    const workbook = await readBack(
+      await ledgerXlsx({ year: 2026, q: 3, invoices }),
+    );
+    const statuses: Record<string, unknown> = {};
+    workbook.getWorksheet("Facturas")!.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      statuses[`${row.getCell(2).value}`] = row.getCell(5).value;
+    });
+    expect(statuses).toEqual({
+      "1/26": "Sustituida por 2/26",
+      "2/26": "Emitida",
+      "3/26": "Rectificada por R1/26",
+      "R1/26": "Emitida",
+    });
+  });
+
   it("writes amounts as real numbers in euros, so the gestoría can add them up in Excel", async () => {
     const workbook = await readBack(
       await ledgerXlsx({ year: 2026, q: 3, invoices }),
@@ -324,7 +349,7 @@ describe("ledgerXlsx", () => {
     expect(net.getCell(4).value).toBe(55);
     expect(net.getCell(4).numFmt).toBe(EUROS);
     expect(rowByLabel(sheet, "Nota").getCell(2).value).toBe(
-      "Las rectificativas restan. Una completa que sustituye a una simplificada aparece en el libro pero no suma: ya cuenta la simplificada original.",
+      "Las rectificativas restan: la factura rectificada sigue sumando y su rectificativa la anula en negativo, también cuando es una completa. Una completa que sustituye a una simplificada aparece en el libro pero no suma: ya cuenta la simplificada original. Al corregir el destinatario de una completa, su rectificativa la anula y la nueva completa suma en su lugar.",
     );
   });
 

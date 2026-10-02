@@ -123,14 +123,29 @@ describe("momentHeader", () => {
 
 describe("paymentStateLabel", () => {
   it("labels a payment that still counts as current, so the state column is never blank", () => {
-    expect(paymentStateLabel({ voidedAt: null, voidReason: "" })).toBe(
-      "Válido",
-    );
-  });
-
-  it("shows why a payment was voided right in the list, instead of hiding it in a tooltip", () => {
     expect(
       paymentStateLabel({
+        entry: "collected",
+        voidedAt: null,
+        voidReason: "",
+      }),
+    ).toBe("Válido");
+  });
+
+  it("says when a collected payment was voided later, without hiding that the money was taken that day", () => {
+    expect(
+      paymentStateLabel({
+        entry: "collected",
+        voidedAt: "2026-10-02T10:00:00Z",
+        voidReason: "Cobrado por error",
+      }),
+    ).toBe("Anulado el 02/10");
+  });
+
+  it("shows why a payment was voided on the void's own row, instead of hiding it in a tooltip", () => {
+    expect(
+      paymentStateLabel({
+        entry: "voided",
         voidedAt: "2026-09-30T10:00:00Z",
         voidReason: "Cobrado por error",
       }),
@@ -308,54 +323,62 @@ describe("loadCobros", () => {
     expect(result.ok && result.data.isOwner).toBe(false);
   });
 
-  it("maps a payment row and keeps voided payments in the list", async () => {
+  it("maps a payment row and its void row, each on its own moment, so a void shows on the day it happened", async () => {
+    const source = {
+      id: "pay-1",
+      collected_at: "2026-09-30T09:00:00Z",
+      amount_cents: 4500,
+      method: "cash",
+      collected_by: "prof-1",
+      voided_at: "2026-10-02T10:00:00Z",
+      void_reason: "Cobrado por error",
+      professional_id: "prof-1",
+      patient_id: "pat-1",
+      patient_name: "Marta Paciente",
+      service_name: "Consulta",
+    };
     const { client } = fakeClient({
       payments: [
+        { ...source, entry: "collected", moment: "2026-09-30T09:00:00Z" },
         {
-          id: "pay-1",
-          collected_at: "2026-09-30T09:00:00Z",
-          amount_cents: 4500,
-          method: "cash",
-          collected_by: "prof-1",
-          voided_at: "2026-09-30T10:00:00Z",
-          void_reason: "Cobrado por error",
-          professional_id: "prof-1",
-          patient_id: "pat-1",
-          patient_name: "Marta Paciente",
-          service_name: "Consulta",
+          ...source,
+          entry: "voided",
+          moment: "2026-10-02T10:00:00Z",
+          amount_cents: -4500,
         },
       ],
     });
     const result = await loadCobros(client as never, {
       desde: "2026-09-30",
-      hasta: "2026-09-30",
+      hasta: "2026-10-02",
       profesionalId: null,
     });
-    expect(result).toEqual({
-      ok: true,
-      data: {
-        payments: [
-          {
-            id: "pay-1",
-            collectedAt: "2026-09-30T09:00:00Z",
-            amountCents: 4500,
-            method: "cash",
-            collectedBy: "prof-1",
-            voidedAt: "2026-09-30T10:00:00Z",
-            voidReason: "Cobrado por error",
-            professionalId: "prof-1",
-            patientId: "pat-1",
-            patientName: "Marta Paciente",
-            serviceName: "Consulta",
-          },
-        ],
-        staffOptions: [],
-        nameById: new Map(),
-        isOwner: false,
-        totals: { methods: [], total: 0 },
-        truncated: false,
+    const row = {
+      id: "pay-1",
+      collectedAt: "2026-09-30T09:00:00Z",
+      method: "cash",
+      collectedBy: "prof-1",
+      voidedAt: "2026-10-02T10:00:00Z",
+      voidReason: "Cobrado por error",
+      professionalId: "prof-1",
+      patientId: "pat-1",
+      patientName: "Marta Paciente",
+      serviceName: "Consulta",
+    };
+    expect(result.ok && result.data.payments).toEqual([
+      {
+        ...row,
+        entry: "collected",
+        moment: "2026-09-30T09:00:00Z",
+        amountCents: 4500,
       },
-    });
+      {
+        ...row,
+        entry: "voided",
+        moment: "2026-10-02T10:00:00Z",
+        amountCents: -4500,
+      },
+    ]);
   });
 
   it("reports failure when any of the reads fails, instead of showing a partial or wrong reconciliation", async () => {
@@ -379,6 +402,27 @@ describe("loadCobros", () => {
       p_start: "2026-09-30T00:00:00+02:00",
       p_end: "2026-10-01T00:00:00+02:00",
       p_professional_id: "prof-2",
+    });
+  });
+
+  it("keeps a method whose voids outweigh its takings in the range, so the money given back is not hidden and the total matches Facturación", async () => {
+    const { client } = fakeClient({
+      totals: [
+        { method: "cash", cents: -4500 },
+        { method: "card", cents: 5500 },
+      ],
+    });
+    const result = await loadCobros(client as never, {
+      desde: "2026-10-01",
+      hasta: "2026-10-31",
+      profesionalId: null,
+    });
+    expect(result.ok && result.data.totals).toEqual({
+      methods: [
+        { method: "cash", cents: -4500 },
+        { method: "card", cents: 5500 },
+      ],
+      total: 1000,
     });
   });
 
@@ -408,6 +452,8 @@ describe("loadCobros", () => {
     const { client } = fakeClient({
       payments: Array.from({ length: 1000 }, (_, index) => ({
         id: `pay-${index}`,
+        entry: "collected",
+        moment: "2026-09-30T09:00:00Z",
         collected_at: "2026-09-30T09:00:00Z",
         amount_cents: 100,
         method: "cash",

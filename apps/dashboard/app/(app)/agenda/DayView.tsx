@@ -73,6 +73,7 @@ function buildBlockContents(
       toneClass:
         toneByColumn.get(appointment.professionalId) ?? TONE_CLASSES.neutral,
       webBooking: appointment.origin === "web",
+      paymentIcon: appointment.paymentIcon,
     });
   }
 

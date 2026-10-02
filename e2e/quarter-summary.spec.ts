@@ -241,10 +241,12 @@ test("la propietaria revisa un trimestre y descarga el libro de facturas con los
   const ledger = workbook.getWorksheet("Facturas")!;
   expect(ledger.rowCount).toBe(6);
   const codes: unknown[] = [];
+  const statuses: unknown[] = [];
   let ledgerTotal = 0;
   ledger.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     codes.push(row.getCell(2).value);
+    statuses.push(row.getCell(5).value);
     expect(row.getCell(13).value).toBe(
       row.getCell(3).value === "Completa" ? "No" : "Sí",
     );
@@ -253,6 +255,12 @@ test("la propietaria revisa un trimestre y descarga el libro de facturas con los
   });
   expect(codes.sort()).toEqual(invoices.map((invoice) => invoice.code).sort());
   expect(ledgerTotal).toBeCloseTo(145, 2);
+  const rectifying = invoices.find((invoice) => invoice.kind === "rectifying");
+  expect(
+    statuses.filter(
+      (status) => status === `Rectificada por ${rectifying?.code}`,
+    ),
+  ).toHaveLength(1);
 
   const summary = workbook.getWorksheet("Resumen")!;
   let net: unknown;
