@@ -61,7 +61,7 @@ export function PhotoCarousel({
           data-testid="carousel-prev"
           aria-label="Foto anterior"
           onClick={() => scroll(-1)}
-          className="cursor-pointer text-sage-800 transition-opacity hover:opacity-70"
+          className="cursor-pointer text-sage-500 transition-opacity hover:opacity-70"
         >
           <ArrowCircle direction="left" className="size-10 md:size-[3.49vw]" />
         </button>
@@ -73,7 +73,7 @@ export function PhotoCarousel({
           data-testid="carousel-next"
           aria-label="Foto siguiente"
           onClick={() => scroll(1)}
-          className="cursor-pointer text-sage-800 transition-opacity hover:opacity-70"
+          className="cursor-pointer text-sage-500 transition-opacity hover:opacity-70"
         >
           <ArrowCircle className="size-10 md:size-[3.49vw]" />
         </button>

@@ -25,14 +25,14 @@ export function BirthDateForm({
     >
       <input type="hidden" name="estado" value={estado} />
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-800 text-sm">Fecha de nacimiento</span>
+        <span className="text-ink-600 text-sm">Fecha de nacimiento</span>
         <input
           type="date"
           name="birth_date"
           required
           max={today}
           data-testid="birth-date-input"
-          className="rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-800 outline-none focus:border-sage-600"
+          className="rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600"
         />
       </label>
       {state?.error && (
@@ -48,7 +48,7 @@ export function BirthDateForm({
         type="submit"
         disabled={pending}
         data-testid="birth-date-submit"
-        className="cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
+        className="cursor-pointer self-start rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Guardando…" : "Continuar"}
       </button>

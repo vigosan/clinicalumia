@@ -100,7 +100,7 @@ export function CollaboratorDrawer() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="cursor-pointer rounded-full bg-sage-800 px-6 py-2.5 text-sm font-medium text-cream-50 transition hover:bg-sage-900"
+                className="cursor-pointer rounded-full bg-sage-700 px-6 py-2.5 text-sm font-medium text-cream-50 transition hover:bg-sage-800"
               >
                 Cerrar
               </button>
@@ -155,7 +155,7 @@ export function CollaboratorDrawer() {
 
               {state && "error" in state && (
                 <p
-                  className="text-sm text-red-700"
+                  className="text-sm text-red-600"
                   role="alert"
                   data-testid="collaborator-error"
                 >
@@ -168,7 +168,7 @@ export function CollaboratorDrawer() {
                   type="submit"
                   disabled={pending}
                   data-testid="collaborator-submit"
-                  className="cursor-pointer rounded-full bg-sage-800 px-6 py-3 text-sm font-medium text-cream-50 transition hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="cursor-pointer rounded-full bg-sage-700 px-6 py-3 text-sm font-medium text-cream-50 transition hover:bg-sage-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {pending ? "Enviando…" : "Enviar"}
                 </button>

@@ -19,7 +19,7 @@ export default function ConsentimientoPage() {
           <h1 className="font-bold text-ink-600 text-section">
             {consentTitle}
           </h1>
-          <p className="mt-4 mb-10 text-ink-800 text-lg leading-relaxed">
+          <p className="mt-4 mb-10 text-ink-500 text-lg leading-relaxed">
             Rellena tus datos, lee la información sobre protección de datos y
             firma al final.
           </p>

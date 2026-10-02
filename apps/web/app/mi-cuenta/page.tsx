@@ -25,9 +25,9 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-const cardClass = "rounded-3xl bg-cream-50 px-6 py-5 text-ink-800";
+const cardClass = "rounded-3xl bg-cream-50 px-6 py-5 text-ink-600";
 const pillClass =
-  "inline-flex h-10 items-center rounded-full border-2 border-sage-500 px-5 text-sage-800 text-sm transition-colors hover:bg-sage-800 hover:text-cream-50";
+  "inline-flex h-10 items-center rounded-full border-2 border-sage-500 px-5 text-sage-600 text-sm transition-colors hover:bg-sage-500 hover:text-cream-50";
 
 function Section({
   testId,
@@ -58,8 +58,8 @@ function Upcoming({ appointment }: { appointment: AppointmentRow }) {
       <p className="mt-1">
         {appointment.service_name} · {appointment.professional_name}
       </p>
-      <p className="mt-1 text-ink-800">Para {appointment.person_name}</p>
-      <p className="mt-3 text-ink-800 text-sm">
+      <p className="mt-1 text-ink-500">Para {appointment.person_name}</p>
+      <p className="mt-3 text-ink-500 text-sm">
         {changeWindowText(appointment)}
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
@@ -120,7 +120,7 @@ export default async function MiCuentaPage({
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto max-w-2xl">
           <h1 className="font-bold text-ink-600 text-section">Mi cuenta</h1>
-          <p className="mt-3 break-words text-ink-800 text-sm">
+          <p className="mt-3 break-words text-ink-500 text-sm">
             Has entrado como {user.email}
           </p>
 
@@ -128,7 +128,7 @@ export default async function MiCuentaPage({
             <p
               role="status"
               data-testid="account-notice"
-              className="mt-8 rounded-2xl border border-cream-200 bg-cream-100 px-4 py-3 text-ink-800"
+              className="mt-8 rounded-2xl border border-cream-200 bg-cream-100 px-4 py-3 text-ink-600"
             >
               {notice}
             </p>
@@ -163,17 +163,17 @@ export default async function MiCuentaPage({
                       {appointment.service_name} ·{" "}
                       {appointment.professional_name}
                     </p>
-                    <p className="mt-1 text-ink-800">
+                    <p className="mt-1 text-ink-500">
                       Para {appointment.person_name}
                     </p>
-                    <p className="mt-3 text-ink-800 text-sm">
+                    <p className="mt-3 text-ink-500 text-sm">
                       {statusLabel(appointment, now)}
                     </p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-ink-800">Aún no hay citas pasadas.</p>
+              <p className="text-ink-500">Aún no hay citas pasadas.</p>
             )}
           </Section>
 
@@ -186,7 +186,7 @@ export default async function MiCuentaPage({
                       {person.first_name} {person.last_name}
                     </p>
                     {person.is_minor && (
-                      <p className="mt-1 text-ink-800 text-sm">Menor</p>
+                      <p className="mt-1 text-ink-500 text-sm">Menor</p>
                     )}
                   </li>
                 ))}
@@ -209,11 +209,11 @@ export default async function MiCuentaPage({
                     <p className="font-bold">{contact.name}</p>
                     <dl className="mt-2 flex flex-col gap-2">
                       <div>
-                        <dt className="text-ink-800 text-sm">Teléfono</dt>
+                        <dt className="text-ink-500 text-sm">Teléfono</dt>
                         <dd>{contact.phone || "Sin teléfono"}</dd>
                       </div>
                       <div>
-                        <dt className="text-ink-800 text-sm">Dirección</dt>
+                        <dt className="text-ink-500 text-sm">Dirección</dt>
                         <dd className="break-words">
                           {contact.address || "Sin dirección"}
                         </dd>
@@ -237,7 +237,7 @@ export default async function MiCuentaPage({
             <button
               type="submit"
               data-testid="account-logout"
-              className="cursor-pointer rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900"
+              className="cursor-pointer rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700"
             >
               Salir
             </button>

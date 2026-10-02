@@ -45,14 +45,14 @@ export function TypedSignature({
   return (
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-800 text-sm">Escribe tu nombre</span>
+        <span className="text-ink-600 text-sm">Escribe tu nombre</span>
         <input
           type="text"
           value={name}
           onChange={(event) => onNameChange(event.target.value)}
           autoComplete="off"
           data-testid="signature-typed-input"
-          className="rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-800 outline-none focus:border-sage-600"
+          className="rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600"
         />
       </label>
       <div
@@ -62,7 +62,7 @@ export function TypedSignature({
       >
         {name}
       </div>
-      <span className="text-ink-800 text-sm">
+      <span className="text-ink-400 text-sm">
         Tu nombre escrito será tu firma
       </span>
     </div>

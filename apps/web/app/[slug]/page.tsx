@@ -53,7 +53,7 @@ export default async function ServicePage({ params }: Params) {
           <h1 className="mt-6 font-bold text-ink-600 text-section">
             {page.h1}
           </h1>
-          <p className="mt-6 max-w-[46ch] text-ink-800 text-lg leading-relaxed">
+          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
             {page.intro}
           </p>
           <div className="mt-8">
@@ -67,7 +67,7 @@ export default async function ServicePage({ params }: Params) {
           <h2 className="font-bold text-card text-ink-600 tracking-tight md:text-section">
             {page.whatIsTitle}
           </h2>
-          <p className="mt-5 text-ink-800 text-lg leading-relaxed">
+          <p className="mt-5 text-ink-500 text-lg leading-relaxed">
             {page.whatIs}
           </p>
         </div>
@@ -87,14 +87,14 @@ export default async function ServicePage({ params }: Params) {
                 <h3 className="font-bold text-ink-600 text-xl">
                   {treatment.name}
                 </h3>
-                <p className="mt-3 text-ink-800 leading-relaxed">
+                <p className="mt-3 text-ink-500 leading-relaxed">
                   {treatment.description}
                 </p>
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {treatment.signs.map((sign) => (
                     <li
                       key={sign}
-                      className="rounded-full bg-sage-500/15 px-4 py-1.5 text-ink-800 text-sm"
+                      className="rounded-full bg-sage-500/15 px-4 py-1.5 text-ink-600 text-sm"
                     >
                       {sign}
                     </li>
@@ -107,7 +107,7 @@ export default async function ServicePage({ params }: Params) {
       </section>
 
       <section className="px-6 pb-14 md:px-12 md:pb-20">
-        <div className="mx-auto max-w-6xl rounded-panel bg-sage-800 px-6 py-12 md:px-14 md:py-16">
+        <div className="mx-auto max-w-6xl rounded-panel bg-sage-500 px-6 py-12 md:px-14 md:py-16">
           <h2 className="font-bold text-card text-cream-50 tracking-tight md:text-section">
             Señales de alerta o motivos de consulta
           </h2>
@@ -132,14 +132,14 @@ export default async function ServicePage({ params }: Params) {
           <ol className="mt-8 flex flex-col gap-8">
             {page.steps.map((step, index) => (
               <li key={step.title} className="flex gap-6">
-                <span className="font-bold text-3xl text-sage-800 tabular-nums">
+                <span className="font-bold text-3xl text-sage-500 tabular-nums">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
                   <h3 className="font-bold text-ink-600 text-xl">
                     {step.title}
                   </h3>
-                  <p className="mt-2 text-ink-800 leading-relaxed">
+                  <p className="mt-2 text-ink-500 leading-relaxed">
                     {step.description}
                   </p>
                 </div>
@@ -158,7 +158,7 @@ export default async function ServicePage({ params }: Params) {
             {page.benefits.map((benefit) => (
               <li
                 key={benefit}
-                className="border-sage-400/50 border-b pb-3 text-ink-800"
+                className="border-sage-400/50 border-b pb-3 text-ink-500"
               >
                 {benefit}
               </li>
@@ -182,7 +182,7 @@ export default async function ServicePage({ params }: Params) {
                 >
                   <Link
                     href={`/${other.slug}`}
-                    className="text-ink-800 transition-opacity hover:opacity-70"
+                    className="text-ink-600 transition-opacity hover:opacity-70"
                   >
                     {other.title}
                   </Link>
@@ -198,7 +198,7 @@ export default async function ServicePage({ params }: Params) {
             {page.cta}
           </p>
           <PillLink href="/contacto">Pedir cita</PillLink>
-          <p className="text-ink-800">
+          <p className="text-ink-500">
             ¿Tienes dudas? Consulta las{" "}
             <Link
               href="/preguntas-frecuentes"
@@ -208,7 +208,7 @@ export default async function ServicePage({ params }: Params) {
             </Link>
             .
           </p>
-          <p className="text-ink-800 text-sm">
+          <p className="text-ink-400 text-sm">
             Atendemos pacientes de {site.city} y localidades cercanas como{" "}
             {nearbyTowns.join(", ")} y otros municipios de La Costera.
           </p>

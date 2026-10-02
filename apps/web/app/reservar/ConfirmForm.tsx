@@ -27,7 +27,7 @@ export function ConfirmForm({ estado }: { estado: string }) {
         type="submit"
         disabled={pending}
         data-testid="booking-confirm"
-        className="cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
+        className="cursor-pointer self-start rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Confirmando…" : "Confirmar cita"}
       </button>

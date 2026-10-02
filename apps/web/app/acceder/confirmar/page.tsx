@@ -16,7 +16,7 @@ export default async function ConfirmarPage({
           <h1 className="font-bold text-ink-600 text-section">
             Entra en tu cuenta
           </h1>
-          <p className="mt-3 mb-8 text-ink-800">
+          <p className="mt-3 mb-8 text-ink-500">
             Pulsa el botón para terminar de entrar en Clínica LUMIA.
           </p>
 
@@ -26,7 +26,7 @@ export default async function ConfirmarPage({
             <button
               type="submit"
               data-testid="access-confirm"
-              className="cursor-pointer rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900"
+              className="cursor-pointer rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700"
             >
               Entrar
             </button>

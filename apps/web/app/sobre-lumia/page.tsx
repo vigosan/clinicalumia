@@ -36,7 +36,7 @@ export default function SobreLumiaPage() {
           <h1 className="font-bold text-ink-600 text-section">
             El faro detrás de LUMIA
           </h1>
-          <p className="mt-6 max-w-[46ch] text-ink-800 text-lg leading-relaxed">
+          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
             Cuando el cuerpo aprende, todo cambia. LUMIA nace de una forma
             diferente de entender la logopedia. No se trata únicamente de
             corregir un sonido o trabajar una dificultad concreta, sino de
@@ -60,25 +60,25 @@ export default function SobreLumiaPage() {
             <h2 className="font-bold text-card text-ink-600 tracking-tight md:text-section">
               Quién es Patricia Hernán
             </h2>
-            <p className="text-ink-800 leading-relaxed">
+            <p className="text-ink-500 leading-relaxed">
               Al frente del proyecto está Patricia Hernán, logopeda
               especializada en trastornos orofaciales y terapia miofuncional,
               con más de diez años de experiencia clínica dedicados a mejorar
               funciones tan esenciales como la respiración, la deglución, la
               masticación, el habla y el desarrollo del lenguaje.
             </p>
-            <p className="font-medium text-ink-800">
+            <p className="font-medium text-ink-600">
               Para Patricia, cada tratamiento comienza con una pregunta: ¿qué
               está provocando realmente el problema?
             </p>
-            <p className="text-ink-800 leading-relaxed">
+            <p className="text-ink-500 leading-relaxed">
               Porque muchas veces el síntoma no es el origen. Una respiración
               oral, una deglución atípica, una alteración en la movilidad
               lingual o un frenillo restrictivo pueden pasar desapercibidos
               durante años y afectar al desarrollo, la salud y la calidad de
               vida sin que nadie relacione unas dificultades con otras.
             </p>
-            <p className="text-ink-800 leading-relaxed">
+            <p className="text-ink-500 leading-relaxed">
               Por eso, en {site.name} cada paciente recibe una valoración
               funcional completa para comprender cómo trabaja su sistema
               orofacial y diseñar un tratamiento totalmente personalizado.
@@ -88,7 +88,7 @@ export default function SobreLumiaPage() {
       </section>
 
       <section className="px-6 pb-14 md:px-12 md:pb-20">
-        <div className="mx-auto max-w-6xl rounded-panel bg-sage-800 px-6 py-14 md:px-14 md:py-20">
+        <div className="mx-auto max-w-6xl rounded-panel bg-sage-500 px-6 py-14 md:px-14 md:py-20">
           <h2 className="font-bold text-card text-cream-50 tracking-tight md:text-section">
             Una forma de entender la logopedia
           </h2>
@@ -118,14 +118,14 @@ export default function SobreLumiaPage() {
           <h2 className="font-bold text-card text-ink-600 tracking-tight md:text-section">
             Formación y especialización
           </h2>
-          <p className="mt-5 text-ink-800 leading-relaxed">
+          <p className="mt-5 text-ink-500 leading-relaxed">
             Patricia Hernán ha orientado su carrera hacia la evaluación y
             tratamiento de las alteraciones funcionales del sistema orofacial,
             manteniendo una formación continuada en terapia miofuncional y
             colaborando en el ámbito docente mediante la impartición de
             formación especializada.
           </p>
-          <p className="mt-4 text-ink-800 leading-relaxed">
+          <p className="mt-4 text-ink-500 leading-relaxed">
             Entre su trayectoria destaca la participación como docente en la
             Masterclass de Terapia Miofuncional aplicada en Logopedia,
             organizada por el Instituto Raimon Gaja (IRG) y eCampus University,
@@ -140,7 +140,7 @@ export default function SobreLumiaPage() {
             {specialties.map((item) => (
               <li
                 key={item}
-                className="border-sage-400/50 border-b pb-3 text-ink-800"
+                className="border-sage-400/50 border-b pb-3 text-ink-500"
               >
                 {item}
               </li>

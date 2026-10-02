@@ -10,7 +10,7 @@ type PersonAction = (
 ) => Promise<BookingFormState>;
 
 const fieldClass =
-  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-800 outline-none focus:border-sage-600";
+  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600";
 
 const RELATIONSHIP_OPTIONS = [
   { value: "madre", label: "Madre" },
@@ -40,7 +40,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-ink-800 text-sm">{label}</span>
+      <span className="text-ink-600 text-sm">{label}</span>
       <input
         type={type}
         name={name}
@@ -71,7 +71,7 @@ function PersonFields({
   return (
     <fieldset className="flex flex-col gap-4">
       <legend
-        className={hideLegend ? "sr-only" : "mb-2 font-bold text-ink-800"}
+        className={hideLegend ? "sr-only" : "mb-2 font-bold text-ink-600"}
       >
         {legend}
       </legend>
@@ -141,10 +141,10 @@ export function NewPersonForm({
 
       {!minorOnly && (
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 font-bold text-ink-800">
+          <legend className="mb-2 font-bold text-ink-600">
             ¿Para quién es?
           </legend>
-          <label className="flex items-center gap-3 text-ink-800">
+          <label className="flex items-center gap-3 text-ink-600">
             <input
               type="radio"
               name="para"
@@ -156,7 +156,7 @@ export function NewPersonForm({
             />
             Es para mí
           </label>
-          <label className="flex items-center gap-3 text-ink-800">
+          <label className="flex items-center gap-3 text-ink-600">
             <input
               type="radio"
               name="para"
@@ -184,7 +184,7 @@ export function NewPersonForm({
       {forMinor &&
         (guardians.length > 0 ? (
           <label className="flex flex-col gap-1.5">
-            <span className="text-ink-800 text-sm">
+            <span className="text-ink-600 text-sm">
               ¿Quién es su madre, padre o tutor?
             </span>
             <select
@@ -217,7 +217,7 @@ export function NewPersonForm({
             adult={false}
           />
           <label className="flex flex-col gap-1.5">
-            <span className="text-ink-800 text-sm">Relación con el menor</span>
+            <span className="text-ink-600 text-sm">Relación con el menor</span>
             <select
               name="relationship"
               required
@@ -239,7 +239,7 @@ export function NewPersonForm({
       )}
 
       {needsPrivacy && (
-        <label className="flex items-start gap-3 text-ink-800 text-sm">
+        <label className="flex items-start gap-3 text-ink-500 text-sm">
           <input
             type="checkbox"
             name="privacy"
@@ -252,7 +252,7 @@ export function NewPersonForm({
             <Link
               href="/privacidad"
               target="_blank"
-              className="text-sage-800 underline underline-offset-2"
+              className="text-sage-600 underline underline-offset-2"
             >
               política de privacidad
             </Link>
@@ -274,7 +274,7 @@ export function NewPersonForm({
         type="submit"
         disabled={pending}
         data-testid="new-person-submit"
-        className="cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
+        className="cursor-pointer self-start rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Guardando…" : "Continuar"}
       </button>

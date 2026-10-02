@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { AccountPerson } from "./step";
 
 const optionClass =
-  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-800 transition-colors hover:bg-sage-500/15";
+  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-600 transition-colors hover:bg-sage-500/15";
 
 export function WhoStep({
   people,
@@ -26,7 +26,7 @@ export function WhoStep({
               {person.first_name} {person.last_name}
             </span>
             {person.is_minor && (
-              <span className="text-ink-800 text-sm">Menor a tu cargo</span>
+              <span className="text-ink-500 text-sm">Menor a tu cargo</span>
             )}
           </Link>
         </li>
@@ -38,7 +38,7 @@ export function WhoStep({
           className={optionClass}
         >
           <span className="font-bold text-lg">Otra persona</span>
-          <span className="text-ink-800 text-sm">
+          <span className="text-ink-500 text-sm">
             Alguien que aún no está en tu cuenta
           </span>
         </Link>

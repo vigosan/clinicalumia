@@ -42,44 +42,44 @@ export default async function ConfirmadaPage({
           <h1 className="font-bold text-ink-600 text-section">
             Cita confirmada
           </h1>
-          <p className="mt-3 mb-8 text-ink-800">
+          <p className="mt-3 mb-8 text-ink-500">
             Te hemos enviado la confirmación a {user.email}.
           </p>
           <dl
             data-testid="booking-confirmed"
-            className="flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-800"
+            className="flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
           >
             <div>
-              <dt className="text-ink-800 text-sm">Cuándo</dt>
+              <dt className="text-ink-500 text-sm">Cuándo</dt>
               <dd className="font-bold">{formatWhen(appointment.starts_at)}</dd>
             </div>
             <div>
-              <dt className="text-ink-800 text-sm">Servicio</dt>
+              <dt className="text-ink-500 text-sm">Servicio</dt>
               <dd>{appointment.service_name}</dd>
             </div>
             <div>
-              <dt className="text-ink-800 text-sm">Te atenderá</dt>
+              <dt className="text-ink-500 text-sm">Te atenderá</dt>
               <dd data-testid="booking-confirmed-professional">
                 {appointment.professional_name}
               </dd>
             </div>
             <div>
-              <dt className="text-ink-800 text-sm">Para</dt>
+              <dt className="text-ink-500 text-sm">Para</dt>
               <dd>{appointment.person_name}</dd>
             </div>
           </dl>
           <a
             href={`/mi-cuenta/citas/${appointment.id}/cita.ics`}
             data-testid="booking-add-to-calendar"
-            className="mt-6 inline-flex h-11 items-center rounded-full bg-sage-800 px-6 text-cream-50 transition-colors hover:bg-sage-900"
+            className="mt-6 inline-flex h-11 items-center rounded-full bg-sage-600 px-6 text-cream-50 transition-colors hover:bg-sage-700"
           >
             Añadir a mi calendario
           </a>
-          <p className="mt-8 text-ink-800">
+          <p className="mt-8 text-ink-500">
             Puedes verla o cambiarla en{" "}
             <Link
               href="/mi-cuenta"
-              className="font-medium text-sage-800 underline-offset-2 hover:underline"
+              className="font-medium text-sage-600 underline-offset-2 hover:underline"
             >
               Mi cuenta
             </Link>
@@ -87,7 +87,7 @@ export default async function ConfirmadaPage({
           </p>
           <Link
             href="/"
-            className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-800 transition-colors hover:bg-sage-800 hover:text-cream-50"
+            className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-600 transition-colors hover:bg-sage-500 hover:text-cream-50"
           >
             Volver al inicio
           </Link>

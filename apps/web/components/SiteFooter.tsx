@@ -16,7 +16,7 @@ const rows = [
 
 export function SiteFooter() {
   return (
-    <footer className="bg-sage-800 px-6 py-14 md:px-[5.625vw] md:pt-[4.635vw] md:pb-[12.08vw]">
+    <footer className="bg-sage-500 px-6 py-14 md:px-[5.625vw] md:pt-[4.635vw] md:pb-[12.08vw]">
       <Image
         src="/logo-white.png"
         alt="LUMIA · Clínica Logopedia miofuncional"

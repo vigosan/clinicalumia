@@ -62,7 +62,7 @@ export default async function NuevoMenorPage({
           />
           <Link
             href="/mi-cuenta"
-            className="mt-8 inline-block font-medium text-sage-800 underline-offset-2 hover:underline"
+            className="mt-8 inline-block font-medium text-sage-600 underline-offset-2 hover:underline"
           >
             Volver a Mi cuenta
           </Link>

@@ -9,7 +9,7 @@ export function TeamSession() {
         <div className="mx-auto max-w-2xl">
           <p
             data-testid="booking-team-session"
-            className="rounded-2xl bg-cream-50 px-5 py-4 text-ink-800"
+            className="rounded-2xl bg-cream-50 px-5 py-4 text-ink-600"
           >
             {STAFF_EMAIL}
           </p>
