@@ -97,13 +97,13 @@ export function SignaturePad({ name }: { name: string }) {
         <p
           role="status"
           data-testid="signature-resized"
-          className="text-ink-600 text-sm"
+          className="text-ink-800 text-sm"
         >
           Hemos borrado la firma porque ha cambiado el tamaño de la pantalla.
           Vuelve a firmar.
         </p>
       )}
-      <div className="flex items-center justify-between text-ink-400 text-sm">
+      <div className="flex items-center justify-between text-ink-800 text-sm">
         <span>Firma aquí con el dedo o el ratón</span>
         <button
           type="button"

@@ -237,7 +237,7 @@ export default async function MiCuentaPage({
             <button
               type="submit"
               data-testid="account-logout"
-              className="cursor-pointer rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700"
+              className="cursor-pointer rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900"
             >
               Salir
             </button>

@@ -24,7 +24,7 @@ function SlotGroup({
   if (slots.length === 0) return null;
   return (
     <div>
-      <h3 className="font-bold text-ink-600">{title}</h3>
+      <h3 className="font-bold text-ink-800">{title}</h3>
       <ul className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
         {slots.map((slot) => (
           <li key={slot.startsAt}>

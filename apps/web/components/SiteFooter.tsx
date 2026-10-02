@@ -30,7 +30,7 @@ export function SiteFooter() {
           <li key={row.label} className="border-cream-50 border-b">
             <Link
               href={row.href}
-              className="block pt-5 pb-3 text-body text-cream-50 transition-opacity hover:opacity-70 md:pt-[1.44vw] md:pb-[0.72vw]"
+              className="block pt-5 pb-3 text-body text-ink-900 transition-opacity hover:opacity-70 md:pt-[1.44vw] md:pb-[0.72vw]"
             >
               {row.label}
             </Link>
