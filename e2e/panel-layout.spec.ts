@@ -101,6 +101,7 @@ test("clicking anywhere on a pending row opens its appointment, not only on the 
   await page.goto(`${DASHBOARD}/cobros?tab=pendientes`);
 
   const row = page.getByTestId("pending-payment-row").first();
+  await expect(row).toBeVisible();
   const box = await row.boundingBox();
   await row.click({
     force: true,
@@ -118,6 +119,7 @@ test("clicking anywhere on a patient row opens the record", async ({
   await page.goto(`${DASHBOARD}/patients`);
 
   const row = page.getByTestId("patient-row").first();
+  await expect(row).toBeVisible();
   const box = await row.boundingBox();
   await row.click({
     force: true,
