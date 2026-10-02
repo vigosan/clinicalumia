@@ -5,7 +5,7 @@ import {
 } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
 
-export { escapeHtml, formatWhen } from "@clinicalumia/api/appointment-notice";
+export { formatWhen } from "@clinicalumia/api/appointment-notice";
 
 export type Slot = { starts_at: string; professional_id: string };
 
