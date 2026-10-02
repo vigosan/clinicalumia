@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(212);
+select plan(215);
 
 insert into auth.users (id, email) values
   ('80000000-0000-0000-0000-000000000001', 'owner-web-booking@test.local'),
@@ -913,16 +913,26 @@ select is((select g.relationship::text || ':' || g.is_primary::text || ':' || co
 
 select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
 select is(
-  public.add_my_person('MADRE', ' familia ', '1985-04-10', null, null, null, true, false, null),
+  public.add_my_person('MADRE', ' familia ', '1985-04-10', '600 999 999', null, null, true, false, null),
   '85000000-0000-0000-0000-0000000000c1'::uuid,
   'choosing «Es para mí» with the name and birth date of a person already in the account returns that person instead of creating a second record of her');
 select is(
-  public.add_my_person('Acompañante', 'Familia', '1979-09-09', null, null, null, true, false, null),
+  public.add_my_person('Acompañante', 'Familia', '1979-09-09', '600 000 009', null, null, true, false, null),
   '85000000-0000-0000-0000-0000000000c4'::uuid,
   'a person of the account without a birth date is reused when the name matches, so a companion created by the team is not duplicated');
 reset role;
 select is((select count(*) from public.people where public.f_unaccent(lower(first_name)) in ('madre', 'acompanante') and last_name = 'Familia'), 2::bigint,
   'no extra record was created for either of them');
+select is((select birth_date::text || ':' || phone from public.people where id = '85000000-0000-0000-0000-0000000000c4'),
+  '1979-09-09:600000009',
+  'the reused companion keeps the birth date and phone she just typed, since her record had none, so the web does not ask for them again');
+select is((select phone from public.people where id = '85000000-0000-0000-0000-0000000000c1'), '600000001',
+  'a reused record keeps the data it already had: what is typed on the web only fills the gaps');
+select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000010');
+select is((select (birth_date is not null and not is_minor)::text from public.my_people() where id = '85000000-0000-0000-0000-0000000000c4'),
+  'true',
+  'with her birth date saved she is now an adult of the account, so the web offers her as guardian of a new minor');
+reset role;
 select pg_temp.act_as_patient('85000000-0000-0000-0000-000000000011');
 select isnt(
   public.add_my_person('Madre', 'Familia', '1985-04-10', null, null, null, true, true, '2026-09'),

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(70);
+select plan(72);
 
 insert into auth.users (id, email) values
   ('50000000-0000-0000-0000-000000000001', 'owner-people@test.local'),
@@ -379,6 +379,12 @@ select is((select count(*) from public.find_possible_duplicates(null, null, null
 reset role;
 select is(has_function_privilege('anon', 'public.find_possible_duplicates(text, text, text, uuid, text, text, date)', 'execute'), false,
   'an anonymous visitor cannot call the duplicate search');
+
+select is(has_function_privilege('anon', 'public.normalize_person_name(text)', 'execute'), false,
+  'an anonymous visitor cannot call the name normalizer either, the database only exposes what the app needs');
+
+select is((select count(*) from pg_indexes where schemaname = 'public' and tablename = 'people' and indexdef like '%(birth_date)%'), 1::bigint,
+  'people has an index on birth_date, so the name and birth date match does not scan every record');
 
 select pg_temp.act_as('50000000-0000-0000-0000-000000000001');
 

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DateInput } from "./date-input";
 import { Field } from "./field";
 
@@ -111,5 +111,21 @@ describe("DateInput", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Fecha no válida. Escríbela como 05/03/1990.",
     );
+  });
+
+  it("calls onBlur when leaving the field, so a form can check the date once it is complete", async () => {
+    const onBlur = vi.fn();
+    render(
+      <Field label="Fecha de nacimiento">
+        <DateInput name="birth_date" onBlur={onBlur} />
+      </Field>,
+    );
+    await userEvent.type(
+      screen.getByLabelText("Fecha de nacimiento"),
+      "05031985",
+    );
+    expect(onBlur).not.toHaveBeenCalled();
+    await userEvent.tab();
+    expect(onBlur).toHaveBeenCalledTimes(1);
   });
 });

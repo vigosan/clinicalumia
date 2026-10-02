@@ -187,6 +187,11 @@ export function PersonForm({
         setUseExistingError(result.error);
         return;
       }
+      setDuplicates((current) =>
+        current.map((duplicate) =>
+          duplicate.id === id ? { ...duplicate, archived: false } : duplicate,
+        ),
+      );
       toast("Ficha desarchivada");
       handleUseExisting(id);
     });
