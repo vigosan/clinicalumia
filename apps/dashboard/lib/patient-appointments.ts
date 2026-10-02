@@ -1,5 +1,8 @@
-import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
-import { formatDay } from "./madrid-format";
+import {
+  formatDay,
+  madridDateTime,
+  todayInMadrid,
+} from "@clinicalumia/api/madrid-time";
 import {
   formatEuros,
   methodLabel,

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  formatDay,
+  formatMadridDate,
   isValidDate,
   isValidTime,
   madridDateTime,
   madridDayBounds,
   madridInstant,
+  monthEnd,
+  monthName,
   todayInMadrid,
   weekdayOf,
   weekStart,
@@ -217,5 +221,43 @@ describe("weekStart", () => {
 describe("weekdayOf", () => {
   it("returns 1 for a Monday", () => {
     expect(weekdayOf("2026-09-28")).toBe(1);
+  });
+});
+
+describe("formatDay", () => {
+  it("writes a calendar day the Spanish way, day first", () => {
+    expect(formatDay("2026-10-05")).toBe("05/10/2026");
+  });
+});
+
+describe("formatMadridDate", () => {
+  it("uses the Madrid day, so a late-evening instant is not shown as the next day in UTC terms", () => {
+    expect(formatMadridDate("2026-10-04T22:30:00Z")).toBe("05/10/2026");
+  });
+
+  it("rolls into the new year in Madrid while it is still 31 December in UTC, so an invoice issued on New Year's night carries the right date", () => {
+    expect(formatMadridDate("2026-12-31T23:30:00Z")).toBe("01/01/2027");
+    expect(formatMadridDate("2026-09-30T10:15:00+02:00")).toBe("30/09/2026");
+  });
+});
+
+describe("monthName", () => {
+  it("names the month of a calendar day in Spanish, in lower case to fit mid-sentence", () => {
+    expect(monthName("2026-10-05")).toBe("octubre");
+  });
+
+  it("reads the date as a calendar day, so the first of the month never slips to the previous one in a western time zone", () => {
+    expect(monthName("2026-03-01")).toBe("marzo");
+  });
+});
+
+describe("monthEnd", () => {
+  it("returns the last day of the month, including February in a leap year", () => {
+    expect(monthEnd("2026-04-10")).toBe("2026-04-30");
+    expect(monthEnd("2028-02-03")).toBe("2028-02-29");
+  });
+
+  it("crosses into the next year correctly for December", () => {
+    expect(monthEnd("2026-12-15")).toBe("2026-12-31");
   });
 });

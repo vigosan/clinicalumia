@@ -1,7 +1,7 @@
+import { formatDay } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
 import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import Link from "next/link";
-import { formatDay } from "@/lib/madrid-format";
 import type { PatientAppointmentRow } from "@/lib/patient-appointments";
 
 function AppointmentList({

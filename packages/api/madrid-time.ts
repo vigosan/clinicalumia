@@ -103,3 +103,26 @@ export function weekdayOf(date: string): number {
 export function weekStart(date: string): string {
   return addDays(date, -(weekdayOf(date) - 1));
 }
+
+export function formatDay(date: string): string {
+  return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
+}
+
+export function formatMadridDate(instant: string): string {
+  return formatDay(madridDateTime(instant).date);
+}
+
+export function monthName(date: string): string {
+  return new Intl.DateTimeFormat("es-ES", {
+    timeZone: "UTC",
+    month: "long",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
+
+export function monthEnd(date: string): string {
+  const { year, month } = dateParts(date);
+  const firstOfNextMonth = new Date(Date.UTC(year, month, 1))
+    .toISOString()
+    .slice(0, 10);
+  return addDays(firstOfNextMonth, -1);
+}

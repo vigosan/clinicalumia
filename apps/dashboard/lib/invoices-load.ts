@@ -1,8 +1,11 @@
-import { addDays, isValidDate } from "@clinicalumia/api/madrid-time";
+import {
+  formatMadridDate,
+  isValidDate,
+  monthEnd,
+} from "@clinicalumia/api/madrid-time";
 import type { createClient } from "@clinicalumia/api/server";
 import { isUuid } from "./agenda";
 import type { InvoiceRecipient } from "./invoices";
-import { formatMadridDate } from "./madrid-format";
 import type { StaffOption } from "./payments-load";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -34,15 +37,6 @@ export type InvoicesParams = {
 
 function monthStart(date: string): string {
   return `${date.slice(0, 7)}-01`;
-}
-
-function monthEnd(date: string): string {
-  const year = Number(date.slice(0, 4));
-  const month = Number(date.slice(5, 7));
-  const firstOfNextMonth = new Date(Date.UTC(year, month, 1))
-    .toISOString()
-    .slice(0, 10);
-  return addDays(firstOfNextMonth, -1);
 }
 
 export function invoicesListParams(

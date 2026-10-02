@@ -4,6 +4,7 @@ import {
   isValidTime,
   madridDateTime,
   madridInstant,
+  monthName,
   weekdayOf,
 } from "@clinicalumia/api/madrid-time";
 
@@ -422,13 +423,6 @@ export function isUuid(value: string): boolean {
   return UUID_RE.test(value);
 }
 
-function monthNameOf(date: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
-    timeZone: "UTC",
-    month: "long",
-  }).format(new Date(`${date}T00:00:00Z`));
-}
-
 export function weekTitle(start: string, end: string): string {
   const startYear = start.slice(0, 4);
   const startMonth = start.slice(5, 7);
@@ -436,12 +430,12 @@ export function weekTitle(start: string, end: string): string {
   const endYear = end.slice(0, 4);
   const endMonth = end.slice(5, 7);
   const endDay = Number(end.slice(8, 10));
-  const endMonthName = monthNameOf(end);
+  const endMonthName = monthName(end);
 
   if (startYear === endYear && startMonth === endMonth) {
     return `Semana del ${startDay} al ${endDay} de ${endMonthName}`;
   }
-  const startMonthName = monthNameOf(start);
+  const startMonthName = monthName(start);
   if (startYear === endYear) {
     return `Semana del ${startDay} de ${startMonthName} al ${endDay} de ${endMonthName}`;
   }

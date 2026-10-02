@@ -2,6 +2,7 @@ import {
   addDays,
   isValidDate,
   madridDateTime,
+  monthName,
 } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
 import { site } from "./site";
@@ -25,13 +26,6 @@ function weekdayName(date: string): string {
   return new Intl.DateTimeFormat("es-ES", {
     timeZone: "UTC",
     weekday: "long",
-  }).format(new Date(`${date}T00:00:00Z`));
-}
-
-function monthName(date: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
-    timeZone: "UTC",
-    month: "long",
   }).format(new Date(`${date}T00:00:00Z`));
 }
 

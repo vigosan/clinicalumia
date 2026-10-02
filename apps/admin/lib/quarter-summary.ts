@@ -1,8 +1,6 @@
+import { formatMadridDate } from "@clinicalumia/api/madrid-time";
 import type { InvoiceSnapshot } from "@clinicalumia/invoices";
-import {
-  formatMadridDate,
-  paymentMethodLabel,
-} from "@clinicalumia/invoices/format";
+import { paymentMethodLabel } from "@clinicalumia/invoices/format";
 import type { Quarter } from "./quarter";
 
 type QuarterInvoiceKind = "simplified" | "full" | "rectifying";

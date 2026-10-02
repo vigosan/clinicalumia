@@ -1,4 +1,4 @@
-import { addDays, weekStart } from "@clinicalumia/api/madrid-time";
+import { addDays, formatDay, weekStart } from "@clinicalumia/api/madrid-time";
 
 export type Closure = {
   id: string;
@@ -6,10 +6,6 @@ export type Closure = {
   ends_on: string;
   reason: string;
 };
-
-export function formatDay(date: string): string {
-  return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
-}
 
 export function closureLabel({
   starts_on,

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDay } from "@clinicalumia/api/madrid-time";
 import { cn } from "@clinicalumia/ui/cn";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -8,7 +9,6 @@ import {
   type Closure,
   closureLabel,
   closuresInMonth,
-  formatDay,
   monthGrid,
   monthLabel,
   shiftMonth,

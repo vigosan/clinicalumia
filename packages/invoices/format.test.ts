@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   formatEuros,
-  formatMadridDate,
-  formatSessionDate,
   invoiceFileName,
   paymentMethodLabel,
   paymentSummary,
@@ -19,19 +17,6 @@ describe("formatEuros", () => {
   it("uses the Spanish decimal comma and a minus sign for rectifying amounts", () => {
     expect(formatEuros(4500)).toBe("45,00 €");
     expect(formatEuros(-6050)).toBe("-60,50 €");
-  });
-});
-
-describe("formatMadridDate", () => {
-  it("prints the day the invoice was issued in Madrid, not in UTC", () => {
-    expect(formatMadridDate("2026-12-31T23:30:00Z")).toBe("01/01/2027");
-    expect(formatMadridDate("2026-09-30T10:15:00+02:00")).toBe("30/09/2026");
-  });
-});
-
-describe("formatSessionDate", () => {
-  it("prints the stored calendar day without shifting it through a time zone", () => {
-    expect(formatSessionDate("2026-09-29")).toBe("29/09/2026");
   });
 });
 

@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { formatDay, formatMadridDate } from "@clinicalumia/api/madrid-time";
 import {
   Document,
   Font,
@@ -9,12 +10,7 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
-import {
-  formatEuros,
-  formatMadridDate,
-  formatSessionDate,
-  paymentSummary,
-} from "./format";
+import { formatEuros, paymentSummary } from "./format";
 import { AEAT_QR_LABEL } from "./qr";
 import type { InvoiceDetail, InvoiceRelated, InvoiceSnapshot } from "./types";
 
@@ -138,7 +134,7 @@ function referenceLine(
 ): string {
   if (detail.kind === "rectifying") {
     if (snapshot.rectifies)
-      return `Rectifica la factura ${snapshot.rectifies.code} del ${formatSessionDate(snapshot.rectifies.issued_on)}`;
+      return `Rectifica la factura ${snapshot.rectifies.code} del ${formatDay(snapshot.rectifies.issued_on)}`;
     const code = related.rectifies?.code;
     return code ? `Rectifica la factura ${code}` : "";
   }
@@ -250,7 +246,7 @@ function InvoiceDocument({ detail, logo, qr }: InvoiceDocumentProps) {
               <Text style={s.conceptTitle}>{line.description}</Text>
               <Text style={s.conceptSub}>
                 {joinFilled(
-                  [formatSessionDate(line.session_date), line.patient],
+                  [formatDay(line.session_date), line.patient],
                   " · ",
                 )}
               </Text>

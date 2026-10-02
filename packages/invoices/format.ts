@@ -46,16 +46,6 @@ export function madridDateParts(instant: string): {
   return { day: part("day")!, month: part("month")!, year: part("year")! };
 }
 
-export function formatMadridDate(instant: string): string {
-  const { day, month, year } = madridDateParts(instant);
-  return `${day}/${month}/${year}`;
-}
-
-export function formatSessionDate(date: string): string {
-  const [year, month, day] = date.split("-");
-  return `${day}/${month}/${year}`;
-}
-
 export function paymentSummary(payments: InvoicePayment[] | null): string {
   if (!payments || payments.length === 0) return "";
   const [only] = payments;

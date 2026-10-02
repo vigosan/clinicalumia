@@ -1,5 +1,4 @@
-import { madridDateTime } from "@clinicalumia/api/madrid-time";
-import { formatDay } from "./closures";
+import { formatDay, madridDateTime } from "@clinicalumia/api/madrid-time";
 
 export const AFFECTED_APPOINTMENTS_SELECT =
   "id, starts_at, patient:people(first_name, last_name), professional:profiles!appointments_professional_id_fkey(full_name)";

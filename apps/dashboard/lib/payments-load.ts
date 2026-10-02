@@ -1,12 +1,12 @@
 import {
   addDays,
+  formatMadridDate,
   isValidDate,
   madridDateTime,
   madridDayBounds,
 } from "@clinicalumia/api/madrid-time";
 import type { createClient } from "@clinicalumia/api/server";
 import { isUuid } from "./agenda";
-import { formatMadridDate } from "./madrid-format";
 import type { MethodTotal, PaymentMethod } from "./payments";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
