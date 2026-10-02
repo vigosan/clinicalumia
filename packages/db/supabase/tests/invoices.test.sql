@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(213);
+select plan(229);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1137,6 +1137,132 @@ select lives_ok(
   $$ select public.set_invoice_series('rectifying', 'RX{n}/{aa}', pg_temp.this_year() + 1, 1) $$,
   'a rectifying format with its own letters is accepted');
 reset role;
+
+update public.clinic_settings set address_line = 'Calle Mayor 1', postal_code = '46800', city = 'Xàtiva';
+insert into public.people (id, first_name, last_name, birth_date, is_patient) values
+  ('8b000000-0000-0000-0000-0000000000c4', 'Marta', 'Soler Vidal', '1985-03-03', true);
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('8b000000-0000-0000-0000-0000000002d1', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c4',
+   '8b000000-0000-0000-0000-0000000000b4', pg_temp.at_madrid(-3, '09:00'), pg_temp.at_madrid(-3, '10:00')),
+  ('8b000000-0000-0000-0000-0000000002d2', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c4',
+   '8b000000-0000-0000-0000-0000000000b4', pg_temp.at_madrid(-3, '10:00'), pg_temp.at_madrid(-3, '11:00')),
+  ('8b000000-0000-0000-0000-0000000002d3', '8b000000-0000-0000-0000-000000000001', '8b000000-0000-0000-0000-0000000000c4',
+   '8b000000-0000-0000-0000-0000000000b2', pg_temp.at_madrid(-3, '11:00'), pg_temp.at_madrid(-3, '11:30'));
+set local role service_role;
+select set_config('request.jwt.claims', '', true);
+update public.appointments set payment_status = 'paid' where id = '8b000000-0000-0000-0000-0000000002d3';
+reset role;
+select set_config('test.main_before', (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year())::text, true);
+select set_config('test.chain_head', (
+  select r.hash from public.invoice_records r
+  where not exists (select 1 from public.invoice_records n where n.previous_hash = r.hash)
+  order by r.generated_at desc limit 1), true);
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok($$ select public.collect_payment('8b000000-0000-0000-0000-0000000002d1', 45000, 'card', '') $$,
+  'P0001', 'full_invoice_required',
+  'a charge above 400 € cannot be a simplified invoice, so without a recipient it is refused and the form asks for one');
+select throws_ok($$ select public.collect_payment('8b000000-0000-0000-0000-0000000002d3', 39500, 'cash', 'Ajuste') $$,
+  'P0001', 'full_invoice_required',
+  'the online deposit counts towards the 400 € limit, since the invoice covers the whole service');
+select throws_ok(
+  $$ select public.collect_payment('8b000000-0000-0000-0000-0000000002d1', 45000, 'card', '',
+       '{"name": "Marta Soler", "tax_id": "12345678A", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'recipient_tax_id_invalid',
+  'a full invoice with a wrong tax id is useless for the recipient, so the charge is refused like the full invoice form does');
+select throws_ok(
+  $$ select public.collect_payment('8b000000-0000-0000-0000-0000000002d1', 45000, 'card', '',
+       '{"name": "Marta Soler", "tax_id": "12345678Z", "address": "", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'recipient_invalid',
+  'a full invoice must carry the recipient''s address');
+reset role;
+select results_eq(
+  $$ select (select count(*) from public.payments where appointment_id = '8b000000-0000-0000-0000-0000000002d1'),
+            (select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()) $$,
+  $$ values (0::bigint, current_setting('test.main_before')::integer) $$,
+  'the refused charges leave no payment and consume no number');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(
+  public.collect_payment('8b000000-0000-0000-0000-0000000002d1', 45000, 'card', '',
+    '{"name": " Marta Soler Vidal ", "tax_id": "12.345.678-z", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'the employee charges 450 € giving the recipient''s details');
+reset role;
+select results_eq(
+  $$ select series::text, number, kind::text, status::text, total_cents, replaces_invoice_id, rectifies_invoice_id,
+            issued_at = (select collected_at from public.payments where appointment_id = '8b000000-0000-0000-0000-0000000002d1')
+     from public.invoices i
+     where i.payment_id = (select id from public.payments where appointment_id = '8b000000-0000-0000-0000-0000000002d1') $$,
+  $$ values ('main', current_setting('test.main_before')::integer, 'full', 'issued', 45000, null::uuid, null::uuid, true) $$,
+  'the charge issues one full invoice directly, with the next number of the main series and no simplified one in between');
+select is((select next_number from public.invoice_series where code = 'main' and year = pg_temp.this_year()),
+  current_setting('test.main_before')::integer + 1,
+  'the direct full invoice consumes exactly one number, so the series has no gaps');
+select is((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000002d1')).snapshot,
+  jsonb_build_object(
+    'issuer', jsonb_build_object(
+      'name', 'Clínica de Pruebas, S.L.', 'tax_id', 'B12345674', 'address_line', 'Calle Mayor 1',
+      'postal_code', '46800', 'city', 'Xàtiva', 'province', 'Valencia', 'phone', '600 000 000',
+      'email', 'hola@pruebas.test', 'website', 'https://pruebas.test'),
+    'recipient', jsonb_build_object('name', 'Marta Soler Vidal', 'tax_id', '12345678Z', 'address', 'Calle Sol 2',
+      'postal_code', '46800', 'city', 'Xàtiva'),
+    'lines', jsonb_build_array(jsonb_build_object(
+      'description', 'Tratamiento intensivo',
+      'session_date', to_char((now() at time zone 'Europe/Madrid')::date - 3, 'YYYY-MM-DD'),
+      'patient', 'Marta S.',
+      'quantity', 1, 'base_cents', 37190, 'vat_rate', 21, 'vat_cents', 7810, 'total_cents', 45000)),
+    'totals', jsonb_build_object('base_cents', 37190, 'vat_cents', 7810, 'total_cents', 45000),
+    'vat', 'standard_21',
+    'vat_note', '',
+    'payments', jsonb_build_array(jsonb_build_object('method', 'card', 'amount_cents', 45000)),
+    'footer', 'Gracias por confiar en LUMIA.'),
+  'the full invoice freezes the same concept, amounts and payment as a simplified one, plus the normalised recipient');
+select results_eq(
+  $$ select kind::text, previous_hash, canonical like '%&NumSerieFactura=' || (pg_temp.invoice_of('8b000000-0000-0000-0000-0000000002d1')).code
+              || '&%&TipoFactura=F1&CuotaTotal=78.10&ImporteTotal=450.00&%'
+     from pg_temp.record_of('8b000000-0000-0000-0000-0000000002d1') $$,
+  $$ values ('alta', current_setting('test.chain_head'), true) $$,
+  'the Verifactu record of a direct full invoice is an F1 chained to the previous head of the chain');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select isnt(
+  public.collect_payment('8b000000-0000-0000-0000-0000000002d2', 40000, 'card', 'Descuento',
+    '{"name": "Marta Soler Vidal", "tax_id": "12345678Z", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}'),
+  null,
+  'a charge of exactly 400 € with recipient details is still taken');
+reset role;
+select results_eq(
+  $$ select kind::text, snapshot->'recipient', (select count(*) from public.invoices i
+       where i.payment_id = (select id from public.payments where appointment_id = '8b000000-0000-0000-0000-0000000002d2'))
+     from pg_temp.invoice_of('8b000000-0000-0000-0000-0000000002d2') $$,
+  $$ values ('simplified', 'null'::jsonb, 1::bigint) $$,
+  'up to 400 € nothing changes: the charge issues a simplified invoice, and a full one is asked for later if needed');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.issue_full_invoice((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000002d1')).id,
+       '{"name": "Otra", "tax_id": "12345678Z", "address": "Calle Sol 2", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_not_simplified',
+  'a direct full invoice is not replaced by another full one');
+select isnt(public.issue_rectifying_invoice((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000002d1')).id, 'Error en el importe'), null,
+  'the collector can still rectify a direct full invoice on the same day');
+reset role;
+select results_eq(
+  $$ select i.total_cents, r.canonical like '%&TipoFactura=R1&%', p.voided_at is not null
+     from public.invoices i
+     join public.invoice_records r on r.invoice_id = i.id
+     join public.payments p on p.id = i.payment_id
+     where p.appointment_id = '8b000000-0000-0000-0000-0000000002d1' and i.kind = 'rectifying' $$,
+  $$ values (-45000, true, true) $$,
+  'rectifying a direct full invoice cancels its whole amount as an R1 and voids the payment');
+
+select throws_ok(
+  $$ insert into public.invoices (series, number, code, kind, issued_at, payment_id, replaces_invoice_id, snapshot, total_cents)
+     values ('main', 9999, 'X9999', 'simplified', now(),
+       (select payment_id from public.invoices where id = pg_temp.id_of('s4')), pg_temp.id_of('s4'), '{}', 1) $$,
+  '23514', null,
+  'only a full invoice can replace another one');
 
 select * from finish();
 rollback;

@@ -1139,6 +1139,7 @@ export type Database = {
           p_appointment_id: string
           p_method: Database["public"]["Enums"]["payment_method"]
           p_note: string
+          p_recipient?: Json
         }
         Returns: string
       }
@@ -1207,12 +1208,17 @@ export type Database = {
         Returns: boolean
       }
       invoice_hash: { Args: { p_canonical: string }; Returns: string }
+      invoice_recipient: { Args: { p_recipient: Json }; Returns: Json }
       is_active_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       is_valid_invoice_format: { Args: { p_format: string }; Returns: boolean }
       is_valid_spanish_tax_id: { Args: { p_value: string }; Returns: boolean }
       issue_full_invoice: {
         Args: { p_invoice_id: string; p_recipient: Json }
+        Returns: string
+      }
+      issue_payment_invoice: {
+        Args: { p_payment_id: string; p_recipient: Json }
         Returns: string
       }
       issue_rectifying_invoice: {

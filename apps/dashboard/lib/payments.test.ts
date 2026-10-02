@@ -5,6 +5,7 @@ import {
   formatEuros,
   methodLabel,
   needsPaymentNote,
+  needsRecipient,
   parseAmount,
   paymentError,
   paymentFailure,
@@ -223,6 +224,33 @@ describe("paymentHistoryLines", () => {
   });
 });
 
+describe("needsRecipient", () => {
+  it("asks for no recipient up to 400 €, since a simplified invoice is enough", () => {
+    expect(needsRecipient({ amount: "400", error: null })).toBe(false);
+  });
+
+  it("asks for the recipient above 400 €, because only a full invoice is legal there", () => {
+    expect(needsRecipient({ amount: "400,01", error: null })).toBe(true);
+    expect(needsRecipient({ amount: "1.250", error: null })).toBe(true);
+  });
+
+  it("asks for no recipient while the amount cannot be read", () => {
+    expect(needsRecipient({ amount: "abc", error: null })).toBe(false);
+  });
+
+  it("asks for the recipient when the database says a full invoice is required, since an online deposit can push a smaller charge over 400 €", () => {
+    expect(
+      needsRecipient({
+        amount: "395",
+        error: paymentError({
+          code: "P0001",
+          message: "full_invoice_required",
+        }),
+      }),
+    ).toBe(true);
+  });
+});
+
 describe("needsPaymentNote", () => {
   const base = {
     cancelled: false,
@@ -373,11 +401,11 @@ describe("paymentFailure", () => {
 });
 
 describe("paymentError", () => {
-  it("explains that a charge over 400 € cannot get a simplified invoice, so the person knows who can solve it", () => {
+  it("explains that a charge over 400 € needs the recipient's details for a full invoice, which the person can fill in right there in the form", () => {
     expect(
       paymentError({ code: "P0001", message: "full_invoice_required" }),
     ).toBe(
-      "Este importe supera los 400 € de una factura simplificada. Habla con la propietaria para emitir la factura completa.",
+      "Este importe supera los 400 € de una factura simplificada: completa los datos del destinatario para emitir la factura completa.",
     );
   });
 

@@ -3,12 +3,18 @@
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
+import { type RecipientDraft, recipientParams } from "@/lib/invoices";
 import { failureFor } from "@/lib/payment-failure";
 import { METHOD_ORDER, parseAmount } from "@/lib/payments";
 
 export async function collectPayment(
   appointmentId: string,
-  input: { amount: string; method: string; note: string },
+  input: {
+    amount: string;
+    method: string;
+    note: string;
+    recipient?: RecipientDraft;
+  },
 ): Promise<ActionResult> {
   const parsed = parseAmount(input.amount);
   if ("error" in parsed) return parsed;
@@ -21,6 +27,7 @@ export async function collectPayment(
     p_amount_cents: parsed.cents,
     p_method: method,
     p_note: input.note.trim(),
+    ...(input.recipient && { p_recipient: recipientParams(input.recipient) }),
   });
   if (error) {
     if (error.code === "P0001" && error.message === "already_paid")

@@ -654,6 +654,15 @@ describe("ledgerRows totals flag and order", () => {
     ]);
   });
 
+  it("counts a full invoice issued directly for a charge over 400 € in the totals, since no simplified invoice stands for it", () => {
+    const direct = invoice({ code: "3/26", kind: "full", replaces: null });
+    expect(ledgerRows([direct])[0]?.inTotals).toBe(true);
+    expect(summarizeInvoices([direct])).toMatchObject({
+      counts: { simplified: 0, full: 1, rectifying: 0, replaced: 0 },
+      net_cents: 6050,
+    });
+  });
+
   it("orders invoices issued at the same instant by their number even when the code starts with the year", () => {
     const rows = ledgerRows([
       invoice({ id: "00000000-0000-0000-0000-00000000000a", code: "2026/10" }),

@@ -7,10 +7,12 @@ import { RadioCards } from "@clinicalumia/ui/radio-cards";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import { Banknote, CreditCard, Landmark, Smartphone } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
+import type { RecipientDraft } from "@/lib/invoices";
 import {
   METHOD_ORDER,
   methodLabel,
   needsPaymentNote,
+  needsRecipient,
   type PaymentFailure,
   type PaymentMethod,
   parseAmount,
@@ -18,6 +20,15 @@ import {
 import { createSubmitGate } from "@/lib/submit-gate";
 import { collectPayment } from "../payments/actions";
 import { ActionError } from "./ActionError";
+import { RecipientFields } from "./RecipientFields";
+
+const EMPTY_RECIPIENT: RecipientDraft = {
+  name: "",
+  taxId: "",
+  address: "",
+  postalCode: "",
+  city: "",
+};
 
 const METHOD_ICONS: Record<PaymentMethod, React.ReactNode> = {
   cash: <Banknote />,
@@ -49,6 +60,7 @@ export function PaymentForm({
   );
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
+  const [recipient, setRecipient] = useState(EMPTY_RECIPIENT);
   const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
@@ -63,6 +75,10 @@ export function PaymentForm({
     suggestedAmountCents,
     error: failure?.error ?? null,
   });
+  const askRecipient = needsRecipient({
+    amount,
+    error: failure?.error ?? null,
+  });
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,6 +88,7 @@ export function PaymentForm({
         amount,
         method,
         note: needsNote ? note : "",
+        recipient: askRecipient ? recipient : undefined,
       });
       submitGateRef.current.finish();
       if ("error" in result) {
@@ -135,6 +152,21 @@ export function PaymentForm({
             onChange={(event) => setNote(event.target.value)}
           />
         </Field>
+      )}
+      {askRecipient && (
+        <fieldset
+          data-testid="payment-recipient"
+          className="flex flex-col gap-3"
+        >
+          <legend className="mb-1 text-[13px] text-ink-700">
+            Más de 400 €: se emite factura completa
+          </legend>
+          <RecipientFields
+            value={recipient}
+            onChange={setRecipient}
+            testIdPrefix="payment-recipient"
+          />
+        </fieldset>
       )}
       {failure && <ActionError failure={failure} testId="payment-error" />}
       <div>

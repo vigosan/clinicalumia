@@ -18,6 +18,16 @@ export type RecipientDraft = {
   city: string;
 };
 
+export function recipientParams(recipient: RecipientDraft) {
+  return {
+    name: recipient.name.trim(),
+    tax_id: recipient.taxId.trim(),
+    address: recipient.address.trim(),
+    postal_code: recipient.postalCode.trim(),
+    city: recipient.city.trim(),
+  };
+}
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function currentInvoice(

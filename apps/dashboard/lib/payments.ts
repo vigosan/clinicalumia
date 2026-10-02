@@ -151,7 +151,7 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   appointment_not_found: "Esta cita ya no está disponible.",
   payment_not_found: "Este cobro ya no está disponible.",
   full_invoice_required:
-    "Este importe supera los 400 € de una factura simplificada. Habla con la propietaria para emitir la factura completa.",
+    "Este importe supera los 400 € de una factura simplificada: completa los datos del destinatario para emitir la factura completa.",
   invoice_already_rectified: "Esta factura ya está rectificada.",
   invoice_already_replaced: "Esta factura ya tiene factura completa.",
   recipient_tax_id_invalid:
@@ -256,6 +256,22 @@ export function needsPaymentNote({
     !("cents" in parsed) ||
     parsed.cents !== suggestedAmountCents ||
     error === paymentError({ code: "P0001", message: "note_required" })
+  );
+}
+
+const SIMPLIFIED_INVOICE_LIMIT_CENTS = 40_000;
+
+export function needsRecipient({
+  amount,
+  error,
+}: {
+  amount: string;
+  error: string | null;
+}): boolean {
+  const parsed = parseAmount(amount);
+  return (
+    ("cents" in parsed && parsed.cents > SIMPLIFIED_INVOICE_LIMIT_CENTS) ||
+    error === paymentError({ code: "P0001", message: "full_invoice_required" })
   );
 }
 

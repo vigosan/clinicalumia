@@ -187,6 +187,60 @@ test("cobrar un importe distinto del propuesto pide el motivo y con él se regis
   );
 });
 
+test("cobrar 450 € pide los datos del destinatario y emite directamente una factura completa, sin simplificada", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), -5);
+  const employee = await createEmployee("Profesional Cobro Completa");
+  const appointmentId = await createAppointment(employee.id, date);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointmentId);
+
+  await page.getByTestId("payment-collect").click();
+  await page.getByTestId("payment-amount").fill("400");
+  await expect(page.getByTestId("payment-recipient")).toHaveCount(0);
+  await page.getByTestId("payment-amount").fill("450");
+  await expect(page.getByTestId("payment-recipient")).toBeVisible();
+  await page.getByTestId("payment-note").fill("Bono de diez sesiones");
+  await page.getByTestId("payment-method-card").check();
+  await page.getByTestId("payment-recipient-name").fill("Marta Soler Vidal");
+  await page.getByTestId("payment-recipient-tax-id").fill("12345678A");
+  await page.getByTestId("payment-recipient-address").fill("Calle Sol 2");
+  await page.getByTestId("payment-recipient-postal-code").fill("46800");
+  await page.getByTestId("payment-recipient-city").fill("Xàtiva");
+  await page.getByTestId("payment-submit").click();
+  await expect(page.getByTestId("payment-error")).toHaveText(
+    "Escribe un DNI, NIE o CIF válido. Otros documentos (pasaporte, NIF extranjero) no se admiten todavía.",
+  );
+
+  await page.getByTestId("payment-recipient-tax-id").fill("12345678Z");
+  await page.getByTestId("payment-submit").click();
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Cobrada · 450,00 € · Tarjeta",
+  );
+
+  const { data: invoices, error } = await admin
+    .from("invoices")
+    .select(
+      "code, kind, status, replaces_invoice_id, total_cents, snapshot, payments!inner(appointment_id)",
+    )
+    .eq("payments.appointment_id", appointmentId);
+  expect(error).toBeNull();
+  expect(invoices).toHaveLength(1);
+  expect(invoices![0]).toMatchObject({
+    kind: "full",
+    status: "issued",
+    replaces_invoice_id: null,
+    total_cents: 45000,
+    snapshot: { recipient: { name: "Marta Soler Vidal", tax_id: "12345678Z" } },
+  });
+  await expect(page.getByTestId("invoice-code")).toHaveText(
+    `Factura ${invoices![0]!.code}`,
+  );
+  await expect(page.getByTestId("invoice-full")).toHaveCount(0);
+});
+
 test("si la señal se paga en la web mientras el formulario está abierto, aparece el campo de motivo para poder explicar la diferencia", async ({
   page,
 }) => {

@@ -5,6 +5,7 @@ import {
   normalizeEmail,
   proposedInvoiceEmail,
   recipientDraft,
+  recipientParams,
 } from "./invoices";
 
 const adult = {
@@ -77,6 +78,26 @@ describe("recipientDraft", () => {
         minor: true,
       }).taxId,
     ).toBe("");
+  });
+});
+
+describe("recipientParams", () => {
+  it("sends the recipient trimmed and with the database field names, so stray spaces never reach a printed invoice", () => {
+    expect(
+      recipientParams({
+        name: "  Ana García ",
+        taxId: " x1234567l ",
+        address: " Avenida del Puerto 3 ",
+        postalCode: " 46800 ",
+        city: " Xàtiva ",
+      }),
+    ).toEqual({
+      name: "Ana García",
+      tax_id: "x1234567l",
+      address: "Avenida del Puerto 3",
+      postal_code: "46800",
+      city: "Xàtiva",
+    });
   });
 });
 

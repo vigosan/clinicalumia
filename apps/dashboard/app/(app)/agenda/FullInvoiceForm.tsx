@@ -1,54 +1,13 @@
 "use client";
 
 import { Button } from "@clinicalumia/ui/button";
-import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
 import { useRef, useState, useTransition } from "react";
 import type { RecipientDraft } from "@/lib/invoices";
 import type { PaymentFailure } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { issueFullInvoice } from "../facturas/actions";
 import { ActionError } from "./ActionError";
-
-const FIELDS: {
-  key: keyof RecipientDraft;
-  label: string;
-  testId: string;
-  autoComplete: string;
-  inputMode?: "numeric";
-}[] = [
-  {
-    key: "name",
-    label: "Nombre o razón social",
-    testId: "invoice-full-name",
-    autoComplete: "name",
-  },
-  {
-    key: "taxId",
-    label: "NIF",
-    testId: "invoice-full-tax-id",
-    autoComplete: "off",
-  },
-  {
-    key: "address",
-    label: "Dirección",
-    testId: "invoice-full-address",
-    autoComplete: "street-address",
-  },
-  {
-    key: "postalCode",
-    label: "Código postal",
-    testId: "invoice-full-postal-code",
-    autoComplete: "postal-code",
-    inputMode: "numeric",
-  },
-  {
-    key: "city",
-    label: "Ciudad",
-    testId: "invoice-full-city",
-    autoComplete: "address-level2",
-  },
-];
+import { RecipientFields } from "./RecipientFields";
 
 export function FullInvoiceForm({
   invoiceId,
@@ -103,20 +62,11 @@ export function FullInvoiceForm({
       onSubmit={handleSubmit}
       className="flex flex-col gap-3"
     >
-      {FIELDS.map((field) => (
-        <Field key={field.key} label={field.label}>
-          <Input
-            data-testid={field.testId}
-            required
-            autoComplete={field.autoComplete}
-            inputMode={field.inputMode}
-            value={draft[field.key]}
-            onChange={(event) =>
-              setDraft({ ...draft, [field.key]: event.target.value })
-            }
-          />
-        </Field>
-      ))}
+      <RecipientFields
+        value={draft}
+        onChange={setDraft}
+        testIdPrefix="invoice-full"
+      />
       {failure && <ActionError failure={failure} testId="invoice-full-error" />}
       <div className="flex gap-2">
         <Button

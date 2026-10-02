@@ -9,6 +9,7 @@ import {
   invoiceEmailHtml,
   normalizeEmail,
   type RecipientDraft,
+  recipientParams,
 } from "@/lib/invoices";
 import { failureFor } from "@/lib/payment-failure";
 import { paymentError } from "@/lib/payments";
@@ -20,13 +21,7 @@ export async function issueFullInvoice(
   const supabase = await createClient();
   const { error } = await supabase.rpc("issue_full_invoice", {
     p_invoice_id: invoiceId,
-    p_recipient: {
-      name: recipient.name.trim(),
-      tax_id: recipient.taxId.trim(),
-      address: recipient.address.trim(),
-      postal_code: recipient.postalCode.trim(),
-      city: recipient.city.trim(),
-    },
+    p_recipient: recipientParams(recipient),
   });
   if (error) return failureFor(supabase, error);
 

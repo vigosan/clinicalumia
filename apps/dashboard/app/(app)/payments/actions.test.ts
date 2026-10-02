@@ -44,6 +44,42 @@ describe("collectPayment", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/");
   });
 
+  it("sends the recipient trimmed when the charge needs a full invoice, so the database can issue it directly", async () => {
+    rpcResult.data = "payment-1";
+    const result = await collectPayment("appt-1", {
+      amount: "450",
+      method: "card",
+      note: "",
+      recipient: {
+        name: " Ana García ",
+        taxId: " 12345678Z ",
+        address: " Calle Sol 2 ",
+        postalCode: " 46800 ",
+        city: " Xàtiva ",
+      },
+    });
+    expect(result).toEqual({ ok: true });
+    expect(rpc).toHaveBeenCalledWith("collect_payment", {
+      p_appointment_id: "appt-1",
+      p_amount_cents: 45000,
+      p_method: "card",
+      p_note: "",
+      p_recipient: {
+        name: "Ana García",
+        tax_id: "12345678Z",
+        address: "Calle Sol 2",
+        postal_code: "46800",
+        city: "Xàtiva",
+      },
+    });
+  });
+
+  it("sends no recipient when the form did not ask for one, so a charge up to 400 € stays a simplified invoice", async () => {
+    rpcResult.data = "payment-1";
+    await collectPayment("appt-1", { amount: "45", method: "cash", note: "" });
+    expect(rpc.mock.calls[0]?.[1]).not.toHaveProperty("p_recipient");
+  });
+
   it("rejects an unreadable amount before reaching the database, so a typo never becomes a charge", async () => {
     const result = await collectPayment("appt-1", {
       amount: "abc",
