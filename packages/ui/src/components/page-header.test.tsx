@@ -25,21 +25,23 @@ describe("PageHeader", () => {
     );
   });
 
-  it("keeps the actions on the title's line, so the main button sits at the same height on every page whether or not it has a description", () => {
+  it("keeps the description right under the title and the actions after both, so on a phone the buttons never split the title from its description", () => {
     render(
       <PageHeader
-        title="Cobros"
-        description="Dinero recibido por las citas."
-        actions={<button type="button">Registrar cobro</button>}
+        title="Nora Ferrer"
+        description="12 años · Paciente"
+        actions={<button type="button">Editar</button>}
       />,
     );
 
-    const titleRow = screen.getByRole("heading", { level: 1 }).parentElement;
-    expect(titleRow).toContainElement(
-      screen.getByRole("button", { name: "Registrar cobro" }),
-    );
-    expect(titleRow).not.toContainElement(
-      screen.getByText("Dinero recibido por las citas."),
-    );
+    const heading = screen.getByRole("heading", { level: 1 });
+    const description = screen.getByText("12 años · Paciente");
+    const action = screen.getByRole("button", { name: "Editar" });
+    expect(heading.parentElement).toContainElement(description);
+    expect(heading.parentElement).not.toContainElement(action);
+    expect(
+      description.compareDocumentPosition(action) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

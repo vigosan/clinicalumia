@@ -27,18 +27,22 @@ export function PageHeader({
         </div>
       )}
       {eyebrow && <p className={eyebrowClass}>{eyebrow}</p>}
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <h1
-          data-testid={titleTestId}
-          className="min-w-0 break-words text-title font-bold text-ink-900"
-        >
-          {title}
-        </h1>
-        {actions && <div className="flex gap-2.5">{actions}</div>}
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h1
+            data-testid={titleTestId}
+            className="min-w-0 break-words text-title font-bold text-ink-900"
+          >
+            {title}
+          </h1>
+          {description && (
+            <p className="max-w-[70ch] text-[15px] text-ink-800">
+              {description}
+            </p>
+          )}
+        </div>
+        {actions && <div className="flex gap-2.5 sm:mt-0.5">{actions}</div>}
       </div>
-      {description && (
-        <p className="max-w-[70ch] text-[15px] text-ink-800">{description}</p>
-      )}
     </div>
   );
 }
