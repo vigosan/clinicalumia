@@ -2,8 +2,10 @@ import { execSync } from "node:child_process";
 import { randomInt } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { userIdsWithEmails } from "./users";
 
 const WEB = "http://localhost:3000";
+const MAILPIT = "http://127.0.0.1:54324/api/v1";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
   .toString()
@@ -49,4 +51,11 @@ test("once 80 access codes went out in the last hour, the web stops sending more
     "Ahora mismo hay muchas peticiones. Inténtalo en unos minutos o llama al 614 552 808.",
   );
   await expect(page).toHaveURL(`${WEB}/acceder?next=%2Freservar`);
+  const { messages_count } = await (
+    await fetch(
+      `${MAILPIT}/search?query=${encodeURIComponent(`to:"${email}"`)}`,
+    )
+  ).json();
+  expect(messages_count).toBe(0);
+  expect(await userIdsWithEmails(admin, [email])).toEqual([]);
 });

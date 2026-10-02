@@ -31,7 +31,8 @@ const MAX_FAILED_CODES_PER_EMAIL_AND_IP = 5;
 const MAX_FAILED_CODES_PER_EMAIL = 20;
 const MAX_FAILED_CODES_PER_IP = 30;
 const USERS_PAGE = 1000;
-const TOO_MANY = "Demasiados intentos. Espera unos minutos.";
+const TOO_MANY = `Demasiados intentos. Espera unos minutos o llama al ${site.phone.display}.`;
+const ACCOUNT_FAILED = `No hemos podido abrir tu cuenta. Inténtalo de nuevo o llama al ${site.phone.display}.`;
 const TOO_SOON = "For security purposes, you can only request this after";
 
 function field(formData: FormData, name: string) {
@@ -80,18 +81,15 @@ async function hasPatientAccount(admin: AdminClient, email: string) {
   return data !== null;
 }
 
-async function openPatientAccount(supabase: ServerClient, user: User) {
+async function createPatientAccount(user: User) {
   const admin = createAdminClient();
   const { data: staff, error } = await admin
     .from("profiles")
     .select("id")
     .eq("id", user.id)
     .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (staff) {
-    await supabase.auth.signOut();
-    return false;
-  }
+  if (error) return "failed";
+  if (staff) return "staff";
 
   const { error: upsertError } = await admin
     .from("patient_accounts")
@@ -99,8 +97,13 @@ async function openPatientAccount(supabase: ServerClient, user: User) {
       { id: user.id, email: user.email!.toLowerCase() },
       { onConflict: "id", ignoreDuplicates: true },
     );
-  if (upsertError) throw new Error(upsertError.message);
-  return true;
+  return upsertError ? "failed" : "opened";
+}
+
+async function openPatientAccount(supabase: ServerClient, user: User) {
+  const outcome = await createPatientAccount(user);
+  if (outcome !== "opened") await supabase.auth.signOut({ scope: "local" });
+  return outcome;
 }
 
 function sentRecently(error: { code?: string; message: string }) {
@@ -164,6 +167,7 @@ export async function requestAccess(
       emailRedirectTo: `${site.url}/acceder/confirmar?next=${encodeURIComponent(next)}`,
     },
   });
+  if (error) await forgetAttempt(admin, sent.id);
   if (error && !sentRecently(error)) {
     if (error.status === 429) return { error: TOO_MANY };
     return { error: "No hemos podido enviarte el email. Inténtalo de nuevo." };
@@ -195,6 +199,7 @@ export async function verifyCode(
     byEmail > MAX_FAILED_CODES_PER_EMAIL ||
     byIp > MAX_FAILED_CODES_PER_IP
   ) {
+    await forgetAttempt(admin, attempt.id);
     return { error: TOO_MANY };
   }
 
@@ -207,9 +212,9 @@ export async function verifyCode(
   if (error) return { error: "El código no es correcto o ha caducado." };
 
   await forgetAttempt(admin, attempt.id);
-  if (!(await openPatientAccount(supabase, data.user!))) {
-    return { error: STAFF_EMAIL };
-  }
+  const outcome = await openPatientAccount(supabase, data.user!);
+  if (outcome === "staff") return { error: STAFF_EMAIL };
+  if (outcome === "failed") return { error: ACCOUNT_FAILED };
 
   redirect(nextFrom(formData));
 }
@@ -221,7 +226,10 @@ export async function confirmLink(formData: FormData): Promise<void> {
     type: "email",
   });
   if (error) redirect("/acceder?caducado=1");
-  else if (await openPatientAccount(supabase, data.user!)) {
-    redirect(nextFrom(formData));
-  } else redirect("/acceder");
+  else {
+    const outcome = await openPatientAccount(supabase, data.user!);
+    if (outcome === "opened") redirect(nextFrom(formData));
+    else if (outcome === "staff") redirect("/acceder");
+    else redirect("/acceder?caducado=1");
+  }
 }

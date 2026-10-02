@@ -8,6 +8,7 @@ let requestHeaders: Headers;
 let otpError: { message: string; status?: number; code?: string } | null;
 let verifyError: { message: string } | null;
 let verifiedUser: { id: string; email: string };
+let failingUpsert: string | null = null;
 const createUser = vi.fn();
 const signInWithOtp = vi.fn();
 const verifyOtp = vi.fn();
@@ -73,6 +74,9 @@ function table(name: string) {
       },
     }),
     upsert: async (row: Row) => {
+      if (failingUpsert === name) {
+        return { error: { message: "database unavailable" } };
+      }
       if (!(tables[name] ?? []).some((existing) => existing.id === row.id)) {
         tables[name] = [...(tables[name] ?? []), row];
       }
@@ -139,7 +143,9 @@ function fromIp(ip: string) {
   });
 }
 
-const TOO_MANY = { error: "Demasiados intentos. Espera unos minutos." };
+const TOO_MANY = {
+  error: "Demasiados intentos. Espera unos minutos o llama al 614 552 808.",
+};
 const BUSY = {
   error:
     "Ahora mismo hay muchas peticiones. Inténtalo en unos minutos o llama al 614 552 808.",
@@ -619,6 +625,16 @@ describe("requestAccess", () => {
     vi.unstubAllGlobals();
   });
 
+  it("does not count towards the hourly total a code Supabase did not send", async () => {
+    otpError = { message: "smtp down" };
+
+    await requestAccess(undefined, accessForm("lucia@example.com"));
+
+    expect(
+      (tables.access_requests ?? []).filter((row) => row.kind === "code_sent"),
+    ).toHaveLength(0);
+  });
+
   it("tells the person to retry when the email could not be sent", async () => {
     otpError = { message: "smtp down" };
 
@@ -643,6 +659,7 @@ describe("verifyCode", () => {
     verifyOtp.mockReset();
     verifyingAs("user-lucia", "lucia@example.com");
     signOut.mockReset();
+    failingUpsert = null;
     redirectMock.mockClear();
   });
 
@@ -692,7 +709,7 @@ describe("verifyCode", () => {
     );
 
     expect(result).toEqual(STAFF);
-    expect(signOut).toHaveBeenCalled();
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(tables.patient_accounts).toEqual([]);
     expect(redirectMock).not.toHaveBeenCalled();
   });
@@ -766,14 +783,59 @@ describe("verifyCode", () => {
     expect(verifyOtp.mock.calls.length).toBeLessThanOrEqual(5);
   });
 
-  it("keeps blocked attempts on record so hammering never reopens the limit", async () => {
+  it("does not record a blocked guess, so one network cannot push a victim's email past the cross-network limit", async () => {
     verifyError = { message: "Token has expired or is invalid" };
     for (let attempt = 0; attempt < 7; attempt++) {
       await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
     }
 
-    expect(tables.access_requests).toHaveLength(7);
+    expect(tables.access_requests).toHaveLength(5);
     expect(verifyOtp).toHaveBeenCalledTimes(5);
+  });
+
+  it("keeps the network blocked for the hour, since the five wrong codes that caused the block stay on record", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+    }
+    verifyOtp.mockClear();
+
+    const result = await verifyCode(
+      undefined,
+      codeForm("lucia@example.com", "123456"),
+    );
+
+    expect(result).toEqual(TOO_MANY);
+    expect(verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it("still lets the right code through from the patient's network after twenty-one wrong ones from a single other network", async () => {
+    verifyError = { message: "Token has expired or is invalid" };
+    for (let attempt = 0; attempt < 21; attempt++) {
+      await verifyCode(undefined, codeForm("lucia@example.com", "000000"));
+    }
+    verifyError = null;
+    fromIp("192.0.2.50");
+
+    await verifyCode(undefined, codeForm("lucia@example.com", "123456"));
+
+    expect(redirectMock).toHaveBeenCalledWith("/reservar");
+  });
+
+  it("signs the person out of the web and asks them to retry when their account cannot be created, so no page opens without it", async () => {
+    failingUpsert = "patient_accounts";
+
+    const result = await verifyCode(
+      undefined,
+      codeForm("lucia@example.com", "123456"),
+    );
+
+    expect(result).toEqual({
+      error:
+        "No hemos podido abrir tu cuenta. Inténtalo de nuevo o llama al 614 552 808.",
+    });
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 
   it("does not record anything when the code is right", async () => {
@@ -915,6 +977,7 @@ describe("confirmLink", () => {
     verifyOtp.mockReset();
     verifyingAs("user-lucia", "lucia@example.com");
     signOut.mockReset();
+    failingUpsert = null;
     redirectMock.mockClear();
   });
 
@@ -939,9 +1002,18 @@ describe("confirmLink", () => {
 
     await confirmLink(linkForm("hash-1", "/reservar"));
 
-    expect(signOut).toHaveBeenCalled();
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(tables.patient_accounts).toEqual([]);
     expect(redirectMock).toHaveBeenCalledWith("/acceder");
+  });
+
+  it("signs the person out of the web and sends them back to ask again when their account cannot be created", async () => {
+    failingUpsert = "patient_accounts";
+
+    await confirmLink(linkForm("hash-1", "/reservar"));
+
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(redirectMock).toHaveBeenCalledWith("/acceder?caducado=1");
   });
 
   function linkForm(tokenHash: string, next: string) {

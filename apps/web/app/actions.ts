@@ -9,6 +9,7 @@ import {
   BUSY,
   forgetAttempt,
   hashIp,
+  purgeOldAttempts,
   recordAttempt,
 } from "@/lib/access-attempts";
 import { parseConsent } from "@/lib/consent";
@@ -18,7 +19,7 @@ import { storeConsent } from "@/lib/consent-store";
 import { site } from "@/lib/site";
 import { CAPTCHA_FAILED, passesCaptcha } from "@/lib/turnstile";
 
-const MAX_CONSENTS_PER_IP = 5;
+const MAX_CONSENTS_PER_IP = 15;
 const MAX_CONSENTS_PER_HOUR = 30;
 
 export type CollaboratorFormState =
@@ -166,12 +167,8 @@ export async function sendConsent(
 
   const admin = createAdminClient();
   const ipHash = hashIp(await headers());
-  const attempt = await recordAttempt(
-    admin,
-    "consent",
-    consent.email || null,
-    ipHash,
-  );
+  const attempt = await recordAttempt(admin, "consent", null, ipHash);
+  await purgeOldAttempts(admin, attempt.created_at);
   const [byIp, total] = await Promise.all([
     attemptsInHour(admin, "consent", attempt.created_at, { ip_hash: ipHash }),
     attemptsInHour(admin, "consent", attempt.created_at, {}),

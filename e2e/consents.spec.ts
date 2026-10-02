@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
-import { randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { extractImages, extractText, getDocumentProxy } from "unpdf";
@@ -24,7 +25,16 @@ const createdConsentIds: string[] = [];
 const createdPdfPaths: string[] = [];
 const createdPersonIds: string[] = [];
 const createdUserIds: string[] = [];
-const signerEmails: string[] = [];
+const networkHashes: string[] = [];
+
+const ipSalt =
+  readFileSync("../apps/web/.env.development.local", "utf8").match(
+    /^ACCESS_IP_SALT="?([^"\n]*)/m,
+  )?.[1] ?? "";
+
+function networkHash(ip: string) {
+  return createHash("sha256").update(`${ipSalt}:${ip}`).digest("hex");
+}
 
 function uniqueSuffix() {
   return `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
@@ -56,7 +66,6 @@ type Signer = {
 };
 
 async function fillSigner(page: Page, signer: Signer) {
-  signerEmails.push(signer.email);
   await page.goto(`${WEB}/consentimiento`);
   const form = page.getByTestId("consent-form");
   await form.getByLabel("Nombre", { exact: true }).fill(signer.firstName);
@@ -218,19 +227,19 @@ async function searchConsents(page: Page, query: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.setExtraHTTPHeaders({
-    "x-forwarded-for": `198.18.${randomInt(256)}.${randomInt(256)}`,
-  });
+  const ip = `198.18.${randomInt(256)}.${randomInt(256)}`;
+  networkHashes.push(networkHash(ip));
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": ip });
 });
 
 test.afterEach(async () => {
   const errors: unknown[] = [];
-  const emails = signerEmails.splice(0);
-  if (emails.length > 0) {
+  const hashes = networkHashes.splice(0);
+  if (hashes.length > 0) {
     const { error } = await admin
       .from("access_requests")
       .delete()
-      .in("email", emails);
+      .in("ip_hash", hashes);
     if (error) errors.push(error);
   }
   const consentIds = createdConsentIds.splice(0);
@@ -758,18 +767,17 @@ test("without captcha keys the consent form shows no captcha", async ({
   await expect(page.getByTestId("captcha")).toHaveCount(0);
 });
 
-test("a sixth consent from the same network within an hour is stopped with the clinic phone, so a script cannot fill the list or spend the email quota", async ({
+test("a sixteenth consent from the same network within an hour is stopped with the clinic phone, so a script cannot fill the list or spend the email quota", async ({
   page,
 }) => {
-  for (let signed = 0; signed < 5; signed++) {
-    await signAtWeb(page, {
-      firstName: "Familia",
-      lastName: `Limite${uniqueSuffix()}`,
-      birthDate: "1985-03-01",
-      taxId: uniqueTaxId(),
-      email: `limite-${uniqueSuffix()}@test.local`,
-    });
-  }
+  const { error } = await admin.from("access_requests").insert(
+    Array.from({ length: 15 }, () => ({
+      email: null,
+      ip_hash: networkHashes.at(-1)!,
+      kind: "consent",
+    })),
+  );
+  expect(error).toBeNull();
   const taxId = uniqueTaxId();
   await fillSigner(page, {
     firstName: "Familia",

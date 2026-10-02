@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(11);
 
 select has_column('public', 'access_requests', 'kind',
   'each attempt records whether it asked for an email or failed a code');
@@ -29,6 +29,9 @@ select throws_ok($$ insert into public.access_requests (email, ip_hash, kind) va
 
 select throws_ok($$ insert into public.access_requests (email, ip_hash, kind) values (null, 'h', 'failed_code') $$,
   '23514', null, 'a wrong code always names the email it was for');
+
+select throws_ok($$ insert into public.access_requests (email, ip_hash, kind) values ('firmante@test.local', 'h', 'consent') $$,
+  '23514', null, 'a consent never keeps the signer''s email in the limits table, since only the network is counted');
 
 select has_index('public', 'access_requests', 'access_requests_kind_idx', array['kind', 'created_at'],
   'the hourly totals per kind are counted from an index, not by scanning every attempt');

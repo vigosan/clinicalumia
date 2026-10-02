@@ -159,7 +159,7 @@ test("the sixth request in an hour for the same email is stopped, so the web can
   await requestAccess(page, email);
 
   await expect(page.getByTestId("access-error")).toHaveText(
-    "Demasiados intentos. Espera unos minutos.",
+    "Demasiados intentos. Espera unos minutos o llama al 614 552 808.",
   );
 });
 

@@ -5,6 +5,7 @@ const sendEmail = vi.fn();
 const recordAttempt = vi.fn();
 const attemptsInHour = vi.fn();
 const forgetAttempt = vi.fn();
+const purgeOldAttempts = vi.fn();
 
 vi.mock("@/lib/consent-store", () => ({ storeConsent }));
 vi.mock("@clinicalumia/api/email", () => ({ sendEmail }));
@@ -19,6 +20,7 @@ vi.mock("@/lib/access-attempts", async (importOriginal) => ({
   recordAttempt,
   attemptsInHour,
   forgetAttempt,
+  purgeOldAttempts,
 }));
 
 const { sendConsent } = await import("./actions");
@@ -81,7 +83,7 @@ describe("sendConsent", () => {
     vi.unstubAllGlobals();
   });
 
-  it("counts each consent against the signer's network, by a salted hash of it, and the email they left", async () => {
+  it("counts each consent against a salted hash of the signer's network only, without keeping their email in the limits table, since no limit needs it", async () => {
     storeConsent.mockResolvedValue({ id: "c1", personId: null });
 
     await sendConsent(undefined, consentForm());
@@ -89,26 +91,24 @@ describe("sendConsent", () => {
     expect(recordAttempt).toHaveBeenCalledWith(
       "admin-client",
       "consent",
-      "ana@example.com",
+      null,
       expect.stringMatching(/^[0-9a-f]{64}$/),
     );
   });
 
-  it("counts a consent signed without email too", async () => {
+  it("purges attempts older than a day, so the limits table never keeps more than the limits need even when nobody asks for an access code", async () => {
     storeConsent.mockResolvedValue({ id: "c1", personId: null });
 
-    await sendConsent(undefined, consentForm({ email: "" }));
+    await sendConsent(undefined, consentForm());
 
-    expect(recordAttempt).toHaveBeenCalledWith(
+    expect(purgeOldAttempts).toHaveBeenCalledWith(
       "admin-client",
-      "consent",
-      null,
-      expect.any(String),
+      "2026-10-02T10:00:00.000Z",
     );
   });
 
-  it("stops the sixth consent in an hour from the same network before storing or emailing, and gives the clinic phone", async () => {
-    consentsInHour({ fromNetwork: 6, overall: 6 });
+  it("stops the sixteenth consent in an hour from the same network before storing or emailing, and gives the clinic phone", async () => {
+    consentsInHour({ fromNetwork: 16, overall: 16 });
 
     const result = await sendConsent(undefined, consentForm());
 
@@ -120,8 +120,8 @@ describe("sendConsent", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  it("still accepts the fifth consent in an hour from the same network, for a family signing together", async () => {
-    consentsInHour({ fromNetwork: 5, overall: 5 });
+  it("still accepts the fifteenth consent in an hour from the same network, because reception signs several patients in a row on the clinic tablet or wifi", async () => {
+    consentsInHour({ fromNetwork: 15, overall: 15 });
     storeConsent.mockResolvedValue({ id: "c1", personId: null });
 
     const result = await sendConsent(undefined, consentForm());
@@ -143,7 +143,7 @@ describe("sendConsent", () => {
   });
 
   it("forgets a stopped consent, so one network hammering the form cannot lock everyone else out", async () => {
-    consentsInHour({ fromNetwork: 6, overall: 6 });
+    consentsInHour({ fromNetwork: 16, overall: 16 });
 
     await sendConsent(undefined, consentForm());
 
