@@ -11,6 +11,7 @@ import {
   type AppointmentEventRow,
   appointmentHistory,
 } from "@/lib/appointment-history";
+import { loadClosures } from "@/lib/closures";
 import {
   currentInvoice,
   proposedInvoiceEmail,
@@ -54,6 +55,7 @@ export async function loadAppointmentDetail(
     { data: guardianRows, error: guardiansError },
     { data: noticeRecipients },
     lastRecipient,
+    closures,
     {
       data: { user },
     },
@@ -85,6 +87,7 @@ export async function loadAppointmentDetail(
       p_appointment_id: appointmentId,
     }),
     loadLastFullRecipient(supabase, appt.patient.id),
+    loadClosures(supabase, todayInMadrid()),
     supabase.auth.getUser(),
   ]);
   if (
@@ -94,6 +97,7 @@ export async function loadAppointmentDetail(
     suggestedError ||
     guardiansError ||
     suggestedCents === null ||
+    !closures ||
     !user
   )
     return { status: "error" };
@@ -215,6 +219,7 @@ export async function loadAppointmentDetail(
       initialDate: initial.date,
       initialTime: initial.time.slice(0, 5),
       history,
+      closures,
     },
   };
 }

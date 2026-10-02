@@ -30,6 +30,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { adjacentAppointments, isUuid } from "@/lib/agenda";
+import type { Closure } from "@/lib/closures";
 import { formatMinutes } from "@/lib/duration";
 import {
   type CurrentInvoice,
@@ -82,6 +83,7 @@ export type AppointmentDetail = {
   initialDate: string;
   initialTime: string;
   history: { id: string; text: string }[];
+  closures: Closure[];
 };
 
 type ShownStatus = AppointmentDetail["status"] | "done";
@@ -362,6 +364,7 @@ function AppointmentDetails({
             initialDate={appointment.initialDate}
             initialTime={appointment.initialTime}
             canNotify={appointment.canNotify}
+            closures={appointment.closures}
             onPendingChange={setMoving}
           />
         </div>

@@ -605,7 +605,7 @@ test("adding an absence lists the appointments that professional already has tho
   expect(stored?.status).toBe("scheduled");
 });
 
-test("moving an appointment to a closed day warns with the reason before saving it there", async ({
+test("moving an appointment to a closed day warns as soon as the day is picked and again with the reason before saving it there", async ({
   page,
 }) => {
   const closed = farWednesday();
@@ -652,7 +652,11 @@ test("moving an appointment to a closed day warns with the reason before saving 
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await page.goto(`${DASHBOARD}/?date=${open}&appointment=${appointment!.id}`);
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
+  await expect(page.getByTestId("appointment-closure-warning")).toHaveCount(0);
   await pickDate(page.getByTestId("appointment-move-date"), closed);
+  await expect(page.getByTestId("appointment-closure-warning")).toHaveText(
+    `La clínica está cerrada ese día (${reason}). Puedes cambiar la cita igualmente.`,
+  );
   await pickTime(page.getByTestId("appointment-move-time"), "10:00");
   await page.getByTestId("appointment-move").click();
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
+import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { DatePicker } from "@clinicalumia/ui/date-picker";
@@ -14,6 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { type Closure, closureOn } from "@/lib/closures";
 import { noticeToast } from "@/lib/notice-toast";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { toastOnRedirect } from "@/lib/toast-on-redirect";
@@ -36,6 +38,7 @@ export function MoveForm({
   initialDate,
   initialTime,
   canNotify,
+  closures,
   onPendingChange,
 }: {
   appointmentId: string;
@@ -48,6 +51,7 @@ export function MoveForm({
   initialDate: string;
   initialTime: string;
   canNotify: boolean;
+  closures: Closure[];
   onPendingChange: (pending: boolean) => void;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -55,6 +59,7 @@ export function MoveForm({
     undefined,
   );
   const [duration, setDuration] = useState(String(durationMinutes));
+  const [date, setDate] = useState(initialDate);
   const formRef = useRef<HTMLFormElement>(null);
   const submitGateRef = useRef(createSubmitGate());
   const dismissedStateRef = useRef(state);
@@ -69,6 +74,7 @@ export function MoveForm({
       ? state.warnings
       : [];
   const error = state && "error" in state ? state.error : null;
+  const closure = closureOn(date, closures);
 
   function resetConfirmation() {
     dismissedStateRef.current = state;
@@ -132,8 +138,11 @@ export function MoveForm({
               name="date"
               data-testid="appointment-move-date"
               today={todayInMadrid()}
-              defaultValue={initialDate}
-              onValueChange={resetConfirmation}
+              value={date}
+              onValueChange={(next) => {
+                setDate(next);
+                resetConfirmation();
+              }}
             />
           </Field>
         </div>
@@ -154,6 +163,13 @@ export function MoveForm({
           }}
         />
       </div>
+
+      {closure && (
+        <Alert tone="warning" data-testid="appointment-closure-warning">
+          La clínica está cerrada ese día ({closure.reason}). Puedes cambiar la
+          cita igualmente.
+        </Alert>
+      )}
 
       {canNotify && (
         <CheckboxField
