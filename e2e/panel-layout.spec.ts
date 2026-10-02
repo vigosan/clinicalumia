@@ -72,3 +72,49 @@ test("the owner's week names the person once, in the selected chip, instead of r
     page.getByRole("main").getByText(name, { exact: true }),
   ).toHaveCount(1);
 });
+
+test("pending amounts line up on the right with fixed-width digits, so they can be compared at a glance", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, OWNER);
+  await page.goto(`${DASHBOARD}/cobros?tab=pendientes`);
+
+  const amounts = page.getByTestId("pending-payment-amount");
+  await expect(amounts.first()).toBeVisible();
+  for (const amount of await amounts.all()) {
+    const style = await amount.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return {
+        align: computed.textAlign,
+        digits: computed.fontVariantNumeric,
+      };
+    });
+    expect(style.align).toBe("right");
+    expect(style.digits).toContain("tabular-nums");
+  }
+});
+
+test("clicking anywhere on a pending row opens its appointment, not only on the underlined date", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, OWNER);
+  await page.goto(`${DASHBOARD}/cobros?tab=pendientes`);
+
+  const row = page.getByTestId("pending-payment-row").first();
+  await row.getByTestId("pending-payment-amount").click({ force: true });
+
+  await expect(page).toHaveURL(/[?&]appointment=/);
+  await expect(page.getByTestId("appointment-panel")).toBeVisible();
+});
+
+test("clicking anywhere on a patient row opens the record", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, OWNER);
+  await page.goto(`${DASHBOARD}/patients`);
+
+  const row = page.getByTestId("patient-row").first();
+  await row.getByTestId("patient-age").click({ force: true });
+
+  await expect(page).toHaveURL(/\/patients\/[0-9a-f-]{36}$/);
+});

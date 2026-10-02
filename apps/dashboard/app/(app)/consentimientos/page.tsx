@@ -4,6 +4,7 @@ import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { Pagination } from "@clinicalumia/ui/pagination";
 import {
+  rowLinkClass,
   Table,
   TableBody,
   TableCell,
@@ -83,7 +84,7 @@ export default async function ConsentsPage({
             </TableHead>
             <TableBody>
               {consents.map((consent) => (
-                <TableRow key={consent.id} data-testid="consent-row">
+                <TableRow key={consent.id} linked data-testid="consent-row">
                   <TableCell label="Firmado">
                     {formatSignedAt(consent.signed_at)}
                   </TableCell>
@@ -91,6 +92,7 @@ export default async function ConsentsPage({
                     <Link
                       href={`/consentimientos/${consent.id}`}
                       data-testid="consent-open"
+                      className={rowLinkClass}
                     >
                       {consent.first_name} {consent.last_name}
                     </Link>
@@ -103,7 +105,10 @@ export default async function ConsentsPage({
                     {consent.person ? (
                       <>
                         Asociado a la ficha de{" "}
-                        <Link href={`/patients/${consent.person.id}`}>
+                        <Link
+                          href={`/patients/${consent.person.id}`}
+                          className="relative z-10"
+                        >
                           {linkedPersonLabel(consent.person)}
                         </Link>
                       </>

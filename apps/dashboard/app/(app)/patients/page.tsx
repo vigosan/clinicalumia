@@ -8,6 +8,7 @@ import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { Pagination } from "@clinicalumia/ui/pagination";
 import {
+  rowLinkClass,
   Table,
   TableBody,
   TableCell,
@@ -113,12 +114,13 @@ export default async function PatientsPage({
                   ? isMinor(person.birth_date, today)
                   : false;
                 return (
-                  <TableRow key={person.id} data-testid="patient-row">
+                  <TableRow key={person.id} linked data-testid="patient-row">
                     <TableCell className="font-medium">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/patients/${person.id}`}
                           data-testid="patient-link"
+                          className={rowLinkClass}
                         >
                           {person.first_name} {person.last_name}
                         </Link>
@@ -132,7 +134,7 @@ export default async function PatientsPage({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell label="Edad">
+                    <TableCell label="Edad" data-testid="patient-age">
                       {person.birth_date
                         ? `${ageOn(person.birth_date, today)} años`
                         : "—"}

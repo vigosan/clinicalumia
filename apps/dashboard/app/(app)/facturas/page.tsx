@@ -6,6 +6,7 @@ import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { Pagination } from "@clinicalumia/ui/pagination";
 import {
+  rowLinkClass,
   Table,
   TableBody,
   TableCell,
@@ -105,17 +106,18 @@ export default async function InvoicesPage({
                 <TableHeaderCell>Fecha</TableHeaderCell>
                 <TableHeaderCell>Tipo</TableHeaderCell>
                 <TableHeaderCell>Destinatario o paciente</TableHeaderCell>
-                <TableHeaderCell>Total</TableHeaderCell>
+                <TableHeaderCell numeric>Total</TableHeaderCell>
                 <TableHeaderCell>Estado</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {rows.map((row) => (
-                <TableRow key={row.id} data-testid="invoice-row">
+                <TableRow key={row.id} linked data-testid="invoice-row">
                   <TableCell className="font-medium max-md:text-[15px]">
                     <Link
                       href={`/facturas/${row.id}`}
                       data-testid="invoice-open"
+                      className={rowLinkClass}
                     >
                       {row.code}
                     </Link>
@@ -129,7 +131,7 @@ export default async function InvoicesPage({
                   <TableCell label="Destinatario o paciente">
                     {invoiceRecipientLabel(row)}
                   </TableCell>
-                  <TableCell label="Total">
+                  <TableCell label="Total" numeric>
                     {formatEuros(row.totalCents)}
                   </TableCell>
                   <TableCell label="Estado" data-testid="invoice-status">

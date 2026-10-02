@@ -6,6 +6,7 @@ import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { eyebrowClass, PageHeader } from "@clinicalumia/ui/page-header";
 import {
+  rowLinkClass,
   Table,
   TableBody,
   TableCell,
@@ -157,7 +158,7 @@ export default async function CobrosPage({
                       <TableHeaderCell>Paciente</TableHeaderCell>
                       <TableHeaderCell>Servicio</TableHeaderCell>
                       <TableHeaderCell>Profesional</TableHeaderCell>
-                      <TableHeaderCell>Importe</TableHeaderCell>
+                      <TableHeaderCell numeric>Importe</TableHeaderCell>
                       <TableHeaderCell>Forma de pago</TableHeaderCell>
                       <TableHeaderCell>Cobrado por</TableHeaderCell>
                       <TableHeaderCell>Estado</TableHeaderCell>
@@ -187,6 +188,7 @@ export default async function CobrosPage({
                         </TableCell>
                         <TableCell
                           label="Importe"
+                          numeric
                           data-testid="payment-row-amount"
                         >
                           {formatEuros(payment.amountCents)}
@@ -242,18 +244,19 @@ export default async function CobrosPage({
                     <TableHeaderCell>Paciente</TableHeaderCell>
                     <TableHeaderCell>Servicio</TableHeaderCell>
                     <TableHeaderCell>Profesional</TableHeaderCell>
-                    <TableHeaderCell>Importe</TableHeaderCell>
+                    <TableHeaderCell numeric>Importe</TableHeaderCell>
                     <TableHeaderCell />
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {pendingRows.map((row) => (
-                    <TableRow key={row.id} data-testid="pending-payment-row">
+                    <TableRow
+                      key={row.id}
+                      linked
+                      data-testid="pending-payment-row"
+                    >
                       <TableCell label="Fecha y hora">
-                        <Link
-                          href={row.href}
-                          className="underline decoration-line-field underline-offset-4 hover:text-sage-800 hover:decoration-sage-800"
-                        >
+                        <Link href={row.href} className={rowLinkClass}>
                           {row.moment}
                         </Link>
                       </TableCell>
@@ -264,10 +267,14 @@ export default async function CobrosPage({
                       <TableCell label="Profesional">
                         {row.professionalName}
                       </TableCell>
-                      <TableCell label="Importe">
+                      <TableCell
+                        label="Importe"
+                        numeric
+                        data-testid="pending-payment-amount"
+                      >
                         {formatEuros(row.suggestedAmountCents)}
                       </TableCell>
-                      <TableCell className="max-md:mt-2 max-md:justify-end">
+                      <TableCell className="relative z-10 text-right max-md:mt-2 max-md:justify-end">
                         <RegisterPaymentDialog
                           trigger={
                             <Button
