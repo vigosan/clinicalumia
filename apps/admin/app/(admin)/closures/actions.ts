@@ -29,14 +29,9 @@ function closureInsertError(error: { code: string; message: string }) {
   return "No se ha podido guardar el cierre.";
 }
 
-export async function addClosure(
-  _prev: ClosureState,
-  formData: FormData,
-): Promise<ClosureState> {
-  const supabase = await createClient();
-  const owner = await requireOwner(supabase);
-  if (!owner.ok) return { error: owner.error };
+type ClosureFields = { starts_on: string; ends_on: string; reason: string };
 
+function readClosure(formData: FormData): ClosureFields | { error: string } {
   const from = String(formData.get("starts_on") ?? "");
   const to = String(formData.get("ends_on") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
@@ -47,10 +42,24 @@ export async function addClosure(
   if (!reason) return { error: "Indica el motivo del cierre." };
   if (reason.length > 80)
     return { error: "El motivo no puede tener más de 80 caracteres." };
+  return { starts_on: from, ends_on: to, reason };
+}
 
-  const { error } = await supabase
-    .from("clinic_closures")
-    .insert({ starts_on: from, ends_on: to, reason });
+async function saveClosure(
+  formData: FormData,
+  write: (
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    fields: ClosureFields,
+  ) => PromiseLike<{ error: { code: string; message: string } | null }>,
+): Promise<ClosureState> {
+  const supabase = await createClient();
+  const owner = await requireOwner(supabase);
+  if (!owner.ok) return { error: owner.error };
+
+  const fields = readClosure(formData);
+  if ("error" in fields) return fields;
+
+  const { error } = await write(supabase, fields);
   if (error) return { error: closureInsertError(error) };
 
   revalidatePath("/closures");
@@ -59,12 +68,31 @@ export async function addClosure(
     .from("appointments")
     .select(AFFECTED_APPOINTMENTS_SELECT)
     .neq("status", "cancelled")
-    .lt("starts_at", madridInstant(addDays(to, 1), "00:00"))
-    .gt("ends_at", madridInstant(from, "00:00"))
+    .lt("starts_at", madridInstant(addDays(fields.ends_on, 1), "00:00"))
+    .gt("ends_at", madridInstant(fields.starts_on, "00:00"))
     .order("starts_at", { ascending: true });
   if (appointmentsError) return { ok: true, affected: null };
 
   return { ok: true, affected: toAffectedAppointments(appointments) };
+}
+
+export async function addClosure(
+  _prev: ClosureState,
+  formData: FormData,
+): Promise<ClosureState> {
+  return saveClosure(formData, (supabase, fields) =>
+    supabase.from("clinic_closures").insert(fields),
+  );
+}
+
+export async function updateClosure(
+  _prev: ClosureState,
+  formData: FormData,
+): Promise<ClosureState> {
+  const id = String(formData.get("id") ?? "");
+  return saveClosure(formData, (supabase, fields) =>
+    supabase.from("clinic_closures").update(fields).eq("id", id),
+  );
 }
 
 export async function deleteClosure(id: string): Promise<ActionResult> {

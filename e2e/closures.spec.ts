@@ -697,3 +697,42 @@ test("a new employee starts from a teammate's schedule: copying fills the editor
   await page.getByRole("button", { name: "Cancelar" }).click();
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
 });
+
+test("the owner renames a closure from its drawer and the list shows the new reason", async ({
+  page,
+}) => {
+  const day = addDays(todayInMadrid(), 500 + Math.floor(Math.random() * 150));
+  const reason = `Cierre a editar ${uniqueSuffix()}`;
+  const renamed = `Cierre editado ${uniqueSuffix()}`;
+  createdReasons.push(reason, renamed);
+  const { data: closure, error } = await admin
+    .from("clinic_closures")
+    .insert({ starts_on: day, ends_on: day, reason })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  const owner = await createStaff("owner");
+
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/closures`);
+  await page
+    .getByTestId("closure-row")
+    .filter({ hasText: reason })
+    .getByTestId("closure-edit")
+    .click();
+  const drawer = page.getByRole("dialog", { name: "Editar día de cierre" });
+  await expect(drawer.getByLabel("Motivo")).toHaveValue(reason);
+  await drawer.getByLabel("Motivo").fill(renamed);
+  await drawer.getByRole("button", { name: "Guardar" }).click();
+
+  await expect(drawer).toHaveCount(0);
+  await expect(
+    page.getByTestId("closure-row").filter({ hasText: renamed }),
+  ).toBeVisible();
+  const { data: stored } = await admin
+    .from("clinic_closures")
+    .select("starts_on, ends_on, reason")
+    .eq("id", closure!.id)
+    .single();
+  expect(stored).toEqual({ starts_on: day, ends_on: day, reason: renamed });
+});

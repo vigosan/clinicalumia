@@ -5,8 +5,15 @@ import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { useState, useTransition } from "react";
 import { type Closure, closureLabel } from "@/lib/closures";
 import { deleteClosure } from "./actions";
+import { EditClosure } from "./EditClosure";
 
-export function ClosureRow({ closure }: { closure: Closure }) {
+export function ClosureRow({
+  closure,
+  today,
+}: {
+  closure: Closure;
+  today: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -16,30 +23,33 @@ export function ClosureRow({ closure }: { closure: Closure }) {
       className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 [&+&]:border-line [&+&]:border-t"
     >
       <span className="text-[15px] text-ink-900">{closureLabel(closure)}</span>
-      <ConfirmDialog
-        tone="destructive"
-        trigger={
-          <Button
-            type="button"
-            variant="danger"
-            size="sm"
-            data-testid="closure-delete"
-            disabled={pending}
-          >
-            Eliminar
-          </Button>
-        }
-        title="¿Eliminar este cierre?"
-        description="Esos días se podrá volver a reservar desde la web."
-        confirmLabel="Eliminar"
-        onConfirm={() =>
-          startTransition(async () => {
-            const result = await deleteClosure(closure.id);
-            if ("error" in result) setError(result.error);
-            else setError(null);
-          })
-        }
-      />
+      <div className="flex gap-2">
+        <EditClosure closure={closure} today={today} />
+        <ConfirmDialog
+          tone="destructive"
+          trigger={
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              data-testid="closure-delete"
+              disabled={pending}
+            >
+              Eliminar
+            </Button>
+          }
+          title="¿Eliminar este cierre?"
+          description="Esos días se podrá volver a reservar desde la web."
+          confirmLabel="Eliminar"
+          onConfirm={() =>
+            startTransition(async () => {
+              const result = await deleteClosure(closure.id);
+              if ("error" in result) setError(result.error);
+              else setError(null);
+            })
+          }
+        />
+      </div>
       {error && (
         <p role="alert" className="w-full text-[13px] text-danger-600">
           {error}

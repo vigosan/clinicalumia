@@ -26,7 +26,7 @@ export default async function ClosuresPage() {
         <Card className="p-2">
           <ul>
             {upcoming.map((closure) => (
-              <ClosureRow key={closure.id} closure={closure} />
+              <ClosureRow key={closure.id} closure={closure} today={today} />
             ))}
           </ul>
         </Card>
@@ -41,7 +41,7 @@ export default async function ClosuresPage() {
           <Card className="mt-3 p-2">
             <ul>
               {past.map((closure) => (
-                <ClosureRow key={closure.id} closure={closure} />
+                <ClosureRow key={closure.id} closure={closure} today={today} />
               ))}
             </ul>
           </Card>

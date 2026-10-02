@@ -11,6 +11,11 @@ const deleteResult = {
 };
 const insert = vi.fn(async (_row: unknown) => insertResult);
 const deleteEq = vi.fn(async (_column: string, _value: string) => deleteResult);
+const updateResult = {
+  error: null as null | { code: string; message: string },
+};
+const update = vi.fn((_row: unknown) => ({ eq: updateEq }));
+const updateEq = vi.fn(async (_column: string, _value: string) => updateResult);
 const tables: string[] = [];
 
 type AppointmentRow = {
@@ -57,7 +62,7 @@ vi.mock("@clinicalumia/api/server", () => ({
     from: (table: string) => {
       tables.push(table);
       if (table === "appointments") return appointmentsQuery;
-      return { insert, delete: () => ({ eq: deleteEq }) };
+      return { insert, update, delete: () => ({ eq: deleteEq }) };
     },
   }),
 }));
@@ -65,7 +70,7 @@ vi.mock("@clinicalumia/api/auth", () => ({
   requireOwner: async () => ownerResult,
 }));
 
-const { addClosure, deleteClosure } = await import("./actions");
+const { addClosure, deleteClosure, updateClosure } = await import("./actions");
 
 describe("addClosure", () => {
   beforeEach(() => {
@@ -260,6 +265,92 @@ describe("deleteClosure", () => {
     deleteResult.error = { code: "42501", message: "permission denied" };
     expect(await deleteClosure("closure-1")).toEqual({
       error: "No se ha podido eliminar el cierre.",
+    });
+  });
+});
+
+describe("updateClosure", () => {
+  beforeEach(() => {
+    ownerResult = owner;
+    updateResult.error = null;
+    appointmentsResult.data = [];
+    appointmentsResult.error = null;
+    appointmentsCalls.length = 0;
+    tables.length = 0;
+    update.mockClear();
+    updateEq.mockClear();
+  });
+
+  function editForm(overrides: Record<string, string> = {}) {
+    const data = new FormData();
+    data.set("id", "closure-1");
+    data.set("starts_on", "2026-12-24");
+    data.set("ends_on", "2026-12-26");
+    data.set("reason", "  Navidad  ");
+    for (const [key, value] of Object.entries(overrides)) data.set(key, value);
+    return data;
+  }
+
+  it("refuses a non-owner without touching the closure", async () => {
+    ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
+    expect(await updateClosure(undefined, editForm())).toEqual({
+      error: "No tienes permiso para hacer esto.",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("checks the new dates and reason the same way as a new closure", async () => {
+    expect(
+      await updateClosure(
+        undefined,
+        editForm({ starts_on: "2026-12-26", ends_on: "2026-12-24" }),
+      ),
+    ).toEqual({ error: "La fecha final no puede ser anterior a la inicial." });
+    expect(await updateClosure(undefined, editForm({ reason: " " }))).toEqual({
+      error: "Indica el motivo del cierre.",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("changes only the chosen closure, with the reason trimmed", async () => {
+    await updateClosure(undefined, editForm());
+    expect(tables[0]).toBe("clinic_closures");
+    expect(update).toHaveBeenCalledWith({
+      starts_on: "2026-12-24",
+      ends_on: "2026-12-26",
+      reason: "Navidad",
+    });
+    expect(updateEq).toHaveBeenCalledWith("id", "closure-1");
+  });
+
+  it("explains in Spanish that the new dates overlap another closure", async () => {
+    updateResult.error = { code: "23P01", message: "exclusion violation" };
+    expect(await updateClosure(undefined, editForm())).toEqual({
+      error: "Ya hay un cierre en esas fechas.",
+    });
+    expect(tables).not.toContain("appointments");
+  });
+
+  it("lists the appointments that fall on the new dates, so moving a closure warns like creating one", async () => {
+    appointmentsResult.data = [
+      {
+        id: "appointment-1",
+        starts_at: "2026-12-24T09:30:00+00:00",
+        patient: { first_name: "Ana", last_name: "Pérez" },
+        professional: { full_name: "Laura Ejemplo" },
+      },
+    ];
+    expect(await updateClosure(undefined, editForm())).toEqual({
+      ok: true,
+      affected: [
+        {
+          id: "appointment-1",
+          date: "24/12/2026",
+          time: "10:30",
+          patient: "Ana Pérez",
+          professional: "Laura Ejemplo",
+        },
+      ],
     });
   });
 });

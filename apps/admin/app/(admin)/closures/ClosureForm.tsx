@@ -12,20 +12,27 @@ import {
   useRef,
   useState,
 } from "react";
-import { addClosure, type ClosureState } from "./actions";
+import type { Closure } from "@/lib/closures";
+import { addClosure, type ClosureState, updateClosure } from "./actions";
 
 export function ClosureForm({
   today,
+  closure,
   onDone,
 }: {
   today: string;
+  closure?: Closure;
   onDone: () => void;
 }) {
   const [state, formAction, pending] = useActionState<ClosureState, FormData>(
-    addClosure,
+    closure ? updateClosure : addClosure,
     undefined,
   );
-  const [range, setRange] = useState({ from: today, to: today });
+  const [range, setRange] = useState(
+    closure
+      ? { from: closure.starts_on, to: closure.ends_on }
+      : { from: today, to: today },
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -34,9 +41,10 @@ export function ClosureForm({
       onDone();
       return;
     }
+    if (closure) return;
     formRef.current?.reset();
     setRange({ from: today, to: today });
-  }, [state, today, onDone]);
+  }, [state, today, closure, onDone]);
 
   const affected = state && "ok" in state ? state.affected : undefined;
 
@@ -52,6 +60,7 @@ export function ClosureForm({
         }}
         className="flex flex-col gap-4"
       >
+        {closure && <input type="hidden" name="id" value={closure.id} />}
         <input type="hidden" name="starts_on" value={range.from} />
         <input type="hidden" name="ends_on" value={range.to} />
         <Field label="Días">
@@ -64,10 +73,15 @@ export function ClosureForm({
           />
         </Field>
         <Field label="Motivo">
-          <Input name="reason" maxLength={80} required />
+          <Input
+            name="reason"
+            maxLength={80}
+            required
+            defaultValue={closure?.reason}
+          />
         </Field>
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando…" : "Añadir cierre"}
+          {pending ? "Guardando…" : closure ? "Guardar" : "Añadir cierre"}
         </Button>
       </form>
       {state && "error" in state && (
