@@ -53,7 +53,7 @@ export const metadata: Metadata = {
 };
 
 const optionClass =
-  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-600 transition-colors hover:bg-sage-500/15";
+  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-800 transition-colors hover:bg-sage-500/15";
 
 function reservar(state: BookingState) {
   const query = bookingState.encode(state);
@@ -80,12 +80,12 @@ function Step({
       {back && (
         <Link
           href={back}
-          className="text-sage-600 text-sm underline-offset-2 hover:underline"
+          className="text-sage-800 text-sm underline-offset-2 hover:underline"
         >
           ← Volver
         </Link>
       )}
-      <p data-testid="booking-step" className="mt-4 text-ink-500 text-sm">
+      <p data-testid="booking-step" className="mt-4 text-ink-800 text-sm">
         Paso {bookingStepNumber(kind)} de {BOOKING_STEPS}
       </p>
       <h1 className="mt-1 font-bold text-ink-600 text-section">{title}</h1>
@@ -98,7 +98,7 @@ function PhoneLink({ children }: { children: ReactNode }) {
   return (
     <a
       href={site.phone.href}
-      className="font-medium text-sage-600 underline-offset-2 hover:underline"
+      className="font-medium text-sage-800 underline-offset-2 hover:underline"
     >
       {children}
     </a>
@@ -129,7 +129,7 @@ function ServiceSummary({ service }: { service: CatalogService }) {
   return (
     <>
       <span className="font-bold text-lg">{service.name}</span>
-      <span className="text-ink-500 text-sm">
+      <span className="text-ink-800 text-sm">
         {service.durationMinutes} min · {formatPrice(service.priceCents)}
       </span>
     </>
@@ -139,14 +139,14 @@ function ServiceSummary({ service }: { service: CatalogService }) {
 function ServiceStep({ specialty }: { specialty: CatalogSpecialty }) {
   return (
     <Step kind="service" title={specialty.name} back={reservar({})}>
-      <p className="-mt-4 mb-6 text-ink-500">Elige el servicio.</p>
+      <p className="-mt-4 mb-6 text-ink-800">Elige el servicio.</p>
       <ul className="flex flex-col gap-3">
         {specialty.services.map((service) => (
           <li key={service.id}>
             {service.phoneOnly ? (
               <div
                 data-testid="booking-phone-only"
-                className="flex flex-col gap-1 rounded-3xl border-2 border-sage-400/60 px-6 py-5 text-ink-600"
+                className="flex flex-col gap-1 rounded-3xl border-2 border-sage-400/60 px-6 py-5 text-ink-800"
               >
                 <ServiceSummary service={service} />
                 <span className="mt-2 text-sm">
@@ -186,7 +186,7 @@ function PhoneOnlyStep({
       title={service.name}
       back={reservar({ especialidad: specialty.id })}
     >
-      <p data-testid="booking-phone-only" className="text-ink-500">
+      <p data-testid="booking-phone-only" className="text-ink-800">
         Reserva por teléfono: <PhoneLink>{site.phone.display}</PhoneLink>
       </p>
     </Step>
@@ -267,14 +267,14 @@ async function SlotStep({
       title="Elige día y hora"
       back={reservar({ especialidad: specialty.id, servicio: service.id })}
     >
-      <p className="-mt-4 mb-6 text-ink-500">
+      <p className="-mt-4 mb-6 text-ink-800">
         {service.name} · {service.durationMinutes} min
       </p>
       {slotWarning && (
         <p
           role="alert"
           data-testid="booking-error"
-          className="mb-6 rounded-2xl bg-cream-100 px-4 py-3 text-ink-600 text-sm"
+          className="mb-6 rounded-2xl bg-cream-100 px-4 py-3 text-ink-800 text-sm"
         >
           {slotWarning}
         </p>
@@ -284,7 +284,7 @@ async function SlotStep({
       ) : (
         <p
           data-testid="booking-no-slots"
-          className="rounded-2xl bg-cream-50 px-5 py-4 text-ink-600"
+          className="rounded-2xl bg-cream-50 px-5 py-4 text-ink-800"
         >
           No hay huecos estos días. Llámanos al{" "}
           <PhoneLink>{site.phone.display}</PhoneLink> y te buscamos uno.
@@ -294,7 +294,7 @@ async function SlotStep({
         <Link
           href={reservar({ ...base, fecha: nextFrom })}
           data-testid="booking-next-days"
-          className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-600 transition-colors hover:bg-sage-500 hover:text-cream-50"
+          className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-800 transition-colors hover:bg-sage-800 hover:text-cream-50"
         >
           Siguientes días
         </Link>
@@ -335,26 +335,26 @@ function AppointmentSummary({
   return (
     <dl
       data-testid={testId}
-      className="flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
+      className="flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-800"
     >
       <div>
-        <dt className="text-ink-500 text-sm">Cuándo</dt>
+        <dt className="text-ink-800 text-sm">Cuándo</dt>
         <dd className="font-bold">{formatWhen(startsAt)}</dd>
       </div>
       <div>
-        <dt className="text-ink-500 text-sm">Servicio</dt>
+        <dt className="text-ink-800 text-sm">Servicio</dt>
         <dd>
           {service.name} · {service.durationMinutes} min ·{" "}
           {formatPrice(service.priceCents)}
         </dd>
       </div>
       <div>
-        <dt className="text-ink-500 text-sm">Profesional</dt>
+        <dt className="text-ink-800 text-sm">Profesional</dt>
         <dd>{professionalName}</dd>
       </div>
       {person && (
         <div>
-          <dt className="text-ink-500 text-sm">Para</dt>
+          <dt className="text-ink-800 text-sm">Para</dt>
           <dd>
             {person.first_name} {person.last_name}
           </dd>
@@ -372,7 +372,7 @@ function ChosenStep(props: ChosenProps) {
     <div>
       <Link
         href={reservar(base)}
-        className="text-sage-600 text-sm underline-offset-2 hover:underline"
+        className="text-sage-800 text-sm underline-offset-2 hover:underline"
       >
         ← Cambiar la hora
       </Link>
@@ -380,7 +380,7 @@ function ChosenStep(props: ChosenProps) {
       <AppointmentSummary testId="booking-chosen" {...props} />
       <Link
         href={`/acceder?next=${encodeURIComponent(next)}`}
-        className="mt-8 inline-flex h-11 items-center rounded-full bg-sage-600 px-8 text-cream-50 transition-colors hover:bg-sage-700"
+        className="mt-8 inline-flex h-11 items-center rounded-full bg-sage-800 px-8 text-cream-50 transition-colors hover:bg-sage-900"
       >
         Continuar
       </Link>
@@ -445,7 +445,7 @@ function BirthDateView(
       title={`${props.person.first_name} ${props.person.last_name}`}
       back={reservar(chosen)}
     >
-      <p className="-mt-4 mb-6 text-ink-500">
+      <p className="-mt-4 mb-6 text-ink-800">
         Para reservar necesitamos su fecha de nacimiento.
       </p>
       <BirthDateForm
@@ -463,7 +463,7 @@ function SummaryView(props: ChosenProps & { person: AccountPerson }) {
       <AppointmentSummary testId="booking-summary" {...props} />
       <p
         data-testid="booking-change-window"
-        className="mt-4 text-ink-500 text-sm"
+        className="mt-4 text-ink-800 text-sm"
       >
         {changeWindowBeforeBooking(
           props.startsAt,
@@ -490,7 +490,7 @@ function EmptyStep() {
   return (
     <div>
       <h1 className="font-bold text-ink-600 text-section">Reservar cita</h1>
-      <p data-testid="booking-empty" className="mt-6 text-ink-500">
+      <p data-testid="booking-empty" className="mt-6 text-ink-800">
         Ahora mismo no hay citas para reservar online. Llámanos al{" "}
         <PhoneLink>{site.phone.display}</PhoneLink> y te buscamos una.
       </p>
@@ -590,7 +590,7 @@ export default async function ReservarPage({
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto max-w-2xl">
           {user?.email && (
-            <p className="mb-8 text-ink-500 text-sm">
+            <p className="mb-8 text-ink-800 text-sm">
               Has entrado como{" "}
               <span data-testid="reservar-email">{user.email}</span>
             </p>

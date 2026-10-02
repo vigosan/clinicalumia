@@ -17,7 +17,7 @@ export default function NotFound() {
           <h1 className="font-bold text-ink-600 text-section">
             Página no encontrada
           </h1>
-          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+          <p className="mt-6 max-w-[46ch] text-ink-800 text-lg leading-relaxed">
             La página que buscas no existe o ha cambiado de dirección. Puedes
             volver al inicio o consultar nuestros tratamientos de logopedia y
             terapia miofuncional en Xàtiva.

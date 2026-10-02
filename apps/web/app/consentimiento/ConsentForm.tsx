@@ -36,7 +36,7 @@ const personalIdHints = {
 } as const;
 
 const fieldClass =
-  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600";
+  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-800 outline-none focus:border-sage-600";
 
 function Field({
   label,
@@ -44,7 +44,7 @@ function Field({
 }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-ink-600 text-sm">{label}</span>
+      <span className="text-ink-800 text-sm">{label}</span>
       <input {...props} className={fieldClass} />
     </label>
   );
@@ -58,7 +58,7 @@ function PersonalIdField({ label, name }: { label: string; name: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">{label}</span>
+        <span className="text-ink-800 text-sm">{label}</span>
         <input
           name={name}
           autoComplete="off"
@@ -72,7 +72,7 @@ function PersonalIdField({ label, name }: { label: string; name: string }) {
         <span
           id={`${name}-hint`}
           data-testid={`consent-${name}-hint`}
-          className="text-ink-500 text-sm"
+          className="text-ink-800 text-sm"
         >
           {hint}
         </span>
@@ -106,7 +106,7 @@ function SignatureModeSwitch({
       {signatureModes.map((mode) => (
         <label
           key={mode.method}
-          className="relative rounded-full px-4 py-1.5 text-ink-600 text-sm transition-colors has-checked:bg-sage-600 has-checked:text-cream-50 has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-sage-700"
+          className="relative rounded-full px-4 py-1.5 text-ink-800 text-sm transition-colors has-checked:bg-sage-800 has-checked:text-cream-50 has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-sage-700"
         >
           <input
             type="radio"
@@ -148,7 +148,7 @@ export function ConsentForm({
     return (
       <p
         data-testid="consent-success"
-        className="rounded-panel bg-sage-500 px-8 py-12 text-center text-cream-50 text-lg"
+        className="rounded-panel bg-sage-800 px-8 py-12 text-center text-cream-50 text-lg"
       >
         ¡Gracias! Hemos recibido tu consentimiento firmado.
       </p>
@@ -234,18 +234,18 @@ export function ConsentForm({
             autoComplete="email"
             aria-describedby="email-hint"
           />
-          <span id="email-hint" className="text-ink-500 text-sm">
+          <span id="email-hint" className="text-ink-800 text-sm">
             Te enviaremos una copia del consentimiento firmado.
           </span>
         </div>
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-ink-600">
+        <legend className="mb-2 text-ink-800">
           ¿Cómo te has enterado de nuestros servicios?
         </legend>
         {consentSources.map((source) => (
-          <label key={source} className="flex items-center gap-3 text-ink-500">
+          <label key={source} className="flex items-center gap-3 text-ink-800">
             <input
               type="checkbox"
               name="source"
@@ -259,7 +259,7 @@ export function ConsentForm({
 
       <div
         data-testid="consent-legal"
-        className="flex flex-col gap-3 rounded-2xl bg-white/60 p-5 text-ink-500 text-sm leading-relaxed"
+        className="flex flex-col gap-3 rounded-2xl bg-white/60 p-5 text-ink-800 text-sm leading-relaxed"
       >
         {consentClauses.map((clause) => (
           <p key={clause}>{clause}</p>
@@ -267,7 +267,7 @@ export function ConsentForm({
       </div>
 
       <div className="flex flex-col gap-3">
-        <label className="flex items-start gap-3 text-ink-500 text-sm">
+        <label className="flex items-start gap-3 text-ink-800 text-sm">
           <input
             type="checkbox"
             name="privacy"
@@ -276,7 +276,7 @@ export function ConsentForm({
           />
           <span>{privacyLabel}</span>
         </label>
-        <label className="flex items-start gap-3 text-ink-500 text-sm">
+        <label className="flex items-start gap-3 text-ink-800 text-sm">
           <input
             type="checkbox"
             name="marketing"
@@ -284,7 +284,7 @@ export function ConsentForm({
           />
           <span>{marketingLabel}</span>
         </label>
-        <label className="flex items-start gap-3 text-ink-500 text-sm">
+        <label className="flex items-start gap-3 text-ink-800 text-sm">
           <input
             type="checkbox"
             name="mediaForTraining"
@@ -296,7 +296,7 @@ export function ConsentForm({
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-ink-600 text-sm">Firma</span>
+          <span className="text-ink-800 text-sm">Firma</span>
           <SignatureModeSwitch
             value={signature.method}
             onChange={(method) => dispatch({ type: "method", method })}
@@ -341,7 +341,7 @@ export function ConsentForm({
         type="submit"
         disabled={pending || preparing}
         data-testid="consent-submit"
-        className="mt-2 cursor-pointer self-start rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-2 cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending || preparing ? "Enviando…" : "Firmar y enviar"}
       </button>

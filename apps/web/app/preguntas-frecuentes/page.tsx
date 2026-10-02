@@ -38,7 +38,7 @@ export default function PreguntasFrecuentesPage() {
           <h1 className="font-bold text-ink-600 text-section">
             Preguntas frecuentes
           </h1>
-          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+          <p className="mt-6 max-w-[46ch] text-ink-800 text-lg leading-relaxed">
             Resolvemos las dudas más habituales sobre logopedia, terapia
             miofuncional y funciones orofaciales. Si no encuentras tu caso,
             cuéntanoslo y te orientamos.
@@ -47,7 +47,7 @@ export default function PreguntasFrecuentesPage() {
       </section>
 
       <section className="px-6 py-14 md:px-12 md:py-20">
-        <div className="mx-auto max-w-6xl rounded-panel bg-sage-500 px-6 py-14 md:px-14 md:py-20">
+        <div className="mx-auto max-w-6xl rounded-panel bg-sage-800 px-6 py-14 md:px-14 md:py-20">
           <FaqAccordion items={faqs} />
           <div className="mt-12 flex justify-center">
             <PillLink href="/contacto" tone="cream">

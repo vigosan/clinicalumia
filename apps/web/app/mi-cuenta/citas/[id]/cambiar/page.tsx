@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 };
 
 const linkClass =
-  "font-medium text-sage-600 underline-offset-2 hover:underline";
+  "font-medium text-sage-800 underline-offset-2 hover:underline";
 
 function cambiar(id: string, fecha: string, inicio?: string) {
   return `/mi-cuenta/citas/${id}/cambiar?${bookingState.encode({ fecha, inicio })}`;
@@ -76,7 +76,7 @@ async function Slots({
         <p
           role="alert"
           data-testid="account-error"
-          className="mb-6 rounded-2xl bg-cream-100 px-4 py-3 text-ink-600 text-sm"
+          className="mb-6 rounded-2xl bg-cream-100 px-4 py-3 text-ink-800 text-sm"
         >
           {accountError({ message: "slot_not_available" })}
         </p>
@@ -86,7 +86,7 @@ async function Slots({
       ) : (
         <p
           data-testid="booking-no-slots"
-          className="rounded-2xl bg-cream-50 px-5 py-4 text-ink-600"
+          className="rounded-2xl bg-cream-50 px-5 py-4 text-ink-800"
         >
           No hay huecos estos días. Llámanos al <PhoneLink /> y te buscamos uno.
         </p>
@@ -95,7 +95,7 @@ async function Slots({
         <Link
           href={cambiar(appointment.id, nextFrom)}
           data-testid="booking-next-days"
-          className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-600 transition-colors hover:bg-sage-500 hover:text-cream-50"
+          className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-800 transition-colors hover:bg-sage-800 hover:text-cream-50"
         >
           Siguientes días
         </Link>
@@ -117,20 +117,20 @@ function Chosen({
     <div className="mt-10">
       <Link
         href={cambiar(appointment.id, from)}
-        className="text-sage-600 text-sm underline-offset-2 hover:underline"
+        className="text-sage-800 text-sm underline-offset-2 hover:underline"
       >
         ← Elegir otra hora
       </Link>
       <dl
         data-testid="reschedule-summary"
-        className="mt-4 flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
+        className="mt-4 flex flex-col gap-3 rounded-3xl bg-cream-50 px-6 py-5 text-ink-800"
       >
         <div>
-          <dt className="text-ink-500 text-sm">De</dt>
+          <dt className="text-ink-800 text-sm">De</dt>
           <dd>{formatWhen(appointment.starts_at)}</dd>
         </div>
         <div>
-          <dt className="text-ink-500 text-sm">A</dt>
+          <dt className="text-ink-800 text-sm">A</dt>
           <dd className="font-bold">{formatWhen(startsAt)}</dd>
         </div>
       </dl>
@@ -188,21 +188,21 @@ export default async function CambiarCitaPage({
           </h1>
           <div
             data-testid="reschedule-current"
-            className="mt-8 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
+            className="mt-8 rounded-3xl bg-cream-50 px-6 py-5 text-ink-800"
           >
             <p className="font-bold">{formatWhen(appointment.starts_at)}</p>
             <p className="mt-1">
               {appointment.service_name} · {appointment.professional_name}
             </p>
-            <p className="mt-1 text-ink-500">Para {appointment.person_name}</p>
-            <p className="mt-3 text-ink-500 text-sm">
+            <p className="mt-1 text-ink-800">Para {appointment.person_name}</p>
+            <p className="mt-3 text-ink-800 text-sm">
               {changeWindowText(appointment)}
             </p>
           </div>
           {appointment.can_change && !appointment.can_reschedule && (
             <p
               data-testid="reschedule-phone-only"
-              className="mt-8 text-ink-600"
+              className="mt-8 text-ink-800"
             >
               Esta cita no se puede cambiar desde la web. Llama al <PhoneLink />
               .

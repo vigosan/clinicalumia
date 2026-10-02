@@ -58,7 +58,7 @@ const helpHref = isPending(site.whatsapp.href)
   : site.whatsapp.href;
 
 const mapsClassName =
-  "font-medium text-body text-sage-500 md:inline-flex md:items-center md:gap-5";
+  "font-medium text-body text-sage-800 md:inline-flex md:items-center md:gap-5";
 
 const mapsLabel = (
   <>
@@ -118,7 +118,7 @@ export default async function Home() {
             </div>
             <a
               href={helpHref}
-              className="mt-4 inline-flex h-10 w-fit items-center gap-3 rounded-full border-2 border-cream-50 bg-sage-500 px-4 text-cream-50 text-sm md:absolute md:h-[clamp(1.75rem,2.083vw,2.5rem)] md:border-[clamp(2px,0.157vw,3px)] md:px-[0.677vw] md:right-[9.635vw] md:bottom-[4.583vw] md:mt-0 md:text-[1.094vw]"
+              className="mt-4 inline-flex h-10 w-fit items-center gap-3 rounded-full border-2 border-cream-50 bg-sage-800 px-4 text-cream-50 text-sm md:absolute md:h-[clamp(1.75rem,2.083vw,2.5rem)] md:border-[clamp(2px,0.157vw,3px)] md:px-[0.677vw] md:right-[9.635vw] md:bottom-[4.583vw] md:mt-0 md:text-[1.094vw]"
             >
               ¿Podemos ayudarte?
               <WhatsAppIcon className="size-6" />
@@ -129,7 +129,7 @@ export default async function Home() {
       </section>
 
       <section className="px-6 pt-10 md:px-gutter md:pt-[5.156vw]">
-        <p className="rounded-panel bg-sage-500 px-8 py-10 text-center font-bold text-cream-50 text-section md:rounded-[clamp(1rem,1.771vw,2.125rem)] md:py-[2.37vw]">
+        <p className="rounded-panel bg-sage-800 px-8 py-10 text-center font-bold text-cream-50 text-section md:rounded-[clamp(1rem,1.771vw,2.125rem)] md:py-[2.37vw]">
           Clínica de logopedia y terapia miofuncional
         </p>
       </section>
@@ -143,10 +143,10 @@ export default async function Home() {
 
       <section className="px-6 py-16 md:px-gutter md:pt-[6.76vw] md:pb-[5.99vw]">
         <div className="mx-auto flex flex-col items-center text-center md:max-w-[64vw]">
-          <h2 className="font-bold text-sage-500 text-section">
+          <h2 className="font-bold text-sage-800 text-section">
             ¿No sabes qué tratamiento necesitas?
           </h2>
-          <p className="mt-6 text-body text-ink-700 md:mt-[2.135vw]">
+          <p className="mt-6 text-body text-ink-800 md:mt-[2.135vw]">
             Especialistas en logopedia infantil, logopedia para adultos y
             terapia miofuncional orofacial en {site.city}.{" "}
             <br className="hidden md:inline" />
@@ -204,26 +204,26 @@ export default async function Home() {
             <h2 className="font-bold text-ink-600 text-section">
               El faro detrás de LUMIA
             </h2>
-            <p className="mt-6 font-medium text-body text-ink-600 md:mt-[0.885vw]">
+            <p className="mt-6 font-medium text-body text-ink-800 md:mt-[0.885vw]">
               Cuando el cuerpo aprende, todo cambia.
             </p>
-            <p className="mt-6 text-body text-ink-500 md:mt-[2.031vw]">
+            <p className="mt-6 text-body text-ink-800 md:mt-[2.031vw]">
               LUMIA nace de una forma diferente de entender la logopedia. No se
               trata únicamente de corregir un sonido o trabajar una dificultad
               concreta, sino de comprender cómo funciona el cuerpo para
               devolverle el equilibrio.
             </p>
-            <p className="mt-8 text-body text-ink-500 md:mt-[1.823vw]">
+            <p className="mt-8 text-body text-ink-800 md:mt-[1.823vw]">
               Al frente del proyecto está Patricia Hernán, logopeda
               especializada en trastornos orofaciales y terapia miofuncional,
               con más de diez años de experiencia clínica dedicados a mejorar
               funciones tan esenciales como la respiración, la deglución, la
               masticación, el habla y el desarrollo del lenguaje.
             </p>
-            <p className="mt-8 font-medium text-body text-ink-600 md:mt-[2.031vw]">
+            <p className="mt-8 font-medium text-body text-ink-800 md:mt-[2.031vw]">
               ¿Qué está provocando realmente el problema?
             </p>
-            <p className="mt-8 text-body text-ink-500 md:mt-[2.031vw]">
+            <p className="mt-8 text-body text-ink-800 md:mt-[2.031vw]">
               Porque muchas veces el síntoma no es el origen. Una respiración
               oral, una deglución atípica, una alteración en la movilidad
               lingual o un frenillo restrictivo pueden pasar desapercibidos
@@ -241,7 +241,7 @@ export default async function Home() {
         className="px-6 pt-10 md:px-gutter md:pt-[7.656vw]"
         id="preguntas"
       >
-        <div className="rounded-panel bg-sage-500 py-14 md:-mr-[1.615vw] md:pt-[4.1vw] md:pb-[5.26vw]">
+        <div className="rounded-panel bg-sage-800 py-14 md:-mr-[1.615vw] md:pt-[4.1vw] md:pb-[5.26vw]">
           <h2 className="px-6 text-center font-bold text-cream-50 text-section">
             Preguntas frecuentes | FAQ
           </h2>
@@ -278,7 +278,7 @@ export default async function Home() {
           </PhotoCarousel>
         </div>
 
-        <p className="mt-6 px-6 text-center text-ink-400 text-sm md:mt-[1.72vw] md:px-gutter">
+        <p className="mt-6 px-6 text-center text-ink-800 text-sm md:mt-[1.72vw] md:px-gutter">
           Atendemos pacientes de {site.city} y localidades cercanas como{" "}
           {nearbyTowns.join(", ")} y otros municipios de La Costera.
         </p>

@@ -29,7 +29,7 @@ export default function ContactoPage() {
           <h1 className="font-bold text-ink-600 text-section">
             Estamos aquí para ayudarte
           </h1>
-          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+          <p className="mt-6 max-w-[46ch] text-ink-800 text-lg leading-relaxed">
             Si tienes dudas o quieres realizar una primera valoración, puedes
             contactar con LUMIA por teléfono o formulario. Te orientaremos sobre
             el primer paso más adecuado según tu caso.
@@ -43,7 +43,7 @@ export default function ContactoPage() {
             <h2 className="font-bold text-card text-ink-600 tracking-tight md:text-section">
               Cuéntanos tu caso
             </h2>
-            <p className="mt-3 mb-8 text-ink-500">
+            <p className="mt-3 mb-8 text-ink-800">
               Cuéntanos brevemente qué necesitas y te contactaremos para
               orientarte.
             </p>
@@ -55,7 +55,7 @@ export default function ContactoPage() {
               <h3 className="font-bold text-ink-600 text-lg">Teléfono</h3>
               <a
                 href={site.phone.href}
-                className="mt-2 inline-block text-ink-500 underline-offset-2 hover:underline"
+                className="mt-2 inline-block text-ink-800 underline-offset-2 hover:underline"
               >
                 {site.phone.display}
               </a>
@@ -66,7 +66,7 @@ export default function ContactoPage() {
                 <h3 className="font-bold text-ink-600 text-lg">Email</h3>
                 <a
                   href={`mailto:${site.email}`}
-                  className="mt-2 inline-block text-ink-500 underline-offset-2 hover:underline"
+                  className="mt-2 inline-block text-ink-800 underline-offset-2 hover:underline"
                 >
                   {site.email}
                 </a>
@@ -75,7 +75,7 @@ export default function ContactoPage() {
 
             <div>
               <h3 className="font-bold text-ink-600 text-lg">Dirección</h3>
-              <p className="mt-2 text-ink-500">
+              <p className="mt-2 text-ink-800">
                 {hasAddress
                   ? `${site.address.street}, ${site.address.postalCode} ${site.address.locality}`
                   : "Dirección pendiente de confirmar"}
@@ -85,7 +85,7 @@ export default function ContactoPage() {
                   href={site.maps}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 font-medium text-sage-600 transition-opacity hover:opacity-70"
+                  className="mt-3 inline-flex items-center gap-2 font-medium text-sage-800 transition-opacity hover:opacity-70"
                 >
                   Cómo llegar con Google Maps
                   <GoogleIcon className="size-5" />
@@ -96,7 +96,7 @@ export default function ContactoPage() {
             <div>
               <h3 className="font-bold text-ink-600 text-lg">Horario</h3>
               {hasSchedule ? (
-                <ul className="mt-2 text-ink-500">
+                <ul className="mt-2 text-ink-800">
                   {site.schedule.map((slot) => (
                     <li key={slot.days}>
                       {slot.days}: {slot.hours}
@@ -104,7 +104,7 @@ export default function ContactoPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-ink-500">
+                <p className="mt-2 text-ink-800">
                   Horario pendiente de confirmar
                 </p>
               )}
@@ -114,7 +114,7 @@ export default function ContactoPage() {
               <h3 className="font-bold text-ink-600 text-lg">
                 Zona de atención
               </h3>
-              <p className="mt-2 text-ink-500 leading-relaxed">
+              <p className="mt-2 text-ink-800 leading-relaxed">
                 Atendemos pacientes de {site.city} y localidades cercanas como{" "}
                 {nearbyTowns.join(", ")} y otros municipios de La Costera.
               </p>

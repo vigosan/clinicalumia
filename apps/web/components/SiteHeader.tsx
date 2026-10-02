@@ -103,7 +103,7 @@ export function SiteHeader() {
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="rounded-2xl px-4 py-3 text-lg text-ink-600 transition-colors hover:bg-sage-500/15"
+              className="rounded-2xl px-4 py-3 text-lg text-ink-800 transition-colors hover:bg-sage-500/15"
             >
               {link.label}
             </Link>

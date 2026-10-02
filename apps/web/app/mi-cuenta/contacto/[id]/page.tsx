@@ -47,7 +47,7 @@ export default async function ContactoPage({
           <h1 className="font-bold text-ink-600 text-section">
             Datos de contacto
           </h1>
-          <p className="mt-3 text-ink-500">
+          <p className="mt-3 text-ink-800">
             {person.first_name} {person.last_name}
           </p>
           <ContactForm
@@ -58,7 +58,7 @@ export default async function ContactoPage({
           />
           <Link
             href="/mi-cuenta"
-            className="mt-8 inline-block font-medium text-sage-600 underline-offset-2 hover:underline"
+            className="mt-8 inline-block font-medium text-sage-800 underline-offset-2 hover:underline"
           >
             Volver a Mi cuenta
           </Link>

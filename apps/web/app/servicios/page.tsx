@@ -27,7 +27,7 @@ export default function ServiciosPage() {
             Tratamientos de logopedia, terapia miofuncional, psicología y
             fisioterapia
           </h1>
-          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+          <p className="mt-6 max-w-[46ch] text-ink-800 text-lg leading-relaxed">
             En LUMIA abordamos la logopedia, la terapia miofuncional, la
             psicología y la fisioterapia desde una visión global. No tratamos
             solo síntomas: evaluamos funciones, detectamos patrones alterados y
@@ -47,12 +47,12 @@ export default function ServiciosPage() {
           <h2 className="font-bold text-card text-ink-600 tracking-tight md:text-section">
             Dar el primer paso también forma parte del tratamiento
           </h2>
-          <p className="text-ink-500 text-lg leading-relaxed">
+          <p className="text-ink-800 text-lg leading-relaxed">
             Solicita una primera valoración personalizada en nuestra clínica de
             logopedia y terapia miofuncional en {site.city}.
           </p>
           <PillLink href="/contacto">Solicita tu primera valoración</PillLink>
-          <p className="text-ink-400 text-sm">
+          <p className="text-ink-800 text-sm">
             Atendemos pacientes de {site.city} y localidades cercanas como{" "}
             {nearbyTowns.join(", ")} y otros municipios de La Costera.
           </p>

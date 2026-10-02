@@ -10,7 +10,7 @@ export function ServiceList({ items }: { items: Service[] }) {
           key={service.number}
           className="grid gap-6 border-sage-500 border-b-2 py-8 md:grid-cols-[48fr_52fr] md:grid-rows-[auto_1fr] md:gap-0 md:pt-[2.604vw] md:pb-[2.19vw]"
         >
-          <span className="font-black text-section text-ink-600 leading-none md:ml-[0.573vw]">
+          <span className="font-black text-section text-ink-800 leading-none md:ml-[0.573vw]">
             {service.number}
           </span>
 
@@ -18,10 +18,10 @@ export function ServiceList({ items }: { items: Service[] }) {
             <h2 className="font-bold text-section text-ink-600 leading-none">
               <Link href={`/${service.slug}`}>{service.title}</Link>
             </h2>
-            <p className="mt-2 text-body text-ink-500 md:mt-[0.365vw]">
+            <p className="mt-2 text-body text-ink-800 md:mt-[0.365vw]">
               {service.summary}
             </p>
-            <p className="mt-3 font-medium text-body text-ink-600 md:mt-[0.781vw] md:-mr-[1vw]">
+            <p className="mt-3 font-medium text-body text-ink-800 md:mt-[0.781vw] md:-mr-[1vw]">
               {service.tags.join(" · ")}
             </p>
           </div>

@@ -5,7 +5,7 @@ import type { AccountFormState } from "../../citas/actions";
 import { updateContact } from "../../personas/actions";
 
 const fieldClass =
-  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600";
+  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-800 outline-none focus:border-sage-600";
 
 const initialState: AccountFormState = undefined;
 
@@ -37,7 +37,7 @@ export function ContactForm({
     >
       <input type="hidden" name="persona" value={personId} />
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">
+        <span className="text-ink-800 text-sm">
           {phoneRequired ? "Teléfono" : "Teléfono (opcional)"}
         </span>
         <input
@@ -51,7 +51,7 @@ export function ContactForm({
         />
       </label>
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">Dirección</span>
+        <span className="text-ink-800 text-sm">Dirección</span>
         <input
           type="text"
           name="address"
@@ -75,7 +75,7 @@ export function ContactForm({
         type="submit"
         disabled={pending}
         data-testid="contact-submit"
-        className="cursor-pointer self-start rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Guardando…" : "Guardar"}
       </button>

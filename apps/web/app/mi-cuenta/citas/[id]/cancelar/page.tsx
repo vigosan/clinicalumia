@@ -44,21 +44,21 @@ export default async function CancelarCitaPage({
           <h1 className="font-bold text-ink-600 text-section">Cancelar cita</h1>
           <div
             data-testid="cancel-summary"
-            className="mt-8 rounded-3xl bg-cream-50 px-6 py-5 text-ink-600"
+            className="mt-8 rounded-3xl bg-cream-50 px-6 py-5 text-ink-800"
           >
             <p className="font-bold">{formatWhen(appointment.starts_at)}</p>
             <p className="mt-1">
               {appointment.service_name} · {appointment.professional_name}
             </p>
-            <p className="mt-1 text-ink-500">Para {appointment.person_name}</p>
-            <p className="mt-3 text-ink-500 text-sm">
+            <p className="mt-1 text-ink-800">Para {appointment.person_name}</p>
+            <p className="mt-3 text-ink-800 text-sm">
               {changeWindowText(appointment)}
             </p>
           </div>
           {appointment.can_change && <CancelForm appointmentId={id} />}
           <Link
             href="/mi-cuenta"
-            className="mt-8 inline-block font-medium text-sage-600 underline-offset-2 hover:underline"
+            className="mt-8 inline-block font-medium text-sage-800 underline-offset-2 hover:underline"
           >
             Volver a Mi cuenta
           </Link>

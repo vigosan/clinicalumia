@@ -4,7 +4,7 @@ import type { ComponentProps, ReactNode } from "react";
 type Tone = "sage" | "cream";
 
 const toneStyles: Record<Tone, string> = {
-  sage: "border-sage-500 text-sage-500 hover:bg-sage-500 hover:text-cream-50",
+  sage: "border-sage-500 text-sage-800 hover:bg-sage-800 hover:text-cream-50",
   cream: "border-cream-50 text-cream-50 hover:bg-cream-50/15",
 };
 

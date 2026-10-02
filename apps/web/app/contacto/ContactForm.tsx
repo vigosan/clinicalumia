@@ -7,7 +7,7 @@ import { type ContactFormState, sendContactRequest } from "../actions";
 const initialState: ContactFormState = undefined;
 
 const fieldClass =
-  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600";
+  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-800 outline-none focus:border-sage-600";
 
 export function ContactForm() {
   const [state, formAction, pending] = useActionState(
@@ -26,7 +26,7 @@ export function ContactForm() {
     return (
       <p
         data-testid="contact-success"
-        className="rounded-panel bg-sage-500 px-8 py-12 text-center text-cream-50 text-lg"
+        className="rounded-panel bg-sage-800 px-8 py-12 text-center text-cream-50 text-lg"
       >
         ¡Gracias! Hemos recibido tu mensaje y te contactaremos para orientarte.
       </p>
@@ -41,7 +41,7 @@ export function ContactForm() {
       className="flex flex-col gap-4"
     >
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">Nombre y apellidos</span>
+        <span className="text-ink-800 text-sm">Nombre y apellidos</span>
         <input
           type="text"
           name="name"
@@ -53,7 +53,7 @@ export function ContactForm() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Teléfono</span>
+          <span className="text-ink-800 text-sm">Teléfono</span>
           <input
             type="tel"
             name="phone"
@@ -64,7 +64,7 @@ export function ContactForm() {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Email</span>
+          <span className="text-ink-800 text-sm">Email</span>
           <input
             type="email"
             name="email"
@@ -77,18 +77,18 @@ export function ContactForm() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Motivo de consulta</span>
+          <span className="text-ink-800 text-sm">Motivo de consulta</span>
           <input type="text" name="reason" className={fieldClass} />
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Edad del paciente</span>
+          <span className="text-ink-800 text-sm">Edad del paciente</span>
           <input type="text" name="patientAge" className={fieldClass} />
         </label>
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">Mensaje</span>
+        <span className="text-ink-800 text-sm">Mensaje</span>
         <textarea
           name="message"
           rows={5}
@@ -96,7 +96,7 @@ export function ContactForm() {
         />
       </label>
 
-      <label className="flex items-start gap-3 text-ink-500 text-sm">
+      <label className="flex items-start gap-3 text-ink-800 text-sm">
         <input
           type="checkbox"
           name="privacy"
@@ -126,7 +126,7 @@ export function ContactForm() {
         type="submit"
         disabled={pending}
         data-testid="contact-submit"
-        className="mt-2 cursor-pointer self-start rounded-full bg-sage-600 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-2 cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Enviando…" : "Enviar solicitud"}
       </button>
