@@ -94,6 +94,8 @@ async function findAppointment(
     person_id: string;
     starts_at: string;
     status: string;
+    service_id: string;
+    professional_id: string;
   }) => boolean,
 ) {
   const { data, error } = await supabase.rpc("my_appointments");
@@ -145,7 +147,10 @@ export async function confirmBooking(
     (appointment) =>
       appointment.person_id === persona &&
       appointment.status !== "cancelled" &&
-      Date.parse(appointment.starts_at) === Date.parse(inicio),
+      Date.parse(appointment.starts_at) === Date.parse(inicio) &&
+      appointment.service_id === servicio &&
+      (profesional === ANY_PROFESSIONAL ||
+        appointment.professional_id === profesional),
   );
   if (previous) redirect(confirmed(previous.id));
 

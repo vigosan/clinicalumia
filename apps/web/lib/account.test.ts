@@ -292,6 +292,9 @@ describe("accountError", () => {
     expect(accountError({ message: "slot_not_available" })).toBe(
       "Ese hueco ya no está libre. Elige otro.",
     );
+    expect(accountError({ message: "person_has_appointment" })).toBe(
+      "Esta persona ya tiene otra cita a esa hora.",
+    );
     expect(accountError({ message: "person_not_in_account" })).toBe(
       "Esa persona no está en tu cuenta.",
     );

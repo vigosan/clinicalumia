@@ -34,6 +34,8 @@ const SERVICE = "22222222-2222-2222-2222-222222222222";
 const PERSON = "55555555-5555-5555-5555-555555555555";
 const APPOINTMENT = "77777777-7777-7777-7777-777777777777";
 const GUARDIAN = "88888888-8888-8888-8888-888888888888";
+const PROFESSIONAL = "66666666-6666-6666-6666-666666666666";
+const OTHER = "44444444-4444-4444-4444-444444444444";
 const MINOR = "99999999-9999-9999-9999-999999999999";
 const STARTS_AT = "2026-10-02T07:00:00.000Z";
 
@@ -58,6 +60,8 @@ function appointmentRow(overrides: Record<string, string> = {}) {
     starts_at: "2026-10-02T07:00:00+00:00",
     ends_at: "2026-10-02T07:45:00+00:00",
     status: "scheduled",
+    service_id: SERVICE,
+    professional_id: PROFESSIONAL,
     service_name: "Sesión de logopedia",
     professional_name: "Ana García",
     origin: "web",
@@ -147,6 +151,48 @@ describe("confirmBooking", () => {
       `redirect:/reservar/confirmada?cita=${APPOINTMENT}`,
     );
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not take the person's appointment for another service at that time as a previous submit, and lets the database refuse it", async () => {
+    answer({
+      book_appointment: {
+        data: null,
+        error: { message: "person_has_appointment" },
+      },
+      my_appointments: {
+        data: [appointmentRow({ service_id: OTHER })],
+        error: null,
+      },
+    });
+
+    expect(await confirmBooking(undefined, confirmForm())).toEqual({
+      error: "Esta persona ya tiene una cita a esa hora.",
+    });
+    expect(rpc).toHaveBeenCalledWith("book_appointment", expect.anything());
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not take an appointment with another professional as a previous submit when the patient chose a professional", async () => {
+    answer({
+      book_appointment: {
+        data: null,
+        error: { message: "person_has_appointment" },
+      },
+      my_appointments: {
+        data: [appointmentRow({ professional_id: OTHER })],
+        error: null,
+      },
+    });
+    const data = new FormData();
+    data.set(
+      "estado",
+      `${chosen.toString().replace("profesional=cualquiera", `profesional=${PROFESSIONAL}`)}&persona=${PERSON}`,
+    );
+
+    expect(await confirmBooking(undefined, data)).toEqual({
+      error: "Esta persona ya tiene una cita a esa hora.",
+    });
+    expect(rpc).toHaveBeenCalledWith("book_appointment", expect.anything());
   });
 
   it("explains that the person already has another appointment at that time and sends no email", async () => {

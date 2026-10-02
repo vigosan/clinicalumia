@@ -234,6 +234,21 @@ describe("rescheduleAppointment", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
+  it("says the person already has another appointment then, instead of sending her back to pick the same time again", async () => {
+    answer({
+      reschedule_my_appointment: {
+        data: null,
+        error: { message: "person_has_appointment" },
+      },
+      my_appointments: { data: [changeableRow], error: null },
+    });
+
+    expect(await rescheduleAppointment(undefined, rescheduleForm())).toEqual({
+      error: "Esta persona ya tiene otra cita a esa hora.",
+    });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
   it("goes back to the same days of slots with the warning when someone took the slot meanwhile, so the patient can pick another", async () => {
     answer({
       reschedule_my_appointment: {

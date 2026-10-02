@@ -105,6 +105,7 @@ const ACCOUNT_MESSAGE_BY_CODE: Record<string, string> = {
   appointment_not_in_account: "Esa cita no está en tu cuenta.",
   outside_change_window: `Ya no se puede cambiar desde la web. Llama al ${site.phone.display}.`,
   slot_not_available: "Ese hueco ya no está libre. Elige otro.",
+  person_has_appointment: "Esta persona ya tiene otra cita a esa hora.",
   appointment_invoiced: PAID_APPOINTMENT_TEXT,
   person_not_in_account: "Esa persona no está en tu cuenta.",
   invalid_phone: "Escribe un teléfono válido.",
