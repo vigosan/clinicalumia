@@ -334,6 +334,7 @@ export default async function PatientPage({
         isMinorPerson={minor}
         guardians={guardians}
         wards={wards}
+        isOwner={isOwner}
         initialError={guardianErrorMessage(guardianError)}
       />
 

@@ -32,12 +32,10 @@ export default async function SchedulesPage({
             "profile_id",
             employees.map((person) => person.id),
           ),
-        supabase
-          .from("employee_time_off")
-          .select("id, starts_at, ends_at, reason")
-          .eq("profile_id", selected.id)
-          .gte("ends_at", new Date().toISOString())
-          .order("starts_at", { ascending: true }),
+        supabase.rpc("time_off_between", {
+          p_profile_ids: [selected.id],
+          p_from: new Date().toISOString(),
+        }),
       ])
     : [{ data: null }, { data: null }];
 

@@ -232,10 +232,10 @@ insert into public.guardianships (minor_id, guardian_id, relationship) values
 select lives_ok($$
   delete from public.guardianships
   where minor_id = '50000000-0000-0000-0000-0000000000c5' and guardian_id = '50000000-0000-0000-0000-0000000000c6'
-$$, 'an active employee can remove a guardian link without deleting either person');
+$$, 'RLS silently filters an active employee''s removal of a guardian link, since only the owner may remove guardians');
 
-select is((select count(*) from public.guardianships where minor_id = '50000000-0000-0000-0000-0000000000c5'), 0::bigint,
-  'the guardian link removed by an active employee is gone');
+select is((select count(*) from public.guardianships where minor_id = '50000000-0000-0000-0000-0000000000c5'), 1::bigint,
+  'the guardian link an active employee tried to remove is still there');
 
 select pg_temp.act_as('50000000-0000-0000-0000-000000000003');
 

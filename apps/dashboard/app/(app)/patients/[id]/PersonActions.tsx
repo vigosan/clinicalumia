@@ -55,36 +55,37 @@ export function PersonActions({
         <Button asChild variant="secondary" size="sm">
           <Link href={`/patients/${personId}/edit`}>Editar</Link>
         </Button>
-        {isArchived ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={pending}
-            data-testid="person-archive"
-            onClick={handleArchiveToggle}
-          >
-            Desarchivar
-          </Button>
-        ) : (
-          <ConfirmDialog
-            trigger={
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={pending}
-                data-testid="person-archive"
-              >
-                Archivar
-              </Button>
-            }
-            title="¿Archivar esta ficha?"
-            description="Dejará de aparecer entre los pacientes activos. La encontrarás en «Archivados», desde donde podrás desarchivarla."
-            confirmLabel="Archivar"
-            onConfirm={handleArchiveToggle}
-          />
-        )}
+        {isOwner &&
+          (isArchived ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              data-testid="person-archive"
+              onClick={handleArchiveToggle}
+            >
+              Desarchivar
+            </Button>
+          ) : (
+            <ConfirmDialog
+              trigger={
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={pending}
+                  data-testid="person-archive"
+                >
+                  Archivar
+                </Button>
+              }
+              title="¿Archivar esta ficha?"
+              description="Dejará de aparecer entre los pacientes activos. La encontrarás en «Archivados», desde donde podrás desarchivarla."
+              confirmLabel="Archivar"
+              onConfirm={handleArchiveToggle}
+            />
+          ))}
         {isOwner && (
           <ConfirmDialog
             trigger={

@@ -60,7 +60,13 @@ const guardianshipDeleteEq2 = vi.fn(() => ({
 }));
 const guardianshipDeleteEq1 = vi.fn(() => ({ eq: guardianshipDeleteEq2 }));
 const guardianshipsDelete = vi.fn(() => ({ eq: guardianshipDeleteEq1 }));
-const rpc = vi.fn(async () => rpcResult);
+const ownerResult: { data: boolean | null; error: null } = {
+  data: true,
+  error: null,
+};
+const rpc = vi.fn(async (name: string) =>
+  name === "is_owner" ? ownerResult : rpcResult,
+);
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
@@ -456,6 +462,16 @@ describe("removeGuardian", () => {
   beforeEach(() => {
     guardianshipDeleteResult.data = [{ minor_id: "minor-1" }];
     guardianshipDeleteResult.error = null;
+    ownerResult.data = true;
+  });
+
+  it("refuses an employee before touching the guardianship, since only the owner removes guardians", async () => {
+    ownerResult.data = false;
+    guardianshipsDelete.mockClear();
+    expect(await removeGuardian("minor-1", "guardian-1")).toEqual({
+      error: "Solo la propietaria puede quitar tutores.",
+    });
+    expect(guardianshipsDelete).not.toHaveBeenCalled();
   });
 
   it("deletes the guardianship row for the given minor and guardian", async () => {
@@ -484,7 +500,22 @@ describe("setArchived", () => {
     peopleUpdate.mockClear();
     rpcResult.data = [];
     rpcResult.error = null;
+    ownerResult.data = true;
     rpc.mockClear();
+  });
+
+  it("refuses an employee archiving or restoring a record without listing appointments she should not see", async () => {
+    ownerResult.data = false;
+    for (const archived of [true, false]) {
+      expect(await setArchived("person-1", archived)).toEqual({
+        error: "Solo la propietaria puede archivar o desarchivar fichas.",
+      });
+    }
+    expect(rpc).not.toHaveBeenCalledWith(
+      "person_upcoming_appointments",
+      expect.anything(),
+    );
+    expect(peopleUpdate).not.toHaveBeenCalled();
   });
 
   it("refuses to archive someone with upcoming appointments and lists them, so no appointment is left for a hidden record", async () => {
@@ -536,7 +567,10 @@ describe("setArchived", () => {
 
   it("does not look for appointments when restoring a record", async () => {
     await setArchived("person-1", false);
-    expect(rpc).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalledWith(
+      "person_upcoming_appointments",
+      expect.anything(),
+    );
   });
 
   it("writes archived_at to the current time when archiving", async () => {

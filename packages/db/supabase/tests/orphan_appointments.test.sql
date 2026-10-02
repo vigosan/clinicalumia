@@ -110,22 +110,24 @@ select throws_ok($$
   where id = '8f000000-0000-0000-0000-0000000000d3'
 $$, '23514', 'appointment_immutable_fields', 'an employee cannot hand her appointment over to someone else');
 
+select throws_ok($$
+  select * from public.person_upcoming_appointments('8f000000-0000-0000-0000-0000000000c1')
+$$, '42501', 'person_upcoming_appointments_forbidden',
+  'an employee cannot list the appointments other professionals have with a person, since only the owner archives');
+
+select pg_temp.act_as('8f000000-0000-0000-0000-000000000001');
 select results_eq($$
   select id, professional_name from public.person_upcoming_appointments('8f000000-0000-0000-0000-0000000000c1') order by starts_at
 $$, $$ values
   ('8f000000-0000-0000-0000-0000000000d1'::uuid, 'Compañera Huérfanas'::text),
   ('8f000000-0000-0000-0000-0000000000d3'::uuid, 'Compañera Huérfanas'::text)
-$$, 'staff see every upcoming appointment of a person before archiving her, with who attends it');
+$$, 'the owner sees every upcoming appointment of a person before archiving her, with who attends it');
 select is((select count(*) from public.person_upcoming_appointments('8f000000-0000-0000-0000-0000000000c2')), 0::bigint,
   'past and cancelled appointments do not count as upcoming');
-
-select pg_temp.act_as('8f000000-0000-0000-0000-000000000004');
-select is((select count(*) from public.person_upcoming_appointments('8f000000-0000-0000-0000-0000000000c1')), 2::bigint,
-  'an employee also sees the upcoming appointments other professionals have with that person, so she cannot archive past them');
 select is((select starts_at from public.person_upcoming_appointments('8f000000-0000-0000-0000-0000000000c1') order by starts_at limit 1),
   pg_temp.at_madrid(3, '10:00'), 'each upcoming appointment comes with its start');
 
-select pg_temp.act_as('8f000000-0000-0000-0000-000000000004', 'aal1');
+select pg_temp.act_as('8f000000-0000-0000-0000-000000000001', 'aal1');
 select throws_ok($$
   select * from public.person_upcoming_appointments('8f000000-0000-0000-0000-0000000000c1')
 $$, '42501', 'person_upcoming_appointments_forbidden', 'aal1 is not enough to list a person''s appointments');
@@ -154,7 +156,7 @@ select results_eq($$
 $$, $$ values ('reassigned'::text, '8f000000-0000-0000-0000-000000000005'::uuid, '8f000000-0000-0000-0000-000000000001'::uuid) $$,
   'handing an appointment over is recorded in its history with who had it before and who did it');
 
-select pg_temp.act_as('8f000000-0000-0000-0000-000000000004');
+select pg_temp.act_as('8f000000-0000-0000-0000-000000000001');
 select throws_ok($$
   update public.people set archived_at = now() where id = '8f000000-0000-0000-0000-0000000000c1'
 $$, '23514', 'person_has_upcoming_appointments',

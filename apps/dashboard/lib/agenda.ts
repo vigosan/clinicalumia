@@ -191,7 +191,11 @@ export function visibleWeekHours(
   return hoursSpan([...schedules.map(scheduleSpan), ...blockSpans]);
 }
 
-export type TimeOff = { starts_at: string; ends_at: string; reason: string };
+export type TimeOff = {
+  starts_at: string;
+  ends_at: string;
+  reason: string | null;
+};
 
 export function scheduleWarnings({
   professionalName,
@@ -230,7 +234,9 @@ export function scheduleWarnings({
   );
   if (overlappingTimeOff)
     warnings.push(
-      `${professionalName} tiene una ausencia ese día (${overlappingTimeOff.reason}).`,
+      overlappingTimeOff.reason
+        ? `${professionalName} tiene una ausencia ese día (${overlappingTimeOff.reason}).`
+        : `${professionalName} tiene una ausencia ese día.`,
     );
 
   return warnings;

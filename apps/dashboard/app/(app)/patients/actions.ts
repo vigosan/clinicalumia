@@ -281,6 +281,9 @@ export async function removeGuardian(
   guardianId: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const { data: isOwner } = await supabase.rpc("is_owner");
+  if (isOwner !== true)
+    return { error: "Solo la propietaria puede quitar tutores." };
   const { data, error } = await supabase
     .from("guardianships")
     .delete()
@@ -309,6 +312,11 @@ export async function setArchived(
   { ok: true } | { error: string; appointments?: UpcomingAppointment[] }
 > {
   const supabase = await createClient();
+  const { data: isOwner } = await supabase.rpc("is_owner");
+  if (isOwner !== true)
+    return {
+      error: "Solo la propietaria puede archivar o desarchivar fichas.",
+    };
   if (archived) {
     const { data: upcoming, error: upcomingError } = await supabase.rpc(
       "person_upcoming_appointments",

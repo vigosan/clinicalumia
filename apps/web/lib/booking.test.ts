@@ -253,6 +253,12 @@ describe("bookingError", () => {
     );
   });
 
+  it("tells a minor booking for herself that her guardian has to book, with the phone in case she needs help", () => {
+    expect(bookingError({ message: "minor_needs_guardian" })).toBe(
+      "Para pedir cita a un menor tiene que hacerlo su madre, padre o tutor/a desde su propia cuenta. Si necesitas ayuda, llama al 614 552 808.",
+    );
+  });
+
   it("maps a phone-only service", () => {
     expect(bookingError({ message: "service_not_bookable" })).toBe(
       "Este servicio se reserva por teléfono.",
@@ -285,6 +291,18 @@ describe("personError", () => {
     );
     expect(personError({ message: "person_not_adult" })).toBe(
       "Para pedir cita para ti tienes que ser mayor de edad.",
+    );
+  });
+
+  it("explains the limits that keep one account from filling the patient base", () => {
+    expect(personError({ message: "name_too_long" })).toBe(
+      "El nombre y los apellidos pueden tener como mucho 100 caracteres.",
+    );
+    expect(personError({ message: "phone_too_long" })).toBe(
+      "El teléfono es demasiado largo.",
+    );
+    expect(personError({ message: "too_many_people_today" })).toBe(
+      "Hoy ya has añadido muchas personas. Si necesitas añadir más, llama al 614 552 808.",
     );
   });
 

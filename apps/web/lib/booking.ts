@@ -4,6 +4,7 @@ import {
   madridDateTime,
 } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
+import { site } from "./site";
 
 export { formatWhen } from "@clinicalumia/api/appointment-notice";
 
@@ -133,6 +134,7 @@ const BOOKING_MESSAGE_BY_CODE: Record<string, string> = {
   slot_not_available: "Ese hueco ya no está libre. Elige otro.",
   person_has_appointment: "Esta persona ya tiene una cita a esa hora.",
   service_not_bookable: "Este servicio se reserva por teléfono.",
+  minor_needs_guardian: `Para pedir cita a un menor tiene que hacerlo su madre, padre o tutor/a desde su propia cuenta. Si necesitas ayuda, llama al ${site.phone.display}.`,
 };
 
 export function bookingError(error: DbError): string {
@@ -148,6 +150,10 @@ const PERSON_MESSAGE_BY_CODE: Record<string, string> = {
   guardian_not_adult: "La persona responsable tiene que ser mayor de edad.",
   person_not_minor: "Solo puedes añadir a un menor a tu cargo.",
   person_not_adult: "Para pedir cita para ti tienes que ser mayor de edad.",
+  name_too_long:
+    "El nombre y los apellidos pueden tener como mucho 100 caracteres.",
+  phone_too_long: "El teléfono es demasiado largo.",
+  too_many_people_today: `Hoy ya has añadido muchas personas. Si necesitas añadir más, llama al ${site.phone.display}.`,
 };
 
 export function personError(error: DbError): string {

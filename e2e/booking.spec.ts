@@ -588,6 +588,84 @@ test("a mother books for her new child: she is saved as guardian without being a
   expect(appointment!.origin).toBe("web");
 });
 
+test("a fifteen-year-old with her own email cannot book for herself and is told to ask her guardian, while her father books for her from his account", async ({
+  page,
+  browser,
+}) => {
+  const { specialty, service, withHoursId } =
+    await clinicWithTwoProfessionals();
+  const minorEmail = uniqueEmail("reserva-menor-propio");
+  const fatherEmail = uniqueEmail("reserva-padre");
+  const lastName = `Menor ${unique()}`;
+  const { data: people, error } = await admin
+    .from("people")
+    .insert([
+      {
+        first_name: "Alba",
+        last_name: lastName,
+        birth_date: addDays(todayInMadrid(), -15 * 365 - 10),
+        email: minorEmail,
+        is_patient: true,
+      },
+      {
+        first_name: "Padre",
+        last_name: lastName,
+        birth_date: "1980-01-01",
+        email: fatherEmail,
+        is_patient: false,
+      },
+    ])
+    .select("id, first_name");
+  expect(error).toBeNull();
+  const minorId = people!.find((person) => person.first_name === "Alba")!.id;
+  const fatherId = people!.find((person) => person.first_name === "Padre")!.id;
+  const { error: guardianshipError } = await admin
+    .from("guardianships")
+    .insert({
+      minor_id: minorId,
+      guardian_id: fatherId,
+      relationship: "padre",
+      is_primary: true,
+    });
+  expect(guardianshipError).toBeNull();
+  const slotHref = await firstSlotHref(
+    page,
+    slotStepUrl(specialty.id, service.id, withHoursId, ""),
+  );
+
+  await openSlot(page, slotHref);
+  await identify(page, minorEmail);
+  await page
+    .getByTestId("booking-person")
+    .filter({ hasText: `Alba ${lastName}` })
+    .click();
+  await page.getByTestId("booking-confirm").click();
+  await expect(page.getByTestId("booking-error")).toHaveText(
+    "Para pedir cita a un menor tiene que hacerlo su madre, padre o tutor/a desde su propia cuenta. Si necesitas ayuda, llama al 614 552 808.",
+  );
+  const { data: none } = await admin
+    .from("appointments")
+    .select("id")
+    .eq("patient_id", minorId);
+  expect(none).toEqual([]);
+
+  const fatherContext = await browser.newContext({
+    extraHTTPHeaders: { "x-forwarded-for": randomIp() },
+  });
+  const fatherPage = await fatherContext.newPage();
+  await openSlot(fatherPage, slotHref);
+  await identify(fatherPage, fatherEmail);
+  await fatherPage
+    .getByTestId("booking-person")
+    .filter({ hasText: `Alba ${lastName}` })
+    .click();
+  await fatherPage.getByTestId("booking-confirm").click();
+  await expect(fatherPage.getByTestId("booking-confirmed")).toContainText(
+    `Alba ${lastName}`,
+  );
+  await fatherContext.close();
+});
+
 async function patientAtSummary(
   context: BrowserContext,
   slotHref: string,

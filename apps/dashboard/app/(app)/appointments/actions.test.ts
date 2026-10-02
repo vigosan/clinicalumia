@@ -26,10 +26,7 @@ const timeOffResult: { data: unknown; error: unknown } = {
   data: [],
   error: null,
 };
-const timeOffGt = vi.fn(async () => timeOffResult);
-const timeOffLt = vi.fn(() => ({ gt: timeOffGt }));
-const timeOffEq = vi.fn(() => ({ lt: timeOffLt }));
-const timeOffSelect = vi.fn(() => ({ eq: timeOffEq }));
+rpcResults.time_off_between = timeOffResult;
 
 const insertResult: {
   data: { id: string } | null;
@@ -109,7 +106,6 @@ vi.mock("@clinicalumia/api/server", () => ({
     rpc,
     from: (table: string) => {
       if (table === "employee_schedules") return { select: schedulesSelect };
-      if (table === "employee_time_off") return { select: timeOffSelect };
       if (table === "appointments")
         return {
           insert: appointmentsInsert,
@@ -171,7 +167,6 @@ describe("createAppointment", () => {
     schedulesEq.mockClear();
     timeOffResult.data = [];
     timeOffResult.error = null;
-    timeOffSelect.mockClear();
     insertResult.data = { id: "appt-1" };
     insertResult.error = null;
     appointmentsInsert.mockClear();
@@ -205,6 +200,30 @@ describe("createAppointment", () => {
       warnings: ["Queda fuera del horario de Marc Ejemplo."],
     });
     expect(appointmentsInsert).not.toHaveBeenCalled();
+  });
+
+  it("warns about the professional's absence without its reason, which only the owner may read", async () => {
+    schedulesResult.data = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "14:00:00" },
+    ];
+    timeOffResult.data = [
+      {
+        id: "off-1",
+        profile_id: "prof-1",
+        starts_at: "2026-10-05T07:00:00+00:00",
+        ends_at: "2026-10-05T12:00:00+00:00",
+        reason: null,
+      },
+    ];
+
+    expect(await createAppointment(undefined, appointmentForm())).toEqual({
+      warnings: ["Marc Ejemplo tiene una ausencia ese día."],
+    });
+    expect(rpc).toHaveBeenCalledWith("time_off_between", {
+      p_profile_ids: ["prof-1"],
+      p_from: "2026-10-05T10:00:00+02:00",
+      p_to: "2026-10-05T11:00:00+02:00",
+    });
   });
 
   it("asks for confirmation before giving an appointment at a time that has already passed, because it would show up as done and pending payment", async () => {

@@ -401,7 +401,7 @@ test("an archived record with the same name and birth date shows up as «Ficha a
     archived: true,
   });
 
-  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await loginAsOwner(page);
   await page.goto(`${DASHBOARD}/patients/new`);
 
   await page.getByLabel("Nombre").fill("Lucia");
@@ -846,7 +846,7 @@ test("archiving a minor patient hides them from the list, the «Archivados» fil
   const id = data!.id;
   createdPersonIds.push(id);
 
-  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await loginAsOwner(page);
   await page.goto(`${DASHBOARD}/patients/${id}`);
 
   await page.getByTestId("person-archive").click();
@@ -872,21 +872,59 @@ test("archiving a minor patient hides them from the list, the «Archivados» fil
   ).toBeVisible();
 });
 
-test("an employee cannot see the Eliminar button on a patient's record", async ({
+test("an employee edits a record but cannot see Eliminar, Archivar, Desarchivar nor Quitar tutor/a, which only the owner may do", async ({
   page,
 }) => {
-  const lastName = `SinEliminar${Date.now()}`;
-  const { data, error } = await admin
+  const stamp = Date.now();
+  const { data: people, error } = await admin
     .from("people")
-    .insert({ first_name: "Persona", last_name: lastName, is_patient: false })
-    .select("id")
-    .single();
+    .insert([
+      {
+        first_name: "Menor",
+        last_name: `SinArchivar${stamp}`,
+        is_patient: true,
+        birth_date: "2016-01-01",
+      },
+      {
+        first_name: "Tutora",
+        last_name: `SinQuitar${stamp}`,
+        is_patient: false,
+      },
+      {
+        first_name: "Archivada",
+        last_name: `SinDesarchivar${stamp}`,
+        is_patient: false,
+        archived_at: new Date().toISOString(),
+      },
+    ])
+    .select("id, first_name");
   expect(error).toBeNull();
-  createdPersonIds.push(data!.id);
+  const idOf = (firstName: string) =>
+    people!.find((person) => person.first_name === firstName)!.id;
+  createdPersonIds.push(...people!.map((person) => person.id));
+  const { error: guardianshipError } = await admin
+    .from("guardianships")
+    .insert({
+      minor_id: idOf("Menor"),
+      guardian_id: idOf("Tutora"),
+      relationship: "madre",
+      is_primary: true,
+    });
+  expect(guardianshipError).toBeNull();
 
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
-  await page.goto(`${DASHBOARD}/patients/${data!.id}`);
+  await page.goto(`${DASHBOARD}/patients/${idOf("Menor")}`);
+  await expect(page.getByRole("link", { name: "Editar" })).toBeVisible();
+  await expect(page.getByTestId("guardian-row")).toContainText(
+    `Tutora SinQuitar${stamp}`,
+  );
+  await expect(page.getByTestId("guardian-remove")).toHaveCount(0);
+  await expect(page.getByTestId("person-archive")).toHaveCount(0);
   await expect(page.getByTestId("person-delete")).toHaveCount(0);
+
+  await page.goto(`${DASHBOARD}/patients/${idOf("Archivada")}`);
+  await expect(page.getByRole("link", { name: "Editar" })).toBeVisible();
+  await expect(page.getByTestId("person-archive")).toHaveCount(0);
 });
 
 test("a throwaway owner cannot delete a guardian who still has wards, but can delete the minor", async ({
@@ -997,7 +1035,7 @@ test("clicking a person's name in the list, an archive/recover round trip, and c
     });
   expect(guardianshipError).toBeNull();
 
-  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await loginAsOwner(page);
   await page.goto(`${DASHBOARD}/patients`);
   await page.getByTestId("patients-search").fill(minorLastName);
   await expect(page).toHaveURL(
@@ -1228,7 +1266,7 @@ test("archiving a record with an upcoming appointment, even with another profess
   expect(appointmentError).toBeNull();
   createdAppointmentIds.push(appointment!.id);
 
-  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await loginAsOwner(page);
   await page.goto(`${DASHBOARD}/patients/${person!.id}`);
   await page.getByTestId("person-archive").click();
   await page.getByTestId("confirm-action").click();

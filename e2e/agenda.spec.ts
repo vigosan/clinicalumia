@@ -310,8 +310,9 @@ test("la propietaria ve la columna de todas y el nombre del paciente de las cita
   );
 });
 
-test("una ausencia creada por el test aparece como time-off-block", async ({
+test("una ausencia aparece como «Ausencia» sin motivo para la empleada y con el motivo para la propietaria", async ({
   page,
+  browser,
 }) => {
   const date = futureDate(43);
   const employee = await createThrowawayUser({
@@ -323,8 +324,8 @@ test("una ausencia creada por el test aparece como time-off-block", async ({
     .from("employee_time_off")
     .insert({
       profile_id: employee.id,
-      starts_at: `${date} 16:00:00 Europe/Madrid`,
-      ends_at: `${date} 18:00:00 Europe/Madrid`,
+      starts_at: `${date} 10:00:00 Europe/Madrid`,
+      ends_at: `${date} 12:00:00 Europe/Madrid`,
       reason: "Formación e2e",
     })
     .select("id")
@@ -338,8 +339,18 @@ test("una ausencia creada por el test aparece como time-off-block", async ({
   const timeOffBlock = columnFor(page, employee.id).getByTestId(
     "time-off-block",
   );
-  await expect(timeOffBlock).toBeVisible();
-  await expect(timeOffBlock).toContainText("Formación e2e");
+  await expect(timeOffBlock).toContainText("Ausencia");
+  await expect(timeOffBlock).toContainText("10:00 – 12:00");
+  await expect(timeOffBlock).not.toContainText("Formación e2e");
+
+  const ownerContext = await browser.newContext();
+  const ownerPage = await ownerContext.newPage();
+  await loginAsThrowawayOwner(ownerPage, "Propietaria de prueba");
+  await ownerPage.goto(`${DASHBOARD}/?date=${date}`);
+  await expect(
+    columnFor(ownerPage, employee.id).getByTestId("time-off-block"),
+  ).toContainText("Formación e2e");
+  await ownerContext.close();
 });
 
 test("pulsar un hueco fuera de horario en la propia columna da de alta una cita, y pulsar la columna de un compañero no navega", async ({

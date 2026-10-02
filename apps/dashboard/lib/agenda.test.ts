@@ -461,6 +461,26 @@ describe("scheduleWarnings", () => {
     ).toEqual(["Laura tiene una ausencia ese día (Formación)."]);
   });
 
+  it("warns about the time off without a reason when the employee is not allowed to see it, and never shows empty brackets", () => {
+    for (const reason of [null, ""]) {
+      expect(
+        scheduleWarnings({
+          professionalName: "Laura",
+          start: "2026-07-15T10:00:00+02:00",
+          end: "2026-07-15T10:30:00+02:00",
+          schedules,
+          timeOff: [
+            {
+              starts_at: "2026-07-15T09:00:00+02:00",
+              ends_at: "2026-07-15T11:00:00+02:00",
+              reason,
+            },
+          ],
+        }),
+      ).toEqual(["Laura tiene una ausencia ese día."]);
+    }
+  });
+
   it("has no warning on the spring-forward day when the appointment fits Madrid wall time, not a naive UTC offset", () => {
     expect(
       scheduleWarnings({

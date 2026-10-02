@@ -43,7 +43,7 @@ export type AgendaTimeOff = {
   professionalId: string;
   startsAt: string;
   endsAt: string;
-  reason: string;
+  reason: string | null;
 };
 
 export type AgendaData = {
@@ -136,7 +136,7 @@ function toTimeOff(row: {
   profile_id: string;
   starts_at: string;
   ends_at: string;
-  reason: string;
+  reason: string | null;
 }): AgendaTimeOff {
   return {
     id: row.id,
@@ -258,12 +258,11 @@ export async function loadAgenda({
     isOwner
       ? appointmentsQuery
       : appointmentsQuery.in("professional_id", activeIds),
-    supabase
-      .from("employee_time_off")
-      .select("id, profile_id, starts_at, ends_at, reason")
-      .in("profile_id", activeIds)
-      .lt("starts_at", bounds.end)
-      .gt("ends_at", bounds.start),
+    supabase.rpc("time_off_between", {
+      p_profile_ids: activeIds,
+      p_from: bounds.start,
+      p_to: bounds.end,
+    }),
     supabase
       .from("employee_schedules")
       .select("profile_id, weekday, starts_at, ends_at")
@@ -439,12 +438,11 @@ async function loadWeekAgenda(
       .neq("status", "cancelled")
       .lt("starts_at", bounds.end)
       .gt("ends_at", bounds.start),
-    supabase
-      .from("employee_time_off")
-      .select("id, profile_id, starts_at, ends_at, reason")
-      .eq("profile_id", targetPersonId)
-      .lt("starts_at", bounds.end)
-      .gt("ends_at", bounds.start),
+    supabase.rpc("time_off_between", {
+      p_profile_ids: [targetPersonId],
+      p_from: bounds.start,
+      p_to: bounds.end,
+    }),
     supabase
       .from("employee_schedules")
       .select("profile_id, weekday, starts_at, ends_at")

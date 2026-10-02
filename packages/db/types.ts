@@ -1466,6 +1466,16 @@ export type Database = {
         }[]
       }
       suggested_amount: { Args: { p_appointment_id: string }; Returns: number }
+      time_off_between: {
+        Args: { p_from: string; p_profile_ids: string[]; p_to?: string }
+        Returns: {
+          ends_at: string
+          id: string
+          profile_id: string
+          reason: string
+          starts_at: string
+        }[]
+      }
       unlink_consent: { Args: { p_consent_id: string }; Returns: undefined }
       update_my_contact: {
         Args: { p_address: string; p_person_id: string; p_phone: string }

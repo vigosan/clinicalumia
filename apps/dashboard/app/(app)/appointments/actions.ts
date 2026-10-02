@@ -107,12 +107,11 @@ async function computeWarnings(
       .from("employee_schedules")
       .select("weekday, starts_at, ends_at")
       .eq("profile_id", appointment.professional_id),
-    supabase
-      .from("employee_time_off")
-      .select("starts_at, ends_at, reason")
-      .eq("profile_id", appointment.professional_id)
-      .lt("starts_at", appointment.ends_at)
-      .gt("ends_at", appointment.starts_at),
+    supabase.rpc("time_off_between", {
+      p_profile_ids: [appointment.professional_id],
+      p_from: appointment.starts_at,
+      p_to: appointment.ends_at,
+    }),
   ]);
   if (schedulesError || !schedules)
     return { error: "No se ha podido guardar." };

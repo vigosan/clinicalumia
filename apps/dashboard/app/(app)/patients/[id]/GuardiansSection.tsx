@@ -21,12 +21,14 @@ export function GuardiansSection({
   isMinorPerson,
   guardians,
   wards,
+  isOwner,
   initialError,
 }: {
   personId: string;
   isMinorPerson: boolean;
   guardians: GuardianRow[];
   wards: GuardianRow[];
+  isOwner: boolean;
   initialError?: string;
 }) {
   const [pending, startTransition] = useTransition();
@@ -72,16 +74,18 @@ export function GuardiansSection({
                     · {RELATIONSHIP_LABEL[guardian.relationship]}
                     {guardian.isPrimary && " · Principal"}
                   </span>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={pending}
-                    data-testid="guardian-remove"
-                    onClick={() => handleRemove(guardian.id)}
-                  >
-                    Quitar
-                  </Button>
+                  {isOwner && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={pending}
+                      data-testid="guardian-remove"
+                      onClick={() => handleRemove(guardian.id)}
+                    >
+                      Quitar
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
