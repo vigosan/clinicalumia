@@ -163,6 +163,14 @@ async function addClosure(
   await form.getByRole("button", { name: "Añadir cierre" }).click();
 }
 
+function startsOf(day: Locator) {
+  return day
+    .getByTestId("schedule-start")
+    .evaluateAll((inputs) =>
+      inputs.map((input) => (input as HTMLInputElement).value),
+    );
+}
+
 function spanish(date: string) {
   return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
 }
@@ -599,4 +607,40 @@ test("moving an appointment to a closed day warns with the reason before saving 
     .eq("id", appointment!.id)
     .single();
   expect(madridDateTime(after!.starts_at).date).toBe(closed);
+});
+
+test("the time slots of a day read from earliest to latest, both when the page loads and right after saving a new earlier one", async ({
+  page,
+}) => {
+  const owner = await createStaff("owner");
+  const employee = await createStaff("employee");
+  const { error } = await admin.from("employee_schedules").insert([
+    {
+      profile_id: employee.id,
+      weekday: 1,
+      starts_at: "16:00",
+      ends_at: "18:00",
+    },
+    {
+      profile_id: employee.id,
+      weekday: 1,
+      starts_at: "12:00",
+      ends_at: "14:00",
+    },
+  ]);
+  expect(error).toBeNull();
+
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/schedules?employee=${employee.id}`);
+  const monday = page.getByTestId("schedule-day-1");
+  await expect.poll(() => startsOf(monday)).toEqual(["12:00", "16:00"]);
+
+  await page.getByTestId("schedule-add-1").click();
+  await pickTime(monday.getByTestId("schedule-start").last(), "09:00");
+  await pickTime(monday.getByTestId("schedule-end").last(), "11:00");
+  await page.getByTestId("schedule-save").click();
+  await expect(page.getByTestId("schedule-saved")).toBeVisible();
+  await expect
+    .poll(() => startsOf(monday))
+    .toEqual(["09:00", "12:00", "16:00"]);
 });

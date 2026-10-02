@@ -12,7 +12,10 @@ type Row = { key: string; starts_at: string; ends_at: string };
 function toRows(blocks: ScheduleBlock[]) {
   const rows: Record<number, Row[]> = {};
   for (let day = 1; day <= 7; day++) rows[day] = [];
-  for (const block of blocks) {
+  const ordered = [...blocks].sort((a, b) =>
+    a.starts_at.localeCompare(b.starts_at),
+  );
+  for (const block of ordered) {
     const list = rows[block.weekday] ?? [];
     list.push({
       key: crypto.randomUUID(),
@@ -165,7 +168,9 @@ export function ScheduleEditor({
                   ends_at: row.ends_at,
                 })),
               );
-              setStatus(await saveSchedule(profileId, blocks));
+              const result = await saveSchedule(profileId, blocks);
+              setStatus(result);
+              if ("ok" in result) setRows(toRows(blocks));
             })
           }
         >
