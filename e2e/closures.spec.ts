@@ -251,7 +251,7 @@ test("the owner adds an absence from its own drawer, which closes and leaves it 
 
   try {
     await signIn(page, ADMIN, owner.email, owner.password);
-    await page.goto(`${ADMIN}/schedules`);
+    await page.goto(`${ADMIN}/schedules?employee=${MARC_ID}`);
     await page.getByTestId("time-off-new").click();
     const form = page.getByTestId("timeoff-form");
     await pickDate(form.getByLabel("Desde"), day);
@@ -259,6 +259,7 @@ test("the owner adds an absence from its own drawer, which closes and leaves it 
     await form.getByLabel("Motivo").fill(reason);
     await form.getByRole("button", { name: "Añadir ausencia" }).click();
 
+    await expect(form.getByTestId("timeoff-error")).toHaveCount(0);
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page.getByTestId("timeoff-row").filter({ hasText: reason }),
