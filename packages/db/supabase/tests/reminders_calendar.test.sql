@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(68);
+select plan(83);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -89,14 +89,18 @@ update public.appointments
 set status = 'cancelled', cancelled_by = 'clinic', cancelled_at = now()
 where id = '88000000-0000-0000-0000-0000000000d7';
 
-insert into public.appointment_reminders (appointment_id, channel, recipient, status, sent_at) values
-  ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', 'sent', now());
-insert into public.appointment_reminders (appointment_id, channel, recipient, status, error) values
-  ('88000000-0000-0000-0000-0000000000df', 'email', 'bea-equipo-recordatorios@test.local', 'failed', 'smtp_down');
-insert into public.appointment_reminders (appointment_id, channel, recipient, status) values
-  ('88000000-0000-0000-0000-0000000000da', 'email', 'bea-equipo-recordatorios@test.local', 'pending');
-insert into public.appointment_reminders (appointment_id, channel, recipient, status, created_at) values
-  ('88000000-0000-0000-0000-0000000000db', 'email', 'bea-equipo-recordatorios@test.local', 'pending', now() - interval '61 minutes');
+create or replace function pg_temp.starts(appointment_id uuid) returns timestamptz language sql stable as $$
+  select starts_at from public.appointments where id = appointment_id
+$$;
+
+insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status, sent_at) values
+  ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000de'), 'sent', now());
+insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status, error) values
+  ('88000000-0000-0000-0000-0000000000df', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000df'), 'failed', 'smtp_down');
+insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status) values
+  ('88000000-0000-0000-0000-0000000000da', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000da'), 'pending');
+insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status, created_at) values
+  ('88000000-0000-0000-0000-0000000000db', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000db'), 'pending', now() - interval '61 minutes');
 
 select has_column('public', 'appointment_reminders', 'appointment_id', 'a reminder always names its appointment');
 select has_column('public', 'appointment_reminders', 'channel', 'a reminder is sent through a channel');
@@ -111,8 +115,8 @@ select is((select relrowsecurity from pg_class where oid = 'public.appointment_r
 select is((select count(*) from pg_policies where schemaname = 'public' and tablename = 'appointment_reminders'), 0::bigint,
   'appointment_reminders has no policies, so only security definer functions can reach it');
 select is(pg_get_function_result('public.reminder_candidates(date)'::regprocedure),
-  'TABLE(appointment_id uuid, starts_at timestamp with time zone, ends_at timestamp with time zone, person_name text, service_name text, professional_name text, change_deadline timestamp with time zone, can_change boolean, recipients text[])',
-  'reminder_candidates gives the cron exactly what it needs to email tomorrow''s patients');
+  'TABLE(appointment_id uuid, starts_at timestamp with time zone, ends_at timestamp with time zone, updated_at timestamp with time zone, person_name text, service_name text, professional_name text, change_deadline timestamp with time zone, can_change boolean, recipients text[])',
+  'reminder_candidates gives the cron exactly what it needs to email tomorrow''s patients, including when the appointment last changed for the calendar file''s SEQUENCE');
 
 select results_eq(
   format($$ select recipients from public.reminder_candidates(%L) where appointment_id = %L $$,
@@ -152,20 +156,20 @@ select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) wher
   'a claim left pending for over an hour counts as failed, so a run that crashed mid-send does not block the reminder forever');
 
 select throws_ok(
-  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status)
-     values ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', 'pending') $$,
-  '23505', null, 'an appointment already reminded by email cannot be claimed again for email');
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status)
+     values ('88000000-0000-0000-0000-0000000000de', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000de'), 'pending') $$,
+  '23505', null, 'a recipient already reminded by email of this appointment at this time cannot be claimed again');
 select throws_ok(
-  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status)
-     values ('88000000-0000-0000-0000-0000000000da', 'email', 'bea-equipo-recordatorios@test.local', 'pending') $$,
-  '23505', null, 'a second run cannot claim an appointment another run is still sending, so only one of them emails it');
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status)
+     values ('88000000-0000-0000-0000-0000000000da', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000da'), 'pending') $$,
+  '23505', null, 'a second run cannot claim a recipient another run is still sending to, so only one of them emails her');
 select lives_ok(
-  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status)
-     values ('88000000-0000-0000-0000-0000000000df', 'email', 'bea-equipo-recordatorios@test.local', 'pending') $$,
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status)
+     values ('88000000-0000-0000-0000-0000000000df', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000df'), 'pending') $$,
   'an appointment whose earlier attempt failed can be claimed again, so a failure can be retried');
 select lives_ok(
-  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, status, sent_at)
-     values ('88000000-0000-0000-0000-0000000000de', 'sms', '600000000', 'sent', now()) $$,
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status, sent_at)
+     values ('88000000-0000-0000-0000-0000000000de', 'sms', '600000000', pg_temp.starts('88000000-0000-0000-0000-0000000000de'), 'sent', now()) $$,
   'the same appointment can still be reminded on a different channel');
 
 select is(has_table_privilege('anon', 'public.appointment_reminders', 'select'), false,
@@ -192,6 +196,92 @@ set local role service_role;
 select is((select count(*) from public.reminder_candidates(pg_temp.day_x())), 6::bigint,
   'the service role sees exactly the day''s six non-cancelled candidates that are neither reminded nor being reminded');
 reset role;
+
+select is(has_function_privilege('anon', 'public.appointment_recipient_emails(uuid)', 'execute'), false,
+  'an anonymous visitor cannot ask for the emails of any appointment''s patient');
+select is(has_function_privilege('authenticated', 'public.appointment_recipient_emails(uuid)', 'execute'), false,
+  'a signed-in user cannot ask for them directly either, only through the checks of appointment_notice_recipients');
+
+select has_column('public', 'appointment_reminders', 'starts_at', 'a reminder records which start time of the appointment it was for');
+select col_not_null('public', 'appointment_reminders', 'starts_at', 'every reminder says which start time it was for, so a move is never mistaken for a reminded appointment');
+
+insert into auth.users (id, email) values
+  ('88000000-0000-0000-0000-000000000002', 'inactiva-recordatorios@test.local');
+insert into public.profiles (id, email, full_name, role, is_active, specialty_id) values
+  ('88000000-0000-0000-0000-000000000002', 'inactiva-recordatorios@test.local', 'Inactiva Recordatorios', 'employee', true, '88000000-0000-0000-0000-0000000000aa');
+insert into public.people (id, first_name, last_name, birth_date, email, is_patient) values
+  ('88000000-0000-0000-0000-0000000000c7', 'Gema', 'Archivada', '1979-01-01', 'gema-archivada-recordatorios@test.local', true);
+
+insert into public.appointments (id, professional_id, patient_id, service_id, starts_at, ends_at) values
+  ('88000000-0000-0000-0000-0000000000f1', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('15:00'), pg_temp.at_day_x('15:30')),
+  ('88000000-0000-0000-0000-0000000000f2', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c3',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('16:30'), pg_temp.at_day_x('17:00')),
+  ('88000000-0000-0000-0000-0000000000f3', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c3',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('17:00'), pg_temp.at_day_x('17:30')),
+  ('88000000-0000-0000-0000-0000000000f4', '88000000-0000-0000-0000-000000000002', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('09:00'), pg_temp.at_day_x('09:30')),
+  ('88000000-0000-0000-0000-0000000000f5', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c7',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('17:30'), pg_temp.at_day_x('18:00')),
+  ('88000000-0000-0000-0000-0000000000f6', '88000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-0000000000c2',
+   '88000000-0000-0000-0000-0000000000b1', pg_temp.at_day_x('18:00') - interval '1 day', pg_temp.at_day_x('18:30') - interval '1 day');
+
+update public.profiles set is_active = false where id = '88000000-0000-0000-0000-000000000002';
+update public.people set archived_at = now() where id = '88000000-0000-0000-0000-0000000000c7';
+
+insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status, sent_at) values
+  ('88000000-0000-0000-0000-0000000000f1', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f1'), 'sent', now()),
+  ('88000000-0000-0000-0000-0000000000f6', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f6'), 'sent', now()),
+  ('88000000-0000-0000-0000-0000000000f2', 'email', 'tutor-a-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f2'), 'sent', now()),
+  ('88000000-0000-0000-0000-0000000000f3', 'email', 'tutor-a-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f3'), 'sent', now()),
+  ('88000000-0000-0000-0000-0000000000f3', 'email', 'tutor-b-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f3'), 'sent', now());
+insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status, error) values
+  ('88000000-0000-0000-0000-0000000000f2', 'email', 'tutor-b-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f2'), 'failed', 'buzón lleno');
+
+update public.appointments set starts_at = pg_temp.at_day_x('15:30'), ends_at = pg_temp.at_day_x('16:00')
+where id = '88000000-0000-0000-0000-0000000000f1';
+update public.appointments set starts_at = pg_temp.at_day_x('18:00'), ends_at = pg_temp.at_day_x('18:30')
+where id = '88000000-0000-0000-0000-0000000000f6';
+
+select results_eq(
+  $$ select recipients from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f1' $$,
+  $$ values (array['bea-equipo-recordatorios@test.local']::text[]) $$,
+  'an appointment moved to another time of the same day after its reminder is reminded again of the new time');
+select results_eq(
+  $$ select recipients from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f6' $$,
+  $$ values (array['bea-equipo-recordatorios@test.local']::text[]) $$,
+  'an appointment moved to another day after its reminder is reminded again for the new day, so the patient is not left without a reminder of the appointment she really has');
+select lives_ok(
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status)
+     values ('88000000-0000-0000-0000-0000000000f6', 'email', 'bea-equipo-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f6'), 'sent') $$,
+  'a reminder for the new time can be recorded although one was already sent for the old time');
+select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f6'), 0::bigint,
+  'once reminded of the new time, a moved appointment is not reminded again, so a second run that day sends nothing');
+
+select results_eq(
+  $$ select recipients from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f2' $$,
+  $$ values (array['tutor-b-recordatorios@test.local']::text[]) $$,
+  'when one guardian''s reminder failed, the retry goes only to her, so the guardian who got it is not emailed twice');
+select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f3'), 0::bigint,
+  'a minor whose guardians were both reminded is not a candidate any more');
+select lives_ok(
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status)
+     values ('88000000-0000-0000-0000-0000000000f2', 'email', 'tutor-b-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f2'), 'pending') $$,
+  'a guardian whose reminder failed can be claimed again for the retry while the other guardian''s reminder stays sent');
+select throws_ok(
+  $$ insert into public.appointment_reminders (appointment_id, channel, recipient, starts_at, status)
+     values ('88000000-0000-0000-0000-0000000000f2', 'email', 'tutor-a-recordatorios@test.local', pg_temp.starts('88000000-0000-0000-0000-0000000000f2'), 'pending') $$,
+  '23505', null, 'the guardian who already got the reminder cannot be claimed again for the same time');
+
+select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f4'), 0::bigint,
+  'an appointment of a deactivated professional is not reminded, so nobody is sent to an appointment no one will attend');
+select is((select count(*) from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f5'), 0::bigint,
+  'an appointment of an archived patient is not reminded');
+
+select is(
+  (select updated_at from public.reminder_candidates(pg_temp.day_x()) where appointment_id = '88000000-0000-0000-0000-0000000000f1'),
+  (select updated_at from public.appointments where id = '88000000-0000-0000-0000-0000000000f1'),
+  'a candidate carries the appointment''s last change, so the reminder''s calendar file never looks older than the change notice');
 
 select set_config('request.jwt.claims', '', true);
 

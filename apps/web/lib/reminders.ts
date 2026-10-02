@@ -15,6 +15,7 @@ export type ReminderCandidate = {
   appointment_id: string;
   starts_at: string;
   ends_at: string;
+  updated_at: string;
   person_name: string;
   service_name: string;
   professional_name: string;
@@ -56,6 +57,7 @@ export function patientIcs(candidate: ReminderCandidate, now: Date): string {
     endsAt: candidate.ends_at,
     serviceName: candidate.service_name,
     now,
+    updatedAt: candidate.updated_at,
   });
 }
 
@@ -84,11 +86,15 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function logMissingEmail(admin: AdminClient, appointmentId: string) {
+async function logMissingEmail(
+  admin: AdminClient,
+  candidate: ReminderCandidate,
+) {
   const { data, error } = await admin
     .from("appointment_reminders")
     .select("id")
-    .eq("appointment_id", appointmentId)
+    .eq("appointment_id", candidate.appointment_id)
+    .eq("starts_at", candidate.starts_at)
     .eq("error", "sin_email")
     .limit(1);
   if (error) throw error;
@@ -96,9 +102,10 @@ async function logMissingEmail(admin: AdminClient, appointmentId: string) {
   const { error: insertError } = await admin
     .from("appointment_reminders")
     .insert({
-      appointment_id: appointmentId,
+      appointment_id: candidate.appointment_id,
       channel: "email",
       recipient: "",
+      starts_at: candidate.starts_at,
       status: "failed",
       error: "sin_email",
     });
@@ -116,15 +123,16 @@ async function releaseStaleClaims(admin: AdminClient, now: Date) {
 
 async function claim(
   admin: AdminClient,
-  appointmentId: string,
+  candidate: ReminderCandidate,
   recipient: string,
 ): Promise<string | null> {
   const { data, error } = await admin
     .from("appointment_reminders")
     .insert({
-      appointment_id: appointmentId,
+      appointment_id: candidate.appointment_id,
       channel: "email",
       recipient,
+      starts_at: candidate.starts_at,
       status: "pending",
     })
     .select("id")
@@ -166,67 +174,65 @@ export async function sendDailyReminders({
   if (error) throw error;
 
   for (const candidate of candidates) {
-    let claimId: string | null = null;
-    try {
-      if (candidate.recipients.length === 0) {
-        await logMissingEmail(admin, candidate.appointment_id);
-        result.skipped++;
-        continue;
-      }
-
-      claimId = await claim(
-        admin,
-        candidate.appointment_id,
-        candidate.recipients.join(", "),
-      );
-      if (!claimId) {
-        result.skipped++;
-        continue;
-      }
-
-      const message = {
-        ...reminderEmail(candidate),
-        attachments: [
-          {
-            filename: "cita.ics",
-            content: patientIcs(candidate, now),
-            contentType: "text/calendar",
-          },
-        ],
-      };
-      const errors: string[] = [];
-      for (const recipient of candidate.recipients) {
-        if (emailed) await wait(PAUSE_BETWEEN_EMAILS_MS);
-        emailed = true;
-        try {
-          await sendWithRetry({ to: recipient, ...message }, wait);
-        } catch (sendError) {
-          errors.push(`${recipient}: ${errorMessage(sendError)}`);
-        }
-      }
-
-      if (errors.length > 0) {
-        await settle(admin, claimId, {
-          status: "failed",
-          error: errors.join("; "),
-        });
+    if (candidate.recipients.length === 0) {
+      try {
+        await logMissingEmail(admin, candidate);
+      } catch (unexpected) {
+        console.error("No se ha podido enviar el recordatorio", unexpected);
         result.failed++;
         continue;
       }
+      result.skipped++;
+      continue;
+    }
 
-      await settle(admin, claimId, {
-        status: "sent",
-        sent_at: now.toISOString(),
-      });
-      result.sent++;
-    } catch (unexpected) {
-      console.error("No se ha podido enviar el recordatorio", unexpected);
-      result.failed++;
-      if (claimId) {
+    for (const recipient of candidate.recipients) {
+      let claimId: string | null = null;
+      try {
+        claimId = await claim(admin, candidate, recipient);
+        if (!claimId) {
+          result.skipped++;
+          continue;
+        }
+
+        const message = {
+          to: recipient,
+          ...reminderEmail(candidate),
+          attachments: [
+            {
+              filename: "cita.ics",
+              content: patientIcs(candidate, now),
+              contentType: "text/calendar",
+            },
+          ],
+        };
+        if (emailed) await wait(PAUSE_BETWEEN_EMAILS_MS);
+        emailed = true;
+        try {
+          await sendWithRetry(message, wait);
+        } catch (sendError) {
+          await settle(admin, claimId, {
+            status: "failed",
+            error: errorMessage(sendError),
+          });
+          result.failed++;
+          continue;
+        }
+
         await settle(admin, claimId, {
-          status: "failed",
-          error: errorMessage(unexpected),
-        }).catch(() => {});
+          status: "sent",
+          sent_at: now.toISOString(),
+        });
+        result.sent++;
+      } catch (unexpected) {
+        console.error("No se ha podido enviar el recordatorio", unexpected);
+        result.failed++;
+        if (claimId) {
+          await settle(admin, claimId, {
+            status: "failed",
+            error: errorMessage(unexpected),
+          }).catch(() => {});
+        }
       }
     }
   }

@@ -8,7 +8,8 @@ vi.mock("@clinicalumia/api/admin", () => ({
   createAdminClient: () => admin,
 }));
 
-const { GET } = await import("./route");
+const { GET, maxDuration } = await import("./route");
+const vercel = (await import("@/vercel.json")).default;
 
 function request(authorization?: string) {
   return new Request("http://localhost:3000/api/cron/recordatorios", {
@@ -60,5 +61,20 @@ describe("GET /api/cron/recordatorios", () => {
       admin,
       now: expect.any(Date),
     });
+  });
+
+  it("lets a run last up to five minutes, so a busy day or a slow email provider does not cut the reminders short", () => {
+    expect(maxDuration).toBe(300);
+  });
+
+  it("runs the reminders twice a day, so a reminder that failed in the morning is retried while the appointment is still tomorrow", () => {
+    const runs = vercel.crons.filter(
+      (cron) => cron.path === "/api/cron/recordatorios",
+    );
+
+    expect(runs.map((cron) => cron.schedule)).toEqual([
+      "0 8 * * *",
+      "0 14 * * *",
+    ]);
   });
 });

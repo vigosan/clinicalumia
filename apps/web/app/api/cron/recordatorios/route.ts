@@ -2,6 +2,7 @@ import { createAdminClient } from "@clinicalumia/api/admin";
 import { sendDailyReminders } from "@/lib/reminders";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;

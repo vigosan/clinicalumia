@@ -115,6 +115,7 @@ export type Database = {
           id: string
           recipient: string
           sent_at: string | null
+          starts_at: string
           status: Database["public"]["Enums"]["reminder_status"]
         }
         Insert: {
@@ -125,6 +126,7 @@ export type Database = {
           id?: string
           recipient: string
           sent_at?: string | null
+          starts_at: string
           status: Database["public"]["Enums"]["reminder_status"]
         }
         Update: {
@@ -135,6 +137,7 @@ export type Database = {
           id?: string
           recipient?: string
           sent_at?: string | null
+          starts_at?: string
           status?: Database["public"]["Enums"]["reminder_status"]
         }
         Relationships: [
@@ -1061,6 +1064,10 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: string[]
       }
+      appointment_recipient_emails: {
+        Args: { p_appointment_id: string }
+        Returns: string[]
+      }
       available_slots: {
         Args: {
           p_from: string
@@ -1359,6 +1366,7 @@ export type Database = {
           recipients: string[]
           service_name: string
           starts_at: string
+          updated_at: string
         }[]
       }
       reschedule_my_appointment: {

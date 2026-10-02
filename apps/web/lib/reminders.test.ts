@@ -21,6 +21,7 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
     appointment_id: "11111111-1111-4111-8111-111111111111",
     starts_at: madridInstant("2026-10-06", "09:00"),
     ends_at: madridInstant("2026-10-06", "09:45"),
+    updated_at: "2026-10-01T10:00:00.000Z",
     person_name: "Lucía Pérez",
     service_name: "Sesión de logopedia",
     professional_name: "Ana García",
@@ -79,6 +80,8 @@ function fakeAdmin() {
             (other) =>
               other.appointment_id === row.appointment_id &&
               other.channel === row.channel &&
+              other.recipient === row.recipient &&
+              other.starts_at === row.starts_at &&
               other.status !== "failed",
           );
           const id = `r${reminders.length + 1}`;
@@ -193,6 +196,17 @@ describe("patientIcs", () => {
     expect(ics).toContain("LOCATION:Calle Montesa 7\\, 46800 Xàtiva");
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
   });
+
+  it("numbers the event with the appointment's last change, like the change notices do, so a calendar that already has the newer notice does not take the reminder for an older version", () => {
+    const ics = patientIcs(
+      candidate({ updated_at: "2026-10-01T10:00:00.000Z" }),
+      now,
+    );
+
+    expect(ics).toContain(
+      `SEQUENCE:${Date.parse("2026-10-01T10:00:00.000Z") / 1000}`,
+    );
+  });
 });
 
 describe("sendDailyReminders", () => {
@@ -208,7 +222,7 @@ describe("sendDailyReminders", () => {
     });
   });
 
-  it("sends each guardian their own email with the calendar file and marks one claim as sent, so separated parents never see each other's address and the appointment is logged as reminded once", async () => {
+  it("sends each guardian their own email with the calendar file and logs each of them as sent for this start time, so separated parents never see each other's address and a later move is reminded again", async () => {
     candidates = [
       candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
     ];
@@ -232,19 +246,20 @@ describe("sendDailyReminders", () => {
         },
       ]);
     }
-    expect(logged()).toEqual([
-      {
+    expect(logged()).toEqual(
+      ["madre@example.com", "padre@example.com"].map((recipient) => ({
         appointment_id: "11111111-1111-4111-8111-111111111111",
         channel: "email",
-        recipient: "madre@example.com, padre@example.com",
+        recipient,
+        starts_at: madridInstant("2026-10-06", "09:00"),
         status: "sent",
         sent_at: now.toISOString(),
-      },
-    ]);
-    expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
+      })),
+    );
+    expect(result).toEqual({ sent: 2, failed: 0, skipped: 0 });
   });
 
-  it("still emails the other guardian when one address fails, and marks the claim as failed with that address's error, so the team sees who was not reminded", async () => {
+  it("still emails the other guardian when one address fails, and logs only that address as failed, so the retry run reminds her without emailing the other guardian twice", async () => {
     candidates = [
       candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
     ];
@@ -260,12 +275,21 @@ describe("sendDailyReminders", () => {
       {
         appointment_id: "11111111-1111-4111-8111-111111111111",
         channel: "email",
-        recipient: "madre@example.com, padre@example.com",
+        recipient: "madre@example.com",
+        starts_at: madridInstant("2026-10-06", "09:00"),
         status: "failed",
-        error: "madre@example.com: buzón inexistente",
+        error: "buzón inexistente",
+      },
+      {
+        appointment_id: "11111111-1111-4111-8111-111111111111",
+        channel: "email",
+        recipient: "padre@example.com",
+        starts_at: madridInstant("2026-10-06", "09:00"),
+        status: "sent",
+        sent_at: now.toISOString(),
       },
     ]);
-    expect(result).toEqual({ sent: 0, failed: 1, skipped: 0 });
+    expect(result).toEqual({ sent: 1, failed: 1, skipped: 0 });
   });
 
   it("claims the reminder as pending before sending it, so a run that overlaps with this one finds it taken instead of emailing the patient again", async () => {
@@ -283,28 +307,60 @@ describe("sendDailyReminders", () => {
           appointment_id: "11111111-1111-4111-8111-111111111111",
           channel: "email",
           recipient: "lucia@example.com",
+          starts_at: madridInstant("2026-10-06", "09:00"),
           status: "pending",
         },
       ],
     ]);
   });
 
-  it("skips an appointment another run has already claimed, without emailing it, so two overlapping runs never send the same reminder twice", async () => {
-    candidates = [candidate()];
+  it("skips a recipient another run has already claimed, without emailing her, and still reminds the other guardian, so two overlapping runs never send the same reminder twice", async () => {
+    candidates = [
+      candidate({ recipients: ["madre@example.com", "padre@example.com"] }),
+    ];
     reminders = [
       {
         id: "otra",
         appointment_id: "11111111-1111-4111-8111-111111111111",
         channel: "email",
-        recipient: "lucia@example.com",
+        recipient: "madre@example.com",
+        starts_at: madridInstant("2026-10-06", "09:00"),
         status: "pending",
       },
     ];
 
     const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
 
-    expect(sendEmail).not.toHaveBeenCalled();
-    expect(result).toEqual({ sent: 0, failed: 0, skipped: 1 });
+    expect(sendEmail.mock.calls.map(([email]) => email.to)).toEqual([
+      "padre@example.com",
+    ]);
+    expect(result).toEqual({ sent: 1, failed: 0, skipped: 1 });
+  });
+
+  it("claims the reminder for the appointment's current start time, so a reminder sent before the appointment was moved does not stop the one for the new time", async () => {
+    candidates = [
+      candidate({ starts_at: madridInstant("2026-10-06", "12:00") }),
+    ];
+    reminders = [
+      {
+        id: "antes",
+        appointment_id: "11111111-1111-4111-8111-111111111111",
+        channel: "email",
+        recipient: "lucia@example.com",
+        starts_at: madridInstant("2026-10-06", "09:00"),
+        status: "sent",
+      },
+    ];
+
+    const result = await sendDailyReminders({ admin: fakeAdmin(), now, wait });
+
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(reminders[1]).toMatchObject({
+      recipient: "lucia@example.com",
+      starts_at: madridInstant("2026-10-06", "12:00"),
+      status: "sent",
+    });
+    expect(result).toEqual({ sent: 1, failed: 0, skipped: 0 });
   });
 
   it("releases claims left pending for over an hour before claiming again, so a run that crashed mid-send does not block the reminder forever", async () => {
@@ -358,13 +414,15 @@ describe("sendDailyReminders", () => {
         appointment_id: "a-falla",
         channel: "email",
         recipient: "rebota@example.com",
+        starts_at: madridInstant("2026-10-06", "09:00"),
         status: "failed",
-        error: "rebota@example.com: buzón inexistente",
+        error: "buzón inexistente",
       },
       {
         appointment_id: "a-bien",
         channel: "email",
         recipient: "bien@example.com",
+        starts_at: madridInstant("2026-10-06", "09:00"),
         status: "sent",
         sent_at: now.toISOString(),
       },
@@ -384,6 +442,7 @@ describe("sendDailyReminders", () => {
         appointment_id: "a-sin",
         channel: "email",
         recipient: "",
+        starts_at: madridInstant("2026-10-06", "09:00"),
         status: "failed",
         error: "sin_email",
       },
@@ -440,7 +499,7 @@ describe("sendDailyReminders", () => {
     expect(sendEmail).toHaveBeenCalledTimes(2);
     expect(logged()[0]).toMatchObject({
       status: "failed",
-      error: "lucia@example.com: Too many",
+      error: "Too many",
     });
     expect(result).toEqual({ sent: 0, failed: 1, skipped: 0 });
   });

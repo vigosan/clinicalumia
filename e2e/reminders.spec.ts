@@ -286,3 +286,47 @@ test("the daily reminder emails tomorrow's patients once, to the guardian when t
   expect(countError).toBeNull();
   expect(count).toBe(2);
 });
+
+test("an appointment moved after its reminder is reminded of the new time once, however many times the cron runs that day", async () => {
+  const place = await clinic();
+  const email = uniqueEmail("recordatorio-movida");
+  const patient = await person({
+    first_name: "Nuria",
+    birth_date: "1990-01-20",
+    email,
+  });
+  const tomorrow = addDays(todayInMadrid(), 1);
+  const { data: appointment, error } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: place.professionalId,
+      patient_id: patient.id,
+      service_id: place.serviceId,
+      starts_at: madridInstant(tomorrow, "10:00"),
+      ends_at: madridInstant(tomorrow, "10:45"),
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+
+  expect((await runCron()).status).toBe(200);
+  expect(await reminderEmailsTo(email)).toHaveLength(1);
+
+  const { error: moveError } = await admin
+    .from("appointments")
+    .update({
+      starts_at: madridInstant(tomorrow, "17:00"),
+      ends_at: madridInstant(tomorrow, "17:45"),
+    })
+    .eq("id", appointment!.id);
+  expect(moveError).toBeNull();
+
+  expect((await runCron()).status).toBe(200);
+  expect((await runCron()).status).toBe(200);
+
+  const reminders = await reminderEmailsTo(email);
+  expect(reminders).toHaveLength(2);
+  expect(
+    reminders.filter((message) => message.HTML.includes("a las 17:00")),
+  ).toHaveLength(1);
+});
