@@ -99,13 +99,11 @@ export default async function CobrosPage({
         )}
         cobrados={
           <>
-            <Card>
-              <CobrosFilters
-                params={params}
-                staffOptions={staffOptions}
-                isOwner={isOwner}
-              />
-            </Card>
+            <CobrosFilters
+              params={params}
+              staffOptions={staffOptions}
+              isOwner={isOwner}
+            />
             {state === "error" && (
               <Alert data-testid="payments-error">
                 No se ha podido cargar el listado. Recarga la página.

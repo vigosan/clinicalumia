@@ -1,7 +1,6 @@
 "use client";
 
-import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
+import { SearchInput } from "@clinicalumia/ui/search-input";
 import { SegmentedControl } from "@clinicalumia/ui/segmented-control";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -48,15 +47,15 @@ export function ConsentsSearch({
   }, [query, pendingOnly, router]);
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
-        <Field label="Buscar por nombre o DNI/NIE">
-          <Input
-            data-testid="consents-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </Field>
+        <SearchInput
+          aria-label="Buscar consentimientos"
+          placeholder="Nombre o DNI/NIE"
+          data-testid="consents-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
       </div>
       <SegmentedControl
         aria-label="Mostrar consentimientos"

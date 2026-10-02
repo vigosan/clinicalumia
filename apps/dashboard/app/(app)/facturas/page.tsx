@@ -2,7 +2,6 @@ import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
-import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { Pagination } from "@clinicalumia/ui/pagination";
@@ -64,13 +63,11 @@ export default async function InvoicesPage({
         title="Facturas"
         description="Facturas emitidas a partir de los cobros."
       />
-      <Card>
-        <InvoicesFilters
-          params={params}
-          staffOptions={staffOptions}
-          isOwner={isOwner}
-        />
-      </Card>
+      <InvoicesFilters
+        params={params}
+        staffOptions={staffOptions}
+        isOwner={isOwner}
+      />
       {hasError && (
         <Alert data-testid="invoices-error">
           No se ha podido cargar el listado. Recarga la página.

@@ -3,7 +3,7 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { DateRangePicker } from "@clinicalumia/ui/date-range-picker";
 import { Field } from "@clinicalumia/ui/field";
-import { Input } from "@clinicalumia/ui/input";
+import { SearchInput } from "@clinicalumia/ui/search-input";
 import { Select } from "@clinicalumia/ui/select";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -54,6 +54,15 @@ export function InvoicesFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-4">
+      <div className="min-w-56 flex-1 max-sm:basis-full">
+        <SearchInput
+          aria-label="Buscar facturas"
+          placeholder="Código o nombre"
+          data-testid="invoices-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </div>
       <Field label="Fechas">
         <DateRangePicker
           data-testid="invoices-range"
@@ -72,15 +81,6 @@ export function InvoicesFilters({
           options={INVOICE_KIND_OPTIONS}
         />
       </Field>
-      <div className="min-w-56 flex-1 max-sm:basis-full">
-        <Field label="Buscar por código o nombre">
-          <Input
-            data-testid="invoices-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </Field>
-      </div>
       {isOwner && (
         <Field label="Profesional">
           <Select

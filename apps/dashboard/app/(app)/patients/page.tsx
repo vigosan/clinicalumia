@@ -4,7 +4,6 @@ import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
-import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { Pagination } from "@clinicalumia/ui/pagination";
@@ -59,9 +58,7 @@ export default async function PatientsPage({
           </Button>
         }
       />
-      <Card>
-        <SearchBox defaultQuery={q} defaultArchived={showArchived} />
-      </Card>
+      <SearchBox defaultQuery={q} defaultArchived={showArchived} />
       {state === "error" && (
         <Alert data-testid="patients-error">
           No se ha podido cargar el listado. Recarga la página.

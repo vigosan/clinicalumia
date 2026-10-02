@@ -1,6 +1,5 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
-import { Card } from "@clinicalumia/ui/card";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { Pagination } from "@clinicalumia/ui/pagination";
@@ -55,12 +54,10 @@ export default async function ConsentsPage({
         title="Consentimientos"
         description="Formularios firmados en la web. Asócialos a la ficha del paciente."
       />
-      <Card>
-        <ConsentsSearch
-          defaultQuery={params.q}
-          defaultPendingOnly={params.pendingOnly}
-        />
-      </Card>
+      <ConsentsSearch
+        defaultQuery={params.q}
+        defaultPendingOnly={params.pendingOnly}
+      />
       {state === "error" && (
         <Alert data-testid="consents-error">
           No se ha podido cargar el listado. Recarga la página.

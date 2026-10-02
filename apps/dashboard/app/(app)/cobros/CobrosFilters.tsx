@@ -34,7 +34,7 @@ export function CobrosFilters({
   return (
     <div className="flex flex-wrap items-end gap-4">
       {isSingleDay && (
-        <div className="flex items-center gap-2">
+        <div className="flex h-11 items-center gap-2">
           <Link
             href={cobrosListHref({
               ...params,
