@@ -5,7 +5,13 @@ import { Drawer } from "@clinicalumia/ui/drawer";
 import { useCallback, useState } from "react";
 import { TimeOffForm } from "./TimeOffForm";
 
-export function AddTimeOff({ profileId }: { profileId: string }) {
+export function AddTimeOff({
+  profileId,
+  employeeName,
+}: {
+  profileId: string;
+  employeeName: string;
+}) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   return (
@@ -18,7 +24,7 @@ export function AddTimeOff({ profileId }: { profileId: string }) {
         </Button>
       }
       title="Nueva ausencia"
-      description="Ausencias"
+      description={employeeName}
     >
       <TimeOffForm profileId={profileId} onDone={close} />
     </Drawer>

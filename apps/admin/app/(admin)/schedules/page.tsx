@@ -70,7 +70,10 @@ export default async function SchedulesPage({
             <section className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-bold text-ink-900">Ausencias</h2>
-                <AddTimeOff profileId={selected.id} />
+                <AddTimeOff
+                  profileId={selected.id}
+                  employeeName={selected.full_name}
+                />
               </div>
               {timeOff && timeOff.length > 0 ? (
                 <Card className="p-2">

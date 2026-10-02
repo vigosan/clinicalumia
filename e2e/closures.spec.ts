@@ -253,6 +253,9 @@ test("the owner adds an absence from its own drawer, which closes and leaves it 
     await signIn(page, ADMIN, owner.email, owner.password);
     await page.goto(`${ADMIN}/schedules?employee=${MARC_ID}`);
     await page.getByTestId("time-off-new").click();
+    await expect(
+      page.getByRole("dialog", { name: "Nueva ausencia" }),
+    ).toHaveAccessibleDescription("Marc Ejemplo");
     const form = page.getByTestId("timeoff-form");
     await pickDate(form.getByLabel("Desde"), day);
     await pickDate(form.getByLabel("Hasta"), day);
