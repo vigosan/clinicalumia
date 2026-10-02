@@ -206,6 +206,25 @@ describe("paymentHistoryLines", () => {
     ]);
   });
 
+  it("says «el sistema» instead of «Alguien» when the collector or voider is not in the directory, so the history never names an anonymous person", () => {
+    const lines = paymentHistoryLines(
+      {
+        amount_cents: 4500,
+        method: "cash",
+        collected_at: "2026-09-28T08:12:00Z",
+        collected_by: "former-staff",
+        voided_at: "2026-09-28T09:00:00Z",
+        voided_by: "former-staff",
+        void_reason: "Importe duplicado",
+      },
+      nameById,
+    );
+    expect(lines).toEqual([
+      "Cobrada · 45,00 € · Efectivo por el sistema el 28/09 a las 10:12",
+      "Cobro anulado · Importe duplicado por el sistema el 28/09 a las 11:00",
+    ]);
+  });
+
   it("keeps the correct Madrid day for a payment collected at 23:30 on the clock-change night", () => {
     const collectedAt = madridInstant("2026-10-25", "23:30");
     const lines = paymentHistoryLines(

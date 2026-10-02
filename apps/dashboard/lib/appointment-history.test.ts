@@ -130,11 +130,38 @@ describe("historyLine", () => {
     );
   });
 
-  it("falls back to Alguien when the actor has no profile in the directory", () => {
+  it("says «el sistema» instead of an anonymous «Alguien» when the staff actor is not in the directory, so the history never reads as if a stranger touched the appointment", () => {
     const restored = event({ kind: "restored", actor_id: "missing-actor" });
     const line = historyLine(restored, 0, [restored], appointment, nameById);
     expect(line).toBe(
-      "Se deshizo «no presentada» por Alguien el 28/09 a las 10:12",
+      "Se deshizo «no presentada» por el sistema el 28/09 a las 10:12",
+    );
+  });
+
+  it("says «el sistema» when no person made the change, since it came from an automatic process", () => {
+    const noShow = event({ kind: "no_show", actor_id: null });
+    const line = historyLine(noShow, 0, [noShow], appointment, nameById);
+    expect(line).toBe(
+      "Marcada como no presentada por el sistema el 28/09 a las 10:12",
+    );
+  });
+
+  it("says «la web» when the patient made a change that has no web-specific wording, so staff know it came from the booking site", () => {
+    const reassigned = event({
+      kind: "reassigned",
+      actor_id: null,
+      actor_kind: "patient",
+      previous_professional_id: "actor-1",
+    });
+    const line = historyLine(
+      reassigned,
+      0,
+      [reassigned],
+      { ...appointment, professional_id: "actor-2" },
+      nameById,
+    );
+    expect(line).toBe(
+      "Reasignada de Laura Ejemplo a Patricia por la web el 28/09 a las 10:12",
     );
   });
 

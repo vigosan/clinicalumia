@@ -116,7 +116,7 @@ function AppointmentDetails({
   const isPast = appointment.canMarkNoShow || appointment.canRestore;
   const canMarkNoShow = isPast && status === "scheduled";
   const canRestore = status === "no_show";
-  const canCancel = status === "scheduled";
+  const canCancel = appointment.canCancel && status === "scheduled";
 
   function handlePaid({
     cents,

@@ -1,7 +1,12 @@
 import { madridDateTime, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { isMinor } from "@clinicalumia/api/person";
 import { createClient } from "@clinicalumia/api/server";
-import { canMarkNoShow, canMove, professionalOptions } from "@/lib/agenda";
+import {
+  canCancel,
+  canMarkNoShow,
+  canMove,
+  professionalOptions,
+} from "@/lib/agenda";
 import {
   type AppointmentEventRow,
   appointmentHistory,
@@ -201,7 +206,10 @@ export async function loadAppointmentDetail(
         { status: appt.status, starts_at: appt.starts_at },
         now,
       ),
-      canCancel: appt.status === "scheduled",
+      canCancel: canCancel(
+        { status: appt.status, starts_at: appt.starts_at },
+        now,
+      ),
       canRestore: appt.status === "no_show",
       canNotify: (noticeRecipients ?? []).length > 0,
       initialDate: initial.date,

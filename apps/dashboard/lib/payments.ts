@@ -143,12 +143,12 @@ export function paymentHistoryLines(
   payment: PaymentHistoryRow,
   nameById: Map<string, string>,
 ): string[] {
-  const collectorName = nameById.get(payment.collected_by) ?? "Alguien";
+  const collectorName = nameById.get(payment.collected_by) ?? "el sistema";
   const lines = [
     `Cobrada · ${formatEuros(payment.amount_cents)} · ${methodLabel(payment.method)} por ${collectorName} el ${formatHistoryMoment(payment.collected_at)}`,
   ];
   if (payment.voided_at && payment.voided_by) {
-    const voidedByName = nameById.get(payment.voided_by) ?? "Alguien";
+    const voidedByName = nameById.get(payment.voided_by) ?? "el sistema";
     lines.push(
       `Cobro anulado · ${payment.void_reason} por ${voidedByName} el ${formatHistoryMoment(payment.voided_at)}`,
     );

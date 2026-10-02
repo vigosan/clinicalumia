@@ -4,6 +4,7 @@ import {
   appointmentError,
   appointmentFormInitials,
   type Block,
+  canCancel,
   canMarkNoShow,
   canMove,
   freeSlots,
@@ -851,6 +852,37 @@ describe("canMove", () => {
     const now = new Date("2026-07-15T10:00:00Z");
     expect(
       canMove({ status: "cancelled", starts_at: "2026-07-16T09:00:00Z" }, now),
+    ).toBe(false);
+  });
+});
+
+describe("canCancel", () => {
+  it("offers cancelling only before the appointment starts, because once it has started it is either done or a no-show, never cancelled", () => {
+    const now = new Date("2026-07-15T10:00:00Z");
+    expect(
+      canCancel(
+        { status: "scheduled", starts_at: "2026-07-15T10:00:01Z" },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      canCancel(
+        { status: "scheduled", starts_at: "2026-07-15T10:00:00Z" },
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  it("never offers cancelling an appointment that is already cancelled or a no-show", () => {
+    const now = new Date("2026-07-15T10:00:00Z");
+    expect(
+      canCancel(
+        { status: "cancelled", starts_at: "2026-07-16T09:00:00Z" },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      canCancel({ status: "no_show", starts_at: "2026-07-16T09:00:00Z" }, now),
     ).toBe(false);
   });
 });

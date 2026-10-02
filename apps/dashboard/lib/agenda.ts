@@ -418,6 +418,13 @@ export function canMove(appointment: AppointmentState, now: Date): boolean {
   );
 }
 
+export function canCancel(appointment: AppointmentState, now: Date): boolean {
+  return (
+    appointment.status === "scheduled" &&
+    new Date(appointment.starts_at).getTime() > now.getTime()
+  );
+}
+
 export type DbError = { code?: string; message?: string };
 
 const MESSAGE_BY_CODE: Record<string, string> = {

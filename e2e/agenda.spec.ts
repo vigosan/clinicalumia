@@ -1824,7 +1824,7 @@ test("el panel de la cita retiene el foco mientras está abierto, y Escape lo ci
   expect(serverRenders).toEqual([]);
 });
 
-test("en una cita pasada, «Marcar como no presentada» la señala con un borde de aviso sin apagar su texto y «Deshacer «no presentada»» la devuelve, y el panel lo refleja sin esperar al servidor", async ({
+test("en una cita pasada no se ofrece «Cancelar cita», «Marcar como no presentada» la señala con un borde de aviso sin apagar su texto y «Deshacer «no presentada»» la devuelve, y el panel lo refleja sin esperar al servidor", async ({
   page,
 }) => {
   const date = pastDate(120);
@@ -1846,6 +1846,8 @@ test("en una cita pasada, «Marcar como no presentada» la señala con un borde 
   await page.goto(`${DASHBOARD}/?date=${date}&appointment=${appointmentId}`);
 
   await expect(page.getByTestId("appointment-status")).toHaveText("Realizada");
+  await expect(page.getByTestId("appointment-no-show")).toBeVisible();
+  await expect(page.getByTestId("appointment-cancel")).toHaveCount(0);
   await slowDownServerActions(page, 3000);
   await page.getByTestId("appointment-no-show").click();
   await page.getByTestId("confirm-action").click();
@@ -1869,6 +1871,7 @@ test("en una cita pasada, «Marcar como no presentada» la señala con un borde 
   await expect(page.getByTestId("appointment-status")).toHaveText("Realizada", {
     timeout: 1000,
   });
+  await expect(page.getByTestId("appointment-cancel")).toHaveCount(0);
 
   await expect(page.getByTestId("appointment-history")).toContainText(
     "Se deshizo «no presentada»",
