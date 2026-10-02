@@ -485,13 +485,18 @@ export function professionalOptions({
   directory,
   specialtyId,
   current,
+  pendingIds = [],
 }: {
   directory: { id: string; full_name: string; specialty_id: string | null }[];
   specialtyId: string | null;
   current: { id: string; name: string };
+  pendingIds?: string[];
 }): { value: string; label: string; disabled?: boolean }[] {
   const active = directory
     .filter((member) => member.specialty_id === specialtyId)
+    .filter(
+      (member) => member.id === current.id || !pendingIds.includes(member.id),
+    )
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "es"))
     .map((member) => ({ value: member.id, label: member.full_name }));
   if (directory.some((member) => member.id === current.id)) return active;

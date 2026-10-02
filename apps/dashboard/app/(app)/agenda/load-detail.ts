@@ -113,6 +113,15 @@ export async function loadAppointmentDetail(
   }
   const professionalName = nameById.get(appt.professional_id) ?? "Profesional";
 
+  let pendingIds: string[] = [];
+  if (isOwner) {
+    const { data: pending, error: pendingError } = await supabase.rpc(
+      "pending_invitations",
+    );
+    if (pendingError || !pending) return { status: "error" };
+    pendingIds = pending.map((row) => row.profile_id);
+  }
+
   const paymentRows = payments ?? [];
   const history = appointmentHistory({
     events: (events ?? []) as AppointmentEventRow[],
@@ -148,6 +157,7 @@ export async function loadAppointmentDetail(
             directory: directory ?? [],
             specialtyId: appt.service.specialty_id,
             current: { id: appt.professional_id, name: professionalName },
+            pendingIds,
           })
         : null,
       serviceId: appt.service.id,

@@ -1068,6 +1068,17 @@ describe("professionalOptions", () => {
       { value: "p-marc", label: "Marc Ejemplo" },
     ]);
   });
+
+  it("does not offer to move the appointment to someone who has not accepted the invitation, since she could not see it", () => {
+    expect(
+      professionalOptions({
+        directory,
+        specialtyId: "spec-logo",
+        current: { id: "p-zoe", name: "Zoe Ruiz" },
+        pendingIds: ["p-ana"],
+      }),
+    ).toEqual([{ value: "p-zoe", label: "Zoe Ruiz" }]);
+  });
 });
 
 describe("newAppointmentDrawerHref", () => {

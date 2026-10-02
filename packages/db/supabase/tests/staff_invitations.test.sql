@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(18);
 
 insert into auth.users (id, email, invited_at, encrypted_password) values
   ('8e000000-0000-0000-0000-000000000001', 'owner-invitations@test.local', null, 'hash'),
@@ -100,6 +100,22 @@ select lives_ok($$
 $$, 'the same time with the activated professional books fine, so the refusal is about the pending account');
 reset role;
 
+select pg_temp.act_as('8e000000-0000-0000-0000-000000000001');
+select throws_ok($$
+  insert into public.appointments (patient_id, service_id, professional_id, starts_at, ends_at)
+  values ('8e000000-0000-0000-0000-0000000000c1', '8e000000-0000-0000-0000-0000000000b1',
+    '8e000000-0000-0000-0000-000000000003',
+    (pg_temp.day(5)::timestamp + '10:00'::time) at time zone 'Europe/Madrid',
+    (pg_temp.day(5)::timestamp + '11:00'::time) at time zone 'Europe/Madrid')
+$$, '23514', 'professional_inactive',
+  'the owner cannot give an appointment to someone who has not accepted the invitation, since she could not see it');
+select throws_ok($$
+  update public.appointments set professional_id = '8e000000-0000-0000-0000-000000000003'
+  where professional_id = '8e000000-0000-0000-0000-000000000002'
+$$, '23514', 'professional_inactive',
+  'nor move an existing appointment to her');
+reset role;
+
 update auth.users set encrypted_password = 'hash' where id = '8e000000-0000-0000-0000-000000000003';
 
 select is(jsonb_array_length(pg_temp.offered_professionals()), 2,
@@ -107,6 +123,13 @@ select is(jsonb_array_length(pg_temp.offered_professionals()), 2,
 select is(pg_temp.slot_professionals(),
   array['8e000000-0000-0000-0000-000000000002', '8e000000-0000-0000-0000-000000000003']::uuid[],
   'and her free slots appear');
+
+select pg_temp.act_as('8e000000-0000-0000-0000-000000000001');
+select lives_ok($$
+  update public.appointments set professional_id = '8e000000-0000-0000-0000-000000000003'
+  where professional_id = '8e000000-0000-0000-0000-000000000002'
+$$, 'once she accepts, the owner can move appointments to her');
+reset role;
 
 select pg_temp.act_as('8e000000-0000-0000-0000-000000000001');
 select is((select count(*) from public.pending_invitations()), 0::bigint,
