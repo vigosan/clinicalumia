@@ -180,7 +180,7 @@ export default async function InvoiceDetailPage({
           ))}
         </Card>
       )}
-      <Card className="flex flex-col gap-2">
+      <Card className="flex flex-wrap items-start gap-2">
         <div>
           <Button asChild variant="secondary" size="sm">
             <a
@@ -198,6 +198,7 @@ export default async function InvoiceDetailPage({
           invoiceId={detail.id}
           proposedEmail={proposedEmail}
           saveEmail={proposedEmail === "" && !minor}
+          asDrawer
         />
         {detail.kind === "simplified" && inForce && (
           <FullInvoiceForm
@@ -209,6 +210,7 @@ export default async function InvoiceDetailPage({
               minor,
               lastRecipient,
             })}
+            asDrawer
           />
         )}
         {detail.kind === "full" && canRectify && recipient && (
@@ -217,6 +219,7 @@ export default async function InvoiceDetailPage({
             invoiceId={detail.id}
             recipient={recipientFromInvoice(recipient)}
             correct
+            asDrawer
           />
         )}
         {canRectify && (

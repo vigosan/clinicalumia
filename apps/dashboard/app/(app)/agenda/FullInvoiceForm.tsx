@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@clinicalumia/ui/button";
+import { Drawer } from "@clinicalumia/ui/drawer";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import type { RecipientDraft } from "@/lib/invoices";
@@ -14,10 +15,12 @@ export function FullInvoiceForm({
   invoiceId,
   recipient,
   correct = false,
+  asDrawer = false,
 }: {
   invoiceId: string;
   recipient: RecipientDraft;
   correct?: boolean;
+  asDrawer?: boolean;
 }) {
   const router = useRouter();
   const testId = correct ? "invoice-correct" : "invoice-full";
@@ -48,23 +51,21 @@ export function FullInvoiceForm({
     });
   }
 
-  if (!open) {
-    return (
-      <div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          data-testid={testId}
-          onClick={() => setOpen(true)}
-        >
-          {correct ? "Corregir destinatario" : "Factura completa"}
-        </Button>
-      </div>
-    );
-  }
+  const closedView = (
+    <div>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        data-testid={testId}
+        onClick={() => setOpen(true)}
+      >
+        {correct ? "Corregir destinatario" : "Factura completa"}
+      </Button>
+    </div>
+  );
 
-  return (
+  const formView = (
     <form
       data-testid={`${testId}-form`}
       onSubmit={handleSubmit}
@@ -104,9 +105,31 @@ export function FullInvoiceForm({
             setOpen(false);
           }}
         >
-          Volver
+          {asDrawer ? "Cancelar" : "Volver"}
         </Button>
       </div>
     </form>
   );
+
+  if (asDrawer) {
+    return (
+      <>
+        {closedView}
+        <Drawer
+          open={open}
+          onOpenChange={(next) => {
+            if (!next) setFailure(null);
+            setOpen(next);
+          }}
+          title={correct ? "Corregir destinatario" : "Factura completa"}
+          description="Datos de quien recibe la factura."
+          data-testid={`${testId}-drawer`}
+        >
+          {formView}
+        </Drawer>
+      </>
+    );
+  }
+
+  return open ? formView : closedView;
 }

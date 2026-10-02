@@ -243,10 +243,12 @@ test("desde el detalle de la factura también se envía por email con el PDF adj
 
   await page.goto(`${DASHBOARD}/facturas/${invoice!.id}`);
   await page.getByTestId("invoice-send").click();
-  await expect(page.getByTestId("invoice-send-email")).toHaveValue(
+  const drawer = page.getByTestId("invoice-send-drawer");
+  await expect(drawer.getByTestId("invoice-send-email")).toHaveValue(
     patientEmail,
   );
-  await page.getByTestId("invoice-send-submit").click();
+  await drawer.getByTestId("invoice-send-submit").click();
+  await expect(drawer).toHaveCount(0);
   await expect(page.getByTestId("invoice-send-result")).toHaveText(
     `Factura enviada a ${patientEmail}`,
   );
@@ -552,9 +554,10 @@ test("desde el detalle se puede emitir la factura completa, y la relación entre
     `Factura ${simplifiedCode}`,
   );
   await page.getByTestId("invoice-full").click();
-  await page.getByTestId("invoice-full-postal-code").fill("46800");
-  await page.getByTestId("invoice-full-city").fill("Xàtiva");
-  await page.getByTestId("invoice-full-submit").click();
+  const drawer = page.getByTestId("invoice-full-drawer");
+  await drawer.getByTestId("invoice-full-postal-code").fill("46800");
+  await drawer.getByTestId("invoice-full-city").fill("Xàtiva");
+  await drawer.getByTestId("invoice-full-submit").click();
 
   await expect(page.getByTestId("invoice-status")).toContainText(
     "Sustituida por",

@@ -2,6 +2,7 @@
 
 import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
+import { Drawer } from "@clinicalumia/ui/drawer";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { useRef, useState, useTransition } from "react";
@@ -12,10 +13,12 @@ export function SendInvoiceForm({
   invoiceId,
   proposedEmail,
   saveEmail = false,
+  asDrawer = false,
 }: {
   invoiceId: string;
   proposedEmail: string;
   saveEmail?: boolean;
+  asDrawer?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(proposedEmail);
@@ -50,37 +53,35 @@ export function SendInvoiceForm({
     });
   }
 
-  if (!open) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            data-testid="invoice-send"
-            onClick={() => {
-              setSentTo(null);
-              setOpen(true);
-            }}
-          >
-            Enviar por email
-          </Button>
-        </div>
-        {sentTo && (
-          <p
-            role="status"
-            data-testid="invoice-send-result"
-            className="text-[13px] text-ink-800"
-          >
-            Factura enviada a {sentTo}
-          </p>
-        )}
+  const closedView = (
+    <div className="flex flex-col gap-2">
+      <div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          data-testid="invoice-send"
+          onClick={() => {
+            setSentTo(null);
+            setOpen(true);
+          }}
+        >
+          Enviar por email
+        </Button>
       </div>
-    );
-  }
+      {sentTo && (
+        <p
+          role="status"
+          data-testid="invoice-send-result"
+          className="text-[13px] text-ink-800"
+        >
+          Factura enviada a {sentTo}
+        </p>
+      )}
+    </div>
+  );
 
-  return (
+  const formView = (
     <form
       data-testid="invoice-send-form"
       noValidate
@@ -127,9 +128,28 @@ export function SendInvoiceForm({
           size="sm"
           onClick={() => setOpen(false)}
         >
-          Volver
+          {asDrawer ? "Cancelar" : "Volver"}
         </Button>
       </div>
     </form>
   );
+
+  if (asDrawer) {
+    return (
+      <>
+        {closedView}
+        <Drawer
+          open={open}
+          onOpenChange={setOpen}
+          title="Enviar por email"
+          description="La factura va adjunta en PDF."
+          data-testid="invoice-send-drawer"
+        >
+          {formView}
+        </Drawer>
+      </>
+    );
+  }
+
+  return open ? formView : closedView;
 }
