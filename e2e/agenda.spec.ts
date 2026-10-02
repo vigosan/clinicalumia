@@ -1144,6 +1144,70 @@ test("abrir una cita del test, moverla a otra hora, la agenda la muestra en su s
   );
 });
 
+test("la propietaria ve la columna de una profesional desactivada con citas ese día y le pasa la cita a otra profesional desde «Cambiar fecha u hora»", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(110, [1, 2, 3, 4, 5]);
+  const leaving = await createThrowawayUser({
+    fullName: `Saliente ${Date.now()}`,
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const colleague = await createThrowawayUser({
+    fullName: `Relevo ${Date.now()}`,
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  const appointmentId = await createAppointment({
+    professionalId: leaving.id,
+    patientId: JORGE_ID,
+    serviceId: PSICOLOGIA_SERVICE_ID,
+    date,
+    time: "12:00",
+    endTime: "13:00",
+  });
+  const { error: deactivateError } = await admin
+    .from("profiles")
+    .update({ is_active: false })
+    .eq("id", leaving.id);
+  expect(deactivateError).toBeNull();
+
+  await loginAsThrowawayOwner(page, "Propietaria Relevo");
+  await page.goto(`${DASHBOARD}/?date=${date}`);
+
+  const leavingColumn = columnFor(page, leaving.id);
+  await expect(
+    leavingColumn.getByTestId("agenda-column-inactive"),
+  ).toBeVisible();
+  await leavingColumn.getByTestId("appointment-block").click();
+  await expect(page.getByTestId("appointment-panel")).toBeVisible();
+
+  await selectOption(
+    page.getByTestId("appointment-move-professional"),
+    colleague.id,
+  );
+  await page.getByTestId("appointment-move").click();
+  await expect(page.getByTestId("appointment-warnings")).toContainText(
+    "Queda fuera del horario de Relevo",
+  );
+  await page.getByTestId("appointment-confirm").click();
+
+  await expect(
+    columnFor(page, colleague.id).getByTestId("appointment-block"),
+  ).toContainText("Jorge Ruiz Pérez");
+  await expect(columnFor(page, leaving.id)).toHaveCount(0);
+  const { data: stored } = await admin
+    .from("appointments")
+    .select("professional_id, starts_at")
+    .eq("id", appointmentId)
+    .single();
+  expect(stored?.professional_id).toBe(colleague.id);
+  expect(madridDateTime(stored!.starts_at)).toEqual({
+    date,
+    time: "12:00",
+  });
+});
+
 test("mover una cita a otro día hace que el historial muestre la fecha en «Movida de…», no solo la hora", async ({
   page,
 }) => {

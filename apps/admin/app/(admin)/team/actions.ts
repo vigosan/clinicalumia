@@ -5,8 +5,20 @@ import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
+import {
+  AFFECTED_APPOINTMENTS_SELECT,
+  type AffectedAppointment,
+  toAffectedAppointments,
+} from "@/lib/affected-appointments";
 
 export type CreateMemberState = { error: string } | { ok: true } | undefined;
+
+export type SetMemberActiveResult =
+  | { ok: true }
+  | { error: string; appointments?: AffectedAppointment[] };
+
+const HAS_UPCOMING_APPOINTMENTS =
+  "Tiene citas pendientes. Muévelas a otra profesional o cancélalas desde el panel y vuelve a intentarlo.";
 
 export async function createMember(
   _prev: CreateMemberState,
@@ -99,7 +111,7 @@ export async function updateMember(
 export async function setMemberActive(
   id: string,
   isActive: boolean,
-): Promise<ActionResult> {
+): Promise<SetMemberActiveResult> {
   const supabase = await createClient();
   const owner = await requireOwner(supabase);
   if (!owner.ok) return { error: owner.error };
@@ -107,10 +119,29 @@ export async function setMemberActive(
   if (!isActive && id === owner.userId)
     return { error: "No puedes desactivar tu propia cuenta." };
 
+  if (!isActive) {
+    const { data: upcoming, error: upcomingError } = await supabase
+      .from("appointments")
+      .select(AFFECTED_APPOINTMENTS_SELECT)
+      .eq("professional_id", id)
+      .neq("status", "cancelled")
+      .gt("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true });
+    if (upcomingError || !upcoming)
+      return { error: "No se han podido comprobar sus citas pendientes." };
+    if (upcoming.length > 0)
+      return {
+        error: HAS_UPCOMING_APPOINTMENTS,
+        appointments: toAffectedAppointments(upcoming),
+      };
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update({ is_active: isActive })
     .eq("id", id);
+  if (error?.message === "professional_has_upcoming_appointments")
+    return { error: HAS_UPCOMING_APPOINTMENTS };
   if (error) return { error: "No se ha podido cambiar el estado." };
 
   if (!isActive) {

@@ -1354,6 +1354,14 @@ export type Database = {
           suggested_cents: number
         }[]
       }
+      person_upcoming_appointments: {
+        Args: { p_person_id: string }
+        Returns: {
+          id: string
+          professional_name: string
+          starts_at: string
+        }[]
+      }
       record_invoice_email: {
         Args: { p_email: string; p_invoice_id: string }
         Returns: string

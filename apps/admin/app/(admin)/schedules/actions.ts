@@ -4,25 +4,23 @@ import { requireOwner } from "@clinicalumia/api/auth";
 import {
   addDays,
   isValidDate,
-  madridDateTime,
   madridDayBounds,
   madridInstant,
 } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/action-result";
-import { formatDay } from "@/lib/closures";
+import {
+  AFFECTED_APPOINTMENTS_SELECT,
+  type AffectedAppointment,
+  toAffectedAppointments,
+} from "@/lib/affected-appointments";
 import { type ScheduleBlock, validateSchedule } from "@/lib/schedule";
 
-export type TimeOffState = { error: string } | { ok: true } | undefined;
-
-export type AffectedAppointment = {
-  id: string;
-  date: string;
-  time: string;
-  patient: string;
-  professional: string;
-};
+export type TimeOffState =
+  | { error: string }
+  | { ok: true; affected: AffectedAppointment[] | null }
+  | undefined;
 
 export type ClosureState =
   | { error: string }
@@ -78,7 +76,18 @@ export async function addTimeOff(
   if (error) return { error: "No se ha podido guardar la ausencia." };
 
   revalidatePath("/schedules");
-  return { ok: true };
+
+  const { data: appointments, error: appointmentsError } = await supabase
+    .from("appointments")
+    .select(AFFECTED_APPOINTMENTS_SELECT)
+    .eq("professional_id", profileId)
+    .neq("status", "cancelled")
+    .lt("starts_at", madridInstant(addDays(to, 1), "00:00"))
+    .gt("ends_at", madridInstant(from, "00:00"))
+    .order("starts_at", { ascending: true });
+  if (appointmentsError) return { ok: true, affected: null };
+
+  return { ok: true, affected: toAffectedAppointments(appointments) };
 }
 
 export async function deleteTimeOff(id: string): Promise<ActionResult> {
@@ -131,30 +140,14 @@ export async function addClosure(
 
   const { data: appointments, error: appointmentsError } = await supabase
     .from("appointments")
-    .select(
-      "id, starts_at, patient:people(first_name, last_name), professional:profiles!appointments_professional_id_fkey(full_name)",
-    )
+    .select(AFFECTED_APPOINTMENTS_SELECT)
     .neq("status", "cancelled")
     .lt("starts_at", madridInstant(addDays(to, 1), "00:00"))
     .gt("ends_at", madridInstant(from, "00:00"))
     .order("starts_at", { ascending: true });
   if (appointmentsError) return { ok: true, affected: null };
 
-  return {
-    ok: true,
-    affected: appointments.map((appointment) => {
-      const { date, time } = madridDateTime(appointment.starts_at);
-      return {
-        id: appointment.id,
-        date: formatDay(date),
-        time,
-        patient: appointment.patient
-          ? `${appointment.patient.first_name} ${appointment.patient.last_name}`
-          : "",
-        professional: appointment.professional?.full_name ?? "",
-      };
-    }),
-  };
+  return { ok: true, affected: toAffectedAppointments(appointments) };
 }
 
 export async function deleteClosure(id: string): Promise<ActionResult> {

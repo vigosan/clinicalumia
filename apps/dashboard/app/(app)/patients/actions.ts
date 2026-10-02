@@ -16,6 +16,7 @@ import { isUuid } from "@/lib/agenda";
 import { consentLinkErrorCode } from "@/lib/consent-link-error";
 import type { DuplicateFields } from "@/lib/duplicate-checker";
 import { guardianErrorCode } from "@/lib/guardian-error";
+import { formatMadridDateTime } from "@/lib/madrid-format";
 import type { Ward } from "@/lib/ward-label";
 import { linkConsent } from "../consentimientos/actions";
 
@@ -295,11 +296,36 @@ export async function removeGuardian(
   return { ok: true };
 }
 
+export type UpcomingAppointment = {
+  id: string;
+  when: string;
+  professional: string;
+};
+
 export async function setArchived(
   id: string,
   archived: boolean,
-): Promise<ActionResult> {
+): Promise<
+  { ok: true } | { error: string; appointments?: UpcomingAppointment[] }
+> {
   const supabase = await createClient();
+  if (archived) {
+    const { data: upcoming, error: upcomingError } = await supabase.rpc(
+      "person_upcoming_appointments",
+      { p_person_id: id },
+    );
+    if (upcomingError || !upcoming)
+      return { error: "No se han podido comprobar sus citas pendientes." };
+    if (upcoming.length > 0)
+      return {
+        error: "Cancela o mueve antes estas citas.",
+        appointments: upcoming.map((appointment) => ({
+          id: appointment.id,
+          when: formatMadridDateTime(appointment.starts_at),
+          professional: appointment.professional_name,
+        })),
+      };
+  }
   const { data, error } = await supabase
     .from("people")
     .update({ archived_at: archived ? new Date().toISOString() : null })

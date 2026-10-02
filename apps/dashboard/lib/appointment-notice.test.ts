@@ -98,10 +98,10 @@ describe("loadNoticeRecipients", () => {
 });
 
 describe("loadAppointmentTimes", () => {
-  it("reads when the appointment is before it changes, so the email can say the previous time", async () => {
+  it("reads when and with whom the appointment is before it changes, so the email can say the previous time and is sent when only the professional changes", async () => {
     const supabase = client({
       appointments: {
-        data: { starts_at: "a", ends_at: "b" },
+        data: { starts_at: "a", ends_at: "b", professional_id: "prof-1" },
         error: null,
       },
     });
@@ -109,6 +109,7 @@ describe("loadAppointmentTimes", () => {
     expect(await loadAppointmentTimes(supabase, "appt-1")).toEqual({
       starts_at: "a",
       ends_at: "b",
+      professional_id: "prof-1",
     });
   });
 

@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn, totpCode, waitForNextTotpWindow } from "./auth";
@@ -10,6 +11,8 @@ const API_URL = "http://127.0.0.1:54321";
 const admin = createClient(API_URL, serviceKey ?? "");
 const ADMIN = "http://localhost:3002";
 const DASHBOARD = "http://localhost:3001";
+const PSICOLOGIA_SPECIALTY_ID = "a0000000-0000-0000-0000-00000000001b";
+const PSICOLOGIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005b1";
 
 const createdUserIds: string[] = [];
 let editedProfileId: string | null = null;
@@ -105,6 +108,79 @@ test("deactivating a team member asks for confirmation, and reactivating is imme
 
   await row.getByRole("button", { name: "Activar" }).click();
   await expect(row.getByTestId("member-status")).toHaveCount(0);
+});
+
+test("deactivating a member with upcoming appointments is refused and lists them, so they are moved or cancelled first", async ({
+  page,
+}) => {
+  await loginAsOwner(page);
+  const fullName = `Empleada Citas ${Date.now()}`;
+  const { data, error } = await admin.auth.admin.createUser({
+    email: `member-citas-${Date.now()}@test.local`,
+    password: "lumia-segura-2026",
+    email_confirm: true,
+  });
+  expect(error).toBeNull();
+  const memberId = data.user!.id;
+  createdUserIds.push(memberId);
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: memberId,
+    email: data.user!.email,
+    full_name: fullName,
+    role: "employee",
+    specialty_id: PSICOLOGIA_SPECIALTY_ID,
+    is_active: true,
+  });
+  expect(profileError).toBeNull();
+  const lastName = `Pendiente${Date.now()}`;
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: lastName,
+      birth_date: "1990-01-01",
+      is_patient: true,
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  const day = addDays(todayInMadrid(), 20);
+  const { data: appointment, error: appointmentError } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: memberId,
+      patient_id: person!.id,
+      service_id: PSICOLOGIA_SERVICE_ID,
+      starts_at: `${day} 10:30:00 Europe/Madrid`,
+      ends_at: `${day} 11:30:00 Europe/Madrid`,
+    })
+    .select("id")
+    .single();
+  expect(appointmentError).toBeNull();
+
+  try {
+    await page.goto(`${ADMIN}/team`);
+    const row = page.getByRole("listitem").filter({ hasText: fullName });
+    await row.getByRole("button", { name: "Desactivar" }).click();
+    await page.getByTestId("confirm-action").click();
+
+    await expect(row.getByTestId("member-upcoming")).toContainText(
+      "Tiene citas pendientes. Muévelas a otra profesional o cancélalas desde el panel y vuelve a intentarlo.",
+    );
+    await expect(row.getByTestId("member-upcoming-item")).toHaveText(
+      `${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)} · 10:30 · Paciente ${lastName}`,
+    );
+    await expect(row.getByTestId("member-status")).toHaveCount(0);
+    const { data: stored } = await admin
+      .from("profiles")
+      .select("is_active")
+      .eq("id", memberId)
+      .single();
+    expect(stored?.is_active).toBe(true);
+  } finally {
+    await admin.from("appointments").delete().eq("id", appointment!.id);
+    await admin.from("people").delete().eq("id", person!.id);
+  }
 });
 
 test("each card on the admin home links to its section", async ({ page }) => {

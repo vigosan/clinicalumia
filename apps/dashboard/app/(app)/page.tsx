@@ -12,6 +12,7 @@ import {
   canMarkNoShow,
   canMove,
   isUuid,
+  professionalOptions,
 } from "@/lib/agenda";
 import {
   type AppointmentEventRow,
@@ -66,7 +67,7 @@ async function loadAppointmentDetail(
   const { data: appt, error } = await supabase
     .from("appointments")
     .select(
-      "id, professional_id, starts_at, ends_at, status, notes, price_cents, cancelled_by, cancel_reason, origin, patient:people(id, first_name, last_name, email, tax_id, address, birth_date), service:services(id, name, duration_minutes)",
+      "id, professional_id, starts_at, ends_at, status, notes, price_cents, cancelled_by, cancel_reason, origin, patient:people(id, first_name, last_name, email, tax_id, address, birth_date), service:services(id, name, duration_minutes, specialty_id)",
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -131,6 +132,17 @@ async function loadAppointmentDetail(
   const nameById = new Map(
     (directory ?? []).map((profile) => [profile.id, profile.full_name]),
   );
+  const isOwner =
+    (directory ?? []).find((profile) => profile.id === user.id)?.role ===
+    "owner";
+  if (isOwner && !nameById.has(appt.professional_id)) {
+    const { data: former } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", appt.professional_id)
+      .maybeSingle();
+    if (former) nameById.set(appt.professional_id, former.full_name);
+  }
   const professionalName = nameById.get(appt.professional_id) ?? "Profesional";
 
   const paymentRows = payments ?? [];
@@ -144,9 +156,6 @@ async function loadAppointmentDetail(
   const now = new Date();
   const activePayment =
     paymentRows.find((payment) => payment.voided_at === null) ?? null;
-  const isOwner =
-    (directory ?? []).find((profile) => profile.id === user.id)?.role ===
-    "owner";
   const initial = madridDateTime(appt.starts_at);
   const invoice = activePayment ? currentInvoice(activePayment.invoices) : null;
   const guardian = guardianRows?.[0]?.guardian ?? null;
@@ -159,6 +168,13 @@ async function loadAppointmentDetail(
       patientName: `${appt.patient.first_name} ${appt.patient.last_name}`,
       professionalId: appt.professional_id,
       professionalName,
+      professionalOptions: isOwner
+        ? professionalOptions({
+            directory: directory ?? [],
+            specialtyId: appt.service.specialty_id,
+            current: { id: appt.professional_id, name: professionalName },
+          })
+        : null,
       serviceId: appt.service.id,
       serviceName: appt.service.name,
       durationMinutes,

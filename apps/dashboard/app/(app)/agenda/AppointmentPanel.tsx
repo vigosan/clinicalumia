@@ -4,6 +4,7 @@ import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { eyebrowClass } from "@clinicalumia/ui/page-header";
+import type { SelectOption } from "@clinicalumia/ui/select";
 import { Sheet } from "@clinicalumia/ui/sheet";
 import { toast } from "@clinicalumia/ui/toast";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -28,6 +29,7 @@ export type AppointmentDetail = {
   patientName: string;
   professionalId: string;
   professionalName: string;
+  professionalOptions: SelectOption[] | null;
   serviceId: string;
   serviceName: string;
   durationMinutes: number;
@@ -349,6 +351,7 @@ export function AppointmentPanel({
             patientId={appointment.patientId}
             serviceId={appointment.serviceId}
             professionalId={appointment.professionalId}
+            professionalOptions={appointment.professionalOptions}
             durationMinutes={appointment.durationMinutes}
             initialDate={appointment.initialDate}
             initialTime={appointment.initialTime}

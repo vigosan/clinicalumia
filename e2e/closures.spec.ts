@@ -7,7 +7,7 @@ import {
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
-import { pickDate } from "./date-time";
+import { pickDate, pickTime } from "./date-time";
 import { selectOption } from "./select";
 
 const serviceKey = execSync("cd ../packages/db && supabase status -o env")
@@ -414,4 +414,130 @@ test("the web booking offers no slot on a closed day and starts with the next op
     "data-date",
     addDays(closed, 1),
   );
+});
+
+test("adding an absence lists the appointments that professional already has those days, without cancelling them", async ({
+  page,
+}) => {
+  const first = farWednesday();
+  const last = addDays(first, 1);
+  const employee = await createStaff("employee");
+  const lastName = `Ausencia${uniqueSuffix()}`;
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: lastName,
+      birth_date: "1990-01-01",
+      is_patient: true,
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  createdPersonIds.push(person!.id);
+  const { data: appointment, error } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: employee.id,
+      patient_id: person!.id,
+      service_id: PSICOLOGIA_SERVICE_ID,
+      starts_at: `${last} 09:15:00 Europe/Madrid`,
+      ends_at: `${last} 10:15:00 Europe/Madrid`,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdAppointmentIds.push(appointment!.id);
+  const owner = await createStaff("owner");
+
+  await signIn(page, ADMIN, owner.email, owner.password);
+  await page.goto(`${ADMIN}/schedules?employee=${employee.id}`);
+  const form = page.getByTestId("timeoff-form");
+  await pickDate(form.getByTestId("timeoff-from"), first);
+  await pickDate(form.getByTestId("timeoff-to"), last);
+  await form.getByLabel("Motivo").fill("Formación");
+  await form.getByRole("button", { name: "Añadir ausencia" }).click();
+
+  const affected = page.getByTestId("timeoff-affected");
+  await expect(affected).toContainText("Tiene 1 cita en esos días");
+  await expect(page.getByTestId("timeoff-affected-item")).toHaveText(
+    `${spanish(last)} · 09:15 · Paciente ${lastName}`,
+  );
+  const { data: stored } = await admin
+    .from("appointments")
+    .select("status")
+    .eq("id", appointment!.id)
+    .single();
+  expect(stored?.status).toBe("scheduled");
+});
+
+test("moving an appointment to a closed day warns with the reason before saving it there", async ({
+  page,
+}) => {
+  const closed = farWednesday();
+  const open = addDays(closed, -1);
+  const reason = await closeClinic(closed, closed);
+  const employee = await createStaff("employee");
+  const { error: scheduleError } = await admin
+    .from("employee_schedules")
+    .insert(
+      [2, 3].map((weekday) => ({
+        profile_id: employee.id,
+        weekday,
+        starts_at: "09:00",
+        ends_at: "14:00",
+      })),
+    );
+  expect(scheduleError).toBeNull();
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: `Mover${uniqueSuffix()}`,
+      birth_date: "1990-01-01",
+      is_patient: true,
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  createdPersonIds.push(person!.id);
+  const { data: appointment, error } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: employee.id,
+      patient_id: person!.id,
+      service_id: PSICOLOGIA_SERVICE_ID,
+      starts_at: `${open} 10:00:00 Europe/Madrid`,
+      ends_at: `${open} 11:00:00 Europe/Madrid`,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdAppointmentIds.push(appointment!.id);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(`${DASHBOARD}/?date=${open}&appointment=${appointment!.id}`);
+  await expect(page.getByTestId("appointment-panel")).toBeVisible();
+  await pickDate(page.getByTestId("appointment-move-date"), closed);
+  await pickTime(page.getByTestId("appointment-move-time"), "10:00");
+  await page.getByTestId("appointment-move").click();
+
+  await expect(page.getByTestId("appointment-warnings")).toContainText(
+    `La clínica está cerrada ese día (${reason}).`,
+  );
+  const { data: before } = await admin
+    .from("appointments")
+    .select("starts_at")
+    .eq("id", appointment!.id)
+    .single();
+  expect(madridDateTime(before!.starts_at).date).toBe(open);
+
+  await page.getByTestId("appointment-confirm").click();
+  await page.waitForURL(new RegExp(`date=${closed}`));
+  const { data: after } = await admin
+    .from("appointments")
+    .select("starts_at")
+    .eq("id", appointment!.id)
+    .single();
+  expect(madridDateTime(after!.starts_at).date).toBe(closed);
 });

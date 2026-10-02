@@ -268,6 +268,11 @@ export function DayView({
                     {column.fullName}
                   </p>
                   <p className="truncate text-ink-700 text-xs">
+                    {column.inactive && (
+                      <span data-testid="agenda-column-inactive">
+                        Inactiva ·{" "}
+                      </span>
+                    )}
                     {column.specialtyName ?? "Sin especialidad"}
                   </p>
                 </div>
@@ -318,6 +323,9 @@ export function DayView({
             >
               <p className="font-medium text-ink-900">{column.fullName}</p>
               <p className="mb-2 text-ink-700 text-xs">
+                {column.inactive && (
+                  <span data-testid="agenda-column-inactive">Inactiva · </span>
+                )}
                 {column.specialtyName ?? "Sin especialidad"}
               </p>
               <AgendaColumnList items={items} />

@@ -18,6 +18,7 @@ import {
   loadNoticeRecipients,
   notifyPatient,
 } from "@/lib/appointment-notice";
+import { closureOn, loadClosures } from "@/lib/closures";
 import { NOTICE_FAILED_PARAM } from "@/lib/notice-toast";
 
 export type AppointmentFormState =
@@ -207,16 +208,36 @@ export async function createAppointment(
   );
 }
 
+async function closureWarnings(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  appointment: AppointmentInput,
+): Promise<{ warnings: string[] } | { error: string }> {
+  const { date } = madridDateTime(appointment.starts_at);
+  const closures = await loadClosures(supabase, date, date);
+  if (!closures) return { error: "No se ha podido guardar." };
+  const closure = closureOn(date, closures);
+  return {
+    warnings: closure
+      ? [`La clínica está cerrada ese día (${closure.reason}).`]
+      : [],
+  };
+}
+
 async function notifyMove(
   supabase: Awaited<ReturnType<typeof createClient>>,
   id: string,
-  previous: { starts_at: string; ends_at: string } | null,
+  previous: {
+    starts_at: string;
+    ends_at: string;
+    professional_id: string;
+  } | null,
   appointment: AppointmentInput,
 ): Promise<boolean> {
   if (!previous) return false;
   if (
     sameInstant(previous.starts_at, appointment.starts_at) &&
-    sameInstant(previous.ends_at, appointment.ends_at)
+    sameInstant(previous.ends_at, appointment.ends_at) &&
+    previous.professional_id === appointment.professional_id
   )
     return true;
   return notifyPatient(supabase, id, {
@@ -251,13 +272,14 @@ export async function moveAppointment(
   const confirmed = String(formData.get("confirm") ?? "") === "1";
 
   if (!confirmed) {
-    const result = await computeWarnings(
-      supabase,
-      professionalName,
-      appointment,
-    );
+    const [closed, result] = await Promise.all([
+      closureWarnings(supabase, appointment),
+      computeWarnings(supabase, professionalName, appointment),
+    ]);
+    if ("error" in closed) return closed;
     if ("error" in result) return result;
-    if (result.warnings.length > 0) return { warnings: result.warnings };
+    const warnings = [...closed.warnings, ...result.warnings];
+    if (warnings.length > 0) return { warnings };
   }
 
   const previous = wantsNotice(formData)
@@ -266,7 +288,11 @@ export async function moveAppointment(
 
   const { data, error } = await supabase
     .from("appointments")
-    .update({ starts_at: appointment.starts_at, ends_at: appointment.ends_at })
+    .update({
+      professional_id: appointment.professional_id,
+      starts_at: appointment.starts_at,
+      ends_at: appointment.ends_at,
+    })
     .eq("id", id)
     .select("id");
 

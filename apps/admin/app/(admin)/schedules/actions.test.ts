@@ -31,6 +31,10 @@ const appointmentsQuery = {
     appointmentsCalls.push(["select", ...args]);
     return appointmentsQuery;
   },
+  eq: (...args: unknown[]) => {
+    appointmentsCalls.push(["eq", ...args]);
+    return appointmentsQuery;
+  },
   neq: (...args: unknown[]) => {
     appointmentsCalls.push(["neq", ...args]);
     return appointmentsQuery;
@@ -110,6 +114,9 @@ describe("addTimeOff", () => {
     ownerResult = owner;
     insertResult.error = null;
     insert.mockClear();
+    appointmentsResult.data = [];
+    appointmentsResult.error = null;
+    appointmentsCalls.length = 0;
   });
 
   function timeOffForm(overrides: Record<string, string> = {}) {
@@ -130,6 +137,53 @@ describe("addTimeOff", () => {
       ),
     ).toEqual({ error: "La fecha final no puede ser anterior a la inicial." });
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("looks for that professional's non-cancelled appointments during the absence, from the first midnight to the midnight after the last day", async () => {
+    await addTimeOff(undefined, timeOffForm());
+    expect(appointmentsCalls).toEqual([
+      [
+        "select",
+        "id, starts_at, patient:people(first_name, last_name), professional:profiles!appointments_professional_id_fkey(full_name)",
+      ],
+      ["eq", "professional_id", "employee-1"],
+      ["neq", "status", "cancelled"],
+      ["lt", "starts_at", "2026-12-27T00:00:00+01:00"],
+      ["gt", "ends_at", "2026-12-24T00:00:00+01:00"],
+      ["order", "starts_at", { ascending: true }],
+    ]);
+  });
+
+  it("returns the appointments the absence affects, so the owner moves or cancels them instead of patients coming to an absent professional", async () => {
+    appointmentsResult.data = [
+      {
+        id: "appointment-1",
+        starts_at: "2026-12-24T09:30:00+00:00",
+        patient: { first_name: "Ana", last_name: "Pérez" },
+        professional: { full_name: "Laura Ejemplo" },
+      },
+    ];
+    expect(await addTimeOff(undefined, timeOffForm())).toEqual({
+      ok: true,
+      affected: [
+        {
+          id: "appointment-1",
+          date: "24/12/2026",
+          time: "10:30",
+          patient: "Ana Pérez",
+          professional: "Laura Ejemplo",
+        },
+      ],
+    });
+  });
+
+  it("still confirms the absence when the appointments cannot be loaded, flagging the list as unknown", async () => {
+    appointmentsResult.data = null;
+    appointmentsResult.error = { code: "XX000", message: "boom" };
+    expect(await addTimeOff(undefined, timeOffForm())).toEqual({
+      ok: true,
+      affected: null,
+    });
   });
 });
 

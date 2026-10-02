@@ -59,10 +59,14 @@ async function loadAppointmentRecipients(
 export async function loadAppointmentTimes(
   supabase: Client,
   appointmentId: string,
-): Promise<{ starts_at: string; ends_at: string } | null> {
+): Promise<{
+  starts_at: string;
+  ends_at: string;
+  professional_id: string;
+} | null> {
   const { data } = await supabase
     .from("appointments")
-    .select("starts_at, ends_at")
+    .select("starts_at, ends_at, professional_id")
     .eq("id", appointmentId)
     .maybeSingle();
   return data;

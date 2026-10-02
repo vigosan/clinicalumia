@@ -74,12 +74,27 @@ const notifyPatient = vi.fn(async () => true);
 const loadAppointmentTimes = vi.fn(async () => ({
   starts_at: "2026-10-06T08:00:00+00:00",
   ends_at: "2026-10-06T09:00:00+00:00",
+  professional_id: "prof-1",
 }));
 const loadNoticeRecipients = vi.fn(async (): Promise<string[]> => []);
 vi.mock("@/lib/appointment-notice", () => ({
   notifyPatient,
   loadAppointmentTimes,
   loadNoticeRecipients,
+}));
+
+type ClosureRow = {
+  id: string;
+  startsOn: string;
+  endsOn: string;
+  reason: string;
+};
+const loadClosures = vi.fn(
+  async (): Promise<ClosureRow[] | null> => [] as ClosureRow[],
+);
+vi.mock("@/lib/closures", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/closures")>()),
+  loadClosures,
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -367,12 +382,113 @@ describe("moveAppointment", () => {
     expect(appointmentsUpdate).not.toHaveBeenCalled();
   });
 
+  it("warns that the clinic is closed that day, with the reason, before moving the appointment there", async () => {
+    schedulesResult.data = [
+      { weekday: 2, starts_at: "09:00:00", ends_at: "20:00:00" },
+    ];
+    loadClosures.mockResolvedValueOnce([
+      {
+        id: "closure-1",
+        startsOn: "2026-10-05",
+        endsOn: "2026-10-07",
+        reason: "Puente",
+      },
+    ]);
+
+    expect(await moveAppointment(undefined, moveForm())).toEqual({
+      warnings: ["La clínica está cerrada ese día (Puente)."],
+    });
+    expect(loadClosures).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "2026-10-06",
+      "2026-10-06",
+    );
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not move the appointment when it cannot tell whether the clinic is closed that day", async () => {
+    loadClosures.mockResolvedValueOnce(null);
+
+    expect(await moveAppointment(undefined, moveForm())).toEqual({
+      error: "No se ha podido guardar.",
+    });
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it("never hands the appointment to a professional who is not active", async () => {
+    expect(
+      await moveAppointment(
+        undefined,
+        moveForm({ professional_id: "prof-gone", confirm: "1" }),
+      ),
+    ).toEqual({ error: "Ese profesional no está activo." });
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it("hands the appointment to the chosen active professional, so the appointments of one who left can be reassigned", async () => {
+    rpcResults.staff_directory = {
+      data: [
+        {
+          id: "prof-2",
+          full_name: "Laura Ejemplo",
+          role: "employee",
+          specialty_id: "spec-1",
+        },
+      ],
+      error: null,
+    };
+
+    await expect(
+      moveAppointment(
+        undefined,
+        moveForm({ professional_id: "prof-2", confirm: "1" }),
+      ),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-06&appointment=appt-1");
+
+    expect(appointmentsUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ professional_id: "prof-2" }),
+    );
+  });
+
+  it("tells the patient about a new professional even when the time stays the same", async () => {
+    notifyPatient.mockClear();
+    rpcResults.staff_directory = {
+      data: [
+        {
+          id: "prof-2",
+          full_name: "Laura Ejemplo",
+          role: "employee",
+          specialty_id: "spec-1",
+        },
+      ],
+      error: null,
+    };
+    loadAppointmentTimes.mockResolvedValueOnce({
+      starts_at: "2026-10-06T09:00:00.000Z",
+      ends_at: "2026-10-06T10:00:00.000Z",
+      professional_id: "prof-1",
+    });
+
+    await expect(
+      moveAppointment(
+        undefined,
+        moveForm({ professional_id: "prof-2", confirm: "1", notify: "on" }),
+      ),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-06&appointment=appt-1");
+
+    expect(notifyPatient).toHaveBeenCalledWith(expect.anything(), "appt-1", {
+      kind: "changed",
+      previousStartsAt: "2026-10-06T09:00:00.000Z",
+    });
+  });
+
   it("moves and redirects when the caller confirms", async () => {
     await expect(
       moveAppointment(undefined, moveForm({ confirm: "1" })),
     ).rejects.toThrow("REDIRECT:/?date=2026-10-06&appointment=appt-1");
 
     expect(appointmentsUpdate).toHaveBeenCalledWith({
+      professional_id: "prof-1",
       starts_at: expect.any(String),
       ends_at: expect.any(String),
     });
@@ -412,6 +528,7 @@ describe("moveAppointment", () => {
     loadAppointmentTimes.mockResolvedValueOnce({
       starts_at: "2026-10-06T09:00:00.000Z",
       ends_at: "2026-10-06T10:00:00.000Z",
+      professional_id: "prof-1",
     });
 
     await expect(

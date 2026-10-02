@@ -409,6 +409,8 @@ select is((select calendar_token from public.profiles where id = '88000000-0000-
 select pg_temp.act_as('88000000-0000-0000-0000-000000000021');
 select public.regenerate_my_calendar_token();
 reset role;
+update public.appointments set status = 'cancelled', cancelled_by = 'clinic'
+where professional_id = '88000000-0000-0000-0000-000000000021' and status <> 'cancelled';
 select pg_temp.act_as('88000000-0000-0000-0000-000000000020');
 update public.profiles set is_active = false where id = '88000000-0000-0000-0000-000000000021';
 reset role;

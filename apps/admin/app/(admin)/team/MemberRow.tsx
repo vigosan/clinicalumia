@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
@@ -7,6 +8,7 @@ import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
 import { Select } from "@clinicalumia/ui/select";
 import { useState, useTransition } from "react";
+import type { AffectedAppointment } from "@/lib/affected-appointments";
 import {
   resendInvite,
   resetTwoFactor,
@@ -38,9 +40,12 @@ export function MemberRow({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [upcoming, setUpcoming] = useState<AffectedAppointment[]>([]);
 
   const run = (
-    action: () => Promise<{ ok: true } | { error: string }>,
+    action: () => Promise<
+      { ok: true } | { error: string; appointments?: AffectedAppointment[] }
+    >,
     onOk?: () => void,
   ) =>
     startTransition(async () => {
@@ -48,9 +53,11 @@ export function MemberRow({
       const result = await action();
       if ("error" in result) {
         setError(result.error);
+        setUpcoming(result.appointments ?? []);
         return;
       }
       setError(null);
+      setUpcoming([]);
       onOk?.();
     });
 
@@ -222,7 +229,7 @@ export function MemberRow({
                 </Button>
               }
               title={`¿Desactivar a ${member.full_name}?`}
-              description="Dejará de poder entrar en el dashboard. Puedes volver a activarla cuando quieras."
+              description="Dejará de poder entrar en el dashboard. Si tiene citas pendientes, antes hay que moverlas a otra profesional o cancelarlas. Puedes volver a activarla cuando quieras."
               confirmLabel="Desactivar"
               onConfirm={() => run(() => setMemberActive(member.id, false))}
             />
@@ -247,7 +254,18 @@ export function MemberRow({
           {success}
         </p>
       )}
-      {error && (
+      {error && upcoming.length > 0 && (
+        <Alert data-testid="member-upcoming" title={error} className="w-full">
+          <ul className="mt-2 flex flex-col gap-1">
+            {upcoming.map((appointment) => (
+              <li key={appointment.id} data-testid="member-upcoming-item">
+                {appointment.date} · {appointment.time} · {appointment.patient}
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+      {error && upcoming.length === 0 && (
         <p
           role="alert"
           data-testid="member-error"

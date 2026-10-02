@@ -5,6 +5,7 @@ import { Button } from "@clinicalumia/ui/button";
 import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
+import { Select, type SelectOption } from "@clinicalumia/ui/select";
 import { TimeSelect } from "@clinicalumia/ui/time-select";
 import {
   startTransition,
@@ -29,6 +30,7 @@ export function MoveForm({
   patientId,
   serviceId,
   professionalId,
+  professionalOptions,
   durationMinutes,
   initialDate,
   initialTime,
@@ -39,6 +41,7 @@ export function MoveForm({
   patientId: string;
   serviceId: string;
   professionalId: string;
+  professionalOptions: SelectOption[] | null;
   durationMinutes: number;
   initialDate: string;
   initialTime: string;
@@ -96,8 +99,23 @@ export function MoveForm({
       <input type="hidden" name="id" value={appointmentId} />
       <input type="hidden" name="patient_id" value={patientId} />
       <input type="hidden" name="service_id" value={serviceId} />
-      <input type="hidden" name="professional_id" value={professionalId} />
+      {!professionalOptions && (
+        <input type="hidden" name="professional_id" value={professionalId} />
+      )}
       <div className="grid grid-cols-2 gap-3">
+        {professionalOptions && (
+          <div className="col-span-2">
+            <Field label="Profesional">
+              <Select
+                name="professional_id"
+                data-testid="appointment-move-professional"
+                options={professionalOptions}
+                defaultValue={professionalId}
+                onValueChange={resetConfirmation}
+              />
+            </Field>
+          </div>
+        )}
         <div className="col-span-2">
           <Field label="Fecha">
             <DatePicker

@@ -9,14 +9,47 @@ const updateFn = vi.fn(() => ({ eq: updateEq }));
 const rpcResult = { error: null as null | { code: string; message: string } };
 const rpcFn = vi.fn(async () => rpcResult);
 
+type UpcomingRow = {
+  id: string;
+  starts_at: string;
+  patient: { first_name: string; last_name: string } | null;
+  professional: { full_name: string } | null;
+};
+const upcomingResult = {
+  data: [] as UpcomingRow[] | null,
+  error: null as null | { code: string; message: string },
+};
+const upcomingCalls: unknown[][] = [];
+const upcomingQuery = {
+  select: (...args: unknown[]) => {
+    upcomingCalls.push(["select", ...args]);
+    return upcomingQuery;
+  },
+  eq: (...args: unknown[]) => {
+    upcomingCalls.push(["eq", ...args]);
+    return upcomingQuery;
+  },
+  neq: (...args: unknown[]) => {
+    upcomingCalls.push(["neq", ...args]);
+    return upcomingQuery;
+  },
+  gt: (...args: unknown[]) => {
+    upcomingCalls.push(["gt", args[0]]);
+    return upcomingQuery;
+  },
+  order: async (...args: unknown[]) => {
+    upcomingCalls.push(["order", ...args]);
+    return upcomingResult;
+  },
+};
+
 const revalidatePathMock = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
 vi.mock("@clinicalumia/api/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({
-    from: () => ({
-      update: updateFn,
-    }),
+    from: (table: string) =>
+      table === "appointments" ? upcomingQuery : { update: updateFn },
     rpc: rpcFn,
   }),
 }));
@@ -50,6 +83,9 @@ describe("team actions", () => {
     rpcFn.mockClear();
     vi.mocked(createAdminClient).mockClear();
     revalidatePathMock.mockClear();
+    upcomingResult.data = [];
+    upcomingResult.error = null;
+    upcomingCalls.length = 0;
   });
 
   it("refuses updateMember for a non-owner and skips the update", async () => {
@@ -318,6 +354,79 @@ describe("team actions", () => {
       error: "No se ha podido cerrar sus sesiones abiertas.",
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/team");
+  });
+
+  it("looks for the member's upcoming non-cancelled appointments before deactivating her", async () => {
+    vi.mocked(createAdminClient).mockReturnValue({
+      rpc: vi.fn(async () => ({ error: null })),
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    await setMemberActive("employee-1", false);
+
+    expect(upcomingCalls).toEqual([
+      [
+        "select",
+        "id, starts_at, patient:people(first_name, last_name), professional:profiles!appointments_professional_id_fkey(full_name)",
+      ],
+      ["eq", "professional_id", "employee-1"],
+      ["neq", "status", "cancelled"],
+      ["gt", "starts_at"],
+      ["order", "starts_at", { ascending: true }],
+    ]);
+  });
+
+  it("refuses to deactivate a member who still has upcoming appointments and lists them, so none is left without a professional", async () => {
+    upcomingResult.data = [
+      {
+        id: "appointment-1",
+        starts_at: "2026-12-24T09:30:00+00:00",
+        patient: { first_name: "Ana", last_name: "Pérez" },
+        professional: { full_name: "Laura Ejemplo" },
+      },
+    ];
+
+    expect(await setMemberActive("employee-1", false)).toEqual({
+      error:
+        "Tiene citas pendientes. Muévelas a otra profesional o cancélalas desde el panel y vuelve a intentarlo.",
+      appointments: [
+        {
+          id: "appointment-1",
+          date: "24/12/2026",
+          time: "10:30",
+          patient: "Ana Pérez",
+          professional: "Laura Ejemplo",
+        },
+      ],
+    });
+    expect(updateEq).not.toHaveBeenCalled();
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("does not deactivate when it cannot check the member's appointments", async () => {
+    upcomingResult.data = null;
+    upcomingResult.error = { code: "XX000", message: "boom" };
+
+    expect(await setMemberActive("employee-1", false)).toEqual({
+      error: "No se han podido comprobar sus citas pendientes.",
+    });
+    expect(updateEq).not.toHaveBeenCalled();
+  });
+
+  it("explains the block when an appointment is given between the check and the deactivation and the database refuses it", async () => {
+    result.error = {
+      code: "23514",
+      message: "professional_has_upcoming_appointments",
+    };
+
+    expect(await setMemberActive("employee-1", false)).toEqual({
+      error:
+        "Tiene citas pendientes. Muévelas a otra profesional o cancélalas desde el panel y vuelve a intentarlo.",
+    });
+  });
+
+  it("does not look for appointments when reactivating a member", async () => {
+    expect(await setMemberActive("employee-1", true)).toEqual({ ok: true });
+    expect(upcomingCalls).toEqual([]);
   });
 
   it("does not try to close sessions when reactivating a member", async () => {

@@ -8,6 +8,7 @@ import {
   isUuid,
   layoutDay,
   parseAppointmentForm,
+  professionalOptions,
   scheduleWarnings,
   specialtyTone,
   visibleHours,
@@ -801,5 +802,45 @@ describe("adjacentAppointments", () => {
     expect(
       adjacentAppointments(appointments, "cancelled", columnOrder),
     ).toEqual({ previousId: null, nextId: null });
+  });
+});
+
+describe("professionalOptions", () => {
+  const directory = [
+    { id: "p-zoe", full_name: "Zoe Ruiz", specialty_id: "spec-logo" },
+    { id: "p-marc", full_name: "Marc Ejemplo", specialty_id: "spec-fisio" },
+    { id: "p-ana", full_name: "Ana Soler", specialty_id: "spec-logo" },
+    { id: "p-owner", full_name: "Patricia Hernán", specialty_id: null },
+  ];
+
+  it("lists first the active professionals of the service's specialty, who can take the appointment, then the rest", () => {
+    expect(
+      professionalOptions({
+        directory,
+        specialtyId: "spec-logo",
+        current: { id: "p-zoe", name: "Zoe Ruiz" },
+      }),
+    ).toEqual([
+      { value: "p-ana", label: "Ana Soler" },
+      { value: "p-zoe", label: "Zoe Ruiz" },
+      { value: "p-marc", label: "Marc Ejemplo" },
+      { value: "p-owner", label: "Patricia Hernán" },
+    ]);
+  });
+
+  it("keeps an inactive current professional visible but not selectable, so the appointment can only move away from her", () => {
+    expect(
+      professionalOptions({
+        directory,
+        specialtyId: "spec-fisio",
+        current: { id: "p-gone", name: "Laura Ejemplo" },
+      }),
+    ).toEqual([
+      { value: "p-gone", label: "Laura Ejemplo (inactiva)", disabled: true },
+      { value: "p-marc", label: "Marc Ejemplo" },
+      { value: "p-ana", label: "Ana Soler" },
+      { value: "p-owner", label: "Patricia Hernán" },
+      { value: "p-zoe", label: "Zoe Ruiz" },
+    ]);
   });
 });

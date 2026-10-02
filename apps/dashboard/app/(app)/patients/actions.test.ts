@@ -482,6 +482,49 @@ describe("setArchived", () => {
     updateResult.data = [{ id: "person-1" }];
     updateResult.error = null;
     peopleUpdate.mockClear();
+    rpcResult.data = [];
+    rpcResult.error = null;
+    rpc.mockClear();
+  });
+
+  it("refuses to archive someone with upcoming appointments and lists them, so no appointment is left for a hidden record", async () => {
+    rpcResult.data = [
+      {
+        id: "appointment-1",
+        starts_at: "2026-12-24T09:30:00+00:00",
+        professional_name: "Laura Ejemplo",
+      },
+    ];
+
+    expect(await setArchived("person-1", true)).toEqual({
+      error: "Cancela o mueve antes estas citas.",
+      appointments: [
+        {
+          id: "appointment-1",
+          when: "24/12/2026 10:30",
+          professional: "Laura Ejemplo",
+        },
+      ],
+    });
+    expect(rpc).toHaveBeenCalledWith("person_upcoming_appointments", {
+      p_person_id: "person-1",
+    });
+    expect(peopleUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not archive when it cannot check the upcoming appointments", async () => {
+    rpcResult.data = null;
+    rpcResult.error = { message: "boom" };
+
+    expect(await setArchived("person-1", true)).toEqual({
+      error: "No se han podido comprobar sus citas pendientes.",
+    });
+    expect(peopleUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not look for appointments when restoring a record", async () => {
+    await setArchived("person-1", false);
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("writes archived_at to the current time when archiving", async () => {

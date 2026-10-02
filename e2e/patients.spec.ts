@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { expect, type Page, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { signIn } from "./auth";
@@ -12,6 +13,9 @@ const serviceKey = execSync("cd ../packages/db && supabase status -o env")
 const admin = createClient("http://127.0.0.1:54321", serviceKey ?? "");
 const createdPersonIds: string[] = [];
 const createdUserIds: string[] = [];
+const createdAppointmentIds: string[] = [];
+const MARC_ID = "a0000000-0000-0000-0000-000000000003";
+const FISIOTERAPIA_SERVICE_ID = "a0000000-0000-0000-0000-0000000005c1";
 
 async function loginAsOwner(page: Page) {
   const email = `owner-patients-${Date.now()}@test.local`;
@@ -35,6 +39,13 @@ async function loginAsOwner(page: Page) {
 }
 
 test.afterEach(async () => {
+  if (createdAppointmentIds.length > 0) {
+    const { error: appointmentsError } = await admin
+      .from("appointments")
+      .delete()
+      .in("id", createdAppointmentIds.splice(0));
+    expect(appointmentsError).toBeNull();
+  }
   if (createdPersonIds.length > 0) {
     const ids = [...createdPersonIds];
     const { error: guardianshipsError } = await admin
@@ -1172,4 +1183,53 @@ test("a page past the end of Pacientes says there are no more records and links 
   await expect(page).not.toHaveURL(/pagina=/);
   await expect(page).toHaveURL(new RegExp(`q=${lastName}`));
   await expect(page.getByTestId("patient-row")).toHaveCount(1);
+});
+
+test("archiving a record with an upcoming appointment, even with another professional, is refused and lists it so it is cancelled or moved first", async ({
+  page,
+}) => {
+  const lastName = `ConCita${Date.now()}`;
+  const { data: person, error: personError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: lastName,
+      birth_date: "1990-01-01",
+      is_patient: true,
+    })
+    .select("id")
+    .single();
+  expect(personError).toBeNull();
+  createdPersonIds.push(person!.id);
+  const day = addDays(todayInMadrid(), 120 + Math.floor(Math.random() * 100));
+  const { data: appointment, error: appointmentError } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: MARC_ID,
+      patient_id: person!.id,
+      service_id: FISIOTERAPIA_SERVICE_ID,
+      starts_at: `${day} 08:05:00 Europe/Madrid`,
+      ends_at: `${day} 08:35:00 Europe/Madrid`,
+    })
+    .select("id")
+    .single();
+  expect(appointmentError).toBeNull();
+  createdAppointmentIds.push(appointment!.id);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${person!.id}`);
+  await page.getByTestId("person-archive").click();
+  await page.getByTestId("confirm-action").click();
+
+  const blocked = page.getByTestId("person-archive-blocked");
+  await expect(blocked).toContainText("Cancela o mueve antes estas citas.");
+  await expect(page.getByTestId("person-archive-blocked-item")).toHaveText(
+    `${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)} 08:05 · Marc Ejemplo`,
+  );
+  const { data: stored } = await admin
+    .from("people")
+    .select("archived_at")
+    .eq("id", person!.id)
+    .single();
+  expect(stored?.archived_at).toBeNull();
 });

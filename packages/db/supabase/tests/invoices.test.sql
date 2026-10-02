@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(209);
+select plan(211);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1063,6 +1063,18 @@ select lives_ok(
 select lives_ok(
   $$ update public.appointments set notes = 'Trae el informe' where id = '8b000000-0000-0000-0000-0000000001d1' $$,
   'other changes to an invoiced appointment are still allowed');
+
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
+select throws_ok(
+  $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000002'
+     where id = '8b000000-0000-0000-0000-0000000001d1' $$,
+  '23514', 'appointment_invoiced',
+  'an invoiced appointment is not handed to another professional, because its invoice names who attends it');
+select lives_ok(
+  $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000002'
+     where id = '8b000000-0000-0000-0000-0000000001d2' $$,
+  'an appointment charged without an invoice can still be handed to another professional');
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
 select isnt(public.issue_rectifying_invoice((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000001d1')).id, 'Cambio de fecha'), null,
   'the collector voids the charge with a rectifying invoice');
 select lives_ok(

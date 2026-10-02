@@ -16,6 +16,7 @@ export type AgendaColumn = {
   role: "owner" | "employee";
   specialtyName: string | null;
   specialtySlug: string | null;
+  inactive: boolean;
 };
 
 export type AgendaAppointment = {
@@ -188,6 +189,7 @@ export async function loadAgenda({
       role: profile.role,
       specialtyName: specialty?.name ?? null,
       specialtySlug: specialty?.slug ?? null,
+      inactive: false,
     };
   };
 
@@ -211,7 +213,7 @@ export async function loadAgenda({
     (id) => isUuid(id) && directoryColumns.some((c) => c.id === id),
   );
 
-  const columns = isOwner
+  const activeColumns = isOwner
     ? directoryColumns
     : [
         self,
@@ -219,10 +221,19 @@ export async function loadAgenda({
           (column) => column.id !== self.id && validWithIds.includes(column.id),
         ),
       ];
-  const columnIds = columns.map((column) => column.id);
+  const activeIds = activeColumns.map((column) => column.id);
 
   const bounds = madridDayBounds(date);
   const weekday = weekdayOf(date);
+
+  const appointmentsQuery = supabase
+    .from("appointments")
+    .select(
+      "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name)",
+    )
+    .neq("status", "cancelled")
+    .lt("starts_at", bounds.end)
+    .gt("ends_at", bounds.start);
 
   const [
     { data: appointmentRows, error: appointmentsError },
@@ -230,25 +241,19 @@ export async function loadAgenda({
     { data: scheduleRows, error: schedulesError },
     closures,
   ] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select(
-        "id, professional_id, starts_at, ends_at, status, origin, patient:people(first_name, last_name), service:services(name)",
-      )
-      .in("professional_id", columnIds)
-      .neq("status", "cancelled")
-      .lt("starts_at", bounds.end)
-      .gt("ends_at", bounds.start),
+    isOwner
+      ? appointmentsQuery
+      : appointmentsQuery.in("professional_id", activeIds),
     supabase
       .from("employee_time_off")
       .select("id, profile_id, starts_at, ends_at, reason")
-      .in("profile_id", columnIds)
+      .in("profile_id", activeIds)
       .lt("starts_at", bounds.end)
       .gt("ends_at", bounds.start),
     supabase
       .from("employee_schedules")
       .select("profile_id, weekday, starts_at, ends_at")
-      .in("profile_id", columnIds)
+      .in("profile_id", activeIds)
       .eq("weekday", weekday),
     loadClosures(supabase, date, date),
   ]);
@@ -256,6 +261,29 @@ export async function loadAgenda({
   if (timeOffError || !timeOffRows) return { ok: false };
   if (schedulesError || !scheduleRows) return { ok: false };
   if (!closures) return { ok: false };
+
+  const formerIds = [
+    ...new Set(
+      appointmentRows
+        .map((row) => row.professional_id)
+        .filter((id) => !activeIds.includes(id)),
+    ),
+  ];
+  let formerColumns: AgendaColumn[] = [];
+  if (formerIds.length > 0) {
+    const { data: formerRows, error: formerError } = await supabase
+      .from("profiles")
+      .select("id, full_name, role, specialty_id")
+      .in("id", formerIds)
+      .order("full_name", { ascending: true });
+    if (formerError || !formerRows) return { ok: false };
+    formerColumns = formerRows.map((row) => ({
+      ...toColumn(row),
+      inactive: true,
+    }));
+  }
+  const columns = [...activeColumns, ...formerColumns];
+  const columnIds = columns.map((column) => column.id);
 
   const appointments: AgendaAppointment[] = appointmentRows.map(toAppointment);
 

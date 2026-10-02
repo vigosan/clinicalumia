@@ -1,11 +1,16 @@
 "use client";
 
+import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { toast } from "@clinicalumia/ui/toast";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { deletePerson, setArchived } from "../actions";
+import {
+  deletePerson,
+  setArchived,
+  type UpcomingAppointment,
+} from "../actions";
 
 export function PersonActions({
   personId,
@@ -18,15 +23,18 @@ export function PersonActions({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [upcoming, setUpcoming] = useState<UpcomingAppointment[]>([]);
 
   function handleArchiveToggle() {
     startTransition(async () => {
       const result = await setArchived(personId, !isArchived);
       if ("error" in result) {
         setError(result.error);
+        setUpcoming(result.appointments ?? []);
         return;
       }
       setError(null);
+      setUpcoming([]);
       toast(isArchived ? "Ficha desarchivada" : "Ficha archivada");
     });
   }
@@ -34,7 +42,10 @@ export function PersonActions({
   function handleDelete() {
     startTransition(async () => {
       const result = await deletePerson(personId);
-      if ("error" in result) setError(result.error);
+      if ("error" in result) {
+        setError(result.error);
+        setUpcoming([]);
+      }
     });
   }
 
@@ -95,7 +106,21 @@ export function PersonActions({
           />
         )}
       </div>
-      {error && (
+      {error && upcoming.length > 0 && (
+        <Alert data-testid="person-archive-blocked" title={error}>
+          <ul className="mt-1 flex flex-col gap-1">
+            {upcoming.map((appointment) => (
+              <li
+                key={appointment.id}
+                data-testid="person-archive-blocked-item"
+              >
+                {appointment.when} · {appointment.professional}
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+      {error && upcoming.length === 0 && (
         <p
           role="alert"
           data-testid="person-action-error"
