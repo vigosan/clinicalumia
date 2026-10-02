@@ -285,6 +285,15 @@ test("the owner sees the invalid tax id and postal code next to their fields, fi
     await expect(
       page.getByTestId("logo-preview").getByRole("img"),
     ).toBeVisible();
+    const { data: uploaded } = await admin
+      .from("clinic_settings")
+      .select("logo_path")
+      .single();
+    const { data: stored } = await admin.storage
+      .from("branding")
+      .download(uploaded?.logo_path ?? "");
+    const header = new DataView(await (stored as Blob).arrayBuffer());
+    expect(header.getUint32(16)).toBe(600);
   } finally {
     const { data: after } = await admin
       .from("clinic_settings")

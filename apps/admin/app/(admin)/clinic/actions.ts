@@ -2,6 +2,7 @@
 
 import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
+import { shrinkLogo } from "@clinicalumia/invoices/logo";
 import { revalidatePath } from "next/cache";
 import {
   type ClinicSettingsFieldErrors,
@@ -80,6 +81,11 @@ export async function uploadLogo(
   const validation = validateLogoFile(file);
   if ("error" in validation) return validation;
   const extension = LOGO_EXTENSIONS[file.type];
+  const image = await shrinkLogo(
+    new Uint8Array(await file.arrayBuffer()),
+    file.type,
+  ).catch(() => null);
+  if (!image) return { error: "No se ha podido leer la imagen del logo." };
 
   const { data: current } = await supabase
     .from("clinic_settings")
@@ -91,7 +97,7 @@ export async function uploadLogo(
   const path = `logo-${Date.now()}.${extension}`;
   const { error: uploadError } = await supabase.storage
     .from("branding")
-    .upload(path, file, { contentType: file.type });
+    .upload(path, image, { contentType: file.type });
   if (uploadError) return { error: "No se ha podido subir el logo." };
 
   const { error: updateError } = await supabase

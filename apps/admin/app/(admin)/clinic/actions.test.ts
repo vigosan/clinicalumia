@@ -18,7 +18,12 @@ const rpc = vi.fn(
   }),
 );
 
+const shrinkLogo = vi.fn(
+  async (bytes: Uint8Array, _type: string): Promise<Uint8Array> => bytes,
+);
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@clinicalumia/invoices/logo", () => ({ shrinkLogo }));
 vi.mock("@clinicalumia/api/server", () => ({
   createClient: async () => ({
     from: () => ({
@@ -114,6 +119,8 @@ describe("uploadLogo", () => {
     upload.mockClear();
     upload.mockImplementation(async () => ({ error: null }));
     remove.mockClear();
+    shrinkLogo.mockClear();
+    shrinkLogo.mockImplementation(async (bytes) => bytes);
   });
 
   function pngFile(sizeInBytes: number) {
@@ -145,6 +152,33 @@ describe("uploadLogo", () => {
     });
     expect(await uploadLogo(undefined, logoForm(gif))).toEqual({
       error: "El logo debe ser PNG, JPG, WebP o SVG.",
+    });
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("stores the shrunk image rather than the original, so invoice PDFs that embed the logo stay light", async () => {
+    const shrunk = new Uint8Array([1, 2, 3]);
+    shrinkLogo.mockImplementation(async () => shrunk);
+    expect(await uploadLogo(undefined, logoForm(pngFile(100)))).toEqual({
+      ok: true,
+    });
+    expect(shrinkLogo).toHaveBeenCalledWith(
+      expect.any(Uint8Array),
+      "image/png",
+    );
+    expect(upload).toHaveBeenCalledWith(
+      expect.stringMatching(/^logo-\d+\.png$/),
+      shrunk,
+      { contentType: "image/png" },
+    );
+  });
+
+  it("refuses a file that cannot be read as an image without uploading it, so the invoice never points at a broken logo", async () => {
+    shrinkLogo.mockImplementation(async () => {
+      throw new Error("Input buffer contains unsupported image format");
+    });
+    expect(await uploadLogo(undefined, logoForm(pngFile(100)))).toEqual({
+      error: "No se ha podido leer la imagen del logo.",
     });
     expect(upload).not.toHaveBeenCalled();
   });

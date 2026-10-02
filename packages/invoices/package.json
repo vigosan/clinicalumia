@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
-    "./format": "./format.ts"
+    "./format": "./format.ts",
+    "./logo": "./logo.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -15,7 +16,8 @@
   "dependencies": {
     "@clinicalumia/db": "workspace:*",
     "@react-pdf/renderer": "^4.9.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@clinicalumia/config": "workspace:*",
