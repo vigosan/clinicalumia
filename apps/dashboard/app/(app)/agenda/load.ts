@@ -333,6 +333,7 @@ export async function loadAgenda({
     weekday,
     [...appointments, ...busy],
     date,
+    timeOff,
   );
 
   return {
@@ -469,7 +470,11 @@ async function loadWeekAgenda(
     closure: closureOn(day, closures),
   }));
 
-  const { firstHour, lastHour } = visibleWeekHours(scheduleRows, appointments);
+  const { firstHour, lastHour } = visibleWeekHours(
+    scheduleRows,
+    appointments,
+    timeOff,
+  );
 
   return {
     ok: true,

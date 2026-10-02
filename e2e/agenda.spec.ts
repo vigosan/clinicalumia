@@ -612,6 +612,47 @@ test("una ausencia de varios días no impide ver una cita normal ese mismo día"
   ).toContainText("Jorge Ruiz Pérez");
 });
 
+test("una ausencia fuera del horario de todos se ve en la agenda del día y de la semana", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(57, [1, 2, 3, 4, 5]);
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Ausencia Tarde",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+  await admin.from("employee_schedules").insert({
+    profile_id: employee.id,
+    weekday: isoWeekday(date),
+    starts_at: "09:00",
+    ends_at: "14:00",
+  });
+  const { data, error } = await admin
+    .from("employee_time_off")
+    .insert({
+      profile_id: employee.id,
+      starts_at: `${date} 19:00:00 Europe/Madrid`,
+      ends_at: `${date} 21:00:00 Europe/Madrid`,
+      reason: "Tutoría de tarde",
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  createdTimeOffIds.push(data!.id);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+
+  await page.goto(`${DASHBOARD}/?date=${date}&view=day`);
+  await expect(
+    columnFor(page, employee.id).getByTestId("time-off-block"),
+  ).toContainText("19:00 – 21:00");
+
+  await page.goto(`${DASHBOARD}/?date=${date}&view=week`);
+  await expect(
+    weekDayFor(page, date).getByTestId("time-off-block"),
+  ).toBeVisible();
+});
+
 async function selectNora(page: Page) {
   await page.getByTestId("patient-search").fill("nora");
   await page.getByTestId("patient-option").filter({ hasText: "Nora" }).click();

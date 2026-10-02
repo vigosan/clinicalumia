@@ -323,6 +323,70 @@ describe("visibleHours", () => {
     const result = visibleHours([], 1, [{ startsAt, endsAt }], "2026-07-13");
     expect(result.firstHour).toBeLessThanOrEqual(result.lastHour);
   });
+
+  it("widens the window to show an absence that falls outside everyone's working hours", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "14:00:00" },
+    ];
+    const absences = [
+      {
+        startsAt: "2026-07-13T18:00:00+02:00",
+        endsAt: "2026-07-13T20:30:00+02:00",
+      },
+    ];
+    expect(visibleHours(schedules, 1, [], "2026-07-13", absences)).toEqual({
+      firstHour: 9,
+      lastHour: 21,
+    });
+  });
+
+  it("does not stretch the window to midnight for a whole-day absence, which is already drawn across any window", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "14:00:00" },
+    ];
+    const absences = [
+      {
+        startsAt: "2026-07-13T00:00:00+02:00",
+        endsAt: "2026-07-13T23:59:59+02:00",
+      },
+    ];
+    expect(visibleHours(schedules, 1, [], "2026-07-13", absences)).toEqual({
+      firstHour: 9,
+      lastHour: 14,
+    });
+  });
+
+  it("does not pull the window to midnight for an absence that ends exactly when the day starts", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "14:00:00" },
+    ];
+    const absences = [
+      {
+        startsAt: "2026-07-12T10:00:00+02:00",
+        endsAt: "2026-07-13T00:00:00+02:00",
+      },
+    ];
+    expect(visibleHours(schedules, 1, [], "2026-07-13", absences)).toEqual({
+      firstHour: 9,
+      lastHour: 14,
+    });
+  });
+
+  it("ignores an absence on another day", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "14:00:00" },
+    ];
+    const absences = [
+      {
+        startsAt: "2026-07-14T18:00:00+02:00",
+        endsAt: "2026-07-14T20:00:00+02:00",
+      },
+    ];
+    expect(visibleHours(schedules, 1, [], "2026-07-13", absences)).toEqual({
+      firstHour: 9,
+      lastHour: 14,
+    });
+  });
 });
 
 describe("visibleWeekHours", () => {
@@ -381,6 +445,22 @@ describe("visibleWeekHours", () => {
     const result = visibleWeekHours([], blocks);
     expect(result.firstHour).toBeLessThanOrEqual(result.lastHour);
     expect(result).toEqual({ firstHour: 18, lastHour: 24 });
+  });
+
+  it("widens the window to show an absence outside the week's schedules", () => {
+    const schedules = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "14:00:00" },
+    ];
+    const absences = [
+      {
+        startsAt: "2026-07-15T19:00:00+02:00",
+        endsAt: "2026-07-15T21:00:00+02:00",
+      },
+    ];
+    expect(visibleWeekHours(schedules, [], absences)).toEqual({
+      firstHour: 9,
+      lastHour: 21,
+    });
   });
 });
 

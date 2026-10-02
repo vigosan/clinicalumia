@@ -164,11 +164,26 @@ function hoursSpan(spans: [number, number][]): {
   return { firstHour, lastHour };
 }
 
+function showingAbsences(
+  hours: { firstHour: number; lastHour: number },
+  absenceSpans: [number, number][],
+): { firstHour: number; lastHour: number } {
+  let { firstHour, lastHour } = hours;
+  for (const [start, end] of absenceSpans) {
+    if (end <= start) continue;
+    if (end > firstHour * 60 && start < lastHour * 60) continue;
+    firstHour = Math.min(firstHour, Math.floor(start / 60));
+    lastHour = Math.max(lastHour, Math.ceil(end / 60));
+  }
+  return { firstHour, lastHour };
+}
+
 export function visibleHours(
   schedules: ScheduleBlock[],
   weekday: number,
   blocks: TimeSpan[] = [],
   date = "",
+  absences: TimeSpan[] = [],
 ): { firstHour: number; lastHour: number } {
   const scheduleSpans = schedules
     .filter((schedule) => schedule.weekday === weekday)
@@ -178,17 +193,33 @@ export function visibleHours(
         .filter((block) => intersectsDay(block, date))
         .map((block) => blockSpan(block, date))
     : [];
-  return hoursSpan([...scheduleSpans, ...blockSpans]);
+  const absenceSpans = date
+    ? absences
+        .filter((absence) => intersectsDay(absence, date))
+        .map((absence) => blockSpan(absence, date))
+    : [];
+  return showingAbsences(
+    hoursSpan([...scheduleSpans, ...blockSpans]),
+    absenceSpans,
+  );
 }
 
 export function visibleWeekHours(
   schedules: ScheduleBlock[],
   blocks: TimeSpan[] = [],
+  absences: TimeSpan[] = [],
 ): { firstHour: number; lastHour: number } {
   const blockSpans = blocks.map((block) =>
     blockSpan(block, madridDateTime(block.startsAt).date),
   );
-  return hoursSpan([...schedules.map(scheduleSpan), ...blockSpans]);
+  const absenceSpans = absences.flatMap((absence) => [
+    blockSpan(absence, madridDateTime(absence.startsAt).date),
+    blockSpan(absence, madridDateTime(absence.endsAt).date),
+  ]);
+  return showingAbsences(
+    hoursSpan([...schedules.map(scheduleSpan), ...blockSpans]),
+    absenceSpans,
+  );
 }
 
 export type TimeOff = {
