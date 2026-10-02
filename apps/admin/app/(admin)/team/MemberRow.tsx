@@ -28,9 +28,11 @@ type Member = {
 
 export function MemberRow({
   member,
+  pendingInvitation,
   specialties,
 }: {
   member: Member;
+  pendingInvitation: boolean;
   specialties: Specialty[];
 }) {
   const [pending, startTransition] = useTransition();
@@ -73,6 +75,11 @@ export function MemberRow({
           <Badge tone={specialtyName ? "success" : "neutral"}>
             {specialtyName ?? "Sin especialidad"}
           </Badge>
+          {pendingInvitation && (
+            <Badge tone="warning" data-testid="member-pending">
+              Pendiente de aceptar
+            </Badge>
+          )}
           {!member.is_active && (
             <Badge tone="warning" data-testid="member-status">
               Inactivo
@@ -97,26 +104,32 @@ export function MemberRow({
               disabled={pending}
               data-testid="member-revoke-calendar"
             >
-              Invalidar calendario
+              Cortar el acceso al calendario del móvil
             </Button>
           }
-          title="¿Invalidar el calendario?"
+          title="¿Cortar el acceso al calendario del móvil?"
           description="Su enlace de calendario dejará de funcionar. Tendrá que generar uno nuevo desde el panel."
-          confirmLabel="Invalidar"
+          confirmLabel="Cortar el acceso"
           onConfirm={() =>
             run(
               () => revokeCalendarLink(member.id),
-              () => setSuccess("Calendario invalidado."),
+              () => setSuccess("Acceso al calendario del móvil cortado."),
             )
           }
         />
-        {member.role !== "owner" && (
+        {member.role !== "owner" && pendingInvitation && (
           <Button
             type="button"
             variant="secondary"
             size="sm"
             disabled={pending}
-            onClick={() => run(() => resendInvite(member.email))}
+            data-testid="member-resend-invite"
+            onClick={() =>
+              run(
+                () => resendInvite(member.email),
+                () => setSuccess("Invitación reenviada."),
+              )
+            }
           >
             Reenviar invitación
           </Button>

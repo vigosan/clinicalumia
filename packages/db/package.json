@@ -11,6 +11,7 @@
     "db:types": "supabase gen types typescript --local > types.ts",
     "bootstrap:owner": "tsx scripts/bootstrap-owner.ts",
     "invite:owner": "tsx scripts/invite-owner.ts",
+    "reset:owner-mfa": "tsx scripts/reset-owner-mfa.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "migrations": "tsx scripts/migrations-cli.ts"

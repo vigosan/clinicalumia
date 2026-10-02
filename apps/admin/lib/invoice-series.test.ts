@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   effectiveSeries,
   formatInvoiceCode,
+  invoiceFormatPresets,
   invoiceFormatProblem,
   invoiceSeriesError,
   invoiceSetupWarnings,
@@ -374,5 +375,33 @@ describe("effectiveSeries", () => {
     expect(effectiveSeries(rows, 2027)?.format).toBe("F{n}/{aa}");
     expect(effectiveSeries(rows, 2026)?.format).toBe("F{n}/{aa}");
     expect(effectiveSeries(rows, 2024)).toBeUndefined();
+  });
+});
+
+describe("invoiceFormatPresets", () => {
+  it("shows each main format as the first invoice it would print, so the owner never has to read {n} or {aa}", () => {
+    expect(invoiceFormatPresets("main", 2026)).toEqual([
+      { format: "{n}/{aa}", example: "1/26" },
+      { format: "{año}-{n:4}", example: "2026-0001" },
+      { format: "F{n}-{aa}", example: "F1-26" },
+    ]);
+  });
+
+  it("follows the chosen year in the examples", () => {
+    expect(
+      invoiceFormatPresets("main", 2027).map((preset) => preset.example),
+    ).toEqual(["1/27", "2027-0001", "F1-27"]);
+  });
+
+  it("offers rectifying formats that never collide with any main one, so picking two examples is always accepted", () => {
+    for (const rectifying of invoiceFormatPresets("rectifying", 2026)) {
+      expect(invoiceFormatProblem(rectifying.format, null, 2026)).toBeNull();
+      for (const main of invoiceFormatPresets("main", 2026)) {
+        expect(invoiceFormatProblem(main.format, null, 2026)).toBeNull();
+        expect(
+          invoiceFormatProblem(rectifying.format, main.format, 2026),
+        ).toBeNull();
+      }
+    }
   });
 });

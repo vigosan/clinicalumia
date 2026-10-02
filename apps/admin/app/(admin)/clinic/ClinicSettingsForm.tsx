@@ -30,6 +30,7 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
     SaveClinicSettingsState,
     FormData
   >(saveClinicSettings, undefined);
+  const fieldErrors = state && "fieldErrors" in state ? state.fieldErrors : {};
 
   return (
     <form
@@ -44,14 +45,17 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
       <Card className="flex flex-col gap-4">
         <h2 className="text-lg font-bold text-ink-900">Datos fiscales</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Razón social o nombre del titular">
+          <Field
+            label="Razón social o nombre del titular"
+            error={fieldErrors.legal_name}
+          >
             <Input
               name="legal_name"
               defaultValue={settings.legal_name}
               required
             />
           </Field>
-          <Field label="NIF / CIF">
+          <Field label="NIF / CIF" error={fieldErrors.tax_id}>
             <Input name="tax_id" defaultValue={settings.tax_id} required />
           </Field>
           <Field label="Dirección">
@@ -61,9 +65,10 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
               required
             />
           </Field>
-          <Field label="Código postal">
+          <Field label="Código postal" error={fieldErrors.postal_code}>
             <Input
               name="postal_code"
+              inputMode="numeric"
               defaultValue={settings.postal_code}
               required
             />
@@ -83,7 +88,7 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
           <Field label="Teléfono">
             <Input name="phone" defaultValue={settings.phone} required />
           </Field>
-          <Field label="Email">
+          <Field label="Email" error={fieldErrors.email}>
             <Input
               name="email"
               type="email"
@@ -117,6 +122,7 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
         <Field
           label="Plazo de cancelación gratuita (horas)"
           hint="Se aplica a todos los servicios salvo que un servicio tenga el suyo."
+          error={fieldErrors.cancellation_hours}
         >
           <Input
             name="cancellation_hours"
@@ -132,7 +138,10 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
       <Card className="flex flex-col gap-4">
         <h2 className="text-lg font-bold text-ink-900">Reserva web</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Antelación mínima (horas)">
+          <Field
+            label="Antelación mínima (horas)"
+            error={fieldErrors.booking_min_notice_hours}
+          >
             <Input
               name="booking_min_notice_hours"
               type="number"
@@ -142,7 +151,10 @@ export function ClinicSettingsForm({ settings }: { settings: ClinicSettings }) {
               required
             />
           </Field>
-          <Field label="Hasta cuántos días se puede reservar">
+          <Field
+            label="Hasta cuántos días se puede reservar"
+            error={fieldErrors.booking_horizon_days}
+          >
             <Input
               name="booking_horizon_days"
               type="number"

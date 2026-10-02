@@ -264,6 +264,58 @@ test("a professional without working hours offers no slots and points to the pho
   expect(new URL(page.url()).searchParams.get("profesional")).toBe(withHoursId);
 });
 
+test("a professional invited but not yet activated is not offered on the web until she sets her password", async ({
+  page,
+}) => {
+  const { specialty, service, withHours } = await clinicWithTwoProfessionals();
+  const invitedName = `Irene Invitada ${unique()}`;
+  const invitedEmail = `reserva-invitada-${unique()}@test.local`;
+  const { data, error } =
+    await admin.auth.admin.inviteUserByEmail(invitedEmail);
+  expect(error).toBeNull();
+  const invitedId = data.user!.id;
+  createdUserIds.push(invitedId);
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: invitedId,
+    email: invitedEmail,
+    full_name: invitedName,
+    role: "employee",
+    specialty_id: specialty.id,
+    is_active: true,
+  });
+  expect(profileError).toBeNull();
+  const { error: scheduleError } = await admin
+    .from("employee_schedules")
+    .insert(
+      [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
+        profile_id: invitedId,
+        weekday,
+        starts_at: "09:00",
+        ends_at: "13:00",
+      })),
+    );
+  expect(scheduleError).toBeNull();
+
+  await openService(page, specialty.name, service.name);
+  await expect(
+    page.getByTestId("booking-professional").filter({ hasText: withHours }),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("booking-professional").filter({ hasText: invitedName }),
+  ).toHaveCount(0);
+
+  const { error: passwordError } = await admin.auth.admin.updateUserById(
+    invitedId,
+    { password: "lumia-segura-2026" },
+  );
+  expect(passwordError).toBeNull();
+
+  await openService(page, specialty.name, service.name);
+  await expect(
+    page.getByTestId("booking-professional").filter({ hasText: invitedName }),
+  ).toBeVisible();
+});
+
 test("the booking button in the web header starts the online booking instead of the contact form", async ({
   page,
 }) => {

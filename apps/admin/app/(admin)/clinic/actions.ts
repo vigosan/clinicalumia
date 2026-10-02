@@ -3,12 +3,16 @@
 import { requireOwner } from "@clinicalumia/api/auth";
 import { createClient } from "@clinicalumia/api/server";
 import { revalidatePath } from "next/cache";
-import { parseClinicSettings } from "@/lib/clinic-settings";
+import {
+  type ClinicSettingsFieldErrors,
+  parseClinicSettings,
+} from "@/lib/clinic-settings";
 import { invoiceSeriesError, parseInvoiceSeries } from "@/lib/invoice-series";
 import { LOGO_EXTENSIONS, validateLogoFile } from "@/lib/logo";
 
 export type SaveClinicSettingsState =
   | { error: string }
+  | { fieldErrors: ClinicSettingsFieldErrors }
   | { ok: true }
   | undefined;
 export type UploadLogoState = { error: string } | { ok: true } | undefined;
@@ -26,7 +30,7 @@ export async function saveClinicSettings(
   if (!owner.ok) return { error: owner.error };
 
   const parsed = parseClinicSettings(formData);
-  if ("error" in parsed) return parsed;
+  if ("fieldErrors" in parsed) return parsed;
 
   const { error } = await supabase
     .from("clinic_settings")

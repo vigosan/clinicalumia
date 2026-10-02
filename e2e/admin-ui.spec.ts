@@ -256,6 +256,12 @@ test("the seed owner is listed first as Propietaria without a deactivate button,
   await expect(
     ownerRow.getByRole("button", { name: "Reenviar invitación" }),
   ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("listitem")
+      .filter({ hasText: "Laura Ejemplo" })
+      .getByTestId("member-resend-invite"),
+  ).toHaveCount(0);
 
   const rowsText = await page.getByRole("listitem").allTextContents();
   const ownerIndex = rowsText.findIndex((text) =>
@@ -393,7 +399,7 @@ test("the owner resets an employee's two-factor step, closing their still-open s
   }
 });
 
-test("the owner invalidates a member's calendar link and it stops serving the feed", async ({
+test("the owner cuts a member's phone calendar access and the link stops serving the feed", async ({
   browser,
 }) => {
   const ownerContext = await browser.newContext();
@@ -435,10 +441,13 @@ test("the owner invalidates a member's calendar link and it stops serving the fe
     await loginAsOwner(ownerPage);
     await ownerPage.goto(`${ADMIN}/team`);
     const row = ownerPage.getByRole("listitem").filter({ hasText: fullName });
+    await expect(row.getByTestId("member-revoke-calendar")).toHaveText(
+      "Cortar el acceso al calendario del móvil",
+    );
     await row.getByTestId("member-revoke-calendar").click();
     await ownerPage.getByTestId("confirm-action").click();
     await expect(row.getByTestId("member-success")).toHaveText(
-      "Calendario invalidado.",
+      "Acceso al calendario del móvil cortado.",
     );
     await expect(row.getByTestId("member-success")).toHaveAttribute(
       "role",
@@ -520,7 +529,7 @@ test("the specialty form opens from the right on a computer and from the bottom 
     .toEqual({ bottom: 844, width: 390, fits: true });
 });
 
-test("inviting an employee from its drawer closes it, confirms the email was sent and lists the new member", async ({
+test("inviting an employee from its drawer closes it, confirms the email was sent and lists the new member as pending until she sets her password", async ({
   page,
 }) => {
   await loginAsOwner(page);
@@ -539,7 +548,29 @@ test("inviting an employee from its drawer closes it, confirms the email was sen
   await expect(page.getByTestId("toast")).toHaveText(
     "Invitación enviada por email",
   );
-  await expect(
-    page.getByRole("listitem").filter({ hasText: fullName }),
-  ).toBeVisible();
+  const row = page.getByRole("listitem").filter({ hasText: fullName });
+  await expect(row).toBeVisible();
+  await expect(row.getByTestId("member-pending")).toHaveText(
+    "Pendiente de aceptar",
+  );
+  await row.getByTestId("member-resend-invite").click();
+  await expect(row.getByTestId("member-success")).toHaveText(
+    "Invitación reenviada.",
+  );
+
+  const { data: invited } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .single();
+  const { error: passwordError } = await admin.auth.admin.updateUserById(
+    invited!.id,
+    { password: "lumia-segura-2026" },
+  );
+  expect(passwordError).toBeNull();
+
+  await page.reload();
+  await expect(row).toBeVisible();
+  await expect(row.getByTestId("member-pending")).toHaveCount(0);
+  await expect(row.getByTestId("member-resend-invite")).toHaveCount(0);
 });

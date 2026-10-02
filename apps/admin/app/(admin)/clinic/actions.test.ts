@@ -86,7 +86,10 @@ describe("saveClinicSettings", () => {
     expect(
       await saveClinicSettings(undefined, clinicForm({ tax_id: "20449989A" })),
     ).toEqual({
-      error: "El NIF/CIF no es válido. Revisa la letra o el dígito de control.",
+      fieldErrors: {
+        tax_id:
+          "El NIF/CIF no es válido. Revisa la letra o el dígito de control.",
+      },
     });
     expect(updateEq).not.toHaveBeenCalled();
   });

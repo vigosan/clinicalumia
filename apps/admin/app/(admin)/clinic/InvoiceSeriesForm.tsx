@@ -4,15 +4,19 @@ import { Button } from "@clinicalumia/ui/button";
 import { Card } from "@clinicalumia/ui/card";
 import { Field } from "@clinicalumia/ui/field";
 import { Input } from "@clinicalumia/ui/input";
+import { Select } from "@clinicalumia/ui/select";
 import { startTransition, useActionState, useState } from "react";
 import {
   formatInvoiceCode,
   type InvoiceSeriesCode,
   type InvoiceSeriesRow,
+  invoiceFormatPresets,
   invoiceFormatProblem,
   seriesYearSummary,
 } from "@/lib/invoice-series";
 import { type SaveInvoiceSeriesState, saveInvoiceSeries } from "./actions";
+
+const OTHER_FORMAT = "other";
 
 export function InvoiceSeriesForm({
   code,
@@ -36,6 +40,10 @@ export function InvoiceSeriesForm({
   const [format, setFormat] = useState(initialFormat);
   const [year, setYear] = useState(initialYear);
   const [nextNumber, setNextNumber] = useState(initialNextNumber);
+  const presets = invoiceFormatPresets(code, year);
+  const isPreset = (candidate: string) =>
+    presets.some((preset) => preset.format === candidate);
+  const [customFormat, setCustomFormat] = useState(!isPreset(initialFormat));
   const selectedRow = rows.find((row) => row.year === year);
   const isLockedYear = selectedRow?.locked ?? false;
   const otherFormat =
@@ -85,14 +93,26 @@ export function InvoiceSeriesForm({
       >
         <input type="hidden" name="code" value={code} />
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Formato">
-            <Input
-              name="format"
-              data-testid={`invoice-series-${code}-format`}
-              value={format}
-              onChange={(event) => setFormat(event.target.value)}
+          <Field label="Formato" hint="Así sería la primera factura del año.">
+            <Select
+              data-testid={`invoice-series-${code}-format-choice`}
+              value={customFormat ? OTHER_FORMAT : format}
+              onValueChange={(choice) => {
+                if (choice === OTHER_FORMAT) {
+                  setCustomFormat(true);
+                  return;
+                }
+                setCustomFormat(false);
+                setFormat(choice);
+              }}
+              options={[
+                ...presets.map((preset) => ({
+                  value: preset.format,
+                  label: preset.example,
+                })),
+                { value: OTHER_FORMAT, label: "Otro formato" },
+              ]}
               disabled={isLockedYear}
-              required
             />
           </Field>
           <Field label="Año">
@@ -109,6 +129,7 @@ export function InvoiceSeriesForm({
                 setYear(nextYear);
                 if (row) {
                   setFormat(row.format);
+                  if (!isPreset(row.format)) setCustomFormat(true);
                   setNextNumber(row.next_number);
                 }
               }}
@@ -128,6 +149,23 @@ export function InvoiceSeriesForm({
             />
           </Field>
         </div>
+        {customFormat ? (
+          <Field
+            label="Tu formato"
+            hint="{n} es el número, {n:4} el número con ceros (0001), {aa} el año con dos cifras y {año} con cuatro."
+          >
+            <Input
+              name="format"
+              data-testid={`invoice-series-${code}-format`}
+              value={format}
+              onChange={(event) => setFormat(event.target.value)}
+              disabled={isLockedYear}
+              required
+            />
+          </Field>
+        ) : (
+          <input type="hidden" name="format" value={format} />
+        )}
         <p
           data-testid={`invoice-series-${code}-preview`}
           className={`text-[13px] ${problem ? "text-danger-600" : "text-ink-800"}`}

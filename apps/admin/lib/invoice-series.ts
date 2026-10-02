@@ -31,6 +31,21 @@ export function formatInvoiceCode(
   return result;
 }
 
+const FORMAT_PRESETS: Record<InvoiceSeriesCode, string[]> = {
+  main: ["{n}/{aa}", "{año}-{n:4}", "F{n}-{aa}"],
+  rectifying: ["R{n}/{aa}", "R{año}-{n:4}", "R{n}-{aa}"],
+};
+
+export function invoiceFormatPresets(
+  code: InvoiceSeriesCode,
+  year: number,
+): { format: string; example: string }[] {
+  return FORMAT_PRESETS[code].map((format) => ({
+    format,
+    example: formatInvoiceCode(format, year, 1),
+  }));
+}
+
 const NUMBER_MARKER = /\{n(?::[1-8])?\}/g;
 const KNOWN_MARKERS = /\{(?:año|aa|n|n:[1-8])\}/g;
 

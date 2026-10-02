@@ -20,13 +20,19 @@ export type ClinicSettingsInput = {
   booking_horizon_days: number;
 };
 
+export type ClinicSettingsFieldErrors = Partial<
+  Record<keyof ClinicSettingsInput, string>
+>;
+
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
 export function parseClinicSettings(
   formData: FormData,
-): { ok: true; settings: ClinicSettingsInput } | { error: string } {
+):
+  | { ok: true; settings: ClinicSettingsInput }
+  | { fieldErrors: ClinicSettingsFieldErrors } {
   const legalName = text(formData, "legal_name");
   const taxId = normalizeTaxId(text(formData, "tax_id"));
   const addressLine = text(formData, "address_line");
@@ -45,45 +51,44 @@ export function parseClinicSettings(
   const bookingHorizonDaysText = text(formData, "booking_horizon_days");
   const bookingHorizonDays = Number(bookingHorizonDaysText);
 
+  const fieldErrors: ClinicSettingsFieldErrors = {};
   if (!legalName)
-    return { error: "La razón social o nombre del titular es obligatorio." };
+    fieldErrors.legal_name =
+      "La razón social o nombre del titular es obligatorio.";
   if (!isValidSpanishTaxId(taxId))
-    return {
-      error: "El NIF/CIF no es válido. Revisa la letra o el dígito de control.",
-    };
+    fieldErrors.tax_id =
+      "El NIF/CIF no es válido. Revisa la letra o el dígito de control.";
   if (!POSTAL_CODE_REGEX.test(postalCode))
-    return { error: "El código postal debe tener 5 cifras." };
-  if (!EMAIL_REGEX.test(email)) return { error: "El email no es válido." };
+    fieldErrors.postal_code = "El código postal debe tener 5 cifras.";
+  if (!EMAIL_REGEX.test(email)) fieldErrors.email = "El email no es válido.";
   if (!cancellationHoursText)
-    return { error: "Indica el plazo de cancelación gratuita." };
-  if (
+    fieldErrors.cancellation_hours = "Indica el plazo de cancelación gratuita.";
+  else if (
     !Number.isInteger(cancellationHours) ||
     cancellationHours < 0 ||
     cancellationHours > 720
   )
-    return {
-      error: "El plazo de cancelación debe estar entre 0 y 720 horas.",
-    };
+    fieldErrors.cancellation_hours =
+      "El plazo de cancelación debe estar entre 0 y 720 horas.";
   if (!bookingMinNoticeHoursText)
-    return { error: "Indica la antelación mínima." };
-  if (
+    fieldErrors.booking_min_notice_hours = "Indica la antelación mínima.";
+  else if (
     !Number.isInteger(bookingMinNoticeHours) ||
     bookingMinNoticeHours < 0 ||
     bookingMinNoticeHours > 168
   )
-    return {
-      error: "La antelación mínima debe estar entre 0 y 168 horas.",
-    };
+    fieldErrors.booking_min_notice_hours =
+      "La antelación mínima debe estar entre 0 y 168 horas.";
   if (!bookingHorizonDaysText)
-    return { error: "Indica el horizonte de reserva." };
-  if (
+    fieldErrors.booking_horizon_days = "Indica el horizonte de reserva.";
+  else if (
     !Number.isInteger(bookingHorizonDays) ||
     bookingHorizonDays < 1 ||
     bookingHorizonDays > 365
   )
-    return {
-      error: "El horizonte de reserva debe estar entre 1 y 365 días.",
-    };
+    fieldErrors.booking_horizon_days =
+      "El horizonte de reserva debe estar entre 1 y 365 días.";
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   return {
     ok: true,

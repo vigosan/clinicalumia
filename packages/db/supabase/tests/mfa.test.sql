@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(30);
+select plan(34);
 
 insert into auth.users (id, email) values
   ('40000000-0000-0000-0000-000000000001', 'owner-mfa@test.local'),
@@ -138,5 +138,18 @@ select is(public.is_active_staff(), false,
   'is_active_staff returns false instead of raising when session_id is not a valid uuid');
 
 reset role;
+select pg_temp.act_as('40000000-0000-0000-0000-000000000001', 'aal1');
+select is(public.signed_in_as_owner(), true,
+  'the owner still waiting for her code is told so, so the screen sends her to technical support instead of to herself');
+reset role;
+select pg_temp.act_as('40000000-0000-0000-0000-000000000002', 'aal1');
+select is(public.signed_in_as_owner(), false,
+  'an employee waiting for her code is not the owner, so she is told to ask for a reset');
+reset role;
+select is(has_function_privilege('anon', 'public.signed_in_as_owner()', 'execute'), false,
+  'anonymous visitors cannot call it');
+select is(has_function_privilege('authenticated', 'public.signed_in_as_owner()', 'execute'), true,
+  'any signed-in session can ask about itself before the second factor');
+
 select * from finish();
 rollback;

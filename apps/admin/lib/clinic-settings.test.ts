@@ -53,31 +53,39 @@ describe("parseClinicSettings", () => {
 
   it("rejects an invalid NIF/CIF so invoices don't carry a wrong tax id", () => {
     expect(parseClinicSettings(form({ tax_id: "20449989A" }))).toEqual({
-      error: "El NIF/CIF no es válido. Revisa la letra o el dígito de control.",
+      fieldErrors: {
+        tax_id:
+          "El NIF/CIF no es válido. Revisa la letra o el dígito de control.",
+      },
     });
   });
 
   it("rejects an invalid email so appointment notifications don't bounce", () => {
     expect(parseClinicSettings(form({ email: "no-es-un-email" }))).toEqual({
-      error: "El email no es válido.",
+      fieldErrors: { email: "El email no es válido." },
     });
   });
 
   it("requires a 5-digit postal code", () => {
     expect(parseClinicSettings(form({ postal_code: "4680" }))).toEqual({
-      error: "El código postal debe tener 5 cifras.",
+      fieldErrors: { postal_code: "El código postal debe tener 5 cifras." },
     });
   });
 
   it("keeps the general cancellation window within 0-720 hours", () => {
     expect(parseClinicSettings(form({ cancellation_hours: "800" }))).toEqual({
-      error: "El plazo de cancelación debe estar entre 0 y 720 horas.",
+      fieldErrors: {
+        cancellation_hours:
+          "El plazo de cancelación debe estar entre 0 y 720 horas.",
+      },
     });
   });
 
   it("requires an explicit cancellation window instead of defaulting an empty field to zero, since zero means no free cancellation", () => {
     expect(parseClinicSettings(form({ cancellation_hours: "" }))).toEqual({
-      error: "Indica el plazo de cancelación gratuita.",
+      fieldErrors: {
+        cancellation_hours: "Indica el plazo de cancelación gratuita.",
+      },
     });
   });
 
@@ -85,33 +93,55 @@ describe("parseClinicSettings", () => {
     expect(
       parseClinicSettings(form({ booking_min_notice_hours: "200" })),
     ).toEqual({
-      error: "La antelación mínima debe estar entre 0 y 168 horas.",
+      fieldErrors: {
+        booking_min_notice_hours:
+          "La antelación mínima debe estar entre 0 y 168 horas.",
+      },
     });
   });
 
   it("requires an explicit minimum notice instead of defaulting an empty field to zero", () => {
     expect(parseClinicSettings(form({ booking_min_notice_hours: "" }))).toEqual(
       {
-        error: "Indica la antelación mínima.",
+        fieldErrors: {
+          booking_min_notice_hours: "Indica la antelación mínima.",
+        },
       },
     );
   });
 
   it("keeps the booking horizon within 1-365 days", () => {
     expect(parseClinicSettings(form({ booking_horizon_days: "400" }))).toEqual({
-      error: "El horizonte de reserva debe estar entre 1 y 365 días.",
+      fieldErrors: {
+        booking_horizon_days:
+          "El horizonte de reserva debe estar entre 1 y 365 días.",
+      },
     });
   });
 
   it("requires an explicit booking horizon instead of defaulting an empty field to zero, since zero would leave nothing to book", () => {
     expect(parseClinicSettings(form({ booking_horizon_days: "" }))).toEqual({
-      error: "Indica el horizonte de reserva.",
+      fieldErrors: { booking_horizon_days: "Indica el horizonte de reserva." },
     });
   });
 
   it("requires the legal name or owner's name, since invoices need it", () => {
     expect(parseClinicSettings(form({ legal_name: " " }))).toEqual({
-      error: "La razón social o nombre del titular es obligatorio.",
+      fieldErrors: {
+        legal_name: "La razón social o nombre del titular es obligatorio.",
+      },
+    });
+  });
+
+  it("reports every wrong field at once next to its input, so the owner fixes the NIF and the postal code in one go", () => {
+    expect(
+      parseClinicSettings(form({ tax_id: "12345", postal_code: "4680" })),
+    ).toEqual({
+      fieldErrors: {
+        tax_id:
+          "El NIF/CIF no es válido. Revisa la letra o el dígito de control.",
+        postal_code: "El código postal debe tener 5 cifras.",
+      },
     });
   });
 

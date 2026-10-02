@@ -8,22 +8,25 @@ import { MemberRow } from "./MemberRow";
 export default async function TeamPage() {
   const supabase = await createClient();
 
-  const [{ data: members }, { data: specialties }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select(
-        "id, email, full_name, specialty_id, is_active, role, license_number",
-      )
-      .order("role", { ascending: true })
-      .order("full_name", { ascending: true }),
-    supabase
-      .from("specialties")
-      .select("id, name")
-      .order("name", { ascending: true }),
-  ]);
+  const [{ data: members }, { data: specialties }, { data: pending }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select(
+          "id, email, full_name, specialty_id, is_active, role, license_number",
+        )
+        .order("role", { ascending: true })
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("specialties")
+        .select("id, name")
+        .order("name", { ascending: true }),
+      supabase.rpc("pending_invitations"),
+    ]);
 
   const memberList = members ?? [];
   const specialtyList = specialties ?? [];
+  const pendingIds = new Set((pending ?? []).map((row) => row.profile_id));
   const hasEmployees = memberList.some((member) => member.role === "employee");
 
   return (
@@ -42,6 +45,7 @@ export default async function TeamPage() {
             <MemberRow
               key={member.id}
               member={member}
+              pendingInvitation={pendingIds.has(member.id)}
               specialties={specialtyList}
             />
           ))}

@@ -30,15 +30,18 @@ type Action = Mock<
 function renderChallenge({
   action = vi.fn(async () => undefined),
   logoutAction = vi.fn(async () => undefined),
+  owner = false,
 }: {
   action?: Action;
   logoutAction?: () => Promise<void>;
+  owner?: boolean;
 } = {}) {
   render(
     <TwoFactorChallenge
       action={action}
       next="/pacientes"
       logoutAction={logoutAction}
+      owner={owner}
     />,
   );
   return { action, logoutAction };
@@ -59,6 +62,20 @@ describe("TwoFactorChallenge", () => {
         "¿Has perdido el móvil? Pide que restablezcan tu verificación.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("sends the owner to technical support, since nobody in the clinic can reset her verification", () => {
+    renderChallenge({ owner: true });
+    expect(
+      screen.getByText(
+        "Si has perdido el móvil, contacta con el soporte técnico para restablecer la verificación.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "¿Has perdido el móvil? Pide que restablezcan tu verificación.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("sends the typed code and the destination to return to once verified", async () => {

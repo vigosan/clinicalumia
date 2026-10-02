@@ -14,6 +14,7 @@ export function TwoFactorChallenge({
   action,
   next,
   logoutAction,
+  owner,
 }: {
   action: (
     state: TwoFactorFormState,
@@ -21,6 +22,7 @@ export function TwoFactorChallenge({
   ) => Promise<TwoFactorFormState>;
   next: string;
   logoutAction: () => void | Promise<void>;
+  owner: boolean;
 }) {
   const [state, formAction, pending] = useActionState<
     TwoFactorFormState,
@@ -78,8 +80,13 @@ export function TwoFactorChallenge({
           {pending ? "Comprobando…" : "Verificar"}
         </Button>
       </form>
-      <p className="text-center text-[13px] text-ink-800">
-        ¿Has perdido el móvil? Pide que restablezcan tu verificación.
+      <p
+        data-testid="totp-lost-phone"
+        className="text-center text-[13px] text-ink-800"
+      >
+        {owner
+          ? "Si has perdido el móvil, contacta con el soporte técnico para restablecer la verificación."
+          : "¿Has perdido el móvil? Pide que restablezcan tu verificación."}
       </p>
       <form action={logoutAction}>
         <Button

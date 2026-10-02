@@ -1037,6 +1037,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _account_activated: { Args: { p_user_id: string }; Returns: boolean }
       _free_slots: {
         Args: {
           p_from: string
@@ -1386,6 +1387,12 @@ export type Database = {
           method: Database["public"]["Enums"]["payment_method"]
         }[]
       }
+      pending_invitations: {
+        Args: never
+        Returns: {
+          profile_id: string
+        }[]
+      }
       pending_payments: {
         Args: { p_since: string }
         Returns: {
@@ -1448,6 +1455,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      signed_in_as_owner: { Args: never; Returns: boolean }
       staff_directory: {
         Args: never
         Returns: {

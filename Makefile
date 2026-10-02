@@ -6,7 +6,7 @@ DB := packages/db
         build lint format typecheck test test.db test.e2e clean totp \
         db.start db.stop db.reset db.migrate db.types db.studio db.mail db.bootstrap \
         db.status db.push.dev db.push.prod db.config.dev db.config.prod db.types.check \
-        db.owner.local db.owner.prod consents.import
+        db.owner.local db.owner.prod db.owner.reset-mfa consents.import
 
 help: ## Muestra los comandos disponibles
 	@grep -hE '^[a-zA-Z_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -168,6 +168,31 @@ db.owner.prod: ## Invita a la propietaria en producción (pide confirmación): m
 	 OWNER_EMAIL="$(email)" OWNER_FULL_NAME="$(name)" \
 	 REDIRECT_TO="https://panel.clinicalumia.es/auth/confirm" \
 	 pnpm invite:owner
+
+db.owner.reset-mfa: ## Restablece el 2FA de la propietaria si pierde el móvil (pide confirmación): make db.owner.reset-mfa email=... env=local|dev|prod
+	@if [ -z "$(email)" ] || [ -z "$(env)" ]; then \
+		echo 'Uso: make db.owner.reset-mfa email=info@clinicalumia.es env=local|dev|prod'; exit 1; \
+	fi
+	@case "$(env)" in \
+	 local) ;; \
+	 dev) read -p "¿Restablecer el 2FA de $(email) en DESARROLLO? Escribe 'desarrollo': " answer; \
+		[ "$$answer" = "desarrollo" ] || (echo "Cancelado."; exit 1);; \
+	 prod) read -p "¿Restablecer el 2FA de $(email) en PRODUCCIÓN? Escribe 'produccion': " answer; \
+		[ "$$answer" = "produccion" ] || (echo "Cancelado."; exit 1);; \
+	 *) echo "env debe ser local, dev o prod"; exit 1;; \
+	 esac
+	@case "$(env)" in \
+	 local) status="$$(cd $(DB) && supabase status -o env 2>/dev/null)"; \
+		url="$$(printf '%s\n' "$$status" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')"; \
+		key="$$(printf '%s\n' "$$status" | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"')";; \
+	 dev|prod) file="$(DB)/.env.$(env)"; \
+		url="$$(grep -E '^(NEXT_PUBLIC_)?SUPABASE_URL=' $$file 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"')"; \
+		key="$$(grep '^SUPABASE_SERVICE_ROLE_KEY=' $$file 2>/dev/null | cut -d= -f2- | tr -d '"')";; \
+	 esac; \
+	 if [ -z "$$url" ] || [ -z "$$key" ]; then echo "Falta la URL o SUPABASE_SERVICE_ROLE_KEY de $(env)"; exit 1; fi; \
+	 cd $(DB) && \
+	 SUPABASE_URL="$$url" SUPABASE_SERVICE_ROLE_KEY="$$key" OWNER_EMAIL="$(email)" \
+	 pnpm --silent reset:owner-mfa
 
 consents.import: ## Importa PDF de consentimientos firmados: make consents.import dir=<carpeta> env=local|dev|prod [dry=1]
 	@if [ -z "$(dir)" ] || [ -z "$(env)" ]; then \

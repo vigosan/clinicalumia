@@ -231,6 +231,60 @@ describe("team actions", () => {
     expect(createAdminClient).not.toHaveBeenCalled();
   });
 
+  it("resends the invitation email to a member who has not opened it yet", async () => {
+    const inviteUserByEmail = vi.fn(async () => ({ data: {}, error: null }));
+    const resetPasswordForEmail = vi.fn();
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: { admin: { inviteUserByEmail }, resetPasswordForEmail },
+    } as unknown as ReturnType<typeof createAdminClient>);
+    expect(await resendInvite("nueva@lumia.test")).toEqual({ ok: true });
+    expect(inviteUserByEmail).toHaveBeenCalledWith("nueva@lumia.test");
+    expect(resetPasswordForEmail).not.toHaveBeenCalled();
+  });
+
+  it("sends a set-password link instead when she opened the invitation but never chose a password, since Supabase refuses to invite a confirmed email again", async () => {
+    const resetPasswordForEmail = vi.fn(async () => ({
+      data: {},
+      error: null,
+    }));
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: {
+        admin: {
+          inviteUserByEmail: vi.fn(async () => ({
+            data: { user: null },
+            error: {
+              message:
+                "A user with this email address has already been registered",
+            },
+          })),
+        },
+        resetPasswordForEmail,
+      },
+    } as unknown as ReturnType<typeof createAdminClient>);
+    expect(await resendInvite("nueva@lumia.test")).toEqual({ ok: true });
+    expect(resetPasswordForEmail).toHaveBeenCalledWith("nueva@lumia.test");
+  });
+
+  it("reports a Spanish error when neither email can be sent", async () => {
+    vi.mocked(createAdminClient).mockReturnValue({
+      auth: {
+        admin: {
+          inviteUserByEmail: vi.fn(async () => ({
+            data: { user: null },
+            error: { message: "already been registered" },
+          })),
+        },
+        resetPasswordForEmail: vi.fn(async () => ({
+          data: null,
+          error: { message: "boom" },
+        })),
+      },
+    } as unknown as ReturnType<typeof createAdminClient>);
+    expect(await resendInvite("nueva@lumia.test")).toEqual({
+      error: "No se ha podido reenviar la invitación.",
+    });
+  });
+
   it("refuses resetTwoFactor for a non-owner and never touches the admin client", async () => {
     ownerResult = { ok: false, error: "No tienes permiso para hacer esto." };
     expect(await resetTwoFactor("employee-1")).toEqual({
@@ -452,7 +506,7 @@ describe("team actions", () => {
   it("reports a generic error when the token revocation fails", async () => {
     rpcResult.error = { code: "500", message: "boom" };
     expect(await revokeCalendarLink("employee-1")).toEqual({
-      error: "No se ha podido invalidar el calendario.",
+      error: "No se ha podido cortar el acceso al calendario del móvil.",
     });
   });
 });

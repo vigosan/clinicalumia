@@ -24,7 +24,7 @@ test.afterEach(async () => {
   }
 });
 
-async function createEmployee() {
+async function createEmployee(role: "employee" | "owner" = "employee") {
   const email = `empleado-2fa-${Date.now()}-${Math.random().toString(36).slice(2)}@test.local`;
   const password = "lumia-segura-2026";
   const { data, error } = await admin.auth.admin.createUser({
@@ -39,15 +39,20 @@ async function createEmployee() {
     id: data.user!.id,
     email,
     full_name: "Empleada de prueba",
-    role: "employee",
+    role,
   });
   expect(profileError).toBeNull();
 
   return { id: data.user!.id, email, password };
 }
 
-async function loginToChallenge(page: Page, email: string, password: string) {
-  await page.goto("/login");
+async function loginToChallenge(
+  page: Page,
+  email: string,
+  password: string,
+  base = "",
+) {
+  await page.goto(`${base}/login`);
   await page.fill('[name="email"]', email);
   await page.fill('[name="password"]', password);
   await page.getByTestId("login-submit").click();
@@ -68,6 +73,45 @@ test("a wrong six-digit code shows the error and keeps you at the challenge", as
 
   await expect(page.getByTestId("totp-error")).toContainText("no es correcto");
   await expect(page).toHaveURL(/\/auth\/dos-pasos$/);
+});
+
+test("on the code screen the owner is sent to technical support while an employee is told to ask for a reset", async ({
+  page,
+}) => {
+  const employee = await createEmployee();
+  await signIn(
+    page,
+    "http://localhost:3001",
+    employee.email,
+    employee.password,
+  );
+  await logOut(page);
+  await loginToChallenge(page, employee.email, employee.password);
+  await expect(page.getByTestId("totp-lost-phone")).toHaveText(
+    "¿Has perdido el móvil? Pide que restablezcan tu verificación.",
+  );
+  await page.getByTestId("totp-logout").click();
+  await expect(page).toHaveURL(/\/login/);
+
+  const owner = await createEmployee("owner");
+  await signIn(page, "http://localhost:3002", owner.email, owner.password);
+  await logOut(page);
+  await loginToChallenge(
+    page,
+    owner.email,
+    owner.password,
+    "http://localhost:3002",
+  );
+  await expect(page.getByTestId("totp-lost-phone")).toHaveText(
+    "Si has perdido el móvil, contacta con el soporte técnico para restablecer la verificación.",
+  );
+  await page.getByTestId("totp-logout").click();
+  await expect(page).toHaveURL(/\/login/);
+
+  await loginToChallenge(page, owner.email, owner.password);
+  await expect(page.getByTestId("totp-lost-phone")).toHaveText(
+    "Si has perdido el móvil, contacta con el soporte técnico para restablecer la verificación.",
+  );
 });
 
 test("recovering a password with a factor already active asks for the code before the new password, and the new password works", async ({

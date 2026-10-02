@@ -243,7 +243,7 @@ test("the owner edits a weekly schedule, is warned about overlaps, and the chang
   }
 });
 
-test("the owner fixes an invalid tax id, saves the clinic details and uploads the logo shown in the invoice preview", async ({
+test("the owner sees the invalid tax id and postal code next to their fields, fixes them, saves the clinic details and uploads the logo shown in the invoice preview", async ({
   page,
 }) => {
   const { data: before } = await admin
@@ -253,15 +253,25 @@ test("the owner fixes an invalid tax id, saves the clinic details and uploads th
   try {
     await loginAsOwner(page);
     await page.goto(`${ADMIN}/clinic`);
-    await page.getByLabel("NIF / CIF").fill("20449989A");
+    await page.getByLabel("NIF / CIF").fill("12345");
+    await page.getByLabel("Código postal").fill("4680");
     await page.getByTestId("clinic-submit").click();
-    await expect(page.getByTestId("clinic-error")).toContainText(
-      "El NIF/CIF no es válido",
+    await expect(page.getByLabel("NIF / CIF")).toHaveAccessibleDescription(
+      "El NIF/CIF no es válido. Revisa la letra o el dígito de control.",
     );
+    await expect(page.getByLabel("NIF / CIF")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(page.getByLabel("Código postal")).toHaveAccessibleDescription(
+      "El código postal debe tener 5 cifras.",
+    );
+    await expect(page.getByTestId("clinic-error")).toHaveCount(0);
     await expect(
       page.getByLabel("Razón social o nombre del titular"),
     ).toHaveValue(before!.legal_name);
     await page.getByLabel("NIF / CIF").fill("20449989-e");
+    await page.getByLabel("Código postal").fill(before!.postal_code);
     await page.getByLabel("Plazo de cancelación gratuita (horas)").fill("48");
     await page.getByTestId("clinic-submit").click();
     await expect(page.getByTestId("clinic-saved")).toBeVisible();
@@ -357,7 +367,7 @@ test("uploading a logo over 2 MB shows a clear error instead of crashing", async
   expect(pageErrors).toHaveLength(0);
 });
 
-test("the owner configures a future year of the main invoice series and sees the preview and the saved numbering", async ({
+test("the owner picks the numbering of a future year from examples or writes her own, and sees the preview and the saved numbering", async ({
   page,
 }) => {
   const year = madridYear() + 5;
@@ -372,10 +382,20 @@ test("the owner configures a future year of the main invoice series and sees the
     }
     const form = page.getByTestId("invoice-series-main-form");
     await form.getByTestId("invoice-series-main-year").fill(String(year));
+    await selectOption(form.getByTestId("invoice-series-main-format-choice"), {
+      label: "Otro formato",
+    });
     await form.getByTestId("invoice-series-main-format").fill("E2E-{n:3}/{aa}");
     await form.getByTestId("invoice-series-main-next-number").fill("7");
     await expect(page.getByTestId("invoice-series-main-preview")).toHaveText(
       `La próxima factura será E2E-007/${String(year).slice(-2)}.`,
+    );
+    await selectOption(form.getByTestId("invoice-series-main-format-choice"), {
+      label: `${year}-0001`,
+    });
+    await expect(form.getByTestId("invoice-series-main-format")).toHaveCount(0);
+    await expect(page.getByTestId("invoice-series-main-preview")).toHaveText(
+      `La próxima factura será ${year}-0007.`,
     );
     await form.getByTestId("invoice-series-main-submit").click();
     await expect(page.getByTestId("invoice-series-main-saved")).toBeVisible();
@@ -386,7 +406,7 @@ test("the owner configures a future year of the main invoice series and sees the
       .eq("year", year)
       .single();
     expect(saved).toEqual({
-      format: "E2E-{n:3}/{aa}",
+      format: "{año}-{n:4}",
       next_number: 7,
       locked: false,
     });
@@ -408,6 +428,9 @@ test("the owner sees why a format is refused before saving, and a year already i
 
     const main = page.getByTestId("invoice-series-main-form");
     await main.getByTestId("invoice-series-main-year").fill(String(year + 4));
+    await selectOption(main.getByTestId("invoice-series-main-format-choice"), {
+      label: "Otro formato",
+    });
     await main.getByTestId("invoice-series-main-format").fill("F-{n}");
     await expect(page.getByTestId("invoice-series-main-preview")).toHaveText(
       "Falta el año ({aa} o {año}).",

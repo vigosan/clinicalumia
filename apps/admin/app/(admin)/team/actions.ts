@@ -163,9 +163,12 @@ export async function resendInvite(email: string): Promise<ActionResult> {
   const owner = await requireOwner(await createClient());
   if (!owner.ok) return { error: owner.error };
 
-  const { error } =
-    await createAdminClient().auth.admin.inviteUserByEmail(email);
-  if (error) return { error: "No se ha podido reenviar la invitación." };
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.inviteUserByEmail(email);
+  if (error) {
+    const { error: linkError } = await admin.auth.resetPasswordForEmail(email);
+    if (linkError) return { error: "No se ha podido reenviar la invitación." };
+  }
 
   revalidatePath("/team");
   return { ok: true };
@@ -181,7 +184,10 @@ export async function revokeCalendarLink(
   const { error } = await supabase.rpc("revoke_calendar_token", {
     p_profile_id: memberId,
   });
-  if (error) return { error: "No se ha podido invalidar el calendario." };
+  if (error)
+    return {
+      error: "No se ha podido cortar el acceso al calendario del móvil.",
+    };
 
   return { ok: true };
 }
