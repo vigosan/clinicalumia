@@ -1,25 +1,30 @@
 "use client";
 
 import { Button } from "@clinicalumia/ui/button";
+import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Field } from "@clinicalumia/ui/field";
 import { RadioCards } from "@clinicalumia/ui/radio-cards";
 import { Textarea } from "@clinicalumia/ui/textarea";
 import { toast } from "@clinicalumia/ui/toast";
 import { useRef, useState, useTransition } from "react";
+import { NOTICE_FAILED } from "@/lib/notice-toast";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { cancelAppointment } from "../appointments/actions";
 
 export function CancelDialog({
   appointmentId,
   invoiced,
+  canNotify,
 }: {
   appointmentId: string;
   invoiced: boolean;
+  canNotify: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [by, setBy] = useState<"patient" | "clinic">("patient");
   const [reason, setReason] = useState("");
+  const [notify, setNotify] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
@@ -27,7 +32,12 @@ export function CancelDialog({
   function handleConfirm() {
     if (!submitGateRef.current.tryStart()) return;
     startTransition(async () => {
-      const result = await cancelAppointment(appointmentId, by, reason);
+      const result = await cancelAppointment(
+        appointmentId,
+        by,
+        reason,
+        canNotify && notify,
+      );
       submitGateRef.current.finish();
       if ("error" in result) {
         setError(result.error);
@@ -35,7 +45,11 @@ export function CancelDialog({
       }
       setError(null);
       setOpen(false);
-      toast("Cita cancelada");
+      toast(
+        result.noticeFailed
+          ? `Cita cancelada. ${NOTICE_FAILED}`
+          : "Cita cancelada",
+      );
     });
   }
 
@@ -93,6 +107,14 @@ export function CancelDialog({
           onChange={(event) => setReason(event.target.value)}
         />
       </Field>
+      {canNotify && (
+        <CheckboxField
+          label="Avisar al paciente por email"
+          data-testid="notify-patient"
+          checked={notify}
+          onChange={(event) => setNotify(event.target.checked)}
+        />
+      )}
       {error && (
         <p
           role="alert"

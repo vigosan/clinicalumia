@@ -1,10 +1,6 @@
 import { madridDateTime } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
-import {
-  appointmentEmailHtml,
-  type ConfirmedAppointment,
-  type DbError,
-} from "./booking";
+import type { DbError } from "./booking";
 import { site } from "./site";
 
 export type AppointmentRow = {
@@ -24,6 +20,7 @@ export type AppointmentRow = {
   can_change: boolean;
   can_reschedule: boolean;
   invoiced: boolean;
+  updated_at: string;
 };
 
 export function splitAppointments(
@@ -130,32 +127,4 @@ export function accountNotice(code: string | undefined): string | undefined {
   return code && Object.hasOwn(ACCOUNT_NOTICES, code)
     ? ACCOUNT_NOTICES[code]
     : undefined;
-}
-
-export function rescheduledEmail(appointment: ConfirmedAppointment): {
-  subject: string;
-  html: string;
-} {
-  return {
-    subject: "Cita confirmada",
-    html: appointmentEmailHtml(
-      "Cita confirmada",
-      appointment,
-      `${site.url}/mi-cuenta`,
-    ),
-  };
-}
-
-export function cancelledEmail(appointment: ConfirmedAppointment): {
-  subject: string;
-  html: string;
-} {
-  return {
-    subject: "Cita cancelada",
-    html: appointmentEmailHtml(
-      "Cita cancelada",
-      appointment,
-      `${site.url}/mi-cuenta`,
-    ),
-  };
 }

@@ -17,6 +17,7 @@ import {
   type AppointmentEventRow,
   appointmentHistory,
 } from "@/lib/appointment-history";
+import { noticeRecipients } from "@/lib/appointment-notice";
 import {
   currentInvoice,
   proposedInvoiceEmail,
@@ -107,7 +108,7 @@ async function loadAppointmentDetail(
     supabase
       .from("guardianships")
       .select(
-        "is_primary, guardian:people!guardianships_guardian_id_fkey(first_name, last_name, email, tax_id, address)",
+        "is_primary, guardian:people!guardianships_guardian_id_fkey(first_name, last_name, email, tax_id, address, archived_at)",
       )
       .eq("minor_id", appt.patient.id)
       .order("is_primary", { ascending: false }),
@@ -198,6 +199,13 @@ async function loadAppointmentDetail(
       ),
       canCancel: appt.status === "scheduled",
       canRestore: appt.status === "no_show",
+      canNotify:
+        noticeRecipients(
+          appt.patient,
+          (guardianRows ?? []).flatMap(({ guardian }) =>
+            guardian ? [guardian] : [],
+          ),
+        ).length > 0,
       initialDate: initial.date,
       initialTime: initial.time.slice(0, 5),
       history,

@@ -1,6 +1,6 @@
+import { appointmentIcs } from "@clinicalumia/api/appointment-notice";
 import { createClient } from "@clinicalumia/api/server";
 import { splitAppointments } from "@/lib/account";
-import { appointmentIcs } from "@/lib/appointment-ics";
 import { isTeamSession } from "@/lib/booking";
 
 export async function GET(
@@ -29,6 +29,7 @@ export async function GET(
     endsAt: appointment.ends_at,
     serviceName: appointment.service_name,
     now,
+    updatedAt: appointment.updated_at,
   });
 
   return new Response(ics, {

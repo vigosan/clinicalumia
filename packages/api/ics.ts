@@ -6,6 +6,8 @@ export type IcsEvent = {
   summary: string;
   location?: string;
   description?: string;
+  sequence?: number;
+  status?: "CONFIRMED" | "CANCELLED";
 };
 
 function escapeText(text: string): string {
@@ -51,6 +53,9 @@ function eventLines(event: IcsEvent): string[] {
   const lines = [
     "BEGIN:VEVENT",
     contentLine("UID", event.uid),
+    ...(event.sequence === undefined
+      ? []
+      : [contentLine("SEQUENCE", String(event.sequence))]),
     contentLine("DTSTAMP", formatUtc(event.stamp)),
     contentLine("DTSTART", formatUtc(event.startsAt)),
     contentLine("DTEND", formatUtc(event.endsAt)),
@@ -62,15 +67,17 @@ function eventLines(event: IcsEvent): string[] {
   if (event.description) {
     lines.push(contentLine("DESCRIPTION", escapeText(event.description)));
   }
-  lines.push("STATUS:CONFIRMED", "END:VEVENT");
+  lines.push(`STATUS:${event.status ?? "CONFIRMED"}`, "END:VEVENT");
   return lines;
 }
 
 export function icsCalendar({
   name,
+  method = "PUBLISH",
   events,
 }: {
   name: string;
+  method?: "PUBLISH" | "REQUEST" | "CANCEL";
   events: IcsEvent[];
 }): string {
   const lines = [
@@ -78,7 +85,7 @@ export function icsCalendar({
     "VERSION:2.0",
     "PRODID:-//Clinica LUMIA//Agenda//ES",
     "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
+    `METHOD:${method}`,
     contentLine("X-WR-CALNAME", escapeText(name)),
     "X-WR-TIMEZONE:Europe/Madrid",
     ...events.flatMap(eventLines),

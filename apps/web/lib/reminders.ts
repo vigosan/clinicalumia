@@ -1,9 +1,12 @@
 import type { createAdminClient } from "@clinicalumia/api/admin";
+import {
+  appointmentIcs,
+  escapeHtml,
+  formatWhen,
+} from "@clinicalumia/api/appointment-notice";
 import { EmailRateLimitError, sendEmail } from "@clinicalumia/api/email";
 import { addDays, todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { changeWindowText } from "./account";
-import { appointmentIcs } from "./appointment-ics";
-import { escapeHtml, formatWhen } from "./booking";
 import { site } from "./site";
 
 type AdminClient = ReturnType<typeof createAdminClient>;

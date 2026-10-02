@@ -398,7 +398,7 @@ test("someone who enters from /acceder lands on Mi cuenta and, with another emai
   await expect(page.getByText(owner.place.serviceName)).toHaveCount(0);
 });
 
-test("a patient cancels an appointment within the window: it moves to the history as cancelled by them, the account gets the email and the clinic sees it cancelled by the patient", async ({
+test("a patient cancels an appointment within the window: it moves to the history as cancelled by them, the account gets the email with a cancellation of the calendar event and the clinic sees it cancelled by the patient", async ({
   page,
 }) => {
   const { email, place, web } = await patientWithAppointments("cancelar");
@@ -428,6 +428,10 @@ test("a patient cancels an appointment within the window: it moves to the histor
 
   const html = await latestEmailFor(email, "Cita cancelada");
   expect(html).toContain(place.serviceName);
+  const cancelIcs = await latestEmailIcs(email, "Cita cancelada");
+  expect(cancelIcs).toContain("METHOD:CANCEL");
+  expect(cancelIcs).toContain(`UID:${web.id}@clinicalumia.es`);
+  expect(cancelIcs).toContain("STATUS:CANCELLED");
 
   const { data: row, error } = await admin
     .from("appointments")
@@ -519,7 +523,7 @@ function dayAndTime(instant: string) {
   return new RegExp(`\\b${Number(date.slice(8))} de \\S+ a las ${time}`);
 }
 
-test("a patient moves an appointment 15 minutes later, overlapping only itself: Mi cuenta shows the new time, the account gets the confirmation and it keeps its length", async ({
+test("a patient moves an appointment 15 minutes later, overlapping only itself: Mi cuenta shows the new time, the account gets «Cita cambiada» with both times and it keeps its length", async ({
   page,
 }) => {
   const { email, place, web } = await patientWithAppointments("cambiar");
@@ -568,12 +572,16 @@ test("a patient moves an appointment 15 minutes later, overlapping only itself: 
     dayAndTime(newStart),
   );
 
-  const html = await latestEmailFor(email, "Cita confirmada");
+  const html = await latestEmailFor(email, "Cita cambiada");
   expect(html).toMatch(dayAndTime(newStart));
+  expect(html).toMatch(dayAndTime(web.startsAt));
   expect(html).toContain(place.serviceName);
-  const attachments = await latestEmailAttachments(email, "Cita confirmada");
+  const attachments = await latestEmailAttachments(email, "Cita cambiada");
   expect(attachments).toContain("cita.ics");
-  const ics = await latestEmailIcs(email, "Cita confirmada");
+  const ics = await latestEmailIcs(email, "Cita cambiada");
+  expect(ics).toContain("METHOD:REQUEST");
+  expect(ics).toContain(`UID:${web.id}@clinicalumia.es`);
+  expect(ics).toMatch(/SEQUENCE:\d+/);
   expect(ics).toContain(`DTSTART:${icsUtc(newStart)}`);
 
   const { data: row, error } = await admin

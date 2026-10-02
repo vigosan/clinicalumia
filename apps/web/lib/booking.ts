@@ -4,8 +4,8 @@ import {
   madridDateTime,
 } from "@clinicalumia/api/madrid-time";
 import { isValidPhone, normalizePhone } from "@clinicalumia/api/person";
-import { appointmentIcs } from "./appointment-ics";
-import { site } from "./site";
+
+export { escapeHtml, formatWhen } from "@clinicalumia/api/appointment-notice";
 
 export type Slot = { starts_at: string; professional_id: string };
 
@@ -249,77 +249,3 @@ export const bookingState = {
     };
   },
 };
-
-export function formatWhen(instant: string): string {
-  const formatted = new Intl.DateTimeFormat("es-ES", {
-    timeZone: "Europe/Madrid",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(new Date(instant));
-  return `${capitalize(formatted)} a las ${madridDateTime(instant).time}`;
-}
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-export type ConfirmedAppointment = {
-  id: string;
-  startsAt: string;
-  endsAt: string;
-  serviceName: string;
-  professionalName: string;
-  personName: string;
-};
-
-export function appointmentAttachment(
-  appointment: ConfirmedAppointment,
-  now: Date,
-): { filename: string; content: string; contentType: string } {
-  return {
-    filename: "cita.ics",
-    content: appointmentIcs({
-      id: appointment.id,
-      startsAt: appointment.startsAt,
-      endsAt: appointment.endsAt,
-      serviceName: appointment.serviceName,
-      now,
-    }),
-    contentType: "text/calendar",
-  };
-}
-
-export function appointmentEmailHtml(
-  heading: string,
-  appointment: ConfirmedAppointment,
-  accountLink?: string,
-): string {
-  const footer = accountLink
-    ? `<p><a href="${accountLink}">Ver Mi cuenta</a></p>`
-    : `<p>Puedes verla o cambiarla en <a href="${site.url}/mi-cuenta">Mi cuenta</a>.</p>`;
-  return `
-      <h2>${heading}</h2>
-      <p><strong>Cuándo:</strong> ${escapeHtml(formatWhen(appointment.startsAt))}</p>
-      <p><strong>Servicio:</strong> ${escapeHtml(appointment.serviceName)}</p>
-      <p><strong>Profesional:</strong> ${escapeHtml(appointment.professionalName)}</p>
-      <p><strong>Para:</strong> ${escapeHtml(appointment.personName)}</p>
-      ${footer}
-      <p>Clínica LUMIA</p>
-    `;
-}
-
-export function bookingConfirmationEmail(appointment: ConfirmedAppointment): {
-  subject: string;
-  html: string;
-} {
-  return {
-    subject: "Cita confirmada",
-    html: appointmentEmailHtml("Cita confirmada", appointment),
-  };
-}

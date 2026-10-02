@@ -1,30 +1,22 @@
 "use server";
 
-import { sendEmail } from "@clinicalumia/api/email";
+import {
+  type AppointmentNotice,
+  sendAppointmentNotice,
+} from "@clinicalumia/api/appointment-notice";
 import { createClient } from "@clinicalumia/api/server";
 import { redirect } from "next/navigation";
-import { accountError, cancelledEmail, rescheduledEmail } from "@/lib/account";
-import {
-  appointmentAttachment,
-  bookingState,
-  type ConfirmedAppointment,
-  SLOT_TAKEN,
-} from "@/lib/booking";
+import { accountError } from "@/lib/account";
+import { bookingState, SLOT_TAKEN } from "@/lib/booking";
 
 export type AccountFormState = { error: string } | undefined;
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
-type AppointmentEmail = (appointment: ConfirmedAppointment) => {
-  subject: string;
-  html: string;
-};
-
 async function emailAccount(
   supabase: Client,
   appointmentId: string,
-  email: AppointmentEmail,
-  attachIcs: boolean,
+  notice: AppointmentNotice,
 ) {
   try {
     const [
@@ -42,20 +34,18 @@ async function emailAccount(
     );
     if (!user?.email || !appointment)
       throw new Error(`No se encuentra la cita ${appointmentId} o el email`);
-    const confirmed = {
-      id: appointment.id,
-      startsAt: appointment.starts_at,
-      endsAt: appointment.ends_at,
-      serviceName: appointment.service_name,
-      professionalName: appointment.professional_name,
-      personName: appointment.person_name,
-    };
-    await sendEmail({
-      to: user.email,
-      ...email(confirmed),
-      ...(attachIcs && {
-        attachments: [appointmentAttachment(confirmed, new Date())],
-      }),
+    await sendAppointmentNotice({
+      recipients: [user.email],
+      notice,
+      appointment: {
+        id: appointment.id,
+        startsAt: appointment.starts_at,
+        endsAt: appointment.ends_at,
+        updatedAt: appointment.updated_at,
+        serviceName: appointment.service_name,
+        professionalName: appointment.professional_name,
+        personName: appointment.person_name,
+      },
     });
   } catch (error) {
     console.error("No se ha podido enviar el email de la cita", error);
@@ -83,7 +73,7 @@ export async function cancelAppointment(
     redirect("/mi-cuenta?aviso=cancelada");
   if (error) return { error: accountError(error) };
 
-  await emailAccount(supabase, appointmentId, cancelledEmail, false);
+  await emailAccount(supabase, appointmentId, { kind: "cancelled" });
   redirect("/mi-cuenta?aviso=cancelada");
 }
 
@@ -99,6 +89,7 @@ export async function rescheduleAppointment(
   if (!inicio) return { error: accountError({}) };
 
   const supabase = await createClient();
+  const previous = await myAppointment(supabase, appointmentId);
   const { error } = await supabase.rpc("reschedule_my_appointment", {
     p_appointment_id: appointmentId,
     p_starts_at: inicio,
@@ -113,6 +104,10 @@ export async function rescheduleAppointment(
     );
   if (error) return { error: accountError(error) };
 
-  await emailAccount(supabase, appointmentId, rescheduledEmail, true);
+  if (previous)
+    await emailAccount(supabase, appointmentId, {
+      kind: "changed",
+      previousStartsAt: previous.starts_at,
+    });
   redirect("/mi-cuenta?aviso=cambiada");
 }

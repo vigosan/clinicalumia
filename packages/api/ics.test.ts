@@ -135,6 +135,40 @@ describe("icsCalendar", () => {
     expect(ics).toContain("DTSTART:20261025T090000Z\r\n");
   });
 
+  it("asks the calendar to update the existing event, with a higher SEQUENCE, so a changed appointment replaces the old one instead of adding a second", () => {
+    const ics = icsCalendar({
+      name: "Clínica LUMIA",
+      method: "REQUEST",
+      events: [{ ...baseEvent, sequence: 1791000000 }],
+    });
+
+    expect(ics).toContain("METHOD:REQUEST\r\n");
+    expect(ics).toContain("SEQUENCE:1791000000\r\n");
+    expect(ics).toContain("STATUS:CONFIRMED\r\n");
+    expect(ics).not.toContain("METHOD:PUBLISH");
+  });
+
+  it("cancels the same event, so the patient's calendar removes an appointment that will not happen", () => {
+    const ics = icsCalendar({
+      name: "Clínica LUMIA",
+      method: "CANCEL",
+      events: [{ ...baseEvent, sequence: 1791000300, status: "CANCELLED" }],
+    });
+
+    expect(ics).toContain("METHOD:CANCEL\r\n");
+    expect(ics).toContain(`UID:${baseEvent.uid}\r\n`);
+    expect(ics).toContain("SEQUENCE:1791000300\r\n");
+    expect(ics).toContain("STATUS:CANCELLED\r\n");
+    expect(ics).not.toContain("STATUS:CONFIRMED");
+  });
+
+  it("keeps publishing without SEQUENCE when none is given, so the team's subscribed feed is unchanged", () => {
+    const ics = icsCalendar({ name: "Equipo LUMIA", events: [baseEvent] });
+
+    expect(ics).toContain("METHOD:PUBLISH\r\n");
+    expect(ics).not.toContain("SEQUENCE");
+  });
+
   it("produces a valid calendar when there are no events", () => {
     const ics = icsCalendar({ name: "Equipo LUMIA", events: [] });
 

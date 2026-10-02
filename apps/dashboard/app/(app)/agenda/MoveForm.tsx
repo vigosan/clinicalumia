@@ -2,6 +2,7 @@
 
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Button } from "@clinicalumia/ui/button";
+import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
 import { TimeSelect } from "@clinicalumia/ui/time-select";
@@ -12,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { noticeToast } from "@/lib/notice-toast";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { toastOnRedirect } from "@/lib/toast-on-redirect";
 import { moveAppointment } from "../appointments/actions";
@@ -19,7 +21,7 @@ import { DurationField } from "../appointments/DurationField";
 
 const moveAppointmentWithToast = toastOnRedirect(
   moveAppointment,
-  "Cita cambiada",
+  noticeToast("Cita cambiada"),
 );
 
 export function MoveForm({
@@ -30,6 +32,7 @@ export function MoveForm({
   durationMinutes,
   initialDate,
   initialTime,
+  canNotify,
 }: {
   appointmentId: string;
   patientId: string;
@@ -38,6 +41,7 @@ export function MoveForm({
   durationMinutes: number;
   initialDate: string;
   initialTime: string;
+  canNotify: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
     moveAppointmentWithToast,
@@ -119,6 +123,15 @@ export function MoveForm({
           }}
         />
       </div>
+
+      {canNotify && (
+        <CheckboxField
+          name="notify"
+          label="Avisar al paciente por email"
+          data-testid="notify-patient"
+          defaultChecked
+        />
+      )}
 
       {warnings.length > 0 && (
         <div

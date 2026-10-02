@@ -1277,6 +1277,7 @@ export type Database = {
           service_name: string
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
         }[]
       }
       my_calendar_token: { Args: never; Returns: string }

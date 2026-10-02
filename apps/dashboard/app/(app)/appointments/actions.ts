@@ -12,11 +12,29 @@ import {
   parseAppointmentForm,
   scheduleWarnings,
 } from "@/lib/agenda";
+import {
+  loadAppointmentTimes,
+  loadNoticeRecipients,
+  notifyPatient,
+} from "@/lib/appointment-notice";
+import { NOTICE_FAILED_PARAM } from "@/lib/notice-toast";
 
 export type AppointmentFormState =
   | { error: string }
   | { warnings: string[] }
   | undefined;
+
+function wantsNotice(formData: FormData): boolean {
+  return formData.get("notify") === "on";
+}
+
+function sameInstant(a: string, b: string): boolean {
+  return new Date(a).getTime() === new Date(b).getTime();
+}
+
+function withNoticeWarning(url: string, notified: boolean): string {
+  return notified ? url : `${url}&${NOTICE_FAILED_PARAM}`;
+}
 
 export type PatientOption = {
   id: string;
@@ -46,6 +64,16 @@ export async function searchPatients(
     .limit(10);
   if (error) throw new Error("No se ha podido buscar.");
   return data ?? [];
+}
+
+export async function canNotifyPatient(personId: string): Promise<boolean> {
+  const supabase = await createClient();
+  try {
+    return (await loadNoticeRecipients(supabase, personId)).length > 0;
+  } catch (error) {
+    console.error("No se ha podido saber a quién avisar", error);
+    return false;
+  }
 }
 
 async function resolveProfessional(
@@ -165,10 +193,35 @@ export async function createAppointment(
   }
   if (!data) return { error: "No se ha podido guardar." };
 
+  const notified =
+    !wantsNotice(formData) ||
+    (await notifyPatient(supabase, data.id, { kind: "confirmed" }));
+
   revalidatePath("/");
   redirect(
-    `/?date=${madridDateTime(appointment.starts_at).date}&appointment=${data.id}`,
+    withNoticeWarning(
+      `/?date=${madridDateTime(appointment.starts_at).date}&appointment=${data.id}`,
+      notified,
+    ),
   );
+}
+
+async function notifyMove(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: string,
+  previous: { starts_at: string; ends_at: string } | null,
+  appointment: AppointmentInput,
+): Promise<boolean> {
+  if (!previous) return false;
+  if (
+    sameInstant(previous.starts_at, appointment.starts_at) &&
+    sameInstant(previous.ends_at, appointment.ends_at)
+  )
+    return true;
+  return notifyPatient(supabase, id, {
+    kind: "changed",
+    previousStartsAt: previous.starts_at,
+  });
 }
 
 export async function moveAppointment(
@@ -206,6 +259,10 @@ export async function moveAppointment(
     if (result.warnings.length > 0) return { warnings: result.warnings };
   }
 
+  const previous = wantsNotice(formData)
+    ? await loadAppointmentTimes(supabase, id)
+    : null;
+
   const { data, error } = await supabase
     .from("appointments")
     .update({ starts_at: appointment.starts_at, ends_at: appointment.ends_at })
@@ -226,9 +283,16 @@ export async function moveAppointment(
   if (!data || data.length === 0)
     return { error: "No se ha podido cambiar la fecha u hora." };
 
+  const notified =
+    !wantsNotice(formData) ||
+    (await notifyMove(supabase, id, previous, appointment));
+
   revalidatePath("/");
   redirect(
-    `/?date=${madridDateTime(appointment.starts_at).date}&appointment=${id}`,
+    withNoticeWarning(
+      `/?date=${madridDateTime(appointment.starts_at).date}&appointment=${id}`,
+      notified,
+    ),
   );
 }
 
@@ -236,7 +300,8 @@ export async function cancelAppointment(
   id: string,
   by: "patient" | "clinic",
   reason: string,
-): Promise<ActionResult> {
+  notify: boolean,
+): Promise<{ ok: true; noticeFailed: boolean } | { error: string }> {
   if (reason.length > 2000)
     return { error: "El motivo no puede superar los 2000 caracteres." };
 
@@ -250,8 +315,11 @@ export async function cancelAppointment(
   if (!data || data.length === 0)
     return { error: "No se ha podido cancelar la cita." };
 
+  const notified =
+    !notify || (await notifyPatient(supabase, id, { kind: "cancelled" }));
+
   revalidatePath("/");
-  return { ok: true };
+  return { ok: true, noticeFailed: !notified };
 }
 
 export async function markNoShow(id: string): Promise<ActionResult> {

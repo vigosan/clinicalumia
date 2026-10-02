@@ -3,6 +3,7 @@
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { Alert } from "@clinicalumia/ui/alert";
 import { Button } from "@clinicalumia/ui/button";
+import { CheckboxField } from "@clinicalumia/ui/checkbox-field";
 import { DatePicker } from "@clinicalumia/ui/date-picker";
 import { Field } from "@clinicalumia/ui/field";
 import { Select } from "@clinicalumia/ui/select";
@@ -17,9 +18,10 @@ import {
   useState,
 } from "react";
 import { type Closure, closureOn } from "@/lib/closures";
+import { noticeToast } from "@/lib/notice-toast";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { toastOnRedirect } from "@/lib/toast-on-redirect";
-import { createAppointment } from "./actions";
+import { canNotifyPatient, createAppointment } from "./actions";
 import { DurationField } from "./DurationField";
 import { type PatientOption, PatientPicker } from "./PatientPicker";
 
@@ -38,7 +40,7 @@ export type ServiceOption = {
 
 const createAppointmentWithToast = toastOnRedirect(
   createAppointment,
-  "Cita creada",
+  noticeToast("Cita creada"),
 );
 
 export function AppointmentForm({
@@ -49,6 +51,7 @@ export function AppointmentForm({
   initialTime,
   initialProfessionalId,
   initialPatient,
+  initialCanNotify,
   closures,
   cancelHref,
 }: {
@@ -59,6 +62,7 @@ export function AppointmentForm({
   initialTime: string;
   initialProfessionalId: string | null;
   initialPatient?: PatientOption | null;
+  initialCanNotify: boolean;
   closures: Closure[];
   cancelHref: string;
 }) {
@@ -76,6 +80,8 @@ export function AppointmentForm({
   const [patient, setPatient] = useState<PatientOption | null>(
     initialPatient ?? null,
   );
+  const [canNotify, setCanNotify] = useState(initialCanNotify);
+  const notifyCheckRef = useRef<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const submitGateRef = useRef(createSubmitGate());
   const dismissedStateRef = useRef(state);
@@ -112,6 +118,15 @@ export function AppointmentForm({
   const error = state && "error" in state ? state.error : null;
   const closure = closureOn(date, closures);
 
+  function selectPatient(next: PatientOption) {
+    setPatient(next);
+    setCanNotify(false);
+    notifyCheckRef.current = next.id;
+    canNotifyPatient(next.id).then((allowed) => {
+      if (notifyCheckRef.current === next.id) setCanNotify(allowed);
+    });
+  }
+
   function resetConfirmation() {
     dismissedStateRef.current = state;
   }
@@ -143,8 +158,12 @@ export function AppointmentForm({
       <input type="hidden" name="patient_id" value={patient?.id ?? ""} />
       <PatientPicker
         selected={patient}
-        onSelect={setPatient}
-        onClear={() => setPatient(null)}
+        onSelect={selectPatient}
+        onClear={() => {
+          notifyCheckRef.current = null;
+          setPatient(null);
+          setCanNotify(false);
+        }}
         returnTo={returnTo}
       />
 
@@ -243,6 +262,16 @@ export function AppointmentForm({
       <Field label="Notas">
         <Textarea name="notes" data-testid="appointment-notes" />
       </Field>
+
+      {patient && canNotify && (
+        <CheckboxField
+          key={patient.id}
+          name="notify"
+          label="Avisar al paciente por email"
+          data-testid="notify-patient"
+          defaultChecked
+        />
+      )}
 
       {warnings.length > 0 && (
         <div

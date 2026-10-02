@@ -70,6 +70,18 @@ const peopleIs = vi.fn(() => ({ ilike: peopleIlike }));
 const peopleEq = vi.fn(() => ({ is: peopleIs }));
 const peopleSelect = vi.fn(() => ({ eq: peopleEq }));
 
+const notifyPatient = vi.fn(async () => true);
+const loadAppointmentTimes = vi.fn(async () => ({
+  starts_at: "2026-10-06T08:00:00+00:00",
+  ends_at: "2026-10-06T09:00:00+00:00",
+}));
+const loadNoticeRecipients = vi.fn(async (): Promise<string[]> => []);
+vi.mock("@/lib/appointment-notice", () => ({
+  notifyPatient,
+  loadAppointmentTimes,
+  loadNoticeRecipients,
+}));
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -98,6 +110,7 @@ const {
   createAppointment,
   moveAppointment,
   cancelAppointment,
+  canNotifyPatient,
   markNoShow,
   restoreFromNoShow,
   searchPatients,
@@ -187,6 +200,45 @@ describe("createAppointment", () => {
       }),
     );
     expect(schedulesSelect).not.toHaveBeenCalled();
+  });
+
+  it("emails the patient the confirmation after saving when «Avisar al paciente» is checked", async () => {
+    notifyPatient.mockClear();
+
+    await expect(
+      createAppointment(
+        undefined,
+        appointmentForm({ confirm: "1", notify: "on" }),
+      ),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-05&appointment=appt-1");
+
+    expect(notifyPatient).toHaveBeenCalledWith(expect.anything(), "appt-1", {
+      kind: "confirmed",
+    });
+  });
+
+  it("sends nothing when the box is unchecked, because the team may have told the patient in person", async () => {
+    notifyPatient.mockClear();
+
+    await expect(
+      createAppointment(undefined, appointmentForm({ confirm: "1" })),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-05&appointment=appt-1");
+
+    expect(notifyPatient).not.toHaveBeenCalled();
+  });
+
+  it("keeps the new appointment and goes to it with a warning when the email fails, so the team knows to call the patient", async () => {
+    notifyPatient.mockResolvedValueOnce(false);
+
+    await expect(
+      createAppointment(
+        undefined,
+        appointmentForm({ confirm: "1", notify: "on" }),
+      ),
+    ).rejects.toThrow(
+      "REDIRECT:/?date=2026-10-05&appointment=appt-1&aviso=sin-avisar",
+    );
+    expect(appointmentsInsert).toHaveBeenCalledTimes(1);
   });
 
   it("names who and when for a 23P01 overlap", async () => {
@@ -314,6 +366,58 @@ describe("moveAppointment", () => {
     expect(schedulesResult.data).toEqual([]);
   });
 
+  it("emails the patient «Cita cambiada» with the previous time after moving when «Avisar al paciente» is checked", async () => {
+    notifyPatient.mockClear();
+
+    await expect(
+      moveAppointment(undefined, moveForm({ confirm: "1", notify: "on" })),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-06&appointment=appt-1");
+
+    expect(loadAppointmentTimes).toHaveBeenCalledWith(
+      expect.anything(),
+      "appt-1",
+    );
+    expect(notifyPatient).toHaveBeenCalledWith(expect.anything(), "appt-1", {
+      kind: "changed",
+      previousStartsAt: "2026-10-06T08:00:00+00:00",
+    });
+  });
+
+  it("sends nothing when the box is unchecked", async () => {
+    notifyPatient.mockClear();
+
+    await expect(
+      moveAppointment(undefined, moveForm({ confirm: "1" })),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-06&appointment=appt-1");
+
+    expect(notifyPatient).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing when the time did not actually change, so the patient never gets a change that is not one", async () => {
+    notifyPatient.mockClear();
+    loadAppointmentTimes.mockResolvedValueOnce({
+      starts_at: "2026-10-06T09:00:00.000Z",
+      ends_at: "2026-10-06T10:00:00.000Z",
+    });
+
+    await expect(
+      moveAppointment(undefined, moveForm({ confirm: "1", notify: "on" })),
+    ).rejects.toThrow("REDIRECT:/?date=2026-10-06&appointment=appt-1");
+
+    expect(notifyPatient).not.toHaveBeenCalled();
+  });
+
+  it("keeps the new time and warns when the email fails", async () => {
+    notifyPatient.mockResolvedValueOnce(false);
+
+    await expect(
+      moveAppointment(undefined, moveForm({ confirm: "1", notify: "on" })),
+    ).rejects.toThrow(
+      "REDIRECT:/?date=2026-10-06&appointment=appt-1&aviso=sin-avisar",
+    );
+    expect(appointmentsUpdate).toHaveBeenCalledTimes(1);
+  });
+
   it("names who and when for a 23P01 overlap, excluding the appointment being moved", async () => {
     updateResult.data = null;
     updateResult.error = { code: "23P01" };
@@ -363,8 +467,8 @@ describe("cancelAppointment", () => {
 
   it("cancels with the reason and who cancelled", async () => {
     expect(
-      await cancelAppointment("appt-1", "patient", "Se puso enfermo"),
-    ).toEqual({ ok: true });
+      await cancelAppointment("appt-1", "patient", "Se puso enfermo", false),
+    ).toEqual({ ok: true, noticeFailed: false });
     expect(appointmentsUpdate).toHaveBeenCalledWith({
       status: "cancelled",
       cancelled_by: "patient",
@@ -375,7 +479,7 @@ describe("cancelAppointment", () => {
 
   it("rejects a reason longer than 2000 characters, without touching the database", async () => {
     expect(
-      await cancelAppointment("appt-1", "patient", "a".repeat(2001)),
+      await cancelAppointment("appt-1", "patient", "a".repeat(2001), false),
     ).toEqual({
       error: "El motivo no puede superar los 2000 caracteres.",
     });
@@ -385,7 +489,7 @@ describe("cancelAppointment", () => {
   it("reports it could not cancel when 0 rows matched", async () => {
     updateResult.data = [];
 
-    expect(await cancelAppointment("appt-1", "clinic", "")).toEqual({
+    expect(await cancelAppointment("appt-1", "clinic", "", false)).toEqual({
       error: "No se ha podido cancelar la cita.",
     });
   });
@@ -397,9 +501,39 @@ describe("cancelAppointment", () => {
       message: "appointment_invalid_transition",
     };
 
-    expect(await cancelAppointment("appt-1", "clinic", "")).toEqual({
+    expect(await cancelAppointment("appt-1", "clinic", "", false)).toEqual({
       error: "No se puede cancelar una cita marcada como no presentada.",
     });
+  });
+
+  it("emails the patient the cancellation after saving it when «Avisar al paciente» is checked", async () => {
+    notifyPatient.mockClear();
+
+    expect(await cancelAppointment("appt-1", "clinic", "", true)).toEqual({
+      ok: true,
+      noticeFailed: false,
+    });
+    expect(notifyPatient).toHaveBeenCalledWith(expect.anything(), "appt-1", {
+      kind: "cancelled",
+    });
+  });
+
+  it("sends nothing when the box is unchecked", async () => {
+    notifyPatient.mockClear();
+
+    await cancelAppointment("appt-1", "clinic", "", false);
+
+    expect(notifyPatient).not.toHaveBeenCalled();
+  });
+
+  it("keeps the cancellation and says the patient was not told when the email fails", async () => {
+    notifyPatient.mockResolvedValueOnce(false);
+
+    expect(await cancelAppointment("appt-1", "clinic", "", true)).toEqual({
+      ok: true,
+      noticeFailed: true,
+    });
+    expect(appointmentsUpdate).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -478,5 +612,26 @@ describe("searchPatients", () => {
     await expect(searchPatients("nora")).rejects.toThrow(
       "No se ha podido buscar.",
     );
+  });
+});
+
+describe("canNotifyPatient", () => {
+  it("offers to notify only a patient who, or whose guardian, has an email", async () => {
+    loadNoticeRecipients.mockResolvedValueOnce(["madre@example.com"]);
+    expect(await canNotifyPatient("patient-1")).toBe(true);
+
+    loadNoticeRecipients.mockResolvedValueOnce([]);
+    expect(await canNotifyPatient("patient-1")).toBe(false);
+  });
+
+  it("hides the box when it cannot tell who would get the email, instead of breaking Nueva cita", async () => {
+    loadNoticeRecipients.mockRejectedValueOnce(new Error("boom"));
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    expect(await canNotifyPatient("patient-1")).toBe(false);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

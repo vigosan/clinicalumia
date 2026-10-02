@@ -58,6 +58,7 @@ function appointmentRow(overrides: Record<string, string> = {}) {
     service_name: "Sesión de logopedia",
     professional_name: "Ana García",
     origin: "web",
+    updated_at: "2026-09-30T11:00:00+00:00",
     ...overrides,
   };
 }
@@ -105,6 +106,8 @@ describe("confirmBooking", () => {
     expect(attachment.contentType).toBe("text/calendar");
     expect(attachment.content).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
     expect(attachment.content).toContain("DTSTART:20261002T070000Z");
+    expect(attachment.content).toContain("METHOD:REQUEST");
+    expect(attachment.content).toContain("SEQUENCE:1790766000");
   });
 
   it("sends the patient back to the slots with a warning and without the taken time when someone else got it first", async () => {

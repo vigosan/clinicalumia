@@ -49,6 +49,7 @@ export type AppointmentDetail = {
   canMarkNoShow: boolean;
   canCancel: boolean;
   canRestore: boolean;
+  canNotify: boolean;
   initialDate: string;
   initialTime: string;
   history: { id: string; text: string }[];
@@ -301,6 +302,7 @@ export function AppointmentPanel({
             <CancelDialog
               appointmentId={appointment.id}
               invoiced={appointment.invoice !== null}
+              canNotify={appointment.canNotify}
             />
           )}
           {appointment.canMarkNoShow && (
@@ -348,6 +350,7 @@ export function AppointmentPanel({
             durationMinutes={appointment.durationMinutes}
             initialDate={appointment.initialDate}
             initialTime={appointment.initialTime}
+            canNotify={appointment.canNotify}
           />
         </div>
       )}

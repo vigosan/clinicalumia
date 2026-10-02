@@ -86,8 +86,8 @@ reset role;
 select set_config('request.jwt.claims', '', true);
 
 select is(pg_get_function_result('public.my_appointments()'::regprocedure),
-  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean, can_reschedule boolean, invoiced boolean)',
-  'my_appointments gives the web what it needs to offer changes, and only says whether an appointment is already invoiced, never notes, reasons or amounts');
+  'TABLE(id uuid, person_id uuid, person_name text, starts_at timestamp with time zone, ends_at timestamp with time zone, status appointment_status, service_id uuid, service_name text, professional_id uuid, professional_name text, origin appointment_origin, cancelled_by appointment_canceller, change_deadline timestamp with time zone, can_change boolean, can_reschedule boolean, invoiced boolean, updated_at timestamp with time zone)',
+  'my_appointments gives the web what it needs to offer changes, only says whether an appointment is already invoiced, never notes, reasons or amounts, and when it last changed so the calendar file replaces the older copy');
 select is((select prosecdef from pg_proc where oid = 'public.reschedule_my_appointment(uuid, timestamptz)'::regprocedure), true,
   'reschedule runs as definer because patients cannot touch appointments directly');
 select is((select prosecdef from pg_proc where oid = 'public.cancel_my_appointment(uuid)'::regprocedure), true,

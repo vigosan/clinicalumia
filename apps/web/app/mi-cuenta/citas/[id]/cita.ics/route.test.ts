@@ -26,6 +26,7 @@ function appointmentRow(overrides: Record<string, string> = {}) {
     ends_at: "2026-10-02T07:45:00+00:00",
     service_name: "Sesión de logopedia",
     status: "scheduled",
+    updated_at: "2026-09-30T11:00:00+00:00",
     ...overrides,
   };
 }
@@ -124,5 +125,13 @@ describe("GET /mi-cuenta/citas/[id]/cita.ics", () => {
     expect(body).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
     expect(body).toContain("DTSTART:20261002T070000Z");
     expect(body).toContain("DTEND:20261002T074500Z");
+  });
+
+  it("numbers the event by the appointment's last change, so downloading it again after a change replaces the older copy instead of adding another", async () => {
+    rpc.mockResolvedValue({ data: [appointmentRow()], error: null });
+
+    const body = await (await GET(request(), context())).text();
+
+    expect(body).toContain("SEQUENCE:1790766000");
   });
 });

@@ -10,6 +10,7 @@ import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import type { Metadata } from "next";
 import { isUuid } from "@/lib/agenda";
+import { loadNoticeRecipients } from "@/lib/appointment-notice";
 import { loadClosures } from "@/lib/closures";
 import { AppointmentForm } from "../AppointmentForm";
 
@@ -81,6 +82,10 @@ export default async function NewAppointmentPage({
     );
   }
 
+  const initialCanNotify = patient
+    ? (await loadNoticeRecipients(supabase, patient.id)).length > 0
+    : false;
+
   const professionals = (directory ?? []).map((profile) => ({
     id: profile.id,
     fullName: profile.full_name,
@@ -137,6 +142,7 @@ export default async function NewAppointmentPage({
           initialTime={initialTime}
           initialProfessionalId={initialProfessionalId}
           initialPatient={patient}
+          initialCanNotify={initialCanNotify}
           closures={closures}
           cancelHref={
             patient && !params.date

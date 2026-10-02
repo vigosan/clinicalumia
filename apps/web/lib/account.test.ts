@@ -4,11 +4,9 @@ import {
   type AppointmentRow,
   accountError,
   accountNotice,
-  cancelledEmail,
   canMoveTo,
   changeWindowText,
   parseContactForm,
-  rescheduledEmail,
   splitAppointments,
   statusLabel,
 } from "./account";
@@ -40,6 +38,7 @@ function appointment(overrides: Partial<AppointmentRow> = {}): AppointmentRow {
     can_change: true,
     can_reschedule: true,
     invoiced: false,
+    updated_at: madridInstant("2026-10-01", "09:00"),
     ...overrides,
   };
 }
@@ -308,64 +307,6 @@ describe("accountError", () => {
     expect(accountError({ message: "unexpected" })).toBe(
       "No se ha podido guardar. Inténtalo de nuevo.",
     );
-  });
-});
-
-describe("rescheduledEmail", () => {
-  const details = {
-    id: "77777777-7777-7777-7777-777777777777",
-    startsAt: madridInstant("2026-10-02", "09:30"),
-    endsAt: madridInstant("2026-10-02", "10:15"),
-    serviceName: "Sesión de logopedia",
-    professionalName: "Ana García",
-    personName: "Lucía Pérez",
-  };
-
-  it("gives the subject, when, service, professional, for whom and a link back to Mi cuenta", () => {
-    const email = rescheduledEmail(details);
-    expect(email.subject).toBe("Cita confirmada");
-    expect(email.html).toContain("Viernes, 2 de octubre a las 09:30");
-    expect(email.html).toContain("Sesión de logopedia");
-    expect(email.html).toContain("Ana García");
-    expect(email.html).toContain("Lucía Pérez");
-    expect(email.html).toContain(
-      `<a href="${site.url}/mi-cuenta">Ver Mi cuenta</a>`,
-    );
-  });
-
-  it("escapes names typed by patients so they cannot inject markup into the email", () => {
-    const email = rescheduledEmail({ ...details, personName: "<b>Lucía</b>" });
-    expect(email.html).toContain("&lt;b&gt;Lucía&lt;/b&gt;");
-    expect(email.html).not.toContain("<b>Lucía</b>");
-  });
-});
-
-describe("cancelledEmail", () => {
-  const details = {
-    id: "77777777-7777-7777-7777-777777777777",
-    startsAt: madridInstant("2026-10-02", "09:30"),
-    endsAt: madridInstant("2026-10-02", "10:15"),
-    serviceName: "Sesión de logopedia",
-    professionalName: "Ana García",
-    personName: "Lucía Pérez",
-  };
-
-  it("gives the subject, when, service, professional, for whom and a link back to Mi cuenta", () => {
-    const email = cancelledEmail(details);
-    expect(email.subject).toBe("Cita cancelada");
-    expect(email.html).toContain("Viernes, 2 de octubre a las 09:30");
-    expect(email.html).toContain("Sesión de logopedia");
-    expect(email.html).toContain("Ana García");
-    expect(email.html).toContain("Lucía Pérez");
-    expect(email.html).toContain(
-      `<a href="${site.url}/mi-cuenta">Ver Mi cuenta</a>`,
-    );
-  });
-
-  it("escapes names typed by patients so they cannot inject markup into the email", () => {
-    const email = cancelledEmail({ ...details, personName: "<b>Lucía</b>" });
-    expect(email.html).toContain("&lt;b&gt;Lucía&lt;/b&gt;");
-    expect(email.html).not.toContain("<b>Lucía</b>");
   });
 });
 

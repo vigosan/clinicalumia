@@ -16,7 +16,8 @@
     "./tax-id": "./tax-id.ts",
     "./madrid-time": "./madrid-time.ts",
     "./email": "./email.ts",
-    "./ics": "./ics.ts"
+    "./ics": "./ics.ts",
+    "./appointment-notice": "./appointment-notice.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -36,7 +37,8 @@
     "tax-id.ts",
     "madrid-time.ts",
     "email.ts",
-    "ics.ts"
+    "ics.ts",
+    "appointment-notice.ts"
   ],
   "dependencies": {
     "@clinicalumia/db": "workspace:*",

@@ -40,6 +40,7 @@ const cancelledRow = {
   status: "cancelled",
   service_name: "Sesión de logopedia",
   professional_name: "Ana García",
+  updated_at: "2026-09-30T11:00:00+00:00",
 };
 
 const closedRow = {
@@ -54,10 +55,15 @@ const changeableRow = {
   can_change: true,
 };
 
-function answer(results: Record<string, RpcResult>) {
-  rpc.mockImplementation(
-    async (name) => results[name] ?? { data: null, error: null },
-  );
+function answer(results: Record<string, RpcResult | RpcResult[]>) {
+  rpc.mockImplementation(async (name) => {
+    const result = results[name];
+    if (Array.isArray(result))
+      return result.length > 1
+        ? (result.shift() as RpcResult)
+        : (result[0] as RpcResult);
+    return result ?? { data: null, error: null };
+  });
 }
 
 beforeEach(() => {
@@ -66,7 +72,7 @@ beforeEach(() => {
 });
 
 describe("cancelAppointment", () => {
-  it("cancels the appointment, emails the account and goes back to Mi cuenta with the notice", async () => {
+  it("cancels the appointment, emails the account a cancellation of the calendar event and goes back to Mi cuenta with the notice", async () => {
     answer({
       cancel_my_appointment: { data: null, error: null },
       my_appointments: { data: [cancelledRow], error: null },
@@ -85,7 +91,12 @@ describe("cancelAppointment", () => {
     expect(email.subject).toBe("Cita cancelada");
     expect(email.html).toContain("Sesión de logopedia");
     expect(email.html).toContain("Marta &lt;b&gt;Ruiz&lt;/b&gt;");
-    expect(email.attachments).toBeUndefined();
+    const attachment = email.attachments[0];
+    expect(attachment.filename).toBe("cita.ics");
+    expect(attachment.content).toContain("METHOD:CANCEL");
+    expect(attachment.content).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
+    expect(attachment.content).toContain("STATUS:CANCELLED");
+    expect(attachment.content).toContain("SEQUENCE:1790766000");
   });
 
   it("explains that the window closed and sends nothing, because the appointment is still booked", async () => {
@@ -165,13 +176,17 @@ const movedRow = {
   status: "scheduled",
   starts_at: "2026-10-05T08:30:00+00:00",
   ends_at: "2026-10-05T09:15:00+00:00",
+  updated_at: "2026-10-01T08:00:00+00:00",
 };
 
 describe("rescheduleAppointment", () => {
-  it("moves the appointment, sends the account the confirmation with the new time and goes back to Mi cuenta with the notice", async () => {
+  it("moves the appointment, sends the account «Cita cambiada» with the previous and the new time and an update of the calendar event, and goes back to Mi cuenta with the notice", async () => {
     answer({
       reschedule_my_appointment: { data: APPOINTMENT, error: null },
-      my_appointments: { data: [movedRow], error: null },
+      my_appointments: [
+        { data: [changeableRow], error: null },
+        { data: [movedRow], error: null },
+      ],
     });
 
     await expect(
@@ -185,8 +200,13 @@ describe("rescheduleAppointment", () => {
     expect(sendEmail).toHaveBeenCalledTimes(1);
     const email = sendEmail.mock.calls[0]?.[0];
     expect(email.to).toBe("marta@test.local");
-    expect(email.subject).toBe("Cita confirmada");
-    expect(email.html).toContain("Lunes, 5 de octubre a las 10:30");
+    expect(email.subject).toBe("Cita cambiada");
+    expect(email.html).toContain(
+      "<strong>Ahora:</strong> Lunes, 5 de octubre a las 10:30",
+    );
+    expect(email.html).toContain(
+      "<strong>Antes:</strong> Viernes, 2 de octubre a las 09:00",
+    );
     expect(email.html).toContain("Marta &lt;b&gt;Ruiz&lt;/b&gt;");
     const attachment = email.attachments[0];
     expect(attachment.filename).toBe("cita.ics");
@@ -194,6 +214,8 @@ describe("rescheduleAppointment", () => {
     expect(attachment.content).toContain(`UID:${APPOINTMENT}@clinicalumia.es`);
     expect(attachment.content).toContain("DTSTART:20261005T083000Z");
     expect(attachment.content).toContain("DTEND:20261005T091500Z");
+    expect(attachment.content).toContain("METHOD:REQUEST");
+    expect(attachment.content).toContain("SEQUENCE:");
   });
 
   it("goes back to the same days of slots with the warning when someone took the slot meanwhile, so the patient can pick another", async () => {

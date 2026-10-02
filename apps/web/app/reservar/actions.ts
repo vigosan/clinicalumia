@@ -1,14 +1,12 @@
 "use server";
 
-import { sendEmail } from "@clinicalumia/api/email";
+import { sendAppointmentNotice } from "@clinicalumia/api/appointment-notice";
 import { todayInMadrid } from "@clinicalumia/api/madrid-time";
 import { createClient } from "@clinicalumia/api/server";
 import { redirect } from "next/navigation";
 import {
   ANY_PROFESSIONAL,
-  appointmentAttachment,
   type BookingState,
-  bookingConfirmationEmail,
   bookingError,
   bookingState,
   NEW_PERSON,
@@ -114,18 +112,18 @@ async function emailConfirmation(supabase: Client, appointmentId: string) {
     );
     if (!user?.email || !appointment)
       throw new Error(`No se encuentra la cita ${appointmentId} o el email`);
-    const confirmed = {
-      id: appointment.id,
-      startsAt: appointment.starts_at,
-      endsAt: appointment.ends_at,
-      serviceName: appointment.service_name,
-      professionalName: appointment.professional_name,
-      personName: appointment.person_name,
-    };
-    await sendEmail({
-      to: user.email,
-      ...bookingConfirmationEmail(confirmed),
-      attachments: [appointmentAttachment(confirmed, new Date())],
+    await sendAppointmentNotice({
+      recipients: [user.email],
+      notice: { kind: "confirmed" },
+      appointment: {
+        id: appointment.id,
+        startsAt: appointment.starts_at,
+        endsAt: appointment.ends_at,
+        updatedAt: appointment.updated_at,
+        serviceName: appointment.service_name,
+        professionalName: appointment.professional_name,
+        personName: appointment.person_name,
+      },
     });
   } catch (error) {
     console.error("No se ha podido enviar el email de la cita", error);

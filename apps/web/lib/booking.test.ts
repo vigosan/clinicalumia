@@ -1,7 +1,6 @@
 import { madridInstant } from "@clinicalumia/api/madrid-time";
 import { describe, expect, it } from "vitest";
 import {
-  bookingConfirmationEmail,
   bookingError,
   bookingState,
   firstFreeSlots,
@@ -13,7 +12,6 @@ import {
   personError,
   personWarning,
 } from "./booking";
-import { site } from "./site";
 
 function form(values: Record<string, string>) {
   const data = new FormData();
@@ -444,37 +442,5 @@ describe("firstFreeSlots", () => {
       { starts_at: nine, professional_id: "p1" },
       { starts_at: quarter, professional_id: "p2" },
     ]);
-  });
-});
-
-describe("bookingConfirmationEmail", () => {
-  const appointment = {
-    id: "77777777-7777-7777-7777-777777777777",
-    startsAt: madridInstant("2026-10-02", "09:30"),
-    endsAt: madridInstant("2026-10-02", "10:15"),
-    serviceName: "Sesión de logopedia",
-    professionalName: "Ana García",
-    personName: "Lucía Pérez",
-  };
-
-  it("tells the date and time in Madrid, what, with whom and for whom, so the patient can check it without opening the web", () => {
-    const email = bookingConfirmationEmail(appointment);
-    expect(email.subject).toBe("Cita confirmada");
-    expect(email.html).toContain("Viernes, 2 de octubre a las 09:30");
-    expect(email.html).toContain("Sesión de logopedia");
-    expect(email.html).toContain("Ana García");
-    expect(email.html).toContain("Lucía Pérez");
-    expect(email.html).toContain(
-      `Puedes verla o cambiarla en <a href="${site.url}/mi-cuenta">Mi cuenta</a>.`,
-    );
-  });
-
-  it("escapes names typed by patients so they cannot inject markup into the email", () => {
-    const email = bookingConfirmationEmail({
-      ...appointment,
-      personName: "<b>Lucía</b>",
-    });
-    expect(email.html).toContain("&lt;b&gt;Lucía&lt;/b&gt;");
-    expect(email.html).not.toContain("<b>Lucía</b>");
   });
 });
