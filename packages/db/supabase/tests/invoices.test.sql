@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(297);
+select plan(298);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1477,10 +1477,20 @@ select throws_ok(
   $$ select public.correct_full_invoice_recipient(pg_temp.id_of('wrong_full'),
        '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
   'P0001', 'invoice_series_not_configured',
-  'when the new full invoice cannot be numbered after the rectifying one, the correction fails');
+  'when the new full invoice cannot be numbered, the correction fails');
 reset role;
 set local session_replication_role = replica;
-update public.invoice_series set configured = true where code = 'main' and year = pg_temp.this_year();
+update public.invoice_series set configured = false where code = 'rectifying' and year = pg_temp.this_year();
+set local session_replication_role = origin;
+select pg_temp.act_as('8b000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$ select public.correct_full_invoice_recipient(pg_temp.id_of('wrong_full'),
+       '{"name": "Talleres Auditoría S.L.", "tax_id": "B98765431", "address": "Polígono Sur 4", "postal_code": "46800", "city": "Xàtiva"}') $$,
+  'P0001', 'invoice_series_not_configured',
+  'the main series is reserved before the rectifying one, the same lock order as a charge, so a correction and a charge at the cash desk never deadlock');
+reset role;
+set local session_replication_role = replica;
+update public.invoice_series set configured = true where code in ('main', 'rectifying') and year = pg_temp.this_year();
 set local session_replication_role = origin;
 select results_eq(
   $$ select (select count(*) from public.invoices where rectifies_invoice_id = pg_temp.id_of('wrong_full')),
