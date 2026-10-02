@@ -1,10 +1,28 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { signIn } from "./auth";
 
 const DASHBOARD = "http://localhost:3001";
 const OWNER = "info@clinicalumia.es";
 
 test.use({ viewport: { width: 1440, height: 900 } });
+
+async function openPendingAppointment(page: Page) {
+  await signIn(page, DASHBOARD, OWNER);
+  await page.goto(`${DASHBOARD}/cobros?tab=pendientes`);
+  const row = page.getByTestId("pending-payment-row").first();
+  await expect(row).toBeVisible();
+  const box = await row.boundingBox();
+  await row.click({
+    force: true,
+    position: { x: (box?.width ?? 0) * 0.55, y: (box?.height ?? 0) / 2 },
+  });
+  const panel = page.getByTestId("appointment-panel");
+  await expect(panel).toBeVisible();
+  await panel.evaluate((element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished)),
+  );
+  return panel;
+}
 
 test("the week fits on a laptop screen, so Sunday is never cut off behind a horizontal scroll", async ({
   page,
@@ -94,6 +112,47 @@ test("pending amounts line up on the right with fixed-width digits, so they can 
   }
 });
 
+test("the appointment sheet is 440 px wide with 24/28 padding over a light veil without blur, so the agenda behind it can still be read", async ({
+  page,
+}) => {
+  const panel = await openPendingAppointment(page);
+
+  const sheet = await panel.evaluate((element) => {
+    const computed = getComputedStyle(element);
+    const box = element.getBoundingClientRect();
+    return {
+      width: box.width,
+      right: box.right,
+      top: computed.paddingTop,
+      bottom: computed.paddingBottom,
+      left: computed.paddingLeft,
+      inlineEnd: computed.paddingRight,
+    };
+  });
+  expect(sheet).toEqual({
+    width: 440,
+    right: 1440,
+    top: "24px",
+    bottom: "24px",
+    left: "28px",
+    inlineEnd: "28px",
+  });
+
+  const veil = await page
+    .getByTestId("drawer-overlay")
+    .evaluate((element) => getComputedStyle(element));
+  expect(veil.backdropFilter).toBe("none");
+  expect(veil.backgroundColor).toMatch(/[ ,/] ?0\.2\)$/);
+
+  const panelBox = await panel.boundingBox();
+  const actions = await page
+    .getByTestId("appointment-panel-actions")
+    .boundingBox();
+  expect(actions?.x).toBe((panelBox?.x ?? 0) + 1);
+  expect((actions?.x ?? 0) + (actions?.width ?? 0)).toBe(1440);
+  expect((actions?.y ?? 0) + (actions?.height ?? 0)).toBe(900);
+});
+
 test("clicking anywhere on a pending row opens its appointment, not only on the underlined date", async ({
   page,
 }) => {
@@ -131,6 +190,48 @@ test("clicking anywhere on a patient row opens the record", async ({
 
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the appointment sheet rises from the bottom as a 92 % sheet with 20 px top corners and a 36×5 grabber, with its actions flush at the foot", async ({
+    page,
+  }) => {
+    const panel = await openPendingAppointment(page);
+
+    const sheet = await panel.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      return {
+        left: box.left,
+        width: box.width,
+        bottom: box.bottom,
+        height: box.height,
+        corner: computed.borderTopLeftRadius,
+        otherCorner: computed.borderTopRightRadius,
+      };
+    });
+    expect(sheet.left).toBe(0);
+    expect(sheet.width).toBe(390);
+    expect(sheet.bottom).toBe(844);
+    expect(sheet.height).toBeCloseTo(844 * 0.92, 0);
+    expect(sheet.corner).toBe("20px");
+    expect(sheet.otherCorner).toBe("20px");
+
+    const grabber = panel.getByTestId("drawer-grabber");
+    await expect(grabber).toHaveAttribute("aria-hidden", "true");
+    const grabberBox = await grabber.boundingBox();
+    expect(grabberBox?.width).toBe(36);
+    expect(grabberBox?.height).toBe(5);
+    expect((grabberBox?.x ?? 0) + (grabberBox?.width ?? 0) / 2).toBeCloseTo(
+      195,
+      0,
+    );
+
+    const actions = await page
+      .getByTestId("appointment-panel-actions")
+      .boundingBox();
+    expect(actions?.x).toBe(0);
+    expect(actions?.width).toBe(390);
+    expect((actions?.y ?? 0) + (actions?.height ?? 0)).toBe(844);
+  });
 
   test("patients read as a compact list, so many more fit on one screen than with label/value cards", async ({
     page,

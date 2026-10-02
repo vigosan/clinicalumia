@@ -122,6 +122,14 @@ describe("Drawer", () => {
     expectExitThatOnlyFadesWithReducedMotion(screen.getByRole("dialog"));
   });
 
+  it("shows a grabber that screen readers skip, since it only hints the sheet on a phone and dragging it does nothing", () => {
+    render(<Example />);
+
+    const grabber = screen.getByTestId("drawer-grabber");
+    expect(screen.getByRole("dialog")).toContainElement(grabber);
+    expect(grabber).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("places header actions beside the close button, so moving between records stays in the same corner as closing", () => {
     render(
       <Drawer

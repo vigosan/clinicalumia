@@ -386,7 +386,10 @@ function AppointmentDetails({
       </div>
 
       {(canCancel || canMarkNoShow || canRestore || error) && (
-        <div className="sticky bottom-0 -mx-5 -mb-[max(1.25rem,env(safe-area-inset-bottom))] mt-auto flex flex-col gap-2 border-line border-t bg-surface px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:-mb-6 sm:px-6 sm:pb-3">
+        <div
+          data-testid="appointment-panel-actions"
+          className="sticky -bottom-[max(1.25rem,env(safe-area-inset-bottom))] -mx-5 -mb-[max(1.25rem,env(safe-area-inset-bottom))] mt-auto flex flex-col gap-2 border-line border-t bg-surface px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-bottom-6 sm:-mx-7 sm:-mb-6 sm:px-7 sm:pb-3"
+        >
           {error && (
             <p
               role="alert"

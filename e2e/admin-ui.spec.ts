@@ -589,7 +589,7 @@ test("the specialty form opens from the right on a computer and from the bottom 
       return {
         bottom: Math.round(box.y + box.height),
         width: Math.round(box.width),
-        fits: box.height <= 844 * 0.9 + 1,
+        fits: box.height <= 844 * 0.92 + 1,
       };
     })
     .toEqual({ bottom: 844, width: 390, fits: true });
