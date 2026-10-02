@@ -334,7 +334,12 @@ test("una empleada no ve «Anular cobro» en el cobro que registró otra persona
   await expect(page.getByTestId("payment-void")).toHaveCount(0);
 });
 
-test("una cita futura se puede cobrar por adelantado y, ya facturada, no se puede mover sin anular antes el cobro y al cancelarla se avisa de la factura", async ({
+function shortToday(): string {
+  const today = todayInMadrid();
+  return `${today.slice(8, 10)}/${today.slice(5, 7)}`;
+}
+
+test("una cita futura cobrada por adelantado se mueve a otra hora sin anular el cobro, la factura no cambia y el panel dice cuándo se emitió", async ({
   page,
 }) => {
   const date = addDays(todayInMadrid(), 5);
@@ -349,22 +354,77 @@ test("una cita futura se puede cobrar por adelantado y, ya facturada, no se pued
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
     "Cobrada · 55,00 € · Tarjeta",
   );
+  const invoiceCode = await page.getByTestId("invoice-code").textContent();
 
   await pickTime(page.getByTestId("appointment-move-time"), "12:00");
   await page.getByTestId("appointment-move").click();
   await page.getByTestId("appointment-confirm").click();
+
   await expect(
-    page
-      .getByTestId("appointment-move-form")
-      .getByTestId("appointment-action-error"),
-  ).toHaveText(
-    "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
+    page.getByTestId("toast").filter({ hasText: "Cita cambiada" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("appointment-panel-date")).toContainText(
+    "12:00",
+  );
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    "Movida de",
+  );
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Cobrada · 55,00 € · Tarjeta",
+  );
+  await expect(page.getByTestId("invoice-code")).toHaveText(invoiceCode!);
+  await expect(page.getByTestId("invoice-issued")).toHaveText(
+    `Factura emitida el ${shortToday()}`,
+  );
+});
+
+test("cancelar una cita cobrada con «Emitir rectificativa» la cancela y anula el cobro en un solo paso, sin pasar por Facturas", async ({
+  page,
+}) => {
+  const date = addDays(todayInMadrid(), 6);
+  const employee = await createEmployee("Profesional Cobro Cancelar");
+  const appointmentId = await createAppointment(employee.id, date);
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await openAppointment(page, date, appointmentId);
+  await collect(page, "card");
+  await expect(page.getByTestId("appointment-payment-status")).toHaveText(
+    "Cobrada · 55,00 € · Tarjeta",
   );
 
   await page.getByTestId("appointment-cancel").click();
-  await expect(page.getByTestId("cancel-invoiced-warning")).toHaveText(
-    "Esta cita está cobrada y facturada. Si hay que devolver el importe, anula el cobro (se emitirá una rectificativa).",
+  await expect(page.getByTestId("cancel-invoiced-warning")).toContainText(
+    "Esta cita está cobrada y facturada.",
   );
+  await expect(page.getByTestId("cancel-confirm")).toHaveText("Cancelar cita");
+  await page.getByTestId("cancel-rectify").check();
+  await expect(page.getByTestId("cancel-confirm")).toHaveText(
+    "Emitir rectificativa y cancelar",
+  );
+  await page.getByTestId("cancel-reason").fill("No puede venir");
+  await page.getByTestId("cancel-confirm").click();
+
+  await expect(
+    page
+      .getByTestId("toast")
+      .filter({ hasText: "Cita cancelada y rectificativa emitida" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("appointment-status")).toHaveText("Cancelada");
+  await expect(page.getByTestId("appointment-history")).toContainText(
+    `Cobro anulado · No puede venir por ${employee.fullName} el`,
+  );
+
+  const { data: payment, error } = await admin
+    .from("payments")
+    .select("voided_at, invoices(kind)")
+    .eq("appointment_id", appointmentId)
+    .single();
+  expect(error).toBeNull();
+  expect(payment!.voided_at).not.toBeNull();
+  expect(payment!.invoices.map((invoice) => invoice.kind).sort()).toEqual([
+    "rectifying",
+    "simplified",
+  ]);
 });
 
 test("si dos pestañas cobran la misma cita a la vez, solo una lo consigue y la otra se actualiza para mostrarla cobrada", async ({

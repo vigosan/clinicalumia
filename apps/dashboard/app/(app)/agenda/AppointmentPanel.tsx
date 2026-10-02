@@ -12,7 +12,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { formatMinutes } from "@/lib/duration";
-import type { CurrentInvoice, RecipientDraft } from "@/lib/invoices";
+import {
+  type CurrentInvoice,
+  invoiceIssuedLabel,
+  type RecipientDraft,
+} from "@/lib/invoices";
 import { paymentToastMessage } from "@/lib/payment-candidates";
 import type { PaymentMethod } from "@/lib/payments";
 import { markNoShow, restoreFromNoShow } from "../appointments/actions";
@@ -261,6 +265,12 @@ export function AppointmentPanel({
             <p className="text-[13px] text-ink-800" data-testid="invoice-code">
               Factura {appointment.invoice.code}
             </p>
+            <p
+              className="text-[13px] text-ink-800"
+              data-testid="invoice-issued"
+            >
+              {invoiceIssuedLabel(appointment.invoice.issuedAt)}
+            </p>
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="secondary" size="sm">
                 <a
@@ -304,7 +314,8 @@ export function AppointmentPanel({
           {appointment.canCancel && (
             <CancelDialog
               appointmentId={appointment.id}
-              invoiced={appointment.invoice !== null}
+              invoiceId={appointment.invoice?.id ?? null}
+              canRectify={appointment.canVoid}
               canNotify={appointment.canNotify}
               disabled={moving}
             />

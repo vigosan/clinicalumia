@@ -9,17 +9,21 @@ import { Textarea } from "@clinicalumia/ui/textarea";
 import { toast } from "@clinicalumia/ui/toast";
 import { useRef, useState, useTransition } from "react";
 import { NOTICE_FAILED } from "@/lib/notice-toast";
+import type { PaymentFailure } from "@/lib/payments";
 import { createSubmitGate } from "@/lib/submit-gate";
 import { cancelAppointment } from "../appointments/actions";
+import { ActionError } from "./ActionError";
 
 export function CancelDialog({
   appointmentId,
-  invoiced,
+  invoiceId,
+  canRectify,
   canNotify,
   disabled,
 }: {
   appointmentId: string;
-  invoiced: boolean;
+  invoiceId: string | null;
+  canRectify: boolean;
   canNotify: boolean;
   disabled: boolean;
 }) {
@@ -27,9 +31,12 @@ export function CancelDialog({
   const [by, setBy] = useState<"patient" | "clinic">("patient");
   const [reason, setReason] = useState("");
   const [notify, setNotify] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [rectify, setRectify] = useState(false);
+  const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
   const submitGateRef = useRef(createSubmitGate());
+
+  const rectifying = invoiceId !== null && canRectify && rectify;
 
   function handleConfirm() {
     if (!submitGateRef.current.tryStart()) return;
@@ -39,19 +46,19 @@ export function CancelDialog({
         by,
         reason,
         canNotify && notify,
+        rectifying ? (invoiceId ?? undefined) : undefined,
       );
       submitGateRef.current.finish();
       if ("error" in result) {
-        setError(result.error);
+        setFailure(result);
         return;
       }
-      setError(null);
+      setFailure(null);
       setOpen(false);
-      toast(
-        result.noticeFailed
-          ? `Cita cancelada. ${NOTICE_FAILED}`
-          : "Cita cancelada",
-      );
+      const done = rectifying
+        ? "Cita cancelada y rectificativa emitida"
+        : "Cita cancelada";
+      toast(result.noticeFailed ? `${done}. ${NOTICE_FAILED}` : done);
     });
   }
 
@@ -71,7 +78,13 @@ export function CancelDialog({
       }
       title="¿Cancelar esta cita?"
       description="Esta acción no se puede deshacer."
-      confirmLabel={pending ? "Cancelando…" : "Cancelar cita"}
+      confirmLabel={
+        pending
+          ? "Cancelando…"
+          : rectifying
+            ? "Emitir rectificativa y cancelar"
+            : "Cancelar cita"
+      }
       cancelLabel="Volver"
       confirmTestId="cancel-confirm"
       open={open}
@@ -79,15 +92,24 @@ export function CancelDialog({
       closeOnConfirm={false}
       onConfirm={handleConfirm}
     >
-      {invoiced && (
+      {invoiceId && (
         <p
           role="alert"
           data-testid="cancel-invoiced-warning"
           className="text-[13px] text-ink-900"
         >
-          Esta cita está cobrada y facturada. Si hay que devolver el importe,
-          anula el cobro (se emitirá una rectificativa).
+          {canRectify
+            ? "Esta cita está cobrada y facturada. Si hay que devolver el importe, emite la rectificativa al cancelar."
+            : "Esta cita está cobrada y facturada. Si hay que devolver el importe, avisa a la propietaria: solo puede emitir la rectificativa quien registró el cobro hoy o la propietaria."}
         </p>
+      )}
+      {invoiceId && canRectify && (
+        <CheckboxField
+          label="Emitir rectificativa (devuelve el importe y anula el cobro)"
+          data-testid="cancel-rectify"
+          checked={rectify}
+          onChange={(event) => setRectify(event.target.checked)}
+        />
       )}
       <RadioCards
         label="¿Quién cancela?"
@@ -118,14 +140,8 @@ export function CancelDialog({
           onChange={(event) => setNotify(event.target.checked)}
         />
       )}
-      {error && (
-        <p
-          role="alert"
-          data-testid="appointment-action-error"
-          className="text-[13px] text-danger-600"
-        >
-          {error}
-        </p>
+      {failure && (
+        <ActionError failure={failure} testId="appointment-action-error" />
       )}
     </ConfirmDialog>
   );

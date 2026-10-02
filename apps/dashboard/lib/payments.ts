@@ -148,7 +148,8 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   not_allowed:
     "Solo puede anular este cobro quien lo registró hoy o la propietaria.",
   already_voided: "Este cobro ya está anulado.",
-  appointment_not_found: "Esta cita ya no está disponible.",
+  appointment_not_found:
+    "Solo la profesional de la cita o la propietaria pueden cobrarla.",
   payment_not_found: "Este cobro ya no está disponible.",
   full_invoice_required:
     "Este importe supera los 400 € de una factura simplificada: completa los datos del destinatario para emitir la factura completa.",

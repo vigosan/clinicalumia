@@ -456,10 +456,10 @@ describe("paymentError", () => {
     );
   });
 
-  it("says the appointment is no longer available when it was deleted or belongs to someone else, instead of a vague save failure", () => {
+  it("says who may charge the appointment when a colleague tries to, since only its professional or the owner can, and a vague «no disponible» sent her looking for a bug", () => {
     expect(
       paymentError({ code: "P0001", message: "appointment_not_found" }),
-    ).toBe("Esta cita ya no está disponible.");
+    ).toBe("Solo la profesional de la cita o la propietaria pueden cobrarla.");
   });
 
   it("says the payment is no longer available when it cannot be found, instead of a vague save failure", () => {

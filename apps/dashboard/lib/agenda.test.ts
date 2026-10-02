@@ -8,6 +8,7 @@ import {
   isUuid,
   layoutDay,
   parseAppointmentForm,
+  pastTimeWarnings,
   professionalOptions,
   scheduleWarnings,
   specialtyTone,
@@ -605,6 +606,26 @@ describe("canMarkNoShow", () => {
   });
 });
 
+describe("pastTimeWarnings", () => {
+  const now = new Date("2026-07-15T10:00:00Z");
+
+  it("warns when the new appointment starts at a time that has already passed, since it would show up as done and pending payment", () => {
+    expect(pastTimeWarnings("2026-07-15T09:59:00Z", now)).toEqual([
+      "Esa hora ya ha pasado.",
+    ]);
+  });
+
+  it("warns when it starts right now, because by the time it is saved it has begun", () => {
+    expect(pastTimeWarnings("2026-07-15T10:00:00Z", now)).toEqual([
+      "Esa hora ya ha pasado.",
+    ]);
+  });
+
+  it("says nothing for a time still to come", () => {
+    expect(pastTimeWarnings("2026-07-15T10:01:00Z", now)).toEqual([]);
+  });
+});
+
 describe("canMove", () => {
   it("allows moving only while the appointment is still in the future", () => {
     const now = new Date("2026-07-15T10:00:00Z");
@@ -646,14 +667,6 @@ describe("appointmentError", () => {
       appointmentError({ code: "23514", message: "appointment_not_started" }),
     ).toBe(
       "Solo se puede marcar como no presentada cuando la cita ya ha empezado.",
-    );
-  });
-
-  it("explains how to change an invoiced appointment, since moving it would contradict the date on its invoice", () => {
-    expect(
-      appointmentError({ code: "23514", message: "appointment_invoiced" }),
-    ).toBe(
-      "Esta cita ya está cobrada y facturada. Para cambiarla, anula el cobro (se emitirá una rectificativa) y vuelve a cobrarla después.",
     );
   });
 

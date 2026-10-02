@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(234);
+select plan(242);
 
 create or replace function pg_temp.create_test_session(user_id uuid) returns uuid language sql security definer as $$
   insert into auth.sessions (id, user_id, created_at, updated_at)
@@ -1079,11 +1079,32 @@ select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001d1', 3000,
   'a session paid in advance gets its invoice at once');
 select isnt(public.collect_payment('8b000000-0000-0000-0000-0000000001d2', 0, 'cash', 'Invitación'), null,
   'a free session paid in advance issues no invoice');
-select throws_ok(
-  $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '09:00'), ends_at = pg_temp.at_madrid(6, '09:30')
+select lives_ok(
+  $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '11:00'), ends_at = pg_temp.at_madrid(6, '11:30')
      where id = '8b000000-0000-0000-0000-0000000001d1' $$,
-  '23514', 'appointment_invoiced',
-  'an invoiced appointment cannot be moved, because its invoice states the session date');
+  'a session paid in advance can be moved by the team, because the charge is an advance and the patient often calls to change the day');
+select is((select starts_at from public.appointments where id = '8b000000-0000-0000-0000-0000000001d1'), pg_temp.at_madrid(6, '11:00'),
+  'the paid appointment really is at its new time, not silently left where it was');
+select is((pg_temp.invoice_of('8b000000-0000-0000-0000-0000000001d1')).snapshot->'lines'->0->>'session_date',
+  to_char(pg_temp.at_madrid(5, '09:00') at time zone 'Europe/Madrid', 'YYYY-MM-DD'),
+  'moving a paid appointment leaves its invoice untouched, since an issued invoice can never change');
+select is((select count(*)::int from public.invoices i join public.payments p on p.id = i.payment_id
+           where p.appointment_id = '8b000000-0000-0000-0000-0000000001d1'), 1,
+  'moving a paid appointment issues no rectifying or new invoice, so a change of day leaves no fiscal noise');
+select is((select count(*)::int from public.appointment_events
+           where appointment_id = '8b000000-0000-0000-0000-0000000001d1' and kind = 'moved'
+             and previous_starts_at = pg_temp.at_madrid(5, '09:00')), 1,
+  'the history still records the move of a paid appointment, so anyone can see why its invoice states another day');
+select throws_ok(
+  $$ update public.appointments set patient_id = '8b000000-0000-0000-0000-0000000000c2'
+     where id = '8b000000-0000-0000-0000-0000000001d1' $$,
+  '23514', 'appointment_immutable_fields',
+  'a paid appointment cannot be handed to another patient, because its invoice names who received the session');
+select throws_ok(
+  $$ update public.appointments set service_id = '8b000000-0000-0000-0000-0000000000b1'
+     where id = '8b000000-0000-0000-0000-0000000001d1' $$,
+  '23514', 'appointment_immutable_fields',
+  'a paid appointment cannot change service, because its invoice states the service and its price');
 select lives_ok(
   $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '10:00'), ends_at = pg_temp.at_madrid(6, '10:30')
      where id = '8b000000-0000-0000-0000-0000000001d2' $$,
@@ -1093,11 +1114,17 @@ select lives_ok(
   'other changes to an invoiced appointment are still allowed');
 
 select pg_temp.act_as('8b000000-0000-0000-0000-000000000003');
-select throws_ok(
+select lives_ok(
   $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000002'
      where id = '8b000000-0000-0000-0000-0000000001d1' $$,
-  '23514', 'appointment_invoiced',
-  'an invoiced appointment is not handed to another professional, because its invoice names who attends it');
+  'the owner can hand a paid appointment to another professional, just like moving it, because the invoice belongs to the clinic');
+select is((select professional_id from public.appointments where id = '8b000000-0000-0000-0000-0000000001d1'),
+  '8b000000-0000-0000-0000-000000000002'::uuid,
+  'the paid appointment really changes professional');
+select lives_ok(
+  $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000001'
+     where id = '8b000000-0000-0000-0000-0000000001d1' $$,
+  'and the owner can give it back to the professional who charged it');
 select lives_ok(
   $$ update public.appointments set professional_id = '8b000000-0000-0000-0000-000000000002'
      where id = '8b000000-0000-0000-0000-0000000001d2' $$,
@@ -1108,7 +1135,7 @@ select isnt(public.issue_rectifying_invoice((pg_temp.invoice_of('8b000000-0000-0
 select lives_ok(
   $$ update public.appointments set starts_at = pg_temp.at_madrid(6, '09:00'), ends_at = pg_temp.at_madrid(6, '09:30')
      where id = '8b000000-0000-0000-0000-0000000001d1' $$,
-  'once the invoice is rectified the appointment can be moved and charged again');
+  'once the invoice is rectified the appointment can still be moved and charged again');
 reset role;
 
 update public.clinic_settings set address_line = '', postal_code = '', city = '';

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpcResults: Record<string, { data: unknown; error: unknown }> = {
   staff_directory: {
@@ -151,6 +151,8 @@ function appointmentForm(overrides: Record<string, string> = {}) {
 
 describe("createAppointment", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T08:00:00Z"));
     rpc.mockClear();
     rpcResults.staff_directory = {
       data: [
@@ -184,6 +186,10 @@ describe("createAppointment", () => {
     updateSelect.mockClear();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns the parser's error for an invalid form without touching the database", async () => {
     expect(
       await createAppointment(undefined, appointmentForm({ patient_id: "" })),
@@ -199,6 +205,30 @@ describe("createAppointment", () => {
       warnings: ["Queda fuera del horario de Marc Ejemplo."],
     });
     expect(appointmentsInsert).not.toHaveBeenCalled();
+  });
+
+  it("asks for confirmation before giving an appointment at a time that has already passed, because it would show up as done and pending payment", async () => {
+    schedulesResult.data = [
+      { weekday: 1, starts_at: "09:00:00", ends_at: "20:00:00" },
+    ];
+
+    expect(
+      await createAppointment(
+        undefined,
+        appointmentForm({ date: "2026-09-28", time: "10:00" }),
+      ),
+    ).toEqual({ warnings: ["Esa hora ya ha pasado."] });
+    expect(appointmentsInsert).not.toHaveBeenCalled();
+  });
+
+  it("gives the past appointment once the team confirms it, since recording a session that already happened is legitimate", async () => {
+    await expect(
+      createAppointment(
+        undefined,
+        appointmentForm({ date: "2026-09-28", time: "10:00", confirm: "1" }),
+      ),
+    ).rejects.toThrow("REDIRECT:/?date=2026-09-28&appointment=appt-1");
+    expect(appointmentsInsert).toHaveBeenCalledTimes(1);
   });
 
   it("inserts and redirects when the caller confirms", async () => {
@@ -613,6 +643,70 @@ describe("cancelAppointment", () => {
     appointmentsUpdate.mockClear();
     updateEq.mockClear();
     updateSelect.mockClear();
+    rpc.mockClear();
+    delete rpcResults.issue_rectifying_invoice;
+    delete rpcResults.is_owner;
+  });
+
+  it("issues the rectifying invoice and then cancels, so a paid session is refunded in one step without going to Facturas", async () => {
+    rpcResults.issue_rectifying_invoice = { data: "rect-1", error: null };
+
+    expect(
+      await cancelAppointment(
+        "appt-1",
+        "patient",
+        " No puede venir ",
+        false,
+        "invoice-1",
+      ),
+    ).toEqual({ ok: true, noticeFailed: false });
+    expect(rpc).toHaveBeenCalledWith("issue_rectifying_invoice", {
+      p_invoice_id: "invoice-1",
+      p_reason: "No puede venir",
+    });
+    expect(appointmentsUpdate).toHaveBeenCalledWith({
+      status: "cancelled",
+      cancelled_by: "patient",
+      cancel_reason: " No puede venir ",
+    });
+    const [rectifiedAt] = rpc.mock.invocationCallOrder;
+    const [cancelledAt] = appointmentsUpdate.mock.invocationCallOrder;
+    expect(rectifiedAt).toBeLessThan(cancelledAt ?? 0);
+  });
+
+  it("gives the rectifying invoice a reason even when the cancellation has none, since an invoice always needs one", async () => {
+    rpcResults.issue_rectifying_invoice = { data: "rect-1", error: null };
+
+    await cancelAppointment("appt-1", "clinic", "  ", false, "invoice-1");
+
+    expect(rpc).toHaveBeenCalledWith("issue_rectifying_invoice", {
+      p_invoice_id: "invoice-1",
+      p_reason: "Cita cancelada",
+    });
+  });
+
+  it("leaves the appointment untouched when the rectifying invoice fails, so nothing is half done", async () => {
+    rpcResults.issue_rectifying_invoice = {
+      data: null,
+      error: { code: "P0001", message: "not_allowed" },
+    };
+
+    expect(
+      await cancelAppointment("appt-1", "clinic", "", false, "invoice-1"),
+    ).toEqual({
+      error:
+        "Solo puede anular este cobro quien lo registró hoy o la propietaria.",
+    });
+    expect(appointmentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it("issues no rectifying invoice when the team cancels without refunding", async () => {
+    await cancelAppointment("appt-1", "clinic", "", false);
+
+    expect(rpc).not.toHaveBeenCalledWith(
+      "issue_rectifying_invoice",
+      expect.anything(),
+    );
   });
 
   it("cancels with the reason and who cancelled", async () => {

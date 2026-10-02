@@ -1039,6 +1039,38 @@ test("un sábado da el aviso «Queda fuera del horario» y, tras «Dar la cita i
   createdAppointmentIds.push(appointmentIdFrom(page));
 });
 
+test("dar una cita a una hora que ya ha pasado pide confirmación y, tras «Dar la cita igualmente», se guarda", async ({
+  page,
+}) => {
+  const date = pastDate(130 + Math.floor(Math.random() * 30));
+  const employee = await createThrowawayUser({
+    fullName: "Profesional Hora Pasada",
+    role: "employee",
+    specialtyId: PSICOLOGIA_SPECIALTY_ID,
+  });
+
+  await signIn(page, DASHBOARD, employee.email, employee.password);
+  await page.goto(
+    `${DASHBOARD}/appointments/new?date=${date}&time=11:00&professional=${employee.id}`,
+  );
+  await selectNora(page);
+  await selectOption(
+    page.getByTestId("appointment-service"),
+    PSICOLOGIA_SERVICE_ID,
+  );
+  await page.getByTestId("appointment-submit").click();
+
+  await expect(page.getByTestId("appointment-warnings")).toContainText(
+    "Esa hora ya ha pasado.",
+  );
+  await expect(page).toHaveURL(/\/appointments\/new\?/);
+
+  await page.getByTestId("appointment-confirm").click();
+
+  await page.waitForURL(/\/\?date=/);
+  createdAppointmentIds.push(appointmentIdFrom(page));
+});
+
 test("hacer doble clic en Guardar crea una sola cita", async ({ page }) => {
   const date = dateWithWeekday(63, [1, 2, 3, 4, 5]);
   const employee = await createThrowawayUser({

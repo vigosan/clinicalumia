@@ -11,6 +11,7 @@ import {
   appointmentError,
   isPatientOverlap,
   parseAppointmentForm,
+  pastTimeWarnings,
   scheduleWarnings,
 } from "@/lib/agenda";
 import {
@@ -20,6 +21,8 @@ import {
 } from "@/lib/appointment-notice";
 import { closureOn, loadClosures } from "@/lib/closures";
 import { NOTICE_FAILED_PARAM } from "@/lib/notice-toast";
+import { failureFor } from "@/lib/payment-failure";
+import type { PaymentFailure } from "@/lib/payments";
 
 export type AppointmentFormState =
   | { error: string }
@@ -173,7 +176,11 @@ export async function createAppointment(
       appointment,
     );
     if ("error" in result) return result;
-    if (result.warnings.length > 0) return { warnings: result.warnings };
+    const warnings = [
+      ...pastTimeWarnings(appointment.starts_at, new Date()),
+      ...result.warnings,
+    ];
+    if (warnings.length > 0) return { warnings };
   }
 
   const { data, error } = await supabase
@@ -332,11 +339,23 @@ export async function cancelAppointment(
   by: "patient" | "clinic",
   reason: string,
   notify: boolean,
-): Promise<{ ok: true; noticeFailed: boolean } | { error: string }> {
+  rectifyInvoiceId?: string,
+): Promise<{ ok: true; noticeFailed: boolean } | PaymentFailure> {
   if (reason.length > 2000)
     return { error: "El motivo no puede superar los 2000 caracteres." };
 
   const supabase = await createClient();
+  if (rectifyInvoiceId) {
+    const { error: rectifyError } = await supabase.rpc(
+      "issue_rectifying_invoice",
+      {
+        p_invoice_id: rectifyInvoiceId,
+        p_reason: reason.trim() || "Cita cancelada",
+      },
+    );
+    if (rectifyError) return failureFor(supabase, rectifyError);
+    revalidatePath("/facturas");
+  }
   const { data, error } = await supabase
     .from("appointments")
     .update({ status: "cancelled", cancelled_by: by, cancel_reason: reason })

@@ -101,7 +101,7 @@ async function loadAppointmentDetail(
     supabase
       .from("payments")
       .select(
-        "id, amount_cents, method, note, collected_at, collected_by, voided_at, voided_by, void_reason, invoices(id, code, kind, status)",
+        "id, amount_cents, method, note, collected_at, collected_by, voided_at, voided_by, void_reason, invoices(id, code, kind, status, issued_at)",
       )
       .eq("appointment_id", appointmentId)
       .order("collected_at", { ascending: true }),

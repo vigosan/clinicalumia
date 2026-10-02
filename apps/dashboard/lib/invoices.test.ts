@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   currentInvoice,
   invoiceEmailHtml,
+  invoiceIssuedLabel,
   normalizeEmail,
   proposedInvoiceEmail,
   recipientDraft,
@@ -28,22 +29,58 @@ describe("currentInvoice", () => {
   it("picks the full invoice over the simplified one it replaced, because that is the one that counts now", () => {
     expect(
       currentInvoice([
-        { id: "s1", code: "1/26", kind: "simplified", status: "replaced" },
-        { id: "f2", code: "2/26", kind: "full", status: "issued" },
+        {
+          id: "s1",
+          code: "1/26",
+          kind: "simplified",
+          status: "replaced",
+          issued_at: "2026-10-01T09:00:00+00:00",
+        },
+        {
+          id: "f2",
+          code: "2/26",
+          kind: "full",
+          status: "issued",
+          issued_at: "2026-10-02T09:00:00+00:00",
+        },
       ]),
-    ).toEqual({ id: "f2", code: "2/26", kind: "full" });
+    ).toEqual({
+      id: "f2",
+      code: "2/26",
+      kind: "full",
+      issuedAt: "2026-10-02T09:00:00+00:00",
+    });
   });
 
   it("returns the simplified invoice while it has not been replaced", () => {
     expect(
       currentInvoice([
-        { id: "s1", code: "1/26", kind: "simplified", status: "issued" },
+        {
+          id: "s1",
+          code: "1/26",
+          kind: "simplified",
+          status: "issued",
+          issued_at: "2026-10-01T09:00:00+00:00",
+        },
       ]),
-    ).toEqual({ id: "s1", code: "1/26", kind: "simplified" });
+    ).toEqual({
+      id: "s1",
+      code: "1/26",
+      kind: "simplified",
+      issuedAt: "2026-10-01T09:00:00+00:00",
+    });
   });
 
   it("returns nothing for a payment without invoice, such as a free session", () => {
     expect(currentInvoice([])).toBeNull();
+  });
+});
+
+describe("invoiceIssuedLabel", () => {
+  it("gives the Madrid day the invoice was issued, so a session moved after paying explains why its invoice shows another date", () => {
+    expect(invoiceIssuedLabel("2026-10-01T22:30:00+00:00")).toBe(
+      "Factura emitida el 02/10",
+    );
   });
 });
 

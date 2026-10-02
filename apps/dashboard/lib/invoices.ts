@@ -1,6 +1,13 @@
+import { madridDateTime } from "@clinicalumia/api/madrid-time";
+
 export type InvoiceKind = "simplified" | "full" | "rectifying";
 
-export type CurrentInvoice = { id: string; code: string; kind: InvoiceKind };
+export type CurrentInvoice = {
+  id: string;
+  code: string;
+  kind: InvoiceKind;
+  issuedAt: string;
+};
 
 export type InvoiceContact = {
   first_name: string;
@@ -36,14 +43,25 @@ export function currentInvoice(
     code: string;
     kind: InvoiceKind;
     status: "issued" | "replaced";
+    issued_at: string;
   }[],
 ): CurrentInvoice | null {
   const current = invoices.find(
     (invoice) => invoice.status === "issued" && invoice.kind !== "rectifying",
   );
   return current
-    ? { id: current.id, code: current.code, kind: current.kind }
+    ? {
+        id: current.id,
+        code: current.code,
+        kind: current.kind,
+        issuedAt: current.issued_at,
+      }
     : null;
+}
+
+export function invoiceIssuedLabel(issuedAt: string): string {
+  const { date } = madridDateTime(issuedAt);
+  return `Factura emitida el ${date.slice(8, 10)}/${date.slice(5, 7)}`;
 }
 
 export function recipientDraft({
