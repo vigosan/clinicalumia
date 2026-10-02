@@ -188,7 +188,7 @@ test("dar una cita desde Nueva cita con la casilla marcada envía «Cita confirm
   );
   await page.getByTestId("appointment-submit").click();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   await expect(page.getByTestId("toast")).toHaveText("Cita creada");
   const appointmentId = new URL(page.url()).searchParams.get("appointment");
 

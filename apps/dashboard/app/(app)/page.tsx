@@ -32,8 +32,10 @@ import {
 } from "./agenda/AppointmentPanel";
 import { DayView } from "./agenda/DayView";
 import { loadAgenda } from "./agenda/load";
+import { NewAppointmentDrawer } from "./agenda/NewAppointmentDrawer";
 import { SeeAlso } from "./agenda/SeeAlso";
 import { WeekView } from "./agenda/WeekView";
+import { loadAppointmentForm } from "./appointments/load-form";
 
 function buildHref(base: string, params: Record<string, string | undefined>) {
   const search = new URLSearchParams();
@@ -251,6 +253,10 @@ export default async function DashboardHome({
     with?: string;
     person?: string;
     appointment?: string;
+    new?: string;
+    time?: string;
+    professional?: string;
+    patient?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -268,9 +274,17 @@ export default async function DashboardHome({
       ? params.appointment
       : null;
 
-  const [result, appointment] = await Promise.all([
+  const [result, appointment, newAppointment] = await Promise.all([
     loadAgenda({ date, view, withIds, personId }),
     loadAppointmentDetail(appointmentId),
+    params.new === "1"
+      ? loadAppointmentForm({
+          date,
+          time: params.time,
+          professional: params.professional,
+          patient: params.patient,
+        })
+      : null,
   ]);
 
   if (!result.ok) {
@@ -307,6 +321,21 @@ export default async function DashboardHome({
           firstHour={data.firstHour}
           lastHour={data.lastHour}
         />
+        {newAppointment?.ok === false && (
+          <Alert data-testid="appointment-form-error">
+            No se han podido cargar los datos del formulario.
+          </Alert>
+        )}
+        {newAppointment?.ok && (
+          <NewAppointmentDrawer
+            closeHref={buildHref("/", {
+              date: data.date,
+              view,
+              person: personParam,
+            })}
+            form={newAppointment.form}
+          />
+        )}
         {appointment.status === "error" && (
           <Alert data-testid="appointment-panel-error">
             No se ha podido cargar la cita.
@@ -383,6 +412,17 @@ export default async function DashboardHome({
         firstHour={data.firstHour}
         lastHour={data.lastHour}
       />
+      {newAppointment?.ok === false && (
+        <Alert data-testid="appointment-form-error">
+          No se han podido cargar los datos del formulario.
+        </Alert>
+      )}
+      {newAppointment?.ok && (
+        <NewAppointmentDrawer
+          closeHref={buildHref("/", { date: data.date, with: withParam })}
+          form={newAppointment.form}
+        />
+      )}
       {appointment.status === "error" && (
         <Alert data-testid="appointment-panel-error">
           No se ha podido cargar la cita.

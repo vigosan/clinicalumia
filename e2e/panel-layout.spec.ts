@@ -29,13 +29,17 @@ test("the day's columns share the whole card, so the agenda doesn't leave half o
 
   const grid = page.getByTestId("day-grid");
   await expect(grid).toBeVisible();
-  const gridBox = await grid.boundingBox();
-  const columns = grid.getByTestId("agenda-column");
-  const lastBox = await columns.last().boundingBox();
-  expect(gridBox && lastBox).toBeTruthy();
-  expect(
-    Math.abs(gridBox!.x + gridBox!.width - (lastBox!.x + lastBox!.width)),
-  ).toBeLessThanOrEqual(2);
+  const { columnsEnd, contentWidth } = await grid.evaluate((element) => {
+    const columns = element.querySelectorAll<HTMLElement>(
+      '[data-testid="agenda-column"]',
+    );
+    const last = columns[columns.length - 1];
+    return {
+      columnsEnd: last ? last.offsetLeft + last.offsetWidth : 0,
+      contentWidth: element.scrollWidth,
+    };
+  });
+  expect(Math.abs(contentWidth - columnsEnd)).toBeLessThanOrEqual(2);
 });
 
 test("the agenda toolbar stays together, so «Nueva cita» never drops to a row of its own on the long week title", async ({

@@ -155,7 +155,7 @@ export function AppointmentForm({
       ref={formRef}
       data-testid="appointment-form"
       onSubmit={handleSubmit}
-      className="flex flex-col gap-5"
+      className="@container flex flex-col gap-5"
     >
       <input type="hidden" name="patient_id" value={patient?.id ?? ""} />
       <PatientPicker
@@ -219,19 +219,21 @@ export function AppointmentForm({
         />
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Fecha">
-          <DatePicker
-            name="date"
-            data-testid="appointment-date"
-            today={todayInMadrid()}
-            value={date}
-            onValueChange={(next) => {
-              setDate(next);
-              resetConfirmation();
-            }}
-          />
-        </Field>
+      <div className="grid grid-cols-2 gap-4 @xl:grid-cols-3">
+        <div className="col-span-2 @xl:col-span-1">
+          <Field label="Fecha">
+            <DatePicker
+              name="date"
+              data-testid="appointment-date"
+              today={todayInMadrid()}
+              value={date}
+              onValueChange={(next) => {
+                setDate(next);
+                resetConfirmation();
+              }}
+            />
+          </Field>
+        </div>
         <Field label="Hora">
           <TimeSelect
             name="time"

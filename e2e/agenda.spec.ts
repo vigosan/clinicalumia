@@ -374,7 +374,7 @@ test("pulsar un hueco fuera de horario en la propia columna da de alta una cita,
   const ownColumnBody = columnFor(page, employeeId).locator('[role="button"]');
   await ownColumnBody.click({ position: { x: 10, y: 130 } });
 
-  await expect(page).toHaveURL(/\/appointments\/new\?/);
+  await expect(page).toHaveURL(/[?&]new=1/);
   const url = new URL(page.url());
   expect(url.searchParams.get("date")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   const [, , minute] =
@@ -654,7 +654,7 @@ test("desde un hueco de mañana, buscar «nora», elegir servicio y guardar crea
   );
   await page.getByTestId("appointment-submit").click();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
 
   await expect(page.getByTestId("toast")).toHaveText("Cita creada");
@@ -720,7 +720,7 @@ test("en Nueva cita el buscador muestra edad y teléfono de cada paciente y se u
   );
   await page.getByTestId("appointment-submit").click();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   const appointmentId = appointmentIdFrom(page);
   createdAppointmentIds.push(appointmentId);
   const { data: saved } = await admin
@@ -797,9 +797,9 @@ test("«Nuevo paciente» desde el formulario de cita vuelve con el paciente nuev
   await page.getByLabel("Fecha de nacimiento").fill("01/01/1990");
   await page.getByTestId("person-submit").click();
 
-  await page.waitForURL(/\/appointments\/new\?/);
+  await page.waitForURL((target) => target.searchParams.get("new") === "1");
   const url = new URL(page.url());
-  expect(url.pathname).toBe("/appointments/new");
+  expect(url.pathname).toBe("/");
   expect(url.searchParams.get("date")).toBe(date);
   expect(url.searchParams.get("time")).toBe("11:00");
   expect(url.searchParams.get("professional")).toBe(employee.id);
@@ -819,9 +819,31 @@ test("«Cancelar» en Nueva cita vuelve al día de la agenda del que se venía, 
 
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
   await page.goto(`${DASHBOARD}/appointments/new?date=${date}`);
-  await page.getByRole("link", { name: "Cancelar" }).click();
+  await page
+    .getByTestId("new-appointment-drawer")
+    .getByRole("link", { name: "Cancelar" })
+    .click();
 
   await expect(page).toHaveURL(`${DASHBOARD}/?date=${date}`);
+  await expect(page.getByTestId("new-appointment-drawer")).toHaveCount(0);
+});
+
+test("«Nueva cita» se abre en un panel encima de la agenda, para dar la cita sin perder de vista el día", async ({
+  page,
+}) => {
+  const date = dateWithWeekday(61, [1, 2, 3, 4, 5]);
+
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/?date=${date}`);
+  await page.getByTestId("agenda-new").click();
+
+  const drawer = page.getByTestId("new-appointment-drawer");
+  await expect(drawer.getByTestId("appointment-form")).toBeVisible();
+  await expect(page.getByTestId("agenda-title")).toBeAttached();
+  const url = new URL(page.url());
+  expect(url.pathname).toBe("/");
+  expect(url.searchParams.get("date")).toBe(date);
+  expect(url.searchParams.get("new")).toBe("1");
 });
 
 test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55", async ({
@@ -859,7 +881,7 @@ test("una cita a las 16:55 se guarda tocando el límite de otra de 16:10 a 16:55
   );
   await page.getByTestId("appointment-submit").click();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
 });
 
@@ -1042,11 +1064,11 @@ test("un sábado da el aviso «Queda fuera del horario» y, tras «Dar la cita i
   await expect(page.getByTestId("appointment-warnings")).toContainText(
     "Queda fuera del horario",
   );
-  await expect(page).toHaveURL(/\/appointments\/new\?/);
+  await expect(page).toHaveURL(/[?&]new=1/);
 
   await page.getByTestId("appointment-confirm").click();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
 });
 
@@ -1074,11 +1096,11 @@ test("dar una cita a una hora que ya ha pasado pide confirmación y, tras «Dar 
   await expect(page.getByTestId("appointment-warnings")).toContainText(
     "Esa hora ya ha pasado.",
   );
-  await expect(page).toHaveURL(/\/appointments\/new\?/);
+  await expect(page).toHaveURL(/[?&]new=1/);
 
   await page.getByTestId("appointment-confirm").click();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
 });
 
@@ -1107,7 +1129,7 @@ test("hacer doble clic en Guardar crea una sola cita", async ({ page }) => {
   );
   await page.getByTestId("appointment-submit").dblclick();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
 
   const { data, error } = await admin
@@ -1142,7 +1164,7 @@ test("la propietaria elige profesional y ve los servicios de su especialidad", a
   );
   await page.getByTestId("appointment-submit").click();
 
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   createdAppointmentIds.push(appointmentIdFrom(page));
 });
 
@@ -1606,7 +1628,7 @@ test("una no presentada libera su franja: se da a otro paciente, las dos se ven,
   );
   await page.getByTestId("appointment-submit").click();
   await page.getByTestId("appointment-confirm").click();
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   const takenId = appointmentIdFrom(page);
   createdAppointmentIds.push(takenId);
 

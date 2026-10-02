@@ -467,3 +467,18 @@ export function professionalOptions({
     ...active,
   ];
 }
+
+export function newAppointmentDrawerHref(params: {
+  date?: string;
+  time?: string;
+  professional?: string;
+  patient?: string;
+}): string {
+  const search = new URLSearchParams();
+  if (params.date) search.set("date", params.date);
+  search.set("new", "1");
+  if (params.time) search.set("time", params.time);
+  if (params.professional) search.set("professional", params.professional);
+  if (params.patient) search.set("patient", params.patient);
+  return `/?${search.toString()}`;
+}

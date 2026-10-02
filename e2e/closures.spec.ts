@@ -413,7 +413,7 @@ test("Nueva cita warns when the chosen day is closed but still gives the appoint
     PSICOLOGIA_SERVICE_ID,
   );
   await page.getByTestId("appointment-submit").click();
-  await page.waitForURL(/\/\?date=/);
+  await page.waitForURL(/[?&]appointment=/);
   const appointmentId = new URL(page.url()).searchParams.get("appointment");
   expect(appointmentId).toBeTruthy();
   createdAppointmentIds.push(appointmentId!);

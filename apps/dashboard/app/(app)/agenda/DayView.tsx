@@ -229,7 +229,14 @@ export function DayView({
     const minute = snapped % 60;
     const time = `${pad(hour)}:${pad(minute)}`;
     router.push(
-      buildHref("/appointments/new", { date, time, professional: selfId }),
+      buildHref("/", {
+        date,
+        with: withParam,
+        new: "1",
+        time,
+        professional: selfId,
+      }),
+      { scroll: false },
     );
   }
 
@@ -299,10 +306,13 @@ export function DayView({
                   onKeyDown={(event) => {
                     if (event.key !== "Enter" && event.key !== " ") return;
                     router.push(
-                      buildHref("/appointments/new", {
+                      buildHref("/", {
                         date,
+                        with: withParam,
+                        new: "1",
                         professional: selfId,
                       }),
+                      { scroll: false },
                     );
                   }}
                 />

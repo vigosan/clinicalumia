@@ -68,20 +68,21 @@ test("the record's breadcrumbs show where staff are and take them back up withou
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("Nueva cita keeps Agenda marked in the sections and its breadcrumb returns to the same day", async ({
+test("an old Nueva cita link opens the drawer on that day's agenda, and closing it stays on the same day", async ({
   page,
 }) => {
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
   await page.goto(`${DASHBOARD}/appointments/new?date=2026-11-09`);
 
+  await expect(page.getByTestId("new-appointment-drawer")).toBeVisible();
   await expect(
     page
-      .getByRole("navigation", { name: "Secciones" })
-      .getByRole("link", { name: "Agenda" }),
+      .getByRole("navigation", { name: "Secciones", includeHidden: true })
+      .getByRole("link", { name: "Agenda", includeHidden: true }),
   ).toHaveAttribute("aria-current", "page");
   await page
-    .getByTestId("breadcrumbs")
-    .getByRole("link", { name: "Agenda" })
+    .getByTestId("new-appointment-drawer")
+    .getByRole("button", { name: "Cerrar" })
     .click();
   await expect(page).toHaveURL(`${DASHBOARD}/?date=2026-11-09`);
 });

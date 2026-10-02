@@ -7,6 +7,7 @@ import {
   canMove,
   isUuid,
   layoutDay,
+  newAppointmentDrawerHref,
   parseAppointmentForm,
   pastTimeWarnings,
   professionalOptions,
@@ -965,5 +966,24 @@ describe("professionalOptions", () => {
       { value: "p-gone", label: "Laura Ejemplo (inactiva)", disabled: true },
       { value: "p-marc", label: "Marc Ejemplo" },
     ]);
+  });
+});
+
+describe("newAppointmentDrawerHref", () => {
+  it("opens the new-appointment drawer on that day's agenda, so staff book without losing sight of the day", () => {
+    expect(
+      newAppointmentDrawerHref({
+        date: "2026-10-05",
+        time: "10:30",
+        professional: "pro-1",
+        patient: "patient-1",
+      }),
+    ).toBe(
+      "/?date=2026-10-05&new=1&time=10%3A30&professional=pro-1&patient=patient-1",
+    );
+  });
+
+  it("falls back to today's agenda when the link carries no day", () => {
+    expect(newAppointmentDrawerHref({})).toBe("/?new=1");
   });
 });

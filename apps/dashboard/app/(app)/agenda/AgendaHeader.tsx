@@ -142,8 +142,12 @@ export function AgendaHeader({
           className="max-sm:size-9 max-sm:px-0"
         >
           <Link
-            href={buildHref("/appointments/new", {
+            href={buildHref("/", {
               date,
+              view: view === "week" ? view : undefined,
+              with: view === "day" ? withParam : undefined,
+              person: view === "week" ? personParam : undefined,
+              new: "1",
               professional: isOwner ? undefined : selfId,
             })}
           >
