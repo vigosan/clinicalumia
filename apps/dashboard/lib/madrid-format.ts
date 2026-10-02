@@ -9,3 +9,16 @@ export function formatMadridDateTime(instant: string): string {
   const { date, time } = madridDateTime(instant);
   return `${formatDay(date)} ${time}`;
 }
+
+export function formatShortMadridDay(instant: string): string {
+  const parts = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).formatToParts(new Date(instant));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((candidate) => candidate.type === type)?.value ?? "";
+  const weekday = part("weekday");
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${part("day")} ${part("month")}`;
+}

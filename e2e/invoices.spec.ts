@@ -113,6 +113,11 @@ async function openAppointment(page: Page, date: string, id: string) {
   await expect(page.getByTestId("appointment-panel")).toBeVisible();
 }
 
+async function openPaymentMenu(page: Page) {
+  await page.getByTestId("payment-menu").click();
+  await expect(page.getByRole("menu")).toBeVisible();
+}
+
 async function collectAndReadCode(page: Page): Promise<string> {
   await page.getByTestId("payment-collect").click();
   await page.getByTestId("payment-method-card").check();
@@ -163,6 +168,7 @@ test("al cobrar se ve el número de la factura y «Ver / Imprimir» abre su PDF"
 
   const [invoice] = await invoicesOf(appointment.id);
   expect(invoice).toMatchObject({ code, kind: "simplified" });
+  await openPaymentMenu(page);
   await expect(page.getByTestId("invoice-view")).toHaveAttribute(
     "href",
     `/facturas/${invoice!.id}/pdf`,
@@ -195,6 +201,7 @@ test("«Enviar por email» propone el email del paciente, valida lo escrito y de
   await openAppointment(page, date, appointment.id);
   const code = await collectAndReadCode(page);
 
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-send").click();
   await expect(page.getByTestId("invoice-send-email")).toHaveValue(
     patientEmail,
@@ -274,6 +281,7 @@ test("«Factura completa» rechaza un NIF inválido y, con uno válido, emite la
   await openAppointment(page, date, appointment.id);
   const simplifiedCode = await collectAndReadCode(page);
 
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-full").click();
   await expect(page.getByTestId("invoice-full-name")).toHaveValue(
     appointment.patientName,
@@ -298,6 +306,7 @@ test("«Factura completa» rechaza un NIF inválido y, con uno válido, emite la
   await expect(page.getByTestId("invoice-code")).not.toHaveText(
     `Factura ${simplifiedCode}`,
   );
+  await openPaymentMenu(page);
   await expect(page.getByTestId("invoice-full")).toHaveCount(0);
 
   const invoices = await invoicesOf(appointment.id);
@@ -338,6 +347,7 @@ test("al pasar a otra cita, el formulario de factura completa se cierra y no arr
   await openAppointment(page, date, first.id);
   await collectAndReadCode(page);
 
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-full").click();
   await expect(page.getByTestId("invoice-full-name")).toHaveValue(
     first.patientName,
@@ -357,6 +367,7 @@ test("al pasar a otra cita, el formulario de factura completa se cierra y no arr
   await expect(page).toHaveURL(new RegExp(`appointment=${second.id}`));
   await expect(page.getByTestId("invoice-full-form")).toHaveCount(0);
 
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-full").click();
   await expect(page.getByTestId("invoice-full-name")).toHaveValue(
     second.patientName,
@@ -377,6 +388,7 @@ test("anular un cobro facturado emite la rectificativa y deja el cobro anulado",
   await openAppointment(page, date, appointment.id);
   await collectAndReadCode(page);
 
+  await openPaymentMenu(page);
   await page.getByTestId("payment-void").click();
   await expect(page.getByTestId("payment-void-confirm")).toHaveText(
     "Emitir rectificativa y anular cobro",
@@ -385,7 +397,7 @@ test("anular un cobro facturado emite la rectificativa y deja el cobro anulado",
   await page.getByTestId("payment-void-confirm").click();
 
   await expect(page.getByTestId("appointment-payment-status")).toHaveText(
-    "Pendiente de cobro",
+    "Pendiente",
   );
   await expect(page.getByTestId("invoice-code")).toHaveCount(0);
 
@@ -620,17 +632,22 @@ test("«Corregir destinatario» en una completa emite la rectificativa y la nuev
 
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await openAppointment(page, date, appointment.id);
-  await collectAndReadCode(page);
+  const simplifiedCode = await collectAndReadCode(page);
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-full").click();
   await page.getByTestId("invoice-full-postal-code").fill("46800");
   await page.getByTestId("invoice-full-city").fill("Xàtiva");
   await page.getByTestId("invoice-full-submit").click();
   await expect(page.getByTestId("invoice-full-form")).toHaveCount(0);
-  await expect(page.getByTestId("invoice-full")).toHaveCount(0);
+  await expect(page.getByTestId("invoice-code")).not.toHaveText(
+    `Factura ${simplifiedCode}`,
+  );
   const wrongFull = (await invoicesOf(appointment.id)).find(
     (invoice) => invoice.kind === "full",
   );
 
+  await openPaymentMenu(page);
+  await expect(page.getByTestId("invoice-full")).toHaveCount(0);
   await page.getByTestId("invoice-rectify-link").click();
   await expect(page).toHaveURL(`${DASHBOARD}/facturas/${wrongFull!.id}`);
   await expect(page.getByTestId("invoice-code")).toHaveText(
@@ -727,6 +744,7 @@ test("la factura completa de otra sesión del mismo paciente se rellena con el d
   await signIn(page, DASHBOARD, employee.email, employee.password);
   await openAppointment(page, date, second!.id);
   await collectAndReadCode(page);
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-full").click();
   await expect(page.getByTestId("invoice-full-name")).toHaveValue(
     "Talleres Auditoría",
@@ -755,6 +773,7 @@ test("al enviar la factura a un email que la ficha no tiene, «Guardar en la fic
   await openAppointment(page, date, appointment.id);
   await collectAndReadCode(page);
 
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-send").click();
   await expect(page.getByTestId("invoice-send-email")).toHaveValue("");
   await expect(page.getByTestId("invoice-send-save")).toBeChecked();
@@ -773,6 +792,7 @@ test("al enviar la factura a un email que la ficha no tiene, «Guardar en la fic
   expect(person?.email).toBe(email);
 
   await openAppointment(page, date, appointment.id);
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-send").click();
   await expect(page.getByTestId("invoice-send-email")).toHaveValue(email);
   await expect(page.getByTestId("invoice-send-save")).toHaveCount(0);
@@ -791,6 +811,7 @@ test("a un menor no se le ofrece «Guardar en la ficha», porque el email que se
   await openAppointment(page, date, appointment.id);
   await collectAndReadCode(page);
 
+  await openPaymentMenu(page);
   await page.getByTestId("invoice-send").click();
   await expect(page.getByTestId("invoice-send-email")).toHaveValue("");
   await expect(page.getByTestId("invoice-send-save")).toHaveCount(0);

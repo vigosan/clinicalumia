@@ -17,13 +17,19 @@ export function VoidPaymentDialog({
   invoiceId,
   triggerLabel = "Anular cobro",
   triggerTestId = "payment-void",
+  open: openProp,
+  onOpenChange,
 }: {
   paymentId: string;
   invoiceId: string | null;
   triggerLabel?: string;
   triggerTestId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = openProp ?? localOpen;
+  const setOpen = onOpenChange ?? setLocalOpen;
   const [reason, setReason] = useState("");
   const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
@@ -50,14 +56,16 @@ export function VoidPaymentDialog({
     <ConfirmDialog
       tone="destructive"
       trigger={
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          data-testid={triggerTestId}
-        >
-          {triggerLabel}
-        </Button>
+        openProp === undefined ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            data-testid={triggerTestId}
+          >
+            {triggerLabel}
+          </Button>
+        ) : undefined
       }
       title={
         invoiceId

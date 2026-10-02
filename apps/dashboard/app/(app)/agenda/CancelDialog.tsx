@@ -75,8 +75,9 @@ export function CancelDialog({
       trigger={
         <Button
           type="button"
-          variant="danger"
+          variant="ghost"
           size="sm"
+          className="text-danger-600 hover:bg-danger-100"
           disabled={disabled}
           data-testid="appointment-cancel"
         >

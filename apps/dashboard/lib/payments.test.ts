@@ -11,6 +11,7 @@ import {
   paymentError,
   paymentFailure,
   paymentHistoryLines,
+  paymentPill,
   paymentStatus,
   recipientRequested,
 } from "./payments";
@@ -160,6 +161,45 @@ describe("paymentStatus", () => {
     expect(
       paymentStatus({ appointment: cancelled, payment: null, now }),
     ).toEqual({ kind: "none", label: "" });
+  });
+});
+
+describe("paymentPill", () => {
+  const scheduled = {
+    starts_at: "2026-09-30T10:00:00Z",
+    status: "scheduled" as const,
+  };
+  const now = new Date("2026-09-30T12:00:00Z");
+
+  it("says paid and how, without the amount, because the panel already shows the amount in large type beside it", () => {
+    expect(
+      paymentPill({
+        appointment: scheduled,
+        payment: { amount_cents: 4500, method: "card", note: "" },
+        now,
+      }),
+    ).toEqual({ label: "Cobrada · Tarjeta", tone: "success" });
+  });
+
+  it("keeps the reason for a free service, since there is no method to show", () => {
+    expect(
+      paymentPill({
+        appointment: scheduled,
+        payment: { amount_cents: 0, method: "cash", note: "Revisión gratuita" },
+        now,
+      }),
+    ).toEqual({ label: "Sin cargo · Revisión gratuita", tone: "success" });
+  });
+
+  it("flags a started appointment without payment as pending, in the warning tone, so it stands out from the paid ones", () => {
+    expect(paymentPill({ appointment: scheduled, payment: null, now })).toEqual(
+      { label: "Pendiente", tone: "warning" },
+    );
+  });
+
+  it("shows no pill for an appointment that has not started, so staff are not nagged to collect early", () => {
+    const future = { ...scheduled, starts_at: "2026-10-01T10:00:00Z" };
+    expect(paymentPill({ appointment: future, payment: null, now })).toBeNull();
   });
 });
 

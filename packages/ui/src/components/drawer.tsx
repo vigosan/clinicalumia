@@ -35,6 +35,8 @@ export function Drawer({
   onCloseAutoFocus,
   title,
   description,
+  actions,
+  prominent = false,
   children,
   ...props
 }: {
@@ -45,10 +47,17 @@ export function Drawer({
   onCloseAutoFocus?: ContentProps["onCloseAutoFocus"];
   title: ReactNode;
   description: ReactNode;
+  actions?: ReactNode;
+  prominent?: boolean;
   children: ReactNode;
   "data-testid"?: string;
 }) {
   const hydrated = useHydrated();
+  const descriptionElement = (
+    <Primitive.Description className="text-[13px] text-ink-800">
+      {description}
+    </Primitive.Description>
+  );
   return (
     <Primitive.Root open={open} onOpenChange={onOpenChange}>
       {trigger && (
@@ -66,19 +75,23 @@ export function Drawer({
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-0.5">
-              <Primitive.Description className="text-[13px] text-ink-800">
-                {description}
-              </Primitive.Description>
-              <Primitive.Title className="text-lg font-bold text-ink-900">
+              {!prominent && descriptionElement}
+              <Primitive.Title
+                className={cn(
+                  "font-bold text-ink-900",
+                  prominent ? "text-[22px] leading-tight" : "text-lg",
+                )}
+              >
                 {title}
               </Primitive.Title>
+              {prominent && descriptionElement}
             </div>
-            <Primitive.Close
-              aria-label="Cerrar"
-              className={cn("-mt-1 -mr-2", closeButtonClass)}
-            >
-              <X aria-hidden="true" className="size-5" />
-            </Primitive.Close>
+            <div className="-mt-1 -mr-2 flex shrink-0 items-center gap-1">
+              {actions}
+              <Primitive.Close aria-label="Cerrar" className={closeButtonClass}>
+                <X aria-hidden="true" className="size-5" />
+              </Primitive.Close>
+            </div>
           </div>
           {children}
         </Primitive.Content>

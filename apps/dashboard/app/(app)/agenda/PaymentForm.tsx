@@ -110,7 +110,7 @@ export function PaymentForm({
       <div>
         <Button
           type="button"
-          size="sm"
+          className="w-full"
           data-testid="payment-collect"
           onClick={() => setOpen(true)}
         >

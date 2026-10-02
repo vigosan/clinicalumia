@@ -14,13 +14,19 @@ export function SendInvoiceForm({
   proposedEmail,
   saveEmail = false,
   asDrawer = false,
+  open: openProp,
+  onOpenChange,
 }: {
   invoiceId: string;
   proposedEmail: string;
   saveEmail?: boolean;
   asDrawer?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = openProp ?? localOpen;
+  const setOpen = onOpenChange ?? setLocalOpen;
   const [email, setEmail] = useState(proposedEmail);
   const [save, setSave] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,20 +61,22 @@ export function SendInvoiceForm({
 
   const closedView = (
     <div className="flex flex-col gap-2">
-      <div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          data-testid="invoice-send"
-          onClick={() => {
-            setSentTo(null);
-            setOpen(true);
-          }}
-        >
-          Enviar por email
-        </Button>
-      </div>
+      {openProp === undefined && (
+        <div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            data-testid="invoice-send"
+            onClick={() => {
+              setSentTo(null);
+              setOpen(true);
+            }}
+          >
+            Enviar por email
+          </Button>
+        </div>
+      )}
       {sentTo && (
         <p
           role="status"

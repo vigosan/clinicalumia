@@ -17,7 +17,7 @@ import {
   recipientDraft,
 } from "@/lib/invoices";
 import { loadLastFullRecipient } from "@/lib/invoices-load";
-import { canVoidPayment, paymentStatus } from "@/lib/payments";
+import { canVoidPayment, paymentPill } from "@/lib/payments";
 import type { AppointmentDetail } from "./AppointmentPanel";
 
 export type AppointmentDetailResult =
@@ -173,12 +173,12 @@ export async function loadAppointmentDetail(
       status: appt.status,
       origin: appt.origin,
       notes: appt.notes,
-      priceCents: appt.price_cents,
-      paymentStatus: paymentStatus({
+      amountCents: activePayment?.amount_cents ?? appt.price_cents,
+      paymentPill: paymentPill({
         appointment: appt,
         payment: activePayment,
         now,
-      }).label,
+      }),
       suggestedAmountCents: suggestedCents,
       canCollect: !activePayment,
       activePaymentId: activePayment?.id ?? null,

@@ -3,12 +3,29 @@
 import { Alert } from "@clinicalumia/ui/alert";
 import { Badge } from "@clinicalumia/ui/badge";
 import { Button } from "@clinicalumia/ui/button";
+import { cn } from "@clinicalumia/ui/cn";
 import { ConfirmDialog } from "@clinicalumia/ui/confirm-dialog";
 import { Drawer } from "@clinicalumia/ui/drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@clinicalumia/ui/dropdown-menu";
 import { eyebrowClass } from "@clinicalumia/ui/page-header";
 import type { SelectOption } from "@clinicalumia/ui/select";
 import { toast } from "@clinicalumia/ui/toast";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Ellipsis,
+  FilePen,
+  FileText,
+  Mail,
+  Printer,
+  Undo2,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useOptimistic, useState, useTransition } from "react";
@@ -19,8 +36,9 @@ import {
   invoiceIssuedLabel,
   type RecipientDraft,
 } from "@/lib/invoices";
+import { formatShortMadridDay } from "@/lib/madrid-format";
 import { paymentToastMessage } from "@/lib/payment-candidates";
-import type { PaymentMethod } from "@/lib/payments";
+import type { PaymentMethod, PaymentPill } from "@/lib/payments";
 import { markNoShow, restoreFromNoShow } from "../appointments/actions";
 import { DrawerLink, showUrl } from "../url-drawer";
 import { buildHref } from "./AgendaColumn";
@@ -48,8 +66,8 @@ export type AppointmentDetail = {
   status: "scheduled" | "cancelled" | "no_show";
   origin: "staff" | "web";
   notes: string;
-  priceCents: number;
-  paymentStatus: string;
+  amountCents: number;
+  paymentPill: PaymentPill | null;
   suggestedAmountCents: number;
   canCollect: boolean;
   activePaymentId: string | null;
@@ -66,17 +84,21 @@ export type AppointmentDetail = {
   history: { id: string; text: string }[];
 };
 
-const STATUS_LABEL: Record<AppointmentDetail["status"], string> = {
+type ShownStatus = AppointmentDetail["status"] | "done";
+
+const STATUS_LABEL: Record<ShownStatus, string> = {
   scheduled: "Programada",
+  done: "Realizada",
   cancelled: "Cancelada",
   no_show: "No presentada",
 };
 
 const STATUS_TONE: Record<
-  AppointmentDetail["status"],
-  "success" | "neutral" | "warning"
+  ShownStatus,
+  "outline" | "success" | "neutral" | "warning"
 > = {
-  scheduled: "success",
+  scheduled: "outline",
+  done: "success",
   cancelled: "neutral",
   no_show: "warning",
 };
@@ -90,15 +112,8 @@ function timeOf(instant: string): string {
   }).format(new Date(instant));
 }
 
-function dateOf(instant: string): string {
-  const formatted = new Intl.DateTimeFormat("es-ES", {
-    timeZone: "Europe/Madrid",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(new Date(instant));
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
+const iconButtonClass =
+  "inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-text-tertiary hover:bg-sage-100 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-sage-800 disabled:pointer-events-none disabled:opacity-40 [&_svg]:size-5";
 
 function formatPrice(cents: number): string {
   return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
@@ -117,6 +132,13 @@ function AppointmentDetails({
   const canMarkNoShow = isPast && status === "scheduled";
   const canRestore = status === "no_show";
   const canCancel = appointment.canCancel && status === "scheduled";
+  const shownStatus = canMarkNoShow ? "done" : status;
+  const invoice = appointment.invoice;
+  const canVoidActivePayment =
+    appointment.activePaymentId !== null && appointment.canVoid;
+  const [invoiceAction, setInvoiceAction] = useState<
+    "send" | "full" | "void" | null
+  >(null);
 
   function handlePaid({
     cents,
@@ -156,32 +178,44 @@ function AppointmentDetails({
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        <Badge tone={STATUS_TONE[status]} data-testid="appointment-status">
-          {canMarkNoShow ? "Realizada" : STATUS_LABEL[status]}
-        </Badge>
-        {appointment.origin === "web" && (
-          <Badge tone="neutral" data-testid="web-booking-badge">
-            Reserva web
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            tone={STATUS_TONE[shownStatus]}
+            className={cn(status === "cancelled" && "line-through")}
+            data-testid="appointment-status"
+          >
+            {STATUS_LABEL[shownStatus]}
           </Badge>
+          {appointment.origin === "web" && (
+            <Badge tone="neutral" data-testid="web-booking-badge">
+              Reserva web
+            </Badge>
+          )}
+        </div>
+        {appointment.notes && (
+          <p className="text-[13px] text-ink-800">{appointment.notes}</p>
         )}
       </div>
 
-      {appointment.notes && (
-        <p className="text-[13px] text-ink-800">{appointment.notes}</p>
-      )}
-
-      <div className="flex flex-col gap-1 border-line border-t pt-4">
+      <div className="flex flex-col gap-3 border-line border-t pt-4">
         <h2 className={eyebrowClass}>Cobro</h2>
-        <p className="text-ink-900">{formatPrice(appointment.priceCents)}</p>
-        {appointment.paymentStatus && (
+        <div className="flex items-center justify-between gap-3">
           <p
-            className="text-[13px] text-ink-800"
-            data-testid="appointment-payment-status"
+            className="font-bold text-[28px] text-ink-900 tabular-nums leading-none"
+            data-testid="appointment-amount"
           >
-            {appointment.paymentStatus}
+            {formatPrice(appointment.amountCents)}
           </p>
-        )}
+          {appointment.paymentPill && (
+            <Badge
+              tone={appointment.paymentPill.tone}
+              data-testid="appointment-payment-status"
+            >
+              {appointment.paymentPill.label}
+            </Badge>
+          )}
+        </div>
         {appointment.canCollect && (
           <PaymentForm
             appointmentId={appointment.id}
@@ -191,108 +225,128 @@ function AppointmentDetails({
             onSuccess={handlePaid}
           />
         )}
-        {appointment.invoice && (
-          <div className="flex flex-col gap-2">
-            <p className="text-[13px] text-ink-800" data-testid="invoice-code">
-              Factura {appointment.invoice.code}
-            </p>
-            <p
-              className="text-[13px] text-ink-800"
-              data-testid="invoice-issued"
-            >
-              {invoiceIssuedLabel(appointment.invoice.issuedAt)}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="secondary" size="sm">
-                <a
-                  href={`/facturas/${appointment.invoice.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
-                  data-testid="invoice-view"
+        {(invoice || canVoidActivePayment) && (
+          <div className="flex items-center justify-between gap-3">
+            {invoice ? (
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <p
+                  className="font-semibold text-[15px] text-ink-900 tabular-nums"
+                  data-testid="invoice-code"
                 >
-                  Ver / Imprimir
-                </a>
-              </Button>
-              {appointment.canVoid && (
-                <Button asChild variant="secondary" size="sm">
-                  <Link
-                    href={`/facturas/${appointment.invoice.id}`}
-                    data-testid="invoice-rectify-link"
-                  >
-                    Rectificar
-                  </Link>
-                </Button>
-              )}
-            </div>
-            <SendInvoiceForm
-              key={`send-${appointment.invoice.id}`}
-              invoiceId={appointment.invoice.id}
-              proposedEmail={appointment.invoice.email}
-              saveEmail={appointment.invoice.saveEmail}
-            />
-            {appointment.invoice.kind === "simplified" && (
-              <FullInvoiceForm
-                key={`full-${appointment.invoice.id}`}
-                invoiceId={appointment.invoice.id}
-                recipient={appointment.recipient}
-              />
+                  Factura {invoice.code}
+                </p>
+                <p
+                  className="text-[13px] text-ink-800"
+                  data-testid="invoice-issued"
+                >
+                  {invoiceIssuedLabel(invoice.issuedAt)}
+                </p>
+              </div>
+            ) : (
+              <span />
             )}
-          </div>
-        )}
-        {appointment.activePaymentId && appointment.canVoid && (
-          <div>
-            <VoidPaymentDialog
-              paymentId={appointment.activePaymentId}
-              invoiceId={appointment.invoice?.id ?? null}
-            />
-          </div>
-        )}
-      </div>
-
-      {(canCancel || canMarkNoShow || canRestore) && (
-        <div className="flex flex-wrap gap-2 border-line border-t pt-4">
-          {canCancel && (
-            <CancelDialog
-              appointmentId={appointment.id}
-              invoiced={appointment.invoice !== null}
-              canRectify={appointment.canVoid}
-              canNotify={appointment.canNotify}
-              disabled={moving}
-            />
-          )}
-          {canMarkNoShow && (
-            <ConfirmDialog
-              trigger={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={pending || moving}
-                  data-testid="appointment-no-show"
+                  aria-label="Acciones del cobro"
+                  data-testid="payment-menu"
                 >
-                  Marcar como no presentada
+                  <Ellipsis aria-hidden="true" />
                 </Button>
-              }
-              title="¿Marcar como no presentada?"
-              description="Podrás deshacerlo después."
-              confirmLabel="Marcar como no presentada"
-              onConfirm={handleNoShow}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {invoice && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={`/facturas/${invoice.id}/pdf`}
+                        target="_blank"
+                        rel="noopener"
+                        data-testid="invoice-view"
+                      >
+                        <Printer aria-hidden="true" />
+                        Ver / Imprimir
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      data-testid="invoice-send"
+                      onSelect={() => setInvoiceAction("send")}
+                    >
+                      <Mail aria-hidden="true" />
+                      Enviar por email
+                    </DropdownMenuItem>
+                    {invoice.kind === "simplified" && (
+                      <DropdownMenuItem
+                        data-testid="invoice-full"
+                        onSelect={() => setInvoiceAction("full")}
+                      >
+                        <FileText aria-hidden="true" />
+                        Factura completa
+                      </DropdownMenuItem>
+                    )}
+                    {appointment.canVoid && (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={`/facturas/${invoice.id}`}
+                          data-testid="invoice-rectify-link"
+                        >
+                          <FilePen aria-hidden="true" />
+                          Rectificar
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+                {canVoidActivePayment && (
+                  <>
+                    {invoice && <DropdownMenuSeparator />}
+                    <DropdownMenuItem
+                      data-testid="payment-void"
+                      className="text-danger-600 [&_svg]:text-danger-600"
+                      onSelect={() => setInvoiceAction("void")}
+                    >
+                      <Undo2 aria-hidden="true" />
+                      Anular cobro
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+        {invoice && (
+          <>
+            <SendInvoiceForm
+              key={`send-${invoice.id}`}
+              invoiceId={invoice.id}
+              proposedEmail={invoice.email}
+              saveEmail={invoice.saveEmail}
+              open={invoiceAction === "send"}
+              onOpenChange={(open) => setInvoiceAction(open ? "send" : null)}
             />
-          )}
-          {canRestore && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={pending || moving}
-              data-testid="appointment-restore"
-              onClick={handleRestore}
-            >
-              Deshacer «no presentada»
-            </Button>
-          )}
-        </div>
-      )}
+            {invoice.kind === "simplified" && (
+              <FullInvoiceForm
+                key={`full-${invoice.id}`}
+                invoiceId={invoice.id}
+                recipient={appointment.recipient}
+                open={invoiceAction === "full"}
+                onOpenChange={(open) => setInvoiceAction(open ? "full" : null)}
+              />
+            )}
+          </>
+        )}
+        {appointment.activePaymentId && canVoidActivePayment && (
+          <VoidPaymentDialog
+            paymentId={appointment.activePaymentId}
+            invoiceId={invoice?.id ?? null}
+            open={invoiceAction === "void"}
+            onOpenChange={(open) => setInvoiceAction(open ? "void" : null)}
+          />
+        )}
+      </div>
 
       {appointment.canMove && (
         <div className="flex flex-col gap-3 border-line border-t pt-4">
@@ -303,7 +357,7 @@ function AppointmentDetails({
             serviceId={appointment.serviceId}
             professionalId={appointment.professionalId}
             professionalOptions={appointment.professionalOptions}
-            professionalLocked={appointment.invoice !== null}
+            professionalLocked={invoice !== null}
             durationMinutes={appointment.durationMinutes}
             initialDate={appointment.initialDate}
             initialTime={appointment.initialTime}
@@ -311,16 +365,6 @@ function AppointmentDetails({
             onPendingChange={setMoving}
           />
         </div>
-      )}
-
-      {error && (
-        <p
-          role="alert"
-          data-testid="appointment-action-error"
-          className="text-[13px] text-danger-600"
-        >
-          {error}
-        </p>
       )}
 
       <div className="flex flex-col gap-2 border-line border-t pt-4">
@@ -337,6 +381,64 @@ function AppointmentDetails({
           ))}
         </ul>
       </div>
+
+      {(canCancel || canMarkNoShow || canRestore || error) && (
+        <div className="sticky bottom-0 -mx-5 -mb-[max(1.25rem,env(safe-area-inset-bottom))] mt-auto flex flex-col gap-2 border-line border-t bg-surface px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:-mb-6 sm:px-6 sm:pb-3">
+          {error && (
+            <p
+              role="alert"
+              data-testid="appointment-action-error"
+              className="text-[13px] text-danger-600"
+            >
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {canMarkNoShow && (
+              <ConfirmDialog
+                trigger={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={pending || moving}
+                    data-testid="appointment-no-show"
+                  >
+                    Marcar como no presentada
+                  </Button>
+                }
+                title="¿Marcar como no presentada?"
+                description="Podrás deshacerlo después."
+                confirmLabel="Marcar como no presentada"
+                onConfirm={handleNoShow}
+              />
+            )}
+            {canRestore && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={pending || moving}
+                data-testid="appointment-restore"
+                onClick={handleRestore}
+              >
+                Deshacer «no presentada»
+              </Button>
+            )}
+            {canCancel && (
+              <div className="ml-auto">
+                <CancelDialog
+                  appointmentId={appointment.id}
+                  invoiced={invoice !== null}
+                  canRectify={appointment.canVoid}
+                  canNotify={appointment.canNotify}
+                  disabled={moving}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -420,20 +522,77 @@ export function AppointmentPanel({
     block.focus();
   }
 
+  const navigation = (previousHref || nextHref) && (
+    <nav aria-label="Otras citas de la agenda" className="flex items-center">
+      {previousHref ? (
+        <DrawerLink
+          href={previousHref}
+          scroll={false}
+          aria-label="Cita anterior"
+          className={iconButtonClass}
+          data-testid="appointment-previous"
+        >
+          <ChevronLeft aria-hidden="true" />
+        </DrawerLink>
+      ) : (
+        <button
+          type="button"
+          disabled
+          aria-label="Cita anterior"
+          className={iconButtonClass}
+        >
+          <ChevronLeft aria-hidden="true" />
+        </button>
+      )}
+      {nextHref ? (
+        <DrawerLink
+          href={nextHref}
+          scroll={false}
+          aria-label="Cita siguiente"
+          className={iconButtonClass}
+          data-testid="appointment-next"
+        >
+          <ChevronRight aria-hidden="true" />
+        </DrawerLink>
+      ) : (
+        <button
+          type="button"
+          disabled
+          aria-label="Cita siguiente"
+          className={iconButtonClass}
+        >
+          <ChevronRight aria-hidden="true" />
+        </button>
+      )}
+    </nav>
+  );
+
+  const shown = detail ?? summary;
+  const service = detail
+    ? `${detail.serviceName} · ${formatMinutes(detail.durationMinutes)}`
+    : summary?.serviceName;
+
   return (
     <Drawer
       open={id !== null && result?.status !== "none"}
       onOpenChange={handleOpenChange}
       onCloseAutoFocus={focusAppointment}
       data-testid="appointment-panel"
+      prominent
+      actions={navigation}
       description={
-        detail ? (
-          <span data-testid="appointment-panel-date">
-            {dateOf(detail.startsAt)} · {timeOf(detail.startsAt)} –{" "}
-            {timeOf(detail.endsAt)} · {detail.professionalName}
-          </span>
-        ) : summary ? (
-          `${dateOf(summary.startsAt)} · ${timeOf(summary.startsAt)} – ${timeOf(summary.endsAt)}`
+        shown ? (
+          <>
+            <span className="block text-[15px] text-ink-800">{service}</span>
+            <span
+              className="mt-0.5 block tabular-nums"
+              data-testid={detail ? "appointment-panel-date" : undefined}
+            >
+              {formatShortMadridDay(shown.startsAt)} · {timeOf(shown.startsAt)}–
+              {timeOf(shown.endsAt)}
+              {detail && ` · ${detail.professionalName}`}
+            </span>
+          </>
         ) : (
           "Cita"
         )
@@ -451,41 +610,6 @@ export function AppointmentPanel({
         )
       }
     >
-      <p className="-mt-4 text-[13px] text-ink-800">
-        {detail
-          ? `${detail.serviceName} · ${formatMinutes(detail.durationMinutes)}`
-          : summary?.serviceName}
-      </p>
-
-      {(previousHref || nextHref) && (
-        <nav aria-label="Otras citas de la agenda" className="flex gap-2">
-          {previousHref && (
-            <Button asChild variant="secondary" size="sm">
-              <DrawerLink
-                href={previousHref}
-                scroll={false}
-                data-testid="appointment-previous"
-              >
-                <ChevronLeft aria-hidden="true" className="-ml-1" />
-                Cita anterior
-              </DrawerLink>
-            </Button>
-          )}
-          {nextHref && (
-            <Button asChild variant="secondary" size="sm" className="ml-auto">
-              <DrawerLink
-                href={nextHref}
-                scroll={false}
-                data-testid="appointment-next"
-              >
-                Cita siguiente
-                <ChevronRight aria-hidden="true" className="-mr-1" />
-              </DrawerLink>
-            </Button>
-          )}
-        </nav>
-      )}
-
       {detail ? (
         <AppointmentDetails key={detail.id} appointment={detail} />
       ) : result?.status === "error" ? (

@@ -106,6 +106,25 @@ export function paymentStatus({
   return { kind: "pending", label: "Pendiente de cobro" };
 }
 
+export type PaymentPill = {
+  label: string;
+  tone: "success" | "warning";
+};
+
+export function paymentPill(
+  input: Parameters<typeof paymentStatus>[0],
+): PaymentPill | null {
+  const { kind, label } = paymentStatus(input);
+  if (kind === "paid" && input.payment)
+    return {
+      label: `Cobrada · ${methodLabel(input.payment.method)}`,
+      tone: "success",
+    };
+  if (kind === "free") return { label, tone: "success" };
+  if (kind === "pending") return { label: "Pendiente", tone: "warning" };
+  return null;
+}
+
 export type AgendaPaymentState = "paid" | "pending" | "no_show";
 
 export type AgendaPaymentIcon = { state: AgendaPaymentState; label: string };

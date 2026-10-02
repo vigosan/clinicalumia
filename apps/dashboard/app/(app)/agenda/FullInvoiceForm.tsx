@@ -16,15 +16,21 @@ export function FullInvoiceForm({
   recipient,
   correct = false,
   asDrawer = false,
+  open: openProp,
+  onOpenChange,
 }: {
   invoiceId: string;
   recipient: RecipientDraft;
   correct?: boolean;
   asDrawer?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
   const testId = correct ? "invoice-correct" : "invoice-full";
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = openProp ?? localOpen;
+  const setOpen = onOpenChange ?? setLocalOpen;
   const [draft, setDraft] = useState(recipient);
   const [failure, setFailure] = useState<PaymentFailure | null>(null);
   const [pending, startTransition] = useTransition();
@@ -51,7 +57,7 @@ export function FullInvoiceForm({
     });
   }
 
-  const closedView = (
+  const closedView = openProp === undefined && (
     <div>
       <Button
         type="button"

@@ -122,6 +122,49 @@ describe("Drawer", () => {
     expectExitThatOnlyFadesWithReducedMotion(screen.getByRole("dialog"));
   });
 
+  it("places header actions beside the close button, so moving between records stays in the same corner as closing", () => {
+    render(
+      <Drawer
+        open
+        title="Elena Ruiz"
+        description="Valoración inicial"
+        actions={<button type="button">Cita siguiente</button>}
+      >
+        <p>Detalle</p>
+      </Drawer>,
+    );
+
+    const next = screen.getByRole("button", { name: "Cita siguiente" });
+    const close = screen.getByRole("button", { name: "Cerrar" });
+    expect(next.parentElement).toBe(close.parentElement);
+    expect(
+      next.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("with a prominent title puts the title before the description, so a record reads by who it is before the details", () => {
+    render(
+      <Drawer
+        open
+        prominent
+        title="Elena Ruiz"
+        description="Valoración inicial"
+      >
+        <p>Detalle</p>
+      </Drawer>,
+    );
+
+    const title = screen.getByRole("heading", { name: "Elena Ruiz" });
+    const description = screen.getByText("Valoración inicial");
+    expect(
+      title.compareDocumentPosition(description) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
+      "Valoración inicial",
+    );
+  });
+
   it("lets a form inside offer its own «Cancelar» that closes the drawer, so cancelling never needs a trip to another page", async () => {
     function WithCancel() {
       const [open, setOpen] = useState(true);
