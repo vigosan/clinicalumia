@@ -1,5 +1,7 @@
 import { createClient } from "@clinicalumia/api/server";
 import { Alert } from "@clinicalumia/ui/alert";
+import { Badge } from "@clinicalumia/ui/badge";
+import { Button } from "@clinicalumia/ui/button";
 import { EmptyState } from "@clinicalumia/ui/empty-state";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import { Pagination } from "@clinicalumia/ui/pagination";
@@ -12,7 +14,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@clinicalumia/ui/table";
-import { FileSignature } from "lucide-react";
+import { FileCheck, FileSignature } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -64,7 +66,15 @@ export default async function ConsentsPage({
           No se ha podido cargar el listado. Recarga la página.
         </Alert>
       )}
-      {state === "empty" && (
+      {state === "empty" && params.pendingOnly && !params.q && (
+        <EmptyState
+          data-testid="consents-all-linked"
+          icon={<FileCheck />}
+          title="Todo asociado."
+          description="Los nuevos formularios firmados aparecerán aquí."
+        />
+      )}
+      {state === "empty" && (!params.pendingOnly || params.q) && (
         <EmptyState
           data-testid="consents-empty"
           icon={<FileSignature />}
@@ -84,6 +94,7 @@ export default async function ConsentsPage({
                 <TableHeaderCell>Paciente</TableHeaderCell>
                 <TableHeaderCell>DNI/NIE</TableHeaderCell>
                 <TableHeaderCell>Ficha</TableHeaderCell>
+                <TableHeaderCell />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -119,7 +130,22 @@ export default async function ConsentsPage({
                         </Link>
                       </>
                     ) : (
-                      "Pendiente de asociar"
+                      <Badge tone="warning">Pendiente</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell
+                    className="relative z-10 text-right"
+                    mobile="action"
+                  >
+                    {!consent.person && (
+                      <Button asChild variant="secondary" size="sm">
+                        <Link
+                          href={`/consentimientos/${consent.id}`}
+                          data-testid="consent-associate"
+                        >
+                          Asociar a ficha
+                        </Link>
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>

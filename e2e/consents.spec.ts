@@ -308,7 +308,10 @@ test("staff see a pending consent first, link it by hand to the right record and
   await expect(rows.first()).toContainText(`Pendiente ${surname}`);
   await expect(rows.first()).toContainText(pending.taxId);
   await expect(rows.first().getByTestId("consent-status")).toHaveText(
-    "Pendiente de asociar",
+    "Pendiente",
+  );
+  await expect(rows.first().getByTestId("consent-associate")).toHaveText(
+    "Asociar a ficha",
   );
 
   await page.getByTestId("consents-all-filter").check();
@@ -321,10 +324,15 @@ test("staff see a pending consent first, link it by hand to the right record and
       .filter({ hasText: `Asociada ${surname}` })
       .getByTestId("consent-status"),
   ).toHaveText(`Asociado a la ficha de Ficha ${surname}`);
+  await expect(
+    rows
+      .filter({ hasText: `Asociada ${surname}` })
+      .getByTestId("consent-associate"),
+  ).toHaveCount(0);
 
   await rows
     .filter({ hasText: `Pendiente ${surname}` })
-    .getByTestId("consent-open")
+    .getByTestId("consent-associate")
     .click();
   await expect(page).toHaveURL(`${DASHBOARD}/consentimientos/${pending.id}`);
   await expect(page.getByTestId("consent-details")).toContainText(
@@ -371,6 +379,24 @@ test("staff see a pending consent first, link it by hand to the right record and
     .eq("id", pending.id)
     .single();
   expect(unlinked).toEqual({ person_id: null, link_method: null });
+});
+
+test("with nothing left to link, the pending filter says everything is linked instead of looking like a failed search", async ({
+  page,
+}) => {
+  await loginAsThrowawayEmployee(page);
+  await page.goto(`${DASHBOARD}/consentimientos?pendientes=1`);
+
+  const empty = page.getByTestId("consents-all-linked");
+  await expect(empty).toContainText("Todo asociado.");
+  await expect(empty).toContainText(
+    "Los nuevos formularios firmados aparecerán aquí.",
+  );
+  await expect(page.getByTestId("consents-empty")).toHaveCount(0);
+
+  await page.getByTestId("consents-search").fill(`Nadie${uniqueSuffix()}`);
+  await expect(page.getByTestId("consents-empty")).toBeVisible();
+  await expect(page.getByTestId("consents-all-linked")).toHaveCount(0);
 });
 
 test("the PDF opens only through the short-lived signed link, never through a public URL", async ({
