@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { expectExitThatOnlyFadesWithReducedMotion } from "../test/motion";
 import { Drawer, DrawerClose } from "./drawer";
@@ -33,6 +34,32 @@ function Example() {
 }
 
 describe("Drawer", () => {
+  it("keeps its trigger disabled in the server HTML and enables it once hydrated, so a click that could not open the drawer is never silently lost", async () => {
+    const drawer = (
+      <Drawer
+        trigger={<button type="button">Cobrar</button>}
+        title="Registrar cobro"
+        description="Elena Ruiz"
+      >
+        <p>Formulario</p>
+      </Drawer>
+    );
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(drawer);
+    document.body.appendChild(container);
+    expect(screen.getByRole("button", { name: "Cobrar" })).toBeDisabled();
+
+    render(drawer, { container, hydrate: true });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cobrar" })).toBeEnabled(),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cobrar" }));
+    expect(
+      screen.getByRole("dialog", { name: "Registrar cobro" }),
+    ).toBeVisible();
+  });
+
   it("is a dialog named by its title and described by its description", () => {
     render(<Example />);
 

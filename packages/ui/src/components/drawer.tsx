@@ -2,13 +2,30 @@
 
 import { X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
-import type { ComponentProps, ReactElement, ReactNode } from "react";
+import {
+  type ComponentProps,
+  type ReactElement,
+  type ReactNode,
+  useSyncExternalStore,
+} from "react";
 import { cn } from "../lib/cn";
 import { closeButtonClass, overlayClass } from "./dialog";
 
 type ContentProps = ComponentProps<typeof Primitive.Content>;
 
 export const DrawerClose = Primitive.Close;
+
+function subscribeToNothing() {
+  return () => {};
+}
+
+function useHydrated() {
+  return useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+}
 
 export function Drawer({
   trigger,
@@ -31,9 +48,14 @@ export function Drawer({
   children: ReactNode;
   "data-testid"?: string;
 }) {
+  const hydrated = useHydrated();
   return (
     <Primitive.Root open={open} onOpenChange={onOpenChange}>
-      {trigger && <Primitive.Trigger asChild>{trigger}</Primitive.Trigger>}
+      {trigger && (
+        <Primitive.Trigger asChild disabled={!hydrated}>
+          {trigger}
+        </Primitive.Trigger>
+      )}
       <Primitive.Portal>
         <Primitive.Overlay className={overlayClass} />
         <Primitive.Content

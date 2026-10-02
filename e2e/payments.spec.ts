@@ -760,10 +760,8 @@ test("la pestaña Pendientes cuenta las citas sin cobrar, se cobra desde ella si
     .filter({ hasText: pendingPatientName })
     .getByTestId("pending-payment-collect");
   const dialog = page.getByTestId("payment-register-dialog");
-  await expect(async () => {
-    if (!(await dialog.isVisible())) await collect.click();
-    await expect(dialog).toBeVisible({ timeout: 1000 });
-  }).toPass();
+  await collect.click();
+  await expect(dialog).toBeVisible();
   await expect(dialog.getByTestId("payment-selected")).toContainText(
     pendingPatientName,
   );

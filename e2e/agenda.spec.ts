@@ -1319,9 +1319,22 @@ test("la propietaria ve la columna de una profesional desactivada con citas ese 
     role: "employee",
     specialtyId: PSICOLOGIA_SPECIALTY_ID,
   });
+  const patientLastName = `Relevo${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+  const { data: patient, error: patientError } = await admin
+    .from("people")
+    .insert({
+      first_name: "Paciente",
+      last_name: patientLastName,
+      is_patient: true,
+      birth_date: "1990-01-01",
+    })
+    .select("id")
+    .single();
+  expect(patientError).toBeNull();
+  createdPersonIds.push(patient!.id);
   const appointmentId = await createAppointment({
     professionalId: leaving.id,
-    patientId: JORGE_ID,
+    patientId: patient!.id,
     serviceId: PSICOLOGIA_SERVICE_ID,
     date,
     time: "12:00",
@@ -1342,7 +1355,7 @@ test("la propietaria ve la columna de una profesional desactivada con citas ese 
   await leavingWeek.click();
   await expect(
     weekDayFor(page, date).getByTestId("appointment-block"),
-  ).toContainText("Jorge Ruiz Pérez");
+  ).toContainText(`Paciente ${patientLastName}`);
 
   await page.goto(`${DASHBOARD}/?date=${date}`);
 
@@ -1365,7 +1378,7 @@ test("la propietaria ve la columna de una profesional desactivada con citas ese 
 
   await expect(
     columnFor(page, colleague.id).getByTestId("appointment-block"),
-  ).toContainText("Jorge Ruiz Pérez");
+  ).toContainText(`Paciente ${patientLastName}`);
   await expect(columnFor(page, leaving.id)).toHaveCount(0);
   await expect(page.getByTestId("appointment-history")).toContainText(
     "Reasignada de Saliente",
