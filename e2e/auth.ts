@@ -143,4 +143,5 @@ export async function logOut(page: Page) {
   }
   await page.getByTestId("user-menu").click();
   await page.getByTestId("logout").click();
+  await expect(page).toHaveURL(/\/login$/);
 }
