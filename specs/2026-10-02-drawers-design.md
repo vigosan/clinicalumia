@@ -35,17 +35,18 @@ Quitar la edición inline del admin (`apps/admin`) y del panel (`apps/dashboard`
   - la fila ya no tiene modo edición.
 - **Admin → Equipo:**
   - «Editar» abre un drawer con nombre, especialidad y nº de colegiado;
-  - «Invitar a un empleado» pasa a ser un botón que abre un drawer.
+  - «Invitar a un empleado» pasa a ser un botón que abre un drawer; al enviarse, se cierra y avisa con un toast (el admin monta `Toaster`, como el panel).
 - **Admin → Horarios:**
   - «Añadir ausencia» y «Añadir día de cierre» pasan a ser botones que abren su formulario en un drawer;
+  - si el cierre cae en días con citas (o no se han podido comprobar), el drawer no se cierra y muestra el aviso;
   - el editor semanal se queda en la página.
 
-Los `data-testid` que ya existen se conservan. Los botones que abren drawers nuevos llevan el suyo (`specialty-new`, `member-invite`, `time-off-new`, `closure-new`, `guardian-add`).
+Los `data-testid` que ya existen se conservan. Los botones que abren drawers nuevos llevan el suyo (`specialty-new`, `member-invite`, `member-edit`, `time-off-new`, `closure-new`; `guardian-add` ya existe).
 
 ## 4. Pruebas
 
 - **Vitest (`packages/ui`):** `drawer.test.tsx` parte de `sheet.test.tsx` (nombre y descripción accesibles, foco atrapado, Escape, botón «Cerrar») y añade la apertura con `trigger`.
-- **e2e:** se actualizan los recorridos que usan la edición inline o las altas (`admin-errors.spec.ts`, `admin-ui.spec.ts`, los de horarios y cierres, tutores, `/cobros`). Se añade una comprobación a 390 px de que el drawer de la cita queda pegado abajo, y a 1440 px de que queda a la derecha.
+- **e2e:** se actualizan los recorridos que usan la edición inline o las altas (`admin-errors.spec.ts`, `admin-ui.spec.ts`, los de horarios y cierres, tutores, `/cobros`). Se comprueba con el drawer de «Nueva especialidad» que a 390 px queda pegado abajo y a 1440 px a la derecha, y que «Registrar cobro» ya no sale centrado.
 - **Capturas:** del admin y del panel a 1440 px y 390 px, para revisarlos visualmente.
 
 ## 5. Commits
