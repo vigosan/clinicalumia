@@ -741,6 +741,9 @@ test('searching for someone who does not exist shows "No hay ninguna ficha con e
   await page.goto(`${DASHBOARD}/patients/${minorId}`);
 
   await page.getByTestId("guardian-add").click();
+  await expect(
+    page.getByRole("dialog", { name: "Añadir tutor/a" }),
+  ).toBeVisible();
   await expect(page.getByTestId("guardian-close")).toBeVisible();
 
   await page.getByTestId("guardian-search").fill("zzz-no-existe-zzz");
@@ -748,9 +751,15 @@ test('searching for someone who does not exist shows "No hay ninguna ficha con e
     "No hay ninguna ficha con esos datos.",
   );
 
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("guardian-search-empty")).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog", { name: "Añadir tutor/a" }),
+  ).toBeVisible();
   await page.getByTestId("guardian-close").click();
-  await expect(page.getByTestId("guardian-add")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByTestId("guardian-search")).toHaveCount(0);
+  await expect(page.getByTestId("guardian-add")).toBeFocused();
 });
 
 test("añadir tutor/a busca fichas con edad y teléfono, se elige con el teclado y queda guardado con su parentesco", async ({
@@ -807,7 +816,10 @@ test("añadir tutor/a busca fichas con edad y teléfono, se elige con el teclado
 
   await selectOption(page.getByTestId("guardian-relationship"), "otro");
   await page.getByTestId("guardian-save").click();
-  await expect(page.getByTestId("guardian-add")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("guardian-row")).toContainText(
+    `Abuela TutoraBuscada${suffix}`,
+  );
 
   const { data: saved } = await admin
     .from("guardianships")

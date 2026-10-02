@@ -86,9 +86,7 @@ export function GuardiansSection({
               ))}
             </ul>
           )}
-          {isMinorPerson && (
-            <AddGuardian minorId={personId} onError={setError} />
-          )}
+          {isMinorPerson && <AddGuardian minorId={personId} />}
         </>
       )}
       {showWards && (
