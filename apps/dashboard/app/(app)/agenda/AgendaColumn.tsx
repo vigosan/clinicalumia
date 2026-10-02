@@ -5,6 +5,7 @@ import type { Block, ScheduleBlock, SpecialtyTone } from "@/lib/agenda";
 import type { Closure } from "@/lib/closures";
 import type { AgendaPaymentIcon, AgendaPaymentState } from "@/lib/payments";
 import { DrawerLink } from "../url-drawer";
+import type { AgendaAppointment } from "./load";
 
 export const PX_PER_MINUTE = 2;
 export const SLOT_MINUTES = 15;
@@ -84,7 +85,7 @@ export type BlockContent = {
   title: string;
   subtitle: string;
   href?: string;
-  dimmed: boolean;
+  status?: AgendaAppointment["status"];
   toneClass: string;
   webBooking?: boolean;
   paymentIcon?: AgendaPaymentIcon | null;
@@ -212,7 +213,7 @@ export function AgendaColumnGrid({
             width: `calc(${100 / item.lanes}% - 8px)`,
           }),
         };
-        const className = `absolute inset-x-1 overflow-hidden rounded-field border border-l-3 px-2 py-1.5 text-xs ${content.toneClass} ${content.dimmed ? "opacity-60" : ""} ${content.testId === "time-off-block" ? "border-dashed" : ""}`;
+        const className = `absolute inset-x-1 overflow-hidden rounded-field border border-l-3 px-2 py-1.5 text-xs ${content.toneClass} ${content.status === "no_show" ? "border-l-warning-800" : ""} ${content.testId === "time-off-block" ? "border-dashed" : ""}`;
         if (content.href) {
           return (
             <DrawerLink
@@ -220,6 +221,7 @@ export function AgendaColumnGrid({
               href={content.href}
               data-testid={content.testId}
               data-appointment={content.block.id}
+              data-status={content.status}
               className={className}
               style={blockStyle}
             >
@@ -277,7 +279,8 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
             href={content.href}
             data-testid={content.testId}
             data-appointment={content.block.id}
-            className={`rounded-field border border-l-3 px-3 py-2 text-sm ${content.toneClass} ${content.dimmed ? "opacity-60" : ""}`}
+            data-status={content.status}
+            className={`rounded-field border border-l-3 px-3 py-2 text-sm ${content.toneClass} ${content.status === "no_show" ? "border-l-warning-800" : ""}`}
           >
             {content.webBooking && (
               <Badge tone="neutral" data-testid="web-booking-badge">

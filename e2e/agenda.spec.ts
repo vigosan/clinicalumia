@@ -1764,7 +1764,7 @@ test("el panel de la cita retiene el foco mientras está abierto, y Escape lo ci
   expect(serverRenders).toEqual([]);
 });
 
-test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer «no presentada»» la devuelve, y el panel lo refleja sin esperar al servidor", async ({
+test("en una cita pasada, «Marcar como no presentada» la señala con un borde de aviso sin apagar su texto y «Deshacer «no presentada»» la devuelve, y el panel lo refleja sin esperar al servidor", async ({
   page,
 }) => {
   const date = pastDate(120);
@@ -1794,9 +1794,10 @@ test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer 
     { timeout: 1000 },
   );
 
-  await expect(
-    columnFor(page, employee.id).getByTestId("appointment-block"),
-  ).toHaveClass(/opacity-60/);
+  const block = columnFor(page, employee.id).getByTestId("appointment-block");
+  await expect(block).toHaveAttribute("data-status", "no_show");
+  await expect(block).toHaveCSS("border-left-color", "rgb(110, 68, 18)");
+  await expect(block).toHaveCSS("opacity", "1");
   await expect(page.getByTestId("appointment-status")).toHaveText(
     "No presentada",
   );
@@ -1812,9 +1813,7 @@ test("en una cita pasada, «Marcar como no presentada» la atenúa y «Deshacer 
   await expect(page.getByTestId("appointment-history")).toContainText(
     "Se deshizo «no presentada»",
   );
-  await expect(
-    columnFor(page, employee.id).getByTestId("appointment-block"),
-  ).not.toHaveClass(/opacity-60/);
+  await expect(block).toHaveAttribute("data-status", "scheduled");
 });
 
 test("una no presentada libera su franja: se da a otro paciente, las dos se ven, y deshacerla avisa de que la franja está ocupada", async ({
@@ -1863,7 +1862,7 @@ test("una no presentada libera su franja: se da a otro paciente, las dos se ven,
   const takenBlock = column.locator(
     `[data-testid="appointment-block"][data-appointment="${takenId}"]`,
   );
-  await expect(noShowBlock).toHaveClass(/opacity-60/);
+  await expect(noShowBlock).toHaveAttribute("data-status", "no_show");
   await expect(noShowBlock).toContainText("Jorge");
   await expect(takenBlock).toContainText("Nora");
   const noShowBox = await noShowBlock.boundingBox();

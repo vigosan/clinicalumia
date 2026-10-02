@@ -70,7 +70,7 @@ function buildBlockContents(
         with: withParam,
         appointment: appointment.id,
       }),
-      dimmed: appointment.status === "no_show",
+      status: appointment.status,
       toneClass:
         toneByColumn.get(appointment.professionalId) ?? TONE_CLASSES.neutral,
       webBooking: appointment.origin === "web",
@@ -93,7 +93,6 @@ function buildBlockContents(
       testId: "busy-block",
       title: "Ocupado",
       subtitle: `${timeOf(entry.startsAt)} – ${timeOf(entry.endsAt)}`,
-      dimmed: false,
       toneClass: TONE_CLASSES.neutral,
     });
   });
@@ -114,7 +113,6 @@ function buildBlockContents(
       subtitle: entry.reason
         ? `${timeOf(entry.startsAt)} – ${timeOf(entry.endsAt)} · ${entry.reason}`
         : `${timeOf(entry.startsAt)} – ${timeOf(entry.endsAt)}`,
-      dimmed: false,
       toneClass: "border-line bg-cream-100",
     });
   }

@@ -58,7 +58,7 @@ function buildDayBlocks(
         person: personId,
         appointment: appointment.id,
       }),
-      dimmed: appointment.status === "no_show",
+      status: appointment.status,
       toneClass,
       webBooking: appointment.origin === "web",
       paymentIcon: appointment.paymentIcon,
@@ -81,7 +81,6 @@ function buildDayBlocks(
       subtitle: entry.reason
         ? `${timeOf(entry.startsAt)} – ${timeOf(entry.endsAt)} · ${entry.reason}`
         : `${timeOf(entry.startsAt)} – ${timeOf(entry.endsAt)}`,
-      dimmed: false,
       toneClass: "border-line bg-cream-100",
     });
   }
