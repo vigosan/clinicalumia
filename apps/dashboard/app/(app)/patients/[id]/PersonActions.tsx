@@ -64,7 +64,9 @@ export function PersonActions({
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="secondary" size="sm">
-          <Link href={`/patients/${personId}/edit`}>Editar</Link>
+          <Link href={`/patients/${personId}?editar=1`} scroll={false}>
+            Editar
+          </Link>
         </Button>
         {isOwner && (
           <DropdownMenu modal={false}>

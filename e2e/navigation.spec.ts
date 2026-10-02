@@ -41,31 +41,55 @@ test("the record's breadcrumbs show where staff are and take them back up withou
 }) => {
   const person = await createPerson();
   await signIn(page, DASHBOARD, "psicologia@lumia.test");
-  await page.goto(`${DASHBOARD}/patients/${person.id}/edit`);
+  await page.goto(`${DASHBOARD}/patients/${person.id}`);
 
-  await expect(page).toHaveTitle("Editar ficha · LUMIA");
+  await expect(page).toHaveTitle(`${person.name} · LUMIA`);
   const trail = page.getByTestId("breadcrumbs");
-  await expect(trail).toContainText("Pacientes");
-  await expect(trail).toContainText(person.name);
-  await expect(trail.getByText("Editar", { exact: true })).toHaveAttribute(
+  await expect(trail.getByText(person.name, { exact: true })).toHaveAttribute(
     "aria-current",
     "page",
   );
 
-  await trail.getByRole("link", { name: person.name }).click();
-  await expect(page).toHaveURL(`${DASHBOARD}/patients/${person.id}`);
-  await expect(page).toHaveTitle(`${person.name} · LUMIA`);
-
-  await page
-    .getByTestId("breadcrumbs")
-    .getByRole("link", { name: "Pacientes" })
-    .click();
+  await trail.getByRole("link", { name: "Pacientes" }).click();
   await expect(page).toHaveURL(`${DASHBOARD}/patients`);
   await expect(
     page
       .getByRole("navigation", { name: "Secciones" })
       .getByRole("link", { name: "Pacientes" }),
   ).toHaveAttribute("aria-current", "page");
+});
+
+test("«Editar» opens the record's form in a drawer over the record, and closing it leaves the record as it was", async ({
+  page,
+}) => {
+  const person = await createPerson();
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients/${person.id}`);
+
+  await page.getByRole("link", { name: "Editar" }).click();
+  const drawer = page.getByTestId("person-edit-drawer");
+  await expect(drawer.getByTestId("person-form")).toBeVisible();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${person.id}?editar=1`);
+
+  await drawer.getByRole("button", { name: "Cerrar" }).click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients/${person.id}`);
+  await expect(drawer).toHaveCount(0);
+});
+
+test("«Nuevo paciente» opens the form in a drawer over the list", async ({
+  page,
+}) => {
+  await signIn(page, DASHBOARD, "psicologia@lumia.test");
+  await page.goto(`${DASHBOARD}/patients`);
+
+  await page.getByTestId("patient-new").click();
+  const drawer = page.getByTestId("person-new-drawer");
+  await expect(drawer.getByTestId("person-form")).toBeVisible();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients?nuevo=1`);
+
+  await drawer.getByRole("link", { name: "Cancelar" }).click();
+  await expect(page).toHaveURL(`${DASHBOARD}/patients`);
+  await expect(drawer).toHaveCount(0);
 });
 
 test("an old Nueva cita link opens the drawer on that day's agenda, and closing it stays on the same day", async ({
@@ -181,7 +205,7 @@ test.describe("on a 390 px phone", () => {
     await expect(menu).toBeHidden();
     await expect(page.getByTestId("nav-toggle")).toBeFocused();
 
-    await page.goto(`${DASHBOARD}/patients/${person.id}/edit`);
+    await page.goto(`${DASHBOARD}/appointments/new?patient=${person.id}`);
     const back = page.getByTestId("breadcrumbs-back");
     await expect(back).toBeVisible();
     await expect(back).toContainText(person.name);

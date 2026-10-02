@@ -2,6 +2,7 @@ import { createClient } from "@clinicalumia/api/server";
 import { Card } from "@clinicalumia/ui/card";
 import { PageHeader } from "@clinicalumia/ui/page-header";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { isUuid } from "@/lib/agenda";
 import { newPersonBreadcrumbs } from "@/lib/breadcrumbs";
 import { type ConsentPrefill, PersonForm } from "../PersonForm";
@@ -31,6 +32,8 @@ export default async function NewPersonPage({
   }>;
 }) {
   const { guardianOf, returnTo, consentimiento } = await searchParams;
+  if (!guardianOf && !returnTo && !consentimiento)
+    redirect("/patients?nuevo=1");
   const minorId = guardianOf && UUID_REGEX.test(guardianOf) ? guardianOf : null;
 
   let guardianOfProp: { id: string; minorName: string } | undefined;

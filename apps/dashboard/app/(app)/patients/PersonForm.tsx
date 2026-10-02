@@ -235,7 +235,7 @@ export function PersonForm({
           startTransition(() => formAction(formData));
         })();
       }}
-      className="flex flex-col gap-5"
+      className="@container flex flex-col gap-5"
     >
       {person && <input type="hidden" name="id" value={person.id} />}
       {guardianOf && (
@@ -243,7 +243,7 @@ export function PersonForm({
       )}
       {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
       {consent && <input type="hidden" name="consent_id" value={consent.id} />}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 @xl:grid-cols-2">
         <Field
           label="Nombre"
           hint={
@@ -324,7 +324,7 @@ export function PersonForm({
       )}
 
       {guardianOf && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @xl:grid-cols-2">
           <Field label="Parentesco">
             <Select
               name="relationship"

@@ -191,7 +191,7 @@ test("una fecha de nacimiento que no existe no deja guardar la ficha, en vez de 
   await expect(birthDate).toHaveValue("31/02/1990");
   await page.getByTestId("person-submit").click();
 
-  await expect(page).toHaveURL(`${DASHBOARD}/patients/new`);
+  await expect(page).toHaveURL(`${DASHBOARD}/patients?nuevo=1`);
   expect(
     await birthDate.evaluate((input: HTMLInputElement) => input.validity.valid),
   ).toBe(false);
@@ -282,7 +282,7 @@ test("submitting right after typing the seed phone, before the debounced check w
   const warning = page.getByTestId("duplicate-warning");
   await expect(warning).toBeVisible();
   await expect(warning).toContainText("Lucía Martínez Soler");
-  await expect(page).toHaveURL(`${DASHBOARD}/patients/new`);
+  await expect(page).toHaveURL(`${DASHBOARD}/patients?nuevo=1`);
 
   const { data } = await admin
     .from("people")

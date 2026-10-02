@@ -26,6 +26,8 @@ import {
   patientsPageCount,
 } from "@/lib/patients-list";
 import { patientsListState } from "@/lib/patients-list-state";
+import { PersonDrawer } from "./PersonDrawer";
+import { PersonForm } from "./PersonForm";
 import { SearchBox } from "./SearchBox";
 
 export const metadata: Metadata = { title: "Pacientes" };
@@ -33,9 +35,15 @@ export const metadata: Metadata = { title: "Pacientes" };
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; archived?: string; pagina?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    archived?: string;
+    pagina?: string;
+    nuevo?: string;
+  }>;
 }) {
-  const params = patientsListParams(await searchParams);
+  const search = await searchParams;
+  const params = patientsListParams(search);
   const { q, archived: showArchived } = params;
   const supabase = await createClient();
 
@@ -45,6 +53,8 @@ export default async function PatientsPage({
   const failed = Boolean(error) && error?.code !== "PGRST103";
   const state = patientsListState(failed, patients.length);
   const pageCount = patientsPageCount(count ?? 0);
+  const { data: isOwner } =
+    search.nuevo === "1" ? await supabase.rpc("is_owner") : { data: false };
 
   return (
     <>
@@ -52,7 +62,7 @@ export default async function PatientsPage({
         title="Pacientes"
         actions={
           <Button asChild size="sm" data-testid="patient-new">
-            <Link href="/patients/new">
+            <Link href="/patients?nuevo=1" scroll={false}>
               <Plus aria-hidden="true" />
               Nuevo paciente
             </Link>
@@ -161,6 +171,16 @@ export default async function PatientsPage({
             testIdPrefix="patients"
           />
         </>
+      )}
+      {search.nuevo === "1" && (
+        <PersonDrawer
+          closeHref={patientsListHref(params)}
+          title="Nuevo paciente"
+          description="Pacientes"
+          testId="person-new-drawer"
+        >
+          <PersonForm isOwner={isOwner === true} />
+        </PersonDrawer>
       )}
     </>
   );
