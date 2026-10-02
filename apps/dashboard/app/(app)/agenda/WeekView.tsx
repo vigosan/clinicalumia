@@ -52,6 +52,7 @@ function buildDayBlocks(
       testId: "appointment-block",
       title: appointment.patientName,
       subtitle: `${timeOf(appointment.startsAt)} · ${appointment.serviceName}`,
+      service: appointment.serviceName,
       href: buildHref("/", {
         date: anchorDate,
         view: "week",

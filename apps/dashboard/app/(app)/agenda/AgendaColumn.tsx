@@ -87,6 +87,7 @@ export type BlockContent = {
   testId: "appointment-block" | "busy-block" | "time-off-block";
   title: string;
   subtitle: string;
+  service?: string;
   href?: string;
   status?: AgendaAppointment["status"];
   toneClass: string;
@@ -301,19 +302,31 @@ export function AgendaColumnList({ items }: { items: BlockContent[] }) {
             data-testid={content.testId}
             data-appointment={content.block.id}
             data-status={content.status}
-            className={`rounded-field border border-l-3 px-3 py-2 text-sm ${content.toneClass} ${content.status === "no_show" ? "border-l-warning-800" : ""}`}
+            className={`flex gap-2 rounded-field border border-l-3 px-3 py-2 ${content.toneClass} ${content.status === "no_show" ? "border-l-warning-800" : ""}`}
           >
-            {content.webBooking && (
-              <Badge tone="neutral" data-testid="web-booking-badge">
-                Reserva web
-              </Badge>
-            )}
-            <BlockTitle
-              title={content.title}
-              paymentIcon={content.paymentIcon}
-              className="font-medium"
-            />
-            <p className="text-xs">{content.subtitle}</p>
+            <span
+              data-testid="appointment-time"
+              className="w-13 shrink-0 font-semibold text-[15px] tabular-nums"
+            >
+              {timeOf(content.block.start)}
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <BlockTitle
+                title={content.title}
+                paymentIcon={content.paymentIcon}
+                className="font-semibold text-[15px]"
+              />
+              <p className="text-[13px]">{content.service}</p>
+              {content.webBooking && (
+                <Badge
+                  tone="neutral"
+                  data-testid="web-booking-badge"
+                  className="mt-1 self-start"
+                >
+                  Reserva web
+                </Badge>
+              )}
+            </div>
           </DrawerLink>
         ) : (
           <div

@@ -64,6 +64,7 @@ function buildBlockContents(
       testId: "appointment-block",
       title: appointment.patientName,
       subtitle: `${timeOf(appointment.startsAt)} · ${appointment.serviceName}`,
+      service: appointment.serviceName,
       href: buildHref("/", {
         date,
         view,
@@ -201,6 +202,9 @@ export function DayView({
     });
     laidOutByColumn.set(content.block.professionalId, list);
   }
+  const emptyColumnNames = columns
+    .filter((column) => !laidOutByColumn.has(column.id))
+    .map((column) => column.fullName);
   const nowOffset = useNowOffset(date, firstHour, windowMinutes);
   const hours = Array.from(
     { length: lastHour - firstHour + 1 },
@@ -332,6 +336,7 @@ export function DayView({
                 new Date(a.block.start).getTime() -
                 new Date(b.block.start).getTime(),
             );
+          if (items.length === 0) return null;
           return (
             <div
               key={column.id}
@@ -349,6 +354,14 @@ export function DayView({
             </div>
           );
         })}
+        {emptyColumnNames.length > 0 && (
+          <p
+            data-testid="agenda-empty-columns"
+            className="text-[13px] text-ink-700"
+          >
+            Sin citas: {emptyColumnNames.join(", ")}
+          </p>
+        )}
       </div>
     </>
   );

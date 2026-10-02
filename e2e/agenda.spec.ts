@@ -444,6 +444,51 @@ test("fuera de horario se ve rayado y las líneas de cada cuarto de hora son pun
   await expect(lines.first()).toHaveCSS("border-top-style", "dotted");
 });
 
+test.describe("en el móvil", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("las profesionales sin citas se agrupan en una sola línea al final y las citas se leen como filas con la hora delante, para ver de un vistazo qué viene ahora", async ({
+    page,
+  }) => {
+    const date = futureDate(330 + Math.floor(Math.random() * 30));
+    await createAppointment({
+      professionalId: LAURA_ID,
+      patientId: ELENA_ID,
+      serviceId: PSICOLOGIA_SERVICE_ID,
+      date,
+      time: "16:00",
+      endTime: "17:00",
+    });
+
+    await loginAsThrowawayOwner(page, "Propietaria del móvil");
+    await page.goto(`${DASHBOARD}/?date=${date}`);
+
+    const empty = page.getByTestId("agenda-empty-columns");
+    await expect(empty).toBeVisible();
+    await expect(empty).toContainText(/^Sin citas: /);
+    await expect(empty).toContainText("Marc Ejemplo");
+    await expect(empty).not.toContainText("Laura Ejemplo");
+    await expect(page.getByText("Sin citas.", { exact: true })).toHaveCount(0);
+    await expect(columnFor(page, MARC_ID)).toHaveCount(0);
+
+    const block = columnFor(page, LAURA_ID).getByTestId("appointment-block");
+    await expect(block).toContainText("Elena Gómez Díaz");
+    await expect(block).toContainText("Psicoterapia individual");
+    const time = block.getByTestId("appointment-time");
+    await expect(time).toHaveText("16:00");
+    await expect(time).toHaveCSS("font-variant-numeric", "tabular-nums");
+    const timeBox = await time.boundingBox();
+    const nameBox = await block.getByText("Elena Gómez Díaz").boundingBox();
+    expect(timeBox && nameBox).toBeTruthy();
+    expect(Math.abs(timeBox!.y - nameBox!.y)).toBeLessThanOrEqual(4);
+    expect(nameBox!.x).toBeGreaterThanOrEqual(timeBox!.x + timeBox!.width);
+
+    const emptyBox = await empty.boundingBox();
+    const blockBox = await block.boundingBox();
+    expect(emptyBox!.y).toBeGreaterThan(blockBox!.y);
+  });
+});
+
 test("cambiar a Semana muestra siete week-day, y una cita del test aparece en su día", async ({
   page,
 }) => {
