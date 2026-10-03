@@ -10,7 +10,7 @@ function snapshotName(path: string, width: number) {
 
 for (const path of pages) {
   for (const width of widths) {
-    test(`web ${path} at ${width}px looks exactly as before moving tokens and fonts`, async ({
+    test(`web ${path} at ${width}px matches the approved redesign`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 900 });

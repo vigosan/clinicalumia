@@ -322,7 +322,10 @@ test("the booking button in the web header starts the online booking instead of 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(WEB);
 
-  await page.getByRole("link", { name: "Coger cita" }).click();
+  await page
+    .getByRole("banner")
+    .getByRole("link", { name: "Pide tu valoración" })
+    .click();
 
   await expect(page).toHaveURL(`${WEB}/reservar`);
   await expect(page.getByTestId("booking-specialty").first()).toBeVisible();
