@@ -17,19 +17,6 @@ export function WhatsAppIcon({ className = "" }: IconProps) {
   );
 }
 
-export function GoogleIcon({ className = "" }: IconProps) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="16 16 37 37.1"
-      fill="currentColor"
-      className={className}
-    >
-      <path d="M 23.41 34.53 C 23.41 39.95 27.31 44.58 32.65 45.5 C 37.99 46.41 43.21 43.34 45.01 38.23 L 34.53 38.23 L 34.53 30.82 L 52.7 30.82 L 52.7 38.23 L 52.69 38.23 C 50.97 46.69 43.49 53.06 34.53 53.06 C 24.3 53.06 16 44.76 16 34.53 C 16 24.3 24.3 16 34.53 16 C 40.68 16 46.43 19.05 49.87 24.14 L 43.8 28.39 C 41.09 24.3 36.02 22.47 31.32 23.88 C 26.63 25.29 23.41 29.62 23.41 34.53 Z" />
-    </svg>
-  );
-}
-
 function StrokeIcon({
   className = "",
   children,
@@ -96,6 +83,15 @@ export function CheckIcon({ className = "" }: IconProps) {
   return (
     <StrokeIcon className={className}>
       <path d="m5 12 5 5L20 7" />
+    </StrokeIcon>
+  );
+}
+
+export function MailIcon({ className = "" }: IconProps) {
+  return (
+    <StrokeIcon className={className}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
     </StrokeIcon>
   );
 }

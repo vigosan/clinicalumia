@@ -341,3 +341,43 @@ test("grouping the FAQ keeps every question in the FAQPage structured data that 
     page.getByTestId("faq-accordion").locator("details"),
   ).toHaveCount(7);
 });
+
+test("every text on the contact page meets WCAG AA against its background", async ({
+  page,
+}) => {
+  await openDesktop(page, "/contacto");
+  expect(await textBelowAA(page)).toEqual([]);
+});
+
+test("the contact page puts calling, WhatsApp and email first, because most people would rather call than fill in a form", async ({
+  page,
+}) => {
+  await openDesktop(page, "/contacto");
+  const quick = page.getByTestId("contact-quick");
+
+  await expect(
+    quick.getByRole("link", { name: /614 552 808/ }),
+  ).toHaveAttribute("href", "tel:+34614552808");
+  await expect(quick.getByRole("link", { name: /WhatsApp/ })).toHaveAttribute(
+    "href",
+    "https://wa.me/34614552808",
+  );
+  await expect(
+    quick.getByRole("link", { name: /info@clinicalumia\.es/ }),
+  ).toHaveAttribute("href", "mailto:info@clinicalumia.es");
+});
+
+test("the reason for the visit is chosen from the treatments, with a way out for those who do not know yet", async ({
+  page,
+}) => {
+  await openDesktop(page, "/contacto");
+  const reason = page.getByLabel("Motivo de consulta");
+
+  await expect(reason.locator("option")).toContainText([
+    "Terapia Miofuncional orofacial",
+    "Fisioterapia",
+    "No lo sé, necesito orientación",
+  ]);
+  await reason.selectOption("Logopedia infantil");
+  await expect(reason).toHaveValue("Logopedia infantil");
+});

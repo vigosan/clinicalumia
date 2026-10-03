@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
+import { services } from "@/lib/services";
 import { type ContactFormState, sendContactRequest } from "../actions";
 
 const initialState: ContactFormState = undefined;
 
+const reasons = [
+  ...services.map((service) => service.title),
+  "No lo sé, necesito orientación",
+];
+
 const fieldClass =
-  "rounded-2xl border border-sage-400/60 bg-cream-50 px-4 py-3 text-base text-ink-700 outline-none focus:border-sage-600";
+  "min-h-12 rounded-2xl border border-sage-600 bg-white px-4 py-3 text-base text-ink-900 outline-none focus:border-sage-800 focus:ring-2 focus:ring-sage-800/25";
+
+const labelClass = "font-medium text-ink-900 text-sm";
 
 export function ContactForm() {
   const [state, formAction, pending] = useActionState(
@@ -26,7 +34,7 @@ export function ContactForm() {
     return (
       <p
         data-testid="contact-success"
-        className="rounded-panel bg-sage-500 px-8 py-12 text-center text-cream-50 text-lg"
+        className="rounded-[2rem] bg-sage-100 px-8 py-12 text-center text-ink-900 text-lg"
       >
         ¡Gracias! Hemos recibido tu mensaje y te contactaremos para orientarte.
       </p>
@@ -41,7 +49,7 @@ export function ContactForm() {
       className="flex flex-col gap-4"
     >
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">Nombre y apellidos</span>
+        <span className={labelClass}>Nombre y apellidos</span>
         <input
           type="text"
           name="name"
@@ -53,7 +61,7 @@ export function ContactForm() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Teléfono</span>
+          <span className={labelClass}>Teléfono</span>
           <input
             type="tel"
             name="phone"
@@ -64,7 +72,7 @@ export function ContactForm() {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Email</span>
+          <span className={labelClass}>Email</span>
           <input
             type="email"
             name="email"
@@ -77,18 +85,31 @@ export function ContactForm() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Motivo de consulta</span>
-          <input type="text" name="reason" className={fieldClass} />
+          <span className={labelClass}>Motivo de consulta</span>
+          <select name="reason" defaultValue="" className={fieldClass}>
+            <option value="">Elige una opción</option>
+            {reasons.map((reason) => (
+              <option key={reason} value={reason}>
+                {reason}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-ink-600 text-sm">Edad del paciente</span>
-          <input type="text" name="patientAge" className={fieldClass} />
+          <span className={labelClass}>Edad del paciente</span>
+          <input
+            type="text"
+            name="patientAge"
+            inputMode="numeric"
+            placeholder="Ej. 7 años"
+            className={fieldClass}
+          />
         </label>
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-ink-600 text-sm">Mensaje</span>
+        <span className={labelClass}>Mensaje</span>
         <textarea
           name="message"
           rows={5}
@@ -96,12 +117,12 @@ export function ContactForm() {
         />
       </label>
 
-      <label className="flex items-start gap-3 text-ink-500 text-sm">
+      <label className="flex items-start gap-3 text-ink-800 text-sm">
         <input
           type="checkbox"
           name="privacy"
           required
-          className="mt-1 size-4 accent-sage-600"
+          className="mt-0.5 size-5 accent-sage-800"
         />
         <span>
           He leído y acepto la{" "}
@@ -126,7 +147,7 @@ export function ContactForm() {
         type="submit"
         disabled={pending}
         data-testid="contact-submit"
-        className="mt-2 cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-2 min-h-12 cursor-pointer self-start rounded-full bg-sage-800 px-8 py-3 font-medium text-cream-50 transition-colors hover:bg-sage-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Enviando…" : "Enviar solicitud"}
       </button>
