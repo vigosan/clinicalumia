@@ -274,3 +274,25 @@ test("someone who does not know which treatment fits is sent to book a first ass
       .getByRole("link", { name: "Pide tu primera valoración" }),
   ).toHaveAttribute("href", "/reservar");
 });
+
+test("every text on Somos LUMIA meets WCAG AA, including the sage panel that used to have cream text", async ({
+  page,
+}) => {
+  await openDesktop(page, "/sobre-lumia");
+  expect(await textBelowAA(page)).toEqual([]);
+});
+
+test("Somos LUMIA puts Patricia's experience and teaching up front as facts and ends by asking for the first assessment", async ({
+  page,
+}) => {
+  await openDesktop(page, "/sobre-lumia");
+  const facts = page.getByTestId("about-facts");
+
+  await expect(facts).toContainText("+10 años");
+  await expect(facts).toContainText("Instituto Raimon Gaja");
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("link", { name: "Pide tu primera valoración" }),
+  ).toHaveAttribute("href", "/reservar");
+});

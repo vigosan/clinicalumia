@@ -91,3 +91,11 @@ export function ClockIcon({ className = "" }: IconProps) {
     </StrokeIcon>
   );
 }
+
+export function CheckIcon({ className = "" }: IconProps) {
+  return (
+    <StrokeIcon className={className}>
+      <path d="m5 12 5 5L20 7" />
+    </StrokeIcon>
+  );
+}
