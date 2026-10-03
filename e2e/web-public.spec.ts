@@ -108,3 +108,133 @@ test("the footer links to the privacy policy, which the forms ask people to acce
       .getByRole("link", { name: "Política de privacidad" }),
   ).toHaveAttribute("href", "/privacidad");
 });
+
+async function textBelowAA(page: Page) {
+  return page.evaluate(() => {
+    type Rgba = [number, number, number, number];
+    const parse = (value: string): Rgba => {
+      const parts = (value.match(/[\d.]+/g) ?? []).map(Number);
+      return [parts[0], parts[1], parts[2], parts[3] ?? 1];
+    };
+    const blend = (top: Rgba, bottom: Rgba): Rgba => [
+      top[0] * top[3] + bottom[0] * (1 - top[3]),
+      top[1] * top[3] + bottom[1] * (1 - top[3]),
+      top[2] * top[3] + bottom[2] * (1 - top[3]),
+      1,
+    ];
+    const background = (node: Element | null): Rgba | null => {
+      if (!node) return [255, 255, 255, 1];
+      const style = getComputedStyle(node);
+      if (style.backgroundImage !== "none") return null;
+      const fill = parse(style.backgroundColor);
+      if (fill[3] === 1) return fill;
+      const below = background(node.parentElement);
+      if (!below) return null;
+      return fill[3] === 0 ? below : blend(fill, below);
+    };
+    const luminance = ([r, g, b]: Rgba) => {
+      const channel = (value: number) => {
+        const c = value / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    };
+    const ratio = (a: Rgba, b: Rgba) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+
+    const failures: string[] = [];
+    for (const element of document.querySelectorAll("main *")) {
+      if (element.closest("[data-over-photo], [aria-hidden=true]")) continue;
+      const ownText = [...element.childNodes]
+        .filter((child) => child.nodeType === Node.TEXT_NODE)
+        .map((child) => child.textContent?.trim())
+        .join("");
+      if (!ownText) continue;
+      const box = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      if (box.width === 0 || style.visibility === "hidden") continue;
+      const bg = background(element);
+      if (!bg) continue;
+      const fg = blend(parse(style.color), bg);
+      const size = Number.parseFloat(style.fontSize);
+      const bold = Number(style.fontWeight) >= 700;
+      const needed = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5;
+      const measured = ratio(fg, bg);
+      if (measured < needed) {
+        failures.push(`${ownText.slice(0, 40)} (${measured.toFixed(2)})`);
+      }
+    }
+    return failures;
+  });
+}
+
+test("every text on the home page meets WCAG AA against its background, so the grey-on-cream copy is readable", async ({
+  page,
+}) => {
+  await openDesktop(page, "/");
+  expect(await textBelowAA(page)).toEqual([]);
+});
+
+test("the home hero's main button asks for the first assessment and starts the online booking", async ({
+  page,
+}) => {
+  await openDesktop(page, "/");
+  await expect(
+    page
+      .getByTestId("home-hero")
+      .getByRole("link", { name: "Pide tu primera valoración" }),
+  ).toHaveAttribute("href", "/reservar");
+});
+
+test("every service on the home page is one whole link to its page, so the row itself is the target and not a small «Saber más»", async ({
+  page,
+}) => {
+  await openDesktop(page, "/");
+  const rows = page.getByTestId("service-list").getByRole("link");
+
+  await expect(rows).toHaveCount(7);
+  await expect(rows.first()).toHaveAttribute(
+    "href",
+    "/terapia-miofuncional-xativa",
+  );
+  await expect(rows.first()).toContainText("Terapia Miofuncional orofacial");
+  await expect(page.getByRole("link", { name: "Saber más" })).toHaveCount(0);
+});
+
+test("the home page keeps a short FAQ with the answers folded and a link to all the questions, instead of a wall of open answers", async ({
+  page,
+}) => {
+  await openDesktop(page, "/");
+  const faq = page.getByTestId("faq-accordion");
+
+  await expect(faq.locator("details")).toHaveCount(3);
+  await expect(faq.locator("details[open]")).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Ver todas las preguntas" }),
+  ).toHaveAttribute("href", "/preguntas-frecuentes");
+});
+
+test("the home page tells visitors where the clinic is with directions and a call button in the same place", async ({
+  page,
+}) => {
+  await openDesktop(page, "/");
+  const visit = page.getByRole("region", { name: "Visítanos en Xàtiva" });
+
+  await expect(visit).toContainText("Calle Montesa 7");
+  await expect(
+    visit.getByRole("link", { name: "Cómo llegar" }),
+  ).toHaveAttribute("href", /google\.com\/maps/);
+  await expect(visit.getByRole("link", { name: "Llamar" })).toHaveAttribute(
+    "href",
+    "tel:+34614552808",
+  );
+});
+
+test("the home page never shows empty grey boxes where Instagram posts should be", async ({
+  page,
+}) => {
+  await openDesktop(page, "/");
+  await expect(page.locator("#instagram li:not(:has(a))")).toHaveCount(0);
+});

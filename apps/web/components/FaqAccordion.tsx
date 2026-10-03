@@ -1,19 +1,16 @@
 import type { Faq } from "@/lib/faqs";
-import { ArrowDownCircle } from "./icons";
+import { PlusIcon } from "./icons";
 
 export function FaqAccordion({ items }: { items: Faq[] }) {
   return (
-    <div
-      data-testid="faq-accordion"
-      className="flex flex-col gap-8 md:gap-[2.46vw]"
-    >
+    <div data-testid="faq-accordion" className="border-sage-300 border-b">
       {items.map((item) => (
-        <details key={item.question} open>
-          <summary className="flex cursor-pointer list-none items-center gap-3 border-cream-50 border-b pb-3 text-cream-50 md:pb-[1.198vw]">
-            <ArrowDownCircle className="size-7 shrink-0 md:size-[1.563vw]" />
-            <span className="font-bold text-question">{item.question}</span>
+        <details key={item.question} className="group border-sage-300 border-t">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 font-bold text-ink-900 text-lg md:py-6 md:text-xl [&::-webkit-details-marker]:hidden">
+            {item.question}
+            <PlusIcon className="size-6 shrink-0 text-sage-800 transition-transform group-open:rotate-45" />
           </summary>
-          <p className="mt-4 text-body text-cream-50 md:mt-[1.23vw]">
+          <p className="max-w-3xl pb-6 text-base text-ink-800 leading-relaxed md:text-lg">
             {item.answer}
           </p>
         </details>

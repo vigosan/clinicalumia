@@ -47,12 +47,10 @@ export default function PreguntasFrecuentesPage() {
       </section>
 
       <section className="px-6 py-14 md:px-12 md:py-20">
-        <div className="mx-auto max-w-6xl rounded-panel bg-sage-500 px-6 py-14 md:px-14 md:py-20">
+        <div className="mx-auto max-w-6xl">
           <FaqAccordion items={faqs} />
           <div className="mt-12 flex justify-center">
-            <PillLink href="/contacto" tone="cream">
-              Cuéntanos tu caso
-            </PillLink>
+            <PillLink href="/contacto">Cuéntanos tu caso</PillLink>
           </div>
         </div>
       </section>

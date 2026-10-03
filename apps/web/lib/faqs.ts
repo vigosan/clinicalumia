@@ -1,11 +1,13 @@
 export type Faq = {
   question: string;
   answer: string;
+  featured?: boolean;
 };
 
 export const faqs: Faq[] = [
   {
     question: "¿Cuándo debería acudir a un logopeda?",
+    featured: true,
     answer:
       "Es recomendable acudir cuando aparecen dificultades relacionadas con el habla, el lenguaje, la voz, la respiración, la deglución o la masticación. También cuando existen alteraciones como respiración oral, deglución atípica, frenillo lingual, retraso del lenguaje o dificultades en la pronunciación. Una valoración temprana permite detectar el origen del problema y comenzar el tratamiento adecuado.",
   },
@@ -22,6 +24,7 @@ export const faqs: Faq[] = [
   },
   {
     question: "¿Cómo sé si mi hijo respira por la boca?",
+    featured: true,
     answer:
       "Algunas señales habituales son dormir con la boca abierta, roncar, presentar labios secos con frecuencia, mantener la boca entreabierta durante el día, cansancio al despertar o alteraciones en el desarrollo facial y dental. Una valoración logopédica puede determinar si existe una respiración oral y cómo corregirla.",
   },
@@ -37,6 +40,7 @@ export const faqs: Faq[] = [
   },
   {
     question: "¿Se necesita derivación médica?",
+    featured: true,
     answer:
       "No siempre. Puedes solicitar una primera valoración directamente. En algunos casos puede ser recomendable coordinar el proceso con otros profesionales sanitarios.",
   },

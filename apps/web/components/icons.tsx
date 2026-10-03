@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 type IconProps = {
   className?: string;
 };
@@ -15,49 +17,6 @@ export function WhatsAppIcon({ className = "" }: IconProps) {
   );
 }
 
-export function Sparkle({ className = "" }: IconProps) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="-0.5 -0.5 90 85"
-      fill="currentColor"
-      className={className}
-    >
-      <path d="M 89.1 38.6 C 88.94 42.08 86.89 44.56 84.22 46.25 C 72.37 53.73 64.42 63.9 61.45 77.78 C 60.86 80.57 59.24 83.01 56.13 83.42 C 53.11 83.82 50.91 82.18 49.47 79.54 C 48.34 77.47 46.96 75.51 46.07 73.35 C 41.44 62.08 32.42 57.86 20.96 57.23 C 15.87 56.95 10.79 56.46 5.75 55.73 C 2.94 55.32 0.56 53.83 0.08 50.6 C -0.41 47.36 1.54 45.41 3.97 43.94 C 8.68 41.11 13.5 38.47 18.23 35.67 C 28.5 29.61 35.46 20.97 38.54 9.35 C 39.04 7.45 39.4 5.49 40.19 3.73 C 41.21 1.46 43.07 -0.02 45.7 0 C 48.37 0.02 50.11 1.68 51.05 3.94 C 52.1 6.47 52.81 9.15 53.58 11.78 C 56.87 23.03 63.61 30.22 75.89 31.2 C 78.61 31.41 81.33 32.04 83.97 32.76 C 86.85 33.55 88.54 35.63 89.1 38.6" />
-    </svg>
-  );
-}
-
-export function ArrowDownCircle({ className = "" }: IconProps) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 30 30"
-      fill="currentColor"
-      className={className}
-    >
-      <path d="M 1.87 15 C 1.87 22.25 7.75 28.12 15 28.12 C 22.25 28.12 28.12 22.25 28.12 15 C 28.12 7.75 22.25 1.87 15 1.87 C 7.75 1.87 1.88 7.75 1.87 15 Z M 30 15 C 30 23.28 23.28 30 15 30 C 6.72 30 8.94e-07 23.28 0 15 C 0 6.72 6.72 -1.47e-05 15 -1.29e-05 C 23.28 -1.29e-05 30 6.72 30 15 Z M 15.94 8.44 C 15.94 7.92 15.52 7.5 15 7.5 C 14.48 7.5 14.06 7.92 14.06 8.44 L 14.06 19.3 L 10.04 15.27 C 9.67 14.91 9.08 14.91 8.71 15.27 C 8.34 15.64 8.34 16.23 8.71 16.6 L 14.34 22.23 C 14.51 22.4 14.75 22.5 15 22.5 C 15.25 22.5 15.49 22.4 15.66 22.23 L 21.29 16.6 C 21.66 16.23 21.66 15.64 21.29 15.27 C 20.92 14.91 20.33 14.91 19.96 15.27 L 15.94 19.3 L 15.94 8.44 Z" />
-    </svg>
-  );
-}
-
-export function ArrowCircle({
-  className = "",
-  direction = "right",
-}: IconProps & { direction?: "left" | "right" }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 67 67"
-      fill="currentColor"
-      className={className}
-      style={direction === "left" ? { transform: "scaleX(-1)" } : undefined}
-    >
-      <path d="M 4.18 33.47 C 4.18 49.65 17.3 62.76 33.47 62.76 C 49.65 62.76 62.76 49.65 62.76 33.47 C 62.76 17.3 49.65 4.18 33.47 4.18 C 17.3 4.18 4.18 17.3 4.18 33.47 Z M 66.94 33.47 C 66.94 51.96 51.96 66.94 33.47 66.94 C 14.99 66.94 2e-06 51.96 0 33.47 C 0 14.99 14.99 -1.39e-05 33.47 -9.94e-06 C 51.96 -9.94e-06 66.94 14.99 66.94 33.47 Z M 18.83 31.38 C 17.67 31.38 16.74 32.32 16.74 33.47 C 16.74 34.63 17.67 35.56 18.83 35.56 L 43.06 35.56 L 34.08 44.54 C 33.26 45.36 33.26 46.69 34.08 47.5 C 34.9 48.32 36.23 48.32 37.04 47.5 L 49.6 34.95 C 49.99 34.56 50.21 34.03 50.21 33.47 C 50.21 32.91 49.99 32.38 49.6 31.99 L 37.04 19.44 C 36.23 18.62 34.9 18.62 34.08 19.44 C 33.26 20.26 33.26 21.58 34.08 22.4 L 43.06 31.38 L 18.83 31.38 Z" />
-    </svg>
-  );
-}
-
 export function GoogleIcon({ className = "" }: IconProps) {
   return (
     <svg
@@ -68,5 +27,67 @@ export function GoogleIcon({ className = "" }: IconProps) {
     >
       <path d="M 23.41 34.53 C 23.41 39.95 27.31 44.58 32.65 45.5 C 37.99 46.41 43.21 43.34 45.01 38.23 L 34.53 38.23 L 34.53 30.82 L 52.7 30.82 L 52.7 38.23 L 52.69 38.23 C 50.97 46.69 43.49 53.06 34.53 53.06 C 24.3 53.06 16 44.76 16 34.53 C 16 24.3 24.3 16 34.53 16 C 40.68 16 46.43 19.05 49.87 24.14 L 43.8 28.39 C 41.09 24.3 36.02 22.47 31.32 23.88 C 26.63 25.29 23.41 29.62 23.41 34.53 Z" />
     </svg>
+  );
+}
+
+function StrokeIcon({
+  className = "",
+  children,
+}: IconProps & { children: ReactNode }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {children}
+    </svg>
+  );
+}
+
+export function ArrowRightIcon({ className = "" }: IconProps) {
+  return (
+    <StrokeIcon className={className}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </StrokeIcon>
+  );
+}
+
+export function PlusIcon({ className = "" }: IconProps) {
+  return (
+    <StrokeIcon className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </StrokeIcon>
+  );
+}
+
+export function PhoneIcon({ className = "" }: IconProps) {
+  return (
+    <StrokeIcon className={className}>
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
+    </StrokeIcon>
+  );
+}
+
+export function MapPinIcon({ className = "" }: IconProps) {
+  return (
+    <StrokeIcon className={className}>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </StrokeIcon>
+  );
+}
+
+export function ClockIcon({ className = "" }: IconProps) {
+  return (
+    <StrokeIcon className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </StrokeIcon>
   );
 }
