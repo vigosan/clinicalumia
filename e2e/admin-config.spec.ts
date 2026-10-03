@@ -280,7 +280,12 @@ test("the owner sees the invalid tax id and postal code next to their fields, fi
     await expect(
       page.getByLabel("Plazo de cancelación gratuita (horas)"),
     ).toHaveValue("48");
+    await expect(page.getByTestId("logo-file-name")).toHaveText(
+      "Ningún archivo elegido",
+    );
+    await expect(page.getByText("Elegir archivo")).toBeVisible();
     await page.getByTestId("logo-input").setInputFiles("fixtures/logo.png");
+    await expect(page.getByTestId("logo-file-name")).toHaveText("logo.png");
     await page.getByTestId("logo-submit").click();
     const preview = page.getByTestId("logo-preview").getByRole("img");
     await expect(preview).toBeVisible();
