@@ -1,12 +1,12 @@
 import Image, { getImageProps } from "next/image";
 import Link from "next/link";
+import { CtaBand } from "@/components/CtaBand";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import {
   ArrowRightIcon,
   ClockIcon,
   MapPinIcon,
   PhoneIcon,
-  WhatsAppIcon,
 } from "@/components/icons";
 import { PillLink, pillClassName } from "@/components/PillLink";
 import { ServiceList } from "@/components/ServiceList";
@@ -67,7 +67,7 @@ const heroMobile = getImageProps({
   sizes: "100vw",
 });
 
-const container = "mx-auto max-w-6xl px-6 md:px-12";
+const container = "mx-auto max-w-[78rem] px-6 md:px-12";
 const eyebrow = "font-medium text-sage-800 text-sm uppercase tracking-[0.08em]";
 const sectionTitle =
   "font-bold text-[2rem] text-ink-900 leading-[1.08] tracking-tight md:text-[3.25rem]";
@@ -382,24 +382,7 @@ export default async function Home() {
         </section>
       )}
 
-      <section className={`${container} pt-20 pb-24 md:pt-28 md:pb-32`}>
-        <div className="flex flex-col gap-8 rounded-panel bg-sage-500 px-6 py-12 md:flex-row md:items-center md:justify-between md:px-16 md:py-16">
-          <h2 className="max-w-xl font-bold text-[1.75rem] text-ink-900 leading-[1.1] tracking-tight md:text-[2.75rem]">
-            Dar el primer paso también forma parte del tratamiento.
-          </h2>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <PillLink href="/reservar" tone="solid">
-              Pide tu primera valoración
-            </PillLink>
-            {!isPending(site.whatsapp.href) && (
-              <a href={site.whatsapp.href} className={pillClassName("light")}>
-                <WhatsAppIcon className="size-5" />
-                WhatsApp
-              </a>
-            )}
-          </div>
-        </div>
-      </section>
+      <CtaBand />
     </>
   );
 }

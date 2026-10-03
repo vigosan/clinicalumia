@@ -238,3 +238,39 @@ test("the home page never shows empty grey boxes where Instagram posts should be
   await openDesktop(page, "/");
   await expect(page.locator("#instagram li:not(:has(a))")).toHaveCount(0);
 });
+
+test("every text on the services page meets WCAG AA against its background", async ({
+  page,
+}) => {
+  await openDesktop(page, "/servicios");
+  expect(await textBelowAA(page)).toEqual([]);
+});
+
+test("the services page groups speech therapy apart from psychology and physiotherapy, and each card opens its treatment", async ({
+  page,
+}) => {
+  await openDesktop(page, "/servicios");
+  const main = page.getByRole("main");
+
+  await expect(
+    main.getByRole("heading", { name: "Logopedia y terapia miofuncional" }),
+  ).toBeVisible();
+  await expect(
+    main.getByRole("heading", { name: "También en LUMIA" }),
+  ).toBeVisible();
+  const cards = page.getByTestId("service-card");
+  await expect(cards).toHaveCount(7);
+  await expect(cards.last()).toHaveAttribute("href", "/fisioterapia-xativa");
+  await expect(cards.last()).toContainText("Fisioterapia");
+});
+
+test("someone who does not know which treatment fits is sent to book a first assessment from the services page", async ({
+  page,
+}) => {
+  await openDesktop(page, "/servicios");
+  await expect(
+    page
+      .getByTestId("service-unsure")
+      .getByRole("link", { name: "Pide tu primera valoración" }),
+  ).toHaveAttribute("href", "/reservar");
+});
