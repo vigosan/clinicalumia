@@ -282,9 +282,16 @@ test("the owner sees the invalid tax id and postal code next to their fields, fi
     ).toHaveValue("48");
     await page.getByTestId("logo-input").setInputFiles("fixtures/logo.png");
     await page.getByTestId("logo-submit").click();
-    await expect(
-      page.getByTestId("logo-preview").getByRole("img"),
-    ).toBeVisible();
+    const preview = page.getByTestId("logo-preview").getByRole("img");
+    await expect(preview).toBeVisible();
+    const proportions = await preview.evaluate((element) => {
+      const image = element as HTMLImageElement;
+      return {
+        rendered: image.clientWidth / image.clientHeight,
+        natural: image.naturalWidth / image.naturalHeight,
+      };
+    });
+    expect(proportions.rendered).toBeCloseTo(proportions.natural, 1);
     const { data: uploaded } = await admin
       .from("clinic_settings")
       .select("logo_path")

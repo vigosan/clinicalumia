@@ -37,7 +37,7 @@ export async function InvoiceHeaderPreview({
           width={192}
           height={48}
           unoptimized
-          style={{ height: "48px", width: "auto" }}
+          className="h-12 w-auto max-w-full self-start object-contain"
         />
       ) : (
         <p className="text-sm text-ink-800">Aún no hay logo</p>
