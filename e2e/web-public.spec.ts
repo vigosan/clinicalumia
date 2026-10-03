@@ -381,3 +381,19 @@ test("the reason for the visit is chosen from the treatments, with a way out for
   await reason.selectOption("Logopedia infantil");
   await expect(reason).toHaveValue("Logopedia infantil");
 });
+
+test("the access page says plainly what it is and what the account is for, and sends people who are not patients yet to book", async ({
+  page,
+}) => {
+  await openDesktop(page, "/acceder");
+  const main = page.getByRole("main");
+
+  await expect(
+    main.getByRole("heading", { level: 1, name: "Accede a tu cuenta" }),
+  ).toBeVisible();
+  await expect(main).toContainText("ver, cambiar o cancelar tus citas");
+  await expect(
+    main.getByRole("link", { name: "Pide tu primera valoración" }),
+  ).toHaveAttribute("href", "/reservar");
+  expect(await textBelowAA(page)).toEqual([]);
+});
