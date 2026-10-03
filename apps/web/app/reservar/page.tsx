@@ -21,6 +21,7 @@ import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 import { BirthDateForm } from "./BirthDateForm";
 import { ConfirmForm } from "./ConfirmForm";
+import { EmptyStep } from "./EmptyStep";
 import {
   loadCatalog,
   loadHorizonDays,
@@ -484,18 +485,6 @@ function slotWarningFor(aviso: string | undefined): string | null {
   if (aviso === SLOT_TOO_SOON)
     return bookingError({ message: "slot_too_soon" });
   return null;
-}
-
-function EmptyStep() {
-  return (
-    <div>
-      <h1 className="font-bold text-ink-600 text-section">Reservar cita</h1>
-      <p data-testid="booking-empty" className="mt-6 text-ink-800">
-        Ahora mismo no hay citas para reservar online. Llámanos al{" "}
-        <PhoneLink>{site.phone.display}</PhoneLink> y te buscamos una.
-      </p>
-    </div>
-  );
 }
 
 function StepView({
