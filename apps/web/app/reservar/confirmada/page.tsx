@@ -39,7 +39,7 @@ export default async function ConfirmadaPage({
       <PageHero />
       <section className="px-6 py-14 md:px-12 md:py-20">
         <div className="mx-auto max-w-2xl">
-          <h1 className="font-bold text-ink-600 text-section">
+          <h1 className="font-bold text-ink-900 text-section">
             Cita confirmada
           </h1>
           <p className="mt-3 mb-8 text-ink-800">
@@ -79,7 +79,7 @@ export default async function ConfirmadaPage({
             Puedes verla o cambiarla en{" "}
             <Link
               href="/mi-cuenta"
-              className="font-medium text-sage-600 underline-offset-2 hover:underline"
+              className="font-medium text-sage-800 underline-offset-2 hover:underline"
             >
               Mi cuenta
             </Link>
@@ -87,7 +87,7 @@ export default async function ConfirmadaPage({
           </p>
           <Link
             href="/"
-            className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-600 transition-colors hover:bg-sage-500 hover:text-cream-50"
+            className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-800 transition-colors hover:bg-sage-500 hover:text-cream-50"
           >
             Volver al inicio
           </Link>

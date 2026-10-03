@@ -54,7 +54,7 @@ export const metadata: Metadata = {
 };
 
 const optionClass =
-  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-600 transition-colors hover:bg-sage-500/15";
+  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-900 transition-colors hover:bg-sage-500/15";
 
 function reservar(state: BookingState) {
   const query = bookingState.encode(state);
@@ -81,7 +81,7 @@ function Step({
       {back && (
         <Link
           href={back}
-          className="text-sage-600 text-sm underline-offset-2 hover:underline"
+          className="text-sage-800 text-sm underline-offset-2 hover:underline"
         >
           ← Volver
         </Link>
@@ -89,7 +89,7 @@ function Step({
       <p data-testid="booking-step" className="mt-4 text-ink-800 text-sm">
         Paso {bookingStepNumber(kind)} de {BOOKING_STEPS}
       </p>
-      <h1 className="mt-1 font-bold text-ink-600 text-section">{title}</h1>
+      <h1 className="mt-1 font-bold text-ink-900 text-section">{title}</h1>
       <div className="mt-8">{children}</div>
     </div>
   );
@@ -99,7 +99,7 @@ function PhoneLink({ children }: { children: ReactNode }) {
   return (
     <a
       href={site.phone.href}
-      className="font-medium text-sage-600 underline-offset-2 hover:underline"
+      className="font-medium text-sage-800 underline-offset-2 hover:underline"
     >
       {children}
     </a>
@@ -147,7 +147,7 @@ function ServiceStep({ specialty }: { specialty: CatalogSpecialty }) {
             {service.phoneOnly ? (
               <div
                 data-testid="booking-phone-only"
-                className="flex flex-col gap-1 rounded-3xl border-2 border-sage-400/60 px-6 py-5 text-ink-600"
+                className="flex flex-col gap-1 rounded-3xl border-2 border-sage-400/60 px-6 py-5 text-ink-900"
               >
                 <ServiceSummary service={service} />
                 <span className="mt-2 text-sm">
@@ -295,7 +295,7 @@ async function SlotStep({
         <Link
           href={reservar({ ...base, fecha: nextFrom })}
           data-testid="booking-next-days"
-          className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-600 transition-colors hover:bg-sage-500 hover:text-cream-50"
+          className="mt-8 inline-flex h-11 items-center rounded-full border-2 border-sage-500 px-6 text-sage-800 transition-colors hover:bg-sage-500 hover:text-cream-50"
         >
           Siguientes días
         </Link>
@@ -373,11 +373,11 @@ function ChosenStep(props: ChosenProps) {
     <div>
       <Link
         href={reservar(base)}
-        className="text-sage-600 text-sm underline-offset-2 hover:underline"
+        className="text-sage-800 text-sm underline-offset-2 hover:underline"
       >
         ← Cambiar la hora
       </Link>
-      <h1 className="mt-4 mb-8 font-bold text-ink-600 text-section">Tu cita</h1>
+      <h1 className="mt-4 mb-8 font-bold text-ink-900 text-section">Tu cita</h1>
       <AppointmentSummary testId="booking-chosen" {...props} />
       <Link
         href={`/acceder?next=${encodeURIComponent(next)}`}

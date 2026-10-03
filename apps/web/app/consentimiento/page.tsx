@@ -19,7 +19,7 @@ export default async function ConsentimientoPage() {
 
       <section className="px-6 py-12 md:px-12 md:py-16">
         <div className="mx-auto max-w-3xl">
-          <h1 className="font-bold text-ink-600 text-section">
+          <h1 className="font-bold text-ink-900 text-section">
             {consentTitle}
           </h1>
           <p className="mt-4 mb-10 text-ink-800 text-lg leading-relaxed">

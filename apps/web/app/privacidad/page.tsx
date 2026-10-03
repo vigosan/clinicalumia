@@ -20,7 +20,7 @@ export default function PrivacidadPage() {
 
       <section className="px-6 pt-12 md:px-12 md:pt-16">
         <div className="mx-auto max-w-6xl">
-          <h1 className="font-bold text-ink-600 text-section">
+          <h1 className="font-bold text-ink-900 text-section">
             Política de privacidad
           </h1>
         </div>

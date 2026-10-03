@@ -112,9 +112,16 @@ test("the footer links to the privacy policy, which the forms ask people to acce
 async function textBelowAA(page: Page) {
   return page.evaluate(() => {
     type Rgba = [number, number, number, number];
+    const canvas = document.createElement("canvas").getContext("2d", {
+      willReadFrequently: true,
+    });
     const parse = (value: string): Rgba => {
-      const parts = (value.match(/[\d.]+/g) ?? []).map(Number);
-      return [parts[0], parts[1], parts[2], parts[3] ?? 1];
+      if (!canvas) throw new Error("No 2D canvas to read colours");
+      canvas.clearRect(0, 0, 1, 1);
+      canvas.fillStyle = value;
+      canvas.fillRect(0, 0, 1, 1);
+      const [r, g, b, a] = canvas.getImageData(0, 0, 1, 1).data;
+      return [r, g, b, a / 255];
     };
     const blend = (top: Rgba, bottom: Rgba): Rgba => [
       top[0] * top[3] + bottom[0] * (1 - top[3]),
@@ -395,5 +402,34 @@ test("the access page says plainly what it is and what the account is for, and s
   await expect(
     main.getByRole("link", { name: "Pide tu primera valoración" }),
   ).toHaveAttribute("href", "/reservar");
+  expect(await textBelowAA(page)).toEqual([]);
+});
+
+for (const path of [
+  "/reservar",
+  "/terapia-miofuncional-xativa",
+  "/logopedia-infantil-xativa",
+  "/logopedia-adultos-xativa",
+  "/rehabilitacion-vocal-xativa",
+  "/psicologia-xativa",
+  "/fisioterapia-xativa",
+  "/privacidad",
+  "/consentimiento",
+  "/esta-pagina-no-existe",
+]) {
+  test(`every text on ${path} meets WCAG AA against its background, like the rest of the public web`, async ({
+    page,
+  }) => {
+    await openDesktop(page, path);
+    expect(await textBelowAA(page)).toEqual([]);
+  });
+}
+
+test("the booking steps after choosing a specialty also meet WCAG AA", async ({
+  page,
+}) => {
+  await openDesktop(page, "/reservar");
+  await page.getByTestId("booking-specialty").first().click();
+  await expect(page.getByTestId("booking-step")).toContainText("Paso 2");
   expect(await textBelowAA(page)).toEqual([]);
 });

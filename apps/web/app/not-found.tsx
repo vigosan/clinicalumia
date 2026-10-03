@@ -14,10 +14,10 @@ export default function NotFound() {
 
       <section className="px-6 pt-12 pb-20 md:px-12 md:pt-16 md:pb-28">
         <div className="mx-auto max-w-6xl">
-          <h1 className="font-bold text-ink-600 text-section">
+          <h1 className="font-bold text-ink-900 text-section">
             Página no encontrada
           </h1>
-          <p className="mt-6 max-w-[46ch] text-ink-500 text-lg leading-relaxed">
+          <p className="mt-6 max-w-[46ch] text-ink-800 text-lg leading-relaxed">
             La página que buscas no existe o ha cambiado de dirección. Puedes
             volver al inicio o consultar nuestros tratamientos de logopedia y
             terapia miofuncional en Xàtiva.

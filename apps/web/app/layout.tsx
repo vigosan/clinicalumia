@@ -92,7 +92,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es-ES" className={`${neueHaas.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-cream-100 text-ink-600 font-sans antialiased">
+      <body className="min-h-full flex flex-col bg-cream-100 text-ink-800 font-sans antialiased">
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { AccountPerson } from "./step";
 
 const optionClass =
-  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-600 transition-colors hover:bg-sage-500/15";
+  "flex w-full flex-col gap-1 rounded-3xl border-2 border-sage-500 px-6 py-5 text-left text-ink-900 transition-colors hover:bg-sage-500/15";
 
 export function WhoStep({
   people,
