@@ -3,6 +3,7 @@ import { signIn } from "./auth";
 
 const DASHBOARD = "http://localhost:3001";
 const OWNER = "info@clinicalumia.es";
+const SEED_PATIENT_ID = "a0000000-0000-0000-0000-000000000604";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -269,8 +270,7 @@ test("the record lists each detail under its own label, so staff scan by label i
   page,
 }) => {
   await signIn(page, DASHBOARD, OWNER);
-  await page.goto(`${DASHBOARD}/patients`);
-  await page.getByTestId("patient-link").first().click();
+  await page.goto(`${DASHBOARD}/patients/${SEED_PATIENT_ID}`);
 
   const details = page.getByTestId("patient-details");
   for (const label of ["DNI/NIE", "Email", "Teléfono", "Dirección"]) {
