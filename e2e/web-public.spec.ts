@@ -73,3 +73,38 @@ test("on inner pages the header links are dark on the sage band so they pass WCA
     banner.getByRole("link", { name: "Contacto", exact: true }),
   ).not.toHaveAttribute("aria-current", "page");
 });
+
+test("the footer shows the address, the hours and how to reach the clinic directly, instead of labels that make people click through to find them", async ({
+  page,
+}) => {
+  await openDesktop(page, "/servicios");
+  const footer = page.getByRole("contentinfo");
+
+  await expect(footer).toContainText("Calle Montesa 7");
+  await expect(footer).toContainText("46800 Xàtiva");
+  await expect(footer).toContainText("15:15");
+  await expect(
+    footer.getByRole("link", { name: "614 552 808" }),
+  ).toHaveAttribute("href", "tel:+34614552808");
+  await expect(footer.getByRole("link", { name: "WhatsApp" })).toHaveAttribute(
+    "href",
+    "https://wa.me/34614552808",
+  );
+  await expect(
+    footer.getByRole("link", { name: "info@clinicalumia.es" }),
+  ).toHaveAttribute("href", "mailto:info@clinicalumia.es");
+  await expect(
+    footer.getByRole("link", { name: "Cómo llegar" }),
+  ).toHaveAttribute("href", /google\.com\/maps/);
+});
+
+test("the footer links to the privacy policy, which the forms ask people to accept", async ({
+  page,
+}) => {
+  await openDesktop(page, "/");
+  await expect(
+    page
+      .getByRole("contentinfo")
+      .getByRole("link", { name: "Política de privacidad" }),
+  ).toHaveAttribute("href", "/privacidad");
+});

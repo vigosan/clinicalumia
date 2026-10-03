@@ -2,40 +2,100 @@ import Image from "next/image";
 import Link from "next/link";
 import { isPending, site } from "@/lib/site";
 
-const rows = [
-  { href: isPending(site.maps) ? "/contacto" : site.maps, label: "Dirección" },
-  {
-    href: isPending(site.whatsapp.href) ? site.phone.href : site.whatsapp.href,
-    label: "WhatsApp",
-  },
-  { href: "/contacto", label: "Horario" },
-  { href: "/servicios", label: "Servicios profesionales" },
-  { href: "/mi-cuenta", label: "Mi cuenta" },
-];
+const linkClassName =
+  "underline decoration-1 underline-offset-4 transition-opacity hover:opacity-70";
 
 export function SiteFooter() {
-  return (
-    <footer className="bg-sage-500 px-6 py-14 md:px-[5.625vw] md:pt-[4.635vw] md:pb-[12.08vw]">
-      <Image
-        src="/logo-white.png"
-        alt="LUMIA · Clínica Logopedia miofuncional"
-        width={1080}
-        height={400}
-        className="h-auto w-44 md:w-[22.292vw]"
-      />
+  const { address } = site;
 
-      <ul className="mt-12 max-w-xl md:mt-[1.927vw] md:ml-[3.698vw] md:max-w-[28.698vw]">
-        {rows.map((row) => (
-          <li key={row.label} className="border-cream-50 border-b">
-            <Link
-              href={row.href}
-              className="block pt-5 pb-3 text-body text-ink-900 transition-opacity hover:opacity-70 md:pt-[1.44vw] md:pb-[0.72vw]"
-            >
-              {row.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+  return (
+    <footer className="bg-sage-500 px-6 pt-14 pb-10 text-ink-900 md:px-12 md:pt-20">
+      <div className="mx-auto flex max-w-6xl flex-col gap-12">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <Image
+            src="/logo-white.png"
+            alt="LUMIA · Clínica Logopedia miofuncional"
+            width={1080}
+            height={400}
+            className="h-auto w-44 md:w-52"
+          />
+
+          <div className="flex flex-col gap-2">
+            <h2 className="font-bold">Dirección</h2>
+            <p>
+              {address.street}
+              <br />
+              {address.postalCode} {address.locality}, {address.region}
+            </p>
+            {!isPending(site.maps) && (
+              <a
+                href={site.maps}
+                target="_blank"
+                rel="noreferrer"
+                className={linkClassName}
+              >
+                Cómo llegar
+              </a>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h2 className="font-bold">Horario</h2>
+            <ul>
+              {site.schedule.map((slot) => (
+                <li key={slot.days}>
+                  {slot.days}: {slot.hours}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex flex-col items-start gap-2">
+            <h2 className="font-bold">Contacto</h2>
+            <a href={site.phone.href} className={linkClassName}>
+              {site.phone.display}
+            </a>
+            {!isPending(site.whatsapp.href) && (
+              <a href={site.whatsapp.href} className={linkClassName}>
+                WhatsApp
+              </a>
+            )}
+            <a href={`mailto:${site.email}`} className={linkClassName}>
+              {site.email}
+            </a>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 border-ink-900 border-t pt-6 text-sm md:flex-row md:items-center md:justify-between">
+          <p>
+            © {new Date().getFullYear()} {site.name} · {site.tagline}
+          </p>
+          <ul className="flex flex-wrap gap-x-6 gap-y-2">
+            <li>
+              <Link href="/privacidad" className={linkClassName}>
+                Política de privacidad
+              </Link>
+            </li>
+            <li>
+              <Link href="/servicios" className={linkClassName}>
+                Servicios
+              </Link>
+            </li>
+            <li>
+              <Link href="/mi-cuenta" className={linkClassName}>
+                Mi cuenta
+              </Link>
+            </li>
+            {!isPending(site.instagram) && (
+              <li>
+                <a href={site.instagram} className={linkClassName}>
+                  Instagram
+                </a>
+              </li>
+            )}
+          </ul>
+        </div>
+      </div>
     </footer>
   );
 }
