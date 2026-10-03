@@ -23,7 +23,9 @@ export default function NotFound() {
             terapia miofuncional en Xàtiva.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <PillLink href="/">Volver al inicio</PillLink>
+            <PillLink href="/" tone="solid">
+              Volver al inicio
+            </PillLink>
             <PillLink href="/servicios">Ver servicios</PillLink>
           </div>
         </div>

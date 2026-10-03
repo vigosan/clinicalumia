@@ -433,3 +433,19 @@ test("the booking steps after choosing a specialty also meet WCAG AA", async ({
   await expect(page.getByTestId("booking-step")).toContainText("Paso 2");
   expect(await textBelowAA(page)).toEqual([]);
 });
+
+test("each treatment page asks for the first assessment with the same wording and the same destination as the rest of the web", async ({
+  page,
+}) => {
+  await openDesktop(page, "/logopedia-infantil-xativa");
+  const main = page.getByRole("main");
+
+  const ctas = main.getByRole("link", { name: "Pide tu primera valoración" });
+  await expect(ctas.first()).toHaveAttribute("href", "/reservar");
+  await expect(ctas.last()).toHaveAttribute("href", "/reservar");
+  await expect(
+    main.getByRole("link", {
+      name: /Solicita tu primera valoración|Pedir cita/,
+    }),
+  ).toHaveCount(0);
+});

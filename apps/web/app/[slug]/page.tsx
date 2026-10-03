@@ -57,7 +57,9 @@ export default async function ServicePage({ params }: Params) {
             {page.intro}
           </p>
           <div className="mt-8">
-            <PillLink href="/contacto">Solicita tu primera valoración</PillLink>
+            <PillLink href="/reservar" tone="solid">
+              Pide tu primera valoración
+            </PillLink>
           </div>
         </div>
       </section>
@@ -197,7 +199,9 @@ export default async function ServicePage({ params }: Params) {
           <p className="font-bold text-card text-ink-900 tracking-tight md:text-section">
             {page.cta}
           </p>
-          <PillLink href="/contacto">Pedir cita</PillLink>
+          <PillLink href="/reservar" tone="solid">
+            Pide tu primera valoración
+          </PillLink>
           <p className="text-ink-800">
             ¿Tienes dudas? Consulta las{" "}
             <Link
