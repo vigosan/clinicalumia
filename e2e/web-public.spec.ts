@@ -296,3 +296,48 @@ test("Somos LUMIA puts Patricia's experience and teaching up front as facts and 
       .getByRole("link", { name: "Pide tu primera valoración" }),
   ).toHaveAttribute("href", "/reservar");
 });
+
+test("every text on the FAQ page meets WCAG AA against its background", async ({
+  page,
+}) => {
+  await openDesktop(page, "/preguntas-frecuentes");
+  expect(await textBelowAA(page)).toEqual([]);
+});
+
+test("the FAQ page groups questions by topic with a topic index, so a parent finds the children's questions without reading them all", async ({
+  page,
+}) => {
+  await openDesktop(page, "/preguntas-frecuentes");
+  const topics = page.getByRole("navigation", { name: "Temas" });
+
+  await topics.getByRole("link", { name: "Niños" }).click();
+  await expect(page).toHaveURL(/#ninos$/);
+  const children = page.getByRole("region", { name: "Niños" });
+  await expect(children).toContainText(
+    "¿Cómo sé si mi hijo respira por la boca?",
+  );
+  await expect(page.getByRole("region", { name: "Adultos" })).toContainText(
+    "¿Trabajáis con adultos?",
+  );
+});
+
+test("grouping the FAQ keeps every question in the FAQPage structured data that search engines read", async ({
+  page,
+}) => {
+  await openDesktop(page, "/preguntas-frecuentes");
+  const questions = await page
+    .locator('script[type="application/ld+json"]')
+    .evaluateAll((scripts) =>
+      scripts
+        .map((script) => JSON.parse(script.textContent ?? "{}"))
+        .filter((data) => data["@type"] === "FAQPage")
+        .flatMap((data) =>
+          data.mainEntity.map((q: { name: string }) => q.name),
+        ),
+    );
+
+  expect(questions).toHaveLength(7);
+  await expect(
+    page.getByTestId("faq-accordion").locator("details"),
+  ).toHaveCount(7);
+});
