@@ -1,5 +1,6 @@
 import { neueHaas } from "@clinicalumia/ui/fonts";
 import type { Metadata, Viewport } from "next";
+import { MobileActionBar } from "@/components/MobileActionBar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { pageMetadata } from "@/lib/metadata";
@@ -96,6 +97,7 @@ export default function RootLayout({
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
+        <MobileActionBar />
         <script
           type="application/ld+json"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD payload is a static, server-controlled object

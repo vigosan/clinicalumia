@@ -449,3 +449,62 @@ test("each treatment page asks for the first assessment with the same wording an
     }),
   ).toHaveCount(0);
 });
+
+async function openPhone(page: Page, path: string) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${WEB}${path}`);
+}
+
+test("on a phone, calling, WhatsApp and booking stay one tap away at the bottom of the screen while scrolling", async ({
+  page,
+}) => {
+  await openPhone(page, "/servicios");
+  const bar = page.getByRole("navigation", { name: "Acciones rápidas" });
+
+  await page.mouse.wheel(0, 1500);
+  await expect(bar).toBeInViewport();
+  await expect(bar.getByRole("link", { name: "Llamar" })).toHaveAttribute(
+    "href",
+    "tel:+34614552808",
+  );
+  await expect(bar.getByRole("link", { name: "WhatsApp" })).toHaveAttribute(
+    "href",
+    "https://wa.me/34614552808",
+  );
+  await expect(
+    bar.getByRole("link", { name: "Pide tu valoración" }),
+  ).toHaveAttribute("href", "/reservar");
+});
+
+test("the phone action bar never covers the end of the page, so the footer links can still be tapped", async ({
+  page,
+}) => {
+  await openPhone(page, "/");
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const bar = await page
+    .getByRole("navigation", { name: "Acciones rápidas" })
+    .boundingBox();
+  const lastLink = await page
+    .getByRole("contentinfo")
+    .getByRole("link")
+    .last()
+    .boundingBox();
+
+  expect(lastLink && bar && lastLink.y + lastLink.height).toBeLessThanOrEqual(
+    bar?.y ?? 0,
+  );
+});
+
+test("the phone action bar stays out of the booking and access forms, where it would cover their own buttons, and out of desktop", async ({
+  page,
+}) => {
+  await openPhone(page, "/reservar");
+  await expect(
+    page.getByRole("navigation", { name: "Acciones rápidas" }),
+  ).toHaveCount(0);
+
+  await openDesktop(page, "/");
+  await expect(
+    page.getByRole("navigation", { name: "Acciones rápidas" }),
+  ).toBeHidden();
+});
